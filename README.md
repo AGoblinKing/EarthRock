@@ -1,15 +1,43 @@
-# IDEAS
- - Comic book adventure game, where you battle through the pages
- - AI work 
- - Game where you battle as all the different versions of Hugh Jackman called Hugh Jackman
-  - ^ Could be VR  
+# Earthrock
+### <Uncollectable Card Game>
 
-# VR Prototypes
- - VR game driving a mech
- - VR game throwing hammers that return or other super powers
- - Grabbing onto things/sliding/moving platforms
- - wave arms to move 
-\
+## Basis for MVP
+ 1. Custom Decks
+    - Maximum point value, eg: 60
+    - Point value per card
+    - Deck card back set by image map
+    - Uses TOML or maybe embed into image?
+    - Required 30 cards
+    - Name [from set list]
+    - Ability chosen from set
+    - Portrait from image map
+    - public/private key for each deck
+ 2. Custom Cards
+    - Name [From set list of words combined]
+    - Image from image map
+    - Have resource cost that raises based on points added
+    - Type
+        - Monster
+            - Monsters go on the battle field
+            - Have ATTACK [n] / [n] HEALTH, generally starts at 1/1
+        - Spell
+            - Can do one of many effects
+            - Do [n] damage 
+            - Heal [n] damage
+        - Trap
+            - Persistant spell with a trigger
+            - [ON ATTACK] [DESTROY ATTACKER] +3
 
+ 3. Internet Matches
+    - Paste deck in
+    - Types
+        - Link Match (Link someone a match ID)
+        - Find Match (Finds another person to play against)
+    - Winner gets a point on that deck. Show deck W in FM and LM. Change color based on # of wins
+    - Rules enforced server side
 
-# Role Queue for things like wingman/etc roles Starcitizen
+## Technology
+    - Node.js server for now
+    - Use JSON for messaging right now
+    - POST w/ SSE down.
+    

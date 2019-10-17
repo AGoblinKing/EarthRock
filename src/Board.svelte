@@ -3,7 +3,7 @@ import Field from "./Field.svelte"
 import Character from "./Character.svelte"
 import Power from "./Power.svelte"
 import Crystals from "./Crystals.svelte"
-import Cards from "./Cards.svelte"
+import Hand from "./Hand.svelte"
 
 export let opponent = false
 </script>
@@ -20,5 +20,5 @@ export let opponent = false
     <Character></Character>
     <Power></Power>
     <Crystals></Crystals>
-    <Cards></Cards>
+    <Hand></Hand>
 </div>

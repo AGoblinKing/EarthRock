@@ -21,12 +21,20 @@
 		}
 		
 		html, window, body {
+			user-select: none;
 			margin: 0;
 			padding: 0;
 			background-color: #DDD;
 			overflow: hidden;
 			font-family: 'Press Start 2P', cursive;
 		}
+
+		img {
+			image-rendering: crisp-edges;
+			image-rendering: pixelated;
+
+		}
+
 		noscript {
 			display: flex;
 			width: 100%;

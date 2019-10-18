@@ -27,11 +27,19 @@ const defocus = () =>
 </script>
 
 <Card {...card}></Card>
-<div on:click="{defocus}">
+<div on:click="{defocus}" class="intro_field">
 	<Intro></Intro>
 </div>
 <!-- <Board opponent></Board>
 <Board></Board> -->
 
 <style>
+
+.intro_field {
+    top: 0;
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
 </style>

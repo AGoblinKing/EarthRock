@@ -3,14 +3,30 @@ import Board from "./Board.svelte"
 import Intro from "./Intro.svelte"
 import Card from "./Card.svelte"
 
-$: focus = true
 
-const defocus = () => {
-	focus = !focus
+$: card = {
+	scale: 1,
+	position: [0, 0],
+	rotation: 0
 }
+
+const defocus = () => 
+	card = card.scale === 1 
+		? {
+			scale: 0.25,
+			position: [0, 40],
+			rotation: 5
+		} 
+		: {
+			scale: 1,
+			position: [0, 0],
+			rotation: 0
+		}
+
+
 </script>
 
-<Card {focus} home></Card>
+<Card {...card}></Card>
 <div on:click="{defocus}">
 	<Intro></Intro>
 </div>

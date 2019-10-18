@@ -1,24 +1,63 @@
 <script>
 import Tiles from "./Tiles.svelte"
 
-export let focus = false
-export let home = false
-export let away = false
+export let id = "foobar"
 export let cost = 0
 export let name = "16 55 33 44 55"
 export let flip = true
 export let borders = true
 export let vitals = [1, 1]
 
+export let position = [0, 0]
+export let rotation = 0
+export let scale = 1
+
 const lines = [0, 1, 2]
+
+const delay = ({
+    time = 250,
+    on = () => {},
+    off = () => {}
+}) => {
+    let timeout
+    
+    return {
+        on: () => {
+            if(timeout) {
+                clearTimeout(timeout)
+            }
+            on()
+        },
+        off: () => {
+            if(timeout) {
+                clearTimeout(timeout)
+            }
+
+            timeout = setTimeout(() => {
+                timeout = 0
+                off()
+            }, time)
+        }
+    }
+}
 
 const doFlip = () => {
     flip = !flip;
 }
 
+const delay_hover = delay({
+    time: 250,
+    on: () => hover = true,
+    off: () => hover = false
+})
+
+let hover = false
+
+$: tru_scale = hover ? scale * 1.25 : scale
+$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1]}%) scale(${tru_scale}) rotate(${rotation}deg); z-index: ${scale * 5}`
 </script>
 
-<div class:focus class:home class:away class="card">
+<div {style} on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
     <div class:flip class="contents">
         {#if borders}
         <div class="border border-top" />
@@ -145,10 +184,6 @@ const doFlip = () => {
     transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-.card:hover {
-
-}
-
 .image {
     display: flex;
     margin: 2rem 4rem;
@@ -174,7 +209,7 @@ const doFlip = () => {
     width: 100%;
     position: relative;
     height: 100%;
-    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: all 0.618s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     transform-style: preserve-3d;
     transform:  rotateY(0deg);
 }
@@ -240,28 +275,4 @@ const doFlip = () => {
     border: 2rem solid #010;
 }
 
-
-.home {
-    z-index: 2;
-    transform: translate(-50%, -20%) scale(0.20);
-}
-
-.home:hover {
-    z-index: 3;
-    transform: translate(-50%, -20%) scale(0.40);
-}
-
-.away {
-    transform: translate(-50%, -40%) scale(0.25);
-}
-
-.focus {
-    z-index: 5;
-
-    transform: translate(-50%, -50%);
-}
-.focus:hover {
-    z-index: 5;
-    transform: translate(-50%, -50%) scale(1.1);
-}
 </style>

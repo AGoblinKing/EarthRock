@@ -2,15 +2,20 @@
 import Board from "./Board.svelte"
 import Intro from "./Intro.svelte"
 import Card from "./Card.svelte"
+
+$: focus = true
+
+const defocus = () => {
+	focus = !focus
+}
 </script>
 
-<style>
-	h1 {
-		color: purple;
-	}
-</style>
-
-<Card focus></Card>
-<Intro></Intro>
+<Card {focus} home></Card>
+<div on:click="{defocus}">
+	<Intro></Intro>
+</div>
 <!-- <Board opponent></Board>
 <Board></Board> -->
+
+<style>
+</style>

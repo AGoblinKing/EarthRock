@@ -2,6 +2,8 @@
 import Tiles from "./Tiles.svelte"
 
 export let focus = false
+export let home = false
+export let away = false
 export let cost = 0
 export let name = "16 55 33 44 55"
 export let flip = true
@@ -16,7 +18,7 @@ const doFlip = () => {
 
 </script>
 
-<div class:focus class="card">
+<div class:focus class:home class:away class="card">
     <div class:flip class="contents">
         {#if borders}
         <div class="border border-top" />
@@ -73,7 +75,7 @@ const doFlip = () => {
 <style>
 .earthrock {
     color: #300;
-    line-height: 1rem;
+    line-height: 1.2rem;
     font-size: 2rem;
 }
 
@@ -127,6 +129,8 @@ const doFlip = () => {
     color: white;
     font-size: 5rem;
     padding: 1rem;
+    padding-left: 2rem;
+
     border-bottom-left-radius: 1rem;
 }
 
@@ -136,6 +140,9 @@ const doFlip = () => {
     width: 50rem;
     height: 80rem;
     perspective: 1000px;
+    top: 50%;
+    left: 50%;
+    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .card:hover {
@@ -169,6 +176,7 @@ const doFlip = () => {
     height: 100%;
     transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     transform-style: preserve-3d;
+    transform:  rotateY(0deg);
 }
 
 .flip {
@@ -232,10 +240,28 @@ const doFlip = () => {
     border: 2rem solid #010;
 }
 
+
+.home {
+    z-index: 2;
+    transform: translate(-50%, -20%) scale(0.20);
+}
+
+.home:hover {
+    z-index: 3;
+    transform: translate(-50%, -20%) scale(0.40);
+}
+
+.away {
+    transform: translate(-50%, -40%) scale(0.25);
+}
+
 .focus {
     z-index: 5;
-    top: 50%;
-    left: 50%;
+
     transform: translate(-50%, -50%);
+}
+.focus:hover {
+    z-index: 5;
+    transform: translate(-50%, -50%) scale(1.1);
 }
 </style>

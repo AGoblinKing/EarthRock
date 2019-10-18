@@ -90,11 +90,10 @@ button:hover {
 <div class="background">
     <Tiles />
 </div>
+
 <h1 class="title">EarthRock</h1>
 <h2 class="desc">The Uncollectable Card Game</h2>
 
 <button on:click="{clicked}">START</button>
 
 <div class="notice">We don't use cookies or store anything about you server side.</div>
-
-<Popup hidden></Popup>

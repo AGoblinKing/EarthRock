@@ -53,8 +53,8 @@ const delay_hover = delay({
 
 let hover = false
 
-$: tru_scale = hover ? scale * 1.25 : scale
-$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1]}%) scale(${tru_scale}) rotate(${rotation}deg); z-index: ${scale * 5}`
+$: tru_scale = hover ? scale * 1.168 : scale
+$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? -5 : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
 </script>
 
 <div {style} on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
@@ -69,6 +69,7 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1]}%) s
         <div class="back" on:click="{doFlip}">
             <Tiles width={3} height={5} />
         </div>
+
         <div class="front" on:click="{doFlip}">
             <div class="header">
                 <div class="title">
@@ -181,7 +182,7 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1]}%) s
     perspective: 1000px;
     top: 50%;
     left: 50%;
-    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: transform 0.618s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .image {

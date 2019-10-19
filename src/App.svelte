@@ -1,45 +1,11 @@
 <script>
-import Board from "./Board.svelte"
 import Intro from "./Intro.svelte"
-import Card from "./Card.svelte"
+import Hand from "./Hand.svelte"
 
-
-$: card = {
-	scale: 1,
-	position: [0, 0],
-	rotation: 0
-}
-
-const defocus = () => 
-	card = card.scale === 1 
-		? {
-			scale: 0.25,
-			position: [0, 40],
-			rotation: 5
-		} 
-		: {
-			scale: 1,
-			position: [0, 0],
-			rotation: 0
-		}
-
-
+const cards = [{id: 1}, {id:2}, {id:3}, {id:4}, {id:5}]
 </script>
 
-<Card {...card}></Card>
-<div on:click="{defocus}" class="intro_field">
-	<Intro></Intro>
-</div>
-<!-- <Board opponent></Board>
-<Board></Board> -->
+<Intro></Intro>
 
-<style>
-
-.intro_field {
-    top: 0;
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-</style>
+<Hand {cards} scale={0.25} position={[0, 40]} />
+<Hand {cards} scale={0.25} position={[0, -40]} invert />

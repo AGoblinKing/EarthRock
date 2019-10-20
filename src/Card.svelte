@@ -13,6 +13,7 @@ export let position = [0, 0]
 export let rotation = 0
 export let scale = 1
 export let color = 90
+export let onclick = () => {}
 
 const lines = [0, 1, 2]
 
@@ -50,12 +51,8 @@ const delay = ({
 }
 
 const doInteract = () => {
+    onclick()
     return
-    if(!interact) {
-        return
-    }
-
-    flip = !flip
 }
 
 const delay_hover = delay({

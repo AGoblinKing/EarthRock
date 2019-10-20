@@ -1,7 +1,7 @@
 <script>
 const audio = new Audio("/music/earthrock-final-theme.mp3")
 audio.loop = true
-
+audio.volume = 0.5
 let playing = false
 
 const toggle = () => {

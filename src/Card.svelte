@@ -25,12 +25,18 @@ const delay = ({
     
     return {
         on: () => {
+            if(!interact) {
+                return
+            }
             if(timeout) {
                 clearTimeout(timeout)
             }
             on()
         },
         off: () => {
+            if(!interact) {
+                return
+            }
             if(timeout) {
                 clearTimeout(timeout)
             }
@@ -55,9 +61,6 @@ const doInteract = () => {
 const delay_hover = delay({
     time: 250,
     on: () => {
-        if(!interact) {
-            return
-        }
         hover = true
     },
     off: () => hover = false

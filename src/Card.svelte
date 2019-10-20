@@ -7,10 +7,12 @@ export let name = "16 55 33 44 55"
 export let flip = true
 export let borders = true
 export let vitals = [1, 1]
-
+export let invert = false
+export let interact = true
 export let position = [0, 0]
 export let rotation = 0
 export let scale = 1
+export let color = 90
 
 const lines = [0, 1, 2]
 
@@ -41,20 +43,30 @@ const delay = ({
     }
 }
 
-const doFlip = () => {
-    flip = !flip;
+const doInteract = () => {
+    return
+    if(!interact) {
+        return
+    }
+
+    flip = !flip
 }
 
 const delay_hover = delay({
     time: 250,
-    on: () => hover = true,
+    on: () => {
+        if(!interact) {
+            return
+        }
+        hover = true
+    },
     off: () => hover = false
 })
 
 let hover = false
 
 $: tru_scale = hover ? scale * 1.168 : scale
-$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? -5 : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
 </script>
 
 <div {style} on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
@@ -66,11 +78,15 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
         <div class="border border-right" />
         {/if}
 
-        <div class="back" on:click="{doFlip}">
+        <div 
+            class="back" 
+            on:click="{doInteract}"
+            style="filter: sepia(1) hue-rotate({color}deg)"
+        >
             <Tiles width={3} height={5} />
         </div>
 
-        <div class="front" on:click="{doFlip}">
+        <div class="front" on:click="{doInteract}">
             <div class="header">
                 <div class="title">
                     <Tiles 
@@ -270,7 +286,6 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
 }
 
 .back {
-    filter: sepia(1) hue-rotate(90deg);
     transform: rotateY(180deg);
     display: flex;
     border: 2rem solid #010;

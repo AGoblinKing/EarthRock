@@ -4,6 +4,7 @@ import commonjs from 'rollup-plugin-commonjs';
 import livereload from 'rollup-plugin-livereload';
 import { terser } from 'rollup-plugin-terser';
 import json from "rollup-plugin-json";
+import replaceHtmlVars from 'rollup-plugin-replace-html-vars';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -25,7 +26,11 @@ export default {
 				css.write('public/bundle.css');
 			}
 		}),
-
+		replaceHtmlVars({
+			files: 'public/*.html',
+			from: /.js\?t=[0-9]+/g,
+			to: `.js?t=${Date.now()}`,
+		}),
 		// If you have external dependencies installed from
 		// npm, you'll most likely need these plugins. In
 		// some cases you'll need additional configuration —

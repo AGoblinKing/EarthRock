@@ -1,24 +1,39 @@
 <script>
-import Field from "./Field.svelte"
-import Character from "./Character.svelte"
-import Power from "./Power.svelte"
-import Crystals from "./Crystals.svelte"
 import Hand from "./Hand.svelte"
 
-export let opponent = false
+const scale = 0.3;
+const cards = [{id: 1}, {id:2}, {id:3}, {id:4}, {id:5}]
+const deck = {
+	cards,
+	scale,
+	spread: 0,
+	interact: false 
+}
 </script>
 
-<style>
-.side {
-    border: 1rem inset black;
-    height: 50%;
-}
-</style>
+<Hand 
+	{cards} 
+	{scale} 
+	position={[0, 40]} 
+/>
 
-<div class="side">
-    <Field></Field>
-    <Character></Character>
-    <Power></Power>
-    <Crystals></Crystals>
-    <Hand></Hand>
-</div>
+<Hand 
+	{...deck}
+	position={[90, 40]} 
+/>
+
+<Hand 
+	{cards} 
+	{scale}
+	position={[0, -40]} 
+	interact={false}
+	color={180}
+	invert 
+/>
+
+<Hand 
+	invert 
+	{...deck}
+	color={180}
+	position={[90, -40]} 
+/>

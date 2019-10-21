@@ -94,7 +94,12 @@ const beginInteract = () => {
     onclick()
     if(drag) {
         dragging = true
+        const id = window.addEventListener("mouseup", () => {
+            dragging = false
+            window.removeEventListener("mouseup", id)
+        })
     }
+
     return
 }
 
@@ -104,7 +109,7 @@ const stopInteract = () => {
 }
 
 const delay_hover = delay({
-    time: 250,
+    time: 100,
     on: () => {
         hover = true
     },
@@ -249,7 +254,7 @@ $: style = dragging
     perspective: 1000px;
     top: 50%;
     left: 50%;
-    transition: transform 0.42s cubic-bezier(0.68, -0.5, 0.265, 1.5);
+    transition: transform 0.42s cubic-bezier(0.68, -0.25, 0.265, 1.5);
 }
 
 .card.dragging {

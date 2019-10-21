@@ -1,55 +1,57 @@
 <script>
+import game from "./game.js"
 import Hand from "./Hand.svelte"
 
-const scale = 0.2;
-let cards = [{id: 1}, {id:2}, {id:3}, {id:4}, {id:5}]
+const scale = 0.25;
 
 const deck = {
-	cards: [],
 	scale,
-	spread: 0,
+    spread: 0,
+    max: 4,
+    count_factor: 250,
 	interact: false 
 }
 
-for(let id = 0; id < 3; id++) {
-    deck.cards.push({ id })
+const discard = {
+    scale,
+    spread: 0,
+    interact: false
 }
 
-const draw = () => {
-    cards.push({ 
-        id: cards.length + 1, 
-        position: [90, 40], 
-        flip :true
-    })
-    cards = cards
-}
+game.server_fake()
 
 </script>
 
 <Hand 
-	{cards} 
+	cards = {game.state.home_hand}
 	{scale} 
 	position={[0, 40]} 
+    back = {game.state.home_back}
+    drag = {true}
 />
 
 <Hand 
-	{cards} 
+	cards = {game.state.away_hand}
 	{scale}
 	position={[0, -40]} 
 	interact={false}
 	color={180}
 	invert 
+    back = {game.state.away_back}
 />
 
 <Hand 
 	{...deck}
+    cards = {game.state.home_deck}
 	position={[90, 40]} 
-    onclick={draw}
+    back = {game.state.home_back}
 />
 
 <Hand 
 	invert 
 	{...deck}
+    cards = {game.state.away_deck}
 	color={180}
 	position={[90, -40]} 
+    back = {game.state.away_back}
 />

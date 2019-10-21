@@ -1,1 +1,2478 @@
-var app=function(){"use strict";function t(){}function e(t,e){for(const n in e)t[n]=e[n];return t}function n(t){return t()}function r(){return Object.create(null)}function o(t){t.forEach(n)}function i(t){return"function"==typeof t}function a(t,e){return t!=t?e==e:t!==e||t&&"object"==typeof t||"function"==typeof t}function s(t,e){t.appendChild(e)}function c(t,e,n){t.insertBefore(e,n||null)}function l(t){t.parentNode.removeChild(t)}function d(t){return document.createElement(t)}function f(t){return document.createTextNode(t)}function p(){return f(" ")}function u(){return f("")}function g(t,e,n,r){return t.addEventListener(e,n,r),()=>t.removeEventListener(e,n,r)}function h(t,e,n){null==n?t.removeAttribute(e):t.setAttribute(e,n)}function v(t,e){e=""+e,t.data!==e&&(t.data=e)}function $(t,e,n){t.style.setProperty(e,n)}function m(t,e,n){t.classList[n?"add":"remove"](e)}let w;function y(t){w=t}function k(t){(function(){if(!w)throw new Error("Function called outside component initialization");return w})().$$.on_mount.push(t)}const b=[],_=[],x=[],E=[],M=Promise.resolve();let C=!1;function T(t){x.push(t)}function I(){const t=new Set;do{for(;b.length;){const t=b.shift();y(t),A(t.$$)}for(;_.length;)_.pop()();for(let e=0;e<x.length;e+=1){const n=x[e];t.has(n)||(n(),t.add(n))}x.length=0}while(b.length);for(;E.length;)E.pop()();C=!1}function A(t){t.fragment&&(t.update(t.dirty),o(t.before_update),t.fragment.p(t.dirty,t.ctx),t.dirty=null,t.after_update.forEach(T))}const O=new Set;let R;function S(){R={remaining:0,callbacks:[]}}function j(){R.remaining||o(R.callbacks)}function L(t,e){t&&t.i&&(O.delete(t),t.i(e))}function N(t,e,n,r){if(t&&t.o){if(O.has(t))return;O.add(t),R.callbacks.push(()=>{O.delete(t),r&&(n&&t.d(1),r())}),t.o(e)}}function D(t,e){N(t,1,1,()=>{e.delete(t.key)})}function P(t,e){const n={},r={},o={$$scope:1};let i=t.length;for(;i--;){const a=t[i],s=e[i];if(s){for(const t in a)t in s||(r[t]=1);for(const t in s)o[t]||(n[t]=s[t],o[t]=1);t[i]=s}else for(const t in a)o[t]=1}for(const t in r)t in n||(n[t]=void 0);return n}function z(t,e,r){const{fragment:a,on_mount:s,on_destroy:c,after_update:l}=t.$$;a.m(e,r),T(()=>{const e=s.map(n).filter(i);c?c.push(...e):o(e),t.$$.on_mount=[]}),l.forEach(T)}function B(t,e){t.$$.fragment&&(o(t.$$.on_destroy),t.$$.fragment.d(e),t.$$.on_destroy=t.$$.fragment=null,t.$$.ctx={})}function U(t,e){t.$$.dirty||(b.push(t),C||(C=!0,M.then(I)),t.$$.dirty=r()),t.$$.dirty[e]=!0}function W(e,n,i,a,s,c){const l=w;y(e);const d=n.props||{},f=e.$$={fragment:null,ctx:null,props:c,update:t,not_equal:s,bound:r(),on_mount:[],on_destroy:[],before_update:[],after_update:[],context:new Map(l?l.$$.context:[]),callbacks:r(),dirty:null};let p=!1;var u;f.ctx=i?i(e,d,(t,n)=>{f.ctx&&s(f.ctx[t],f.ctx[t]=n)&&(f.bound[t]&&f.bound[t](n),p&&U(e,t))}):d,f.update(),p=!0,o(f.before_update),f.fragment=a(f.ctx),n.target&&(n.hydrate?f.fragment.l((u=n.target,Array.from(u.childNodes))):f.fragment.c(),n.intro&&L(e.$$.fragment),z(e,n.target,n.anchor),I()),y(l)}class q{$destroy(){B(this,1),this.$destroy=t}$on(t,e){const n=this.$$.callbacks[t]||(this.$$.callbacks[t]=[]);return n.push(e),()=>{const t=n.indexOf(e);-1!==t&&n.splice(t,1)}}$set(){}}function F(e){var n;return{c(){h(n=d("img"),"class","tileset svelte-1bdmb53"),h(n,"alt","tileset image")},m(t,r){c(t,n,r),e.img_binding(n)},p:t,i:t,o:t,d(t){t&&l(n),e.img_binding(null)}}}const G=16,H=1,K=32,J=1024;function Q(t,e,n){const r=(t,e)=>Math.floor(Math.random()*(Math.abs(t)+Math.abs(e))-Math.abs(t)),o=new Promise(t=>{const e=new Image;e.src="/sheets/default.png",e.onload=(()=>{const n=document.createElement("canvas");n.width=e.width,n.height=e.height;const r=n.getContext("2d");r.drawImage(e,0,0),t({ctx:r,canvas:n})})});let i,{data:a="",width:s=10,height:c=7,spacing:l=0}=e;return k(async()=>{const{canvas:t}=await o,e=document.createElement("canvas"),l=e.getContext("2d");if(e.width=G*s,e.height=G*c,a.length>0)try{let e=0,n=-1;a.split("\n").forEach(r=>{e=-1,(n+=1)>=c?console.error("Data exceeded height"):r.split(" ").forEach(r=>{if((e+=1)>=s)return console.error("Data exceeded width");let o=parseInt(r,10),i=o%K,a=Math.floor(o/K),c=e*G,d=n*G,f=i*(G+H),p=a*(G+H);l.drawImage(t,f,p,G,G,c,d,G,G)})})}catch(t){console.log(`Error parsing data ${a}`)}else((t,e)=>{let n,o,i,a;for(let l=0;l<s;l++)for(let s=0;s<c;s++)n=l*G,o=s*G,i=r(0,K)*(G+H),a=r(0,J/K)*(G+H),t.drawImage(e,i,a,G,G,n,o,G,G)})(l,t);i.src=e.toDataURL("image/png"),n("image",i)}),t.$set=(t=>{"data"in t&&n("data",a=t.data),"width"in t&&n("width",s=t.width),"height"in t&&n("height",c=t.height),"spacing"in t&&n("spacing",l=t.spacing)}),{data:a,width:s,height:c,spacing:l,image:i,img_binding:function(t){_[t?"unshift":"push"](()=>{n("image",i=t)})}}}class V extends q{constructor(t){super(),W(this,t,Q,F,a,["data","width","height","spacing"])}}function X(e){var n,r,o,i,a,s,f,u,v,$,m,w=new V({});return{c(){n=d("div"),w.$$.fragment.c(),r=p(),(o=d("h1")).textContent="EarthRock",i=p(),(a=d("h2")).textContent="The Uncollectable Card Game",s=p(),(f=d("button")).textContent="START",u=p(),(v=d("div")).textContent="We don't use cookies or store anything about you server side.",h(n,"class","background svelte-1ks0xde"),h(o,"class","title svelte-1ks0xde"),h(a,"class","desc svelte-1ks0xde"),h(f,"class","svelte-1ks0xde"),h(v,"class","notice svelte-1ks0xde"),m=g(f,"click",e.clicked)},m(t,e){c(t,n,e),z(w,n,null),c(t,r,e),c(t,o,e),c(t,i,e),c(t,a,e),c(t,s,e),c(t,f,e),c(t,u,e),c(t,v,e),$=!0},p:t,i(t){$||(L(w.$$.fragment,t),$=!0)},o(t){N(w.$$.fragment,t),$=!1},d(t){t&&l(n),B(w),t&&(l(r),l(o),l(i),l(a),l(s),l(f),l(u),l(v)),m()}}}function Y(t){return{clicked:()=>{alert("Woah there speedy aint got nothing more yet")}}}class Z extends q{constructor(t){super(),W(this,t,Y,X,a,[])}}function tt(t,e,n){const r=Object.create(t);return r.line=e[n],r}function et(t){var e,n,r,o,i,a,s;return{c(){e=d("div"),n=p(),r=d("div"),o=p(),i=d("div"),a=p(),s=d("div"),h(e,"class","border border-top svelte-5pw785"),h(r,"class","border border-bottom svelte-5pw785"),h(i,"class","border border-left svelte-5pw785"),h(s,"class","border border-right svelte-5pw785")},m(t,l){c(t,e,l),c(t,n,l),c(t,r,l),c(t,o,l),c(t,i,l),c(t,a,l),c(t,s,l)},d(t){t&&(l(e),l(n),l(r),l(o),l(i),l(a),l(s))}}}function nt(t){var e,n,r,o,i,a,u,g,$,m,w,y,k,b=t.vitals[0],_=t.vitals[1],x=new V({props:{width:1,height:1}}),E=new V({props:{width:1,height:1}}),M=new V({props:{width:1,height:1}});return{c(){e=d("div"),n=d("div"),r=d("div"),x.$$.fragment.c(),o=p(),i=d("div"),a=d("div"),E.$$.fragment.c(),u=p(),g=f(b),$=p(),m=d("div"),M.$$.fragment.c(),w=p(),y=f(_),h(r,"class","tile svelte-5pw785"),h(n,"class","icon svelte-5pw785"),h(a,"class","tile svelte-5pw785"),h(m,"class","tile svelte-5pw785"),h(i,"class","vitals svelte-5pw785"),h(e,"class","line svelte-5pw785")},m(t,l){c(t,e,l),s(e,n),s(n,r),z(x,r,null),s(e,o),s(e,i),s(i,a),z(E,a,null),s(i,u),s(i,g),s(i,$),s(i,m),z(M,m,null),s(i,w),s(i,y),k=!0},p(t,e){k&&!t.vitals||b===(b=e.vitals[0])||v(g,b),k&&!t.vitals||_===(_=e.vitals[1])||v(y,_)},i(t){k||(L(x.$$.fragment,t),L(E.$$.fragment,t),L(M.$$.fragment,t),k=!0)},o(t){N(x.$$.fragment,t),N(E.$$.fragment,t),N(M.$$.fragment,t),k=!1},d(t){t&&l(e),B(x),B(E),B(M)}}}function rt(t){for(var e,n,r,i,a,u,w,y,k,b,_,x,E,M,C,T,I,A,O,R,D,P,U,W=t.borders&&et(),q=new V({props:{width:3,height:5}}),F=new V({props:{data:t.name,width:5,height:1}}),G=new V({}),H=t.lines,K=[],J=0;J<H.length;J+=1)K[J]=nt(tt(t,H,J));const Q=t=>N(K[t],1,1,()=>{K[t]=null});return{c(){e=d("div"),n=d("div"),W&&W.c(),r=p(),i=d("div"),q.$$.fragment.c(),a=p(),u=d("div"),w=d("div"),y=d("div"),F.$$.fragment.c(),k=p(),b=d("div"),_=p(),x=d("div"),E=f(t.cost),M=p(),C=d("div"),G.$$.fragment.c(),T=p(),I=d("div");for(var o=0;o<K.length;o+=1)K[o].c();A=p(),O=d("div"),R=p(),(D=d("div")).textContent="E A R T H R O C K",h(i,"class","back svelte-5pw785"),$(i,"filter","sepia(1) hue-rotate("+t.color+"deg)"),h(y,"class","title svelte-5pw785"),h(b,"class","flex svelte-5pw785"),h(x,"class","cost svelte-5pw785"),h(w,"class","header svelte-5pw785"),h(C,"class","image svelte-5pw785"),h(O,"class","flex svelte-5pw785"),h(I,"class","details svelte-5pw785"),h(D,"class","earthrock svelte-5pw785"),h(u,"class","front svelte-5pw785"),h(n,"class","contents svelte-5pw785"),m(n,"flip",t.flip),h(e,"style",t.style),h(e,"class","card svelte-5pw785"),U=[g(i,"click",t.doInteract),g(u,"click",t.doInteract),g(e,"mouseenter",t.delay_hover.on),g(e,"mouseleave",t.delay_hover.off)]},m(t,o){c(t,e,o),s(e,n),W&&W.m(n,null),s(n,r),s(n,i),z(q,i,null),s(n,a),s(n,u),s(u,w),s(w,y),z(F,y,null),s(w,k),s(w,b),s(w,_),s(w,x),s(x,E),s(u,M),s(u,C),z(G,C,null),s(u,T),s(u,I);for(var l=0;l<K.length;l+=1)K[l].m(I,null);s(I,A),s(I,O),s(u,R),s(u,D),P=!0},p(t,o){o.borders?W||((W=et()).c(),W.m(n,r)):W&&(W.d(1),W=null),P&&!t.color||$(i,"filter","sepia(1) hue-rotate("+o.color+"deg)");var a={};if(t.name&&(a.data=o.name),F.$set(a),P&&!t.cost||v(E,o.cost),t.vitals||t.lines){H=o.lines;for(var s=0;s<H.length;s+=1){const e=tt(o,H,s);K[s]?(K[s].p(t,e),L(K[s],1)):(K[s]=nt(e),K[s].c(),L(K[s],1),K[s].m(I,A))}for(S(),s=H.length;s<K.length;s+=1)Q(s);j()}t.flip&&m(n,"flip",o.flip),P&&!t.style||h(e,"style",o.style)},i(t){if(!P){L(q.$$.fragment,t),L(F.$$.fragment,t),L(G.$$.fragment,t);for(var e=0;e<H.length;e+=1)L(K[e]);P=!0}},o(t){N(q.$$.fragment,t),N(F.$$.fragment,t),N(G.$$.fragment,t),K=K.filter(Boolean);for(let t=0;t<K.length;t+=1)N(K[t]);P=!1},d(t){t&&l(e),W&&W.d(),B(q),B(F),B(G),function(t,e){for(let n=0;n<t.length;n+=1)t[n]&&t[n].d(e)}(K,t),o(U)}}}function ot(t,e,n){let{id:r="foobar",cost:o=0,name:i="16 55 33 44 55",flip:a=!0,borders:s=!0,vitals:c=[1,1],invert:l=!1,interact:d=!0,position:f=[0,0],rotation:p=0,scale:u=1,color:g=90,onclick:h=(()=>{})}=e;const v=(({time:t=250,on:e=(()=>{}),off:n=(()=>{})})=>{let r;return{on:()=>{d&&(r&&clearTimeout(r),e())},off:()=>{d&&(r&&clearTimeout(r),r=setTimeout(()=>{r=0,n()},t))}}})({time:250,on:()=>{n("hover",w=!0)},off:()=>{const t=w=!1;return n("hover",w),t}});let $,m,w=!1;return t.$set=(t=>{"id"in t&&n("id",r=t.id),"cost"in t&&n("cost",o=t.cost),"name"in t&&n("name",i=t.name),"flip"in t&&n("flip",a=t.flip),"borders"in t&&n("borders",s=t.borders),"vitals"in t&&n("vitals",c=t.vitals),"invert"in t&&n("invert",l=t.invert),"interact"in t&&n("interact",d=t.interact),"position"in t&&n("position",f=t.position),"rotation"in t&&n("rotation",p=t.rotation),"scale"in t&&n("scale",u=t.scale),"color"in t&&n("color",g=t.color),"onclick"in t&&n("onclick",h=t.onclick)}),t.$$.update=((t={hover:1,scale:1,position:1,invert:1,rotation:1,tru_scale:1})=>{(t.hover||t.scale)&&n("tru_scale",$=w?1.168*u:u),(t.position||t.hover||t.invert||t.rotation||t.tru_scale)&&n("style",m=`transform: translate(${-50+f[0]}%, ${-50+f[1]+(w?l?5:-5:0)}%) rotate(${p}deg) scale(${$}) ; z-index: ${Math.round(100*$)}`)}),{id:r,cost:o,name:i,flip:a,borders:s,vitals:c,invert:l,interact:d,position:f,rotation:p,scale:u,color:g,onclick:h,lines:[0,1,2],doInteract:()=>{h()},delay_hover:v,style:m}}class it extends q{constructor(t){super(),W(this,t,ot,rt,a,["id","cost","name","flip","borders","vitals","invert","interact","position","rotation","scale","color","onclick"])}}function at(t,e,n){const r=Object.create(t);return r.card=e[n],r.index=n,r}function st(t,n){var r,o,i=[n.card,{scale:n.scale},{invert:n.invert},{interact:n.interact},{color:n.color},{flip:n.card.flip?n.card.flip:n.flip},{onclick:n.onclick},{position:n.card.position&&n.young?n.card.position:[n.index*n.tru_spread*n.scale-n.cards.length/2*n.tru_spread*n.scale+n.position[0],n.position[1]+(n.invert?-1:1)*Math.abs(n.index-n.cards.length/2)*n.spread_y]},{rotation:(n.index-n.cards.length/2)*n.tru_rotate*(n.invert?-1:1)+(n.invert?180:0)}];let a={};for(var s=0;s<i.length;s+=1)a=e(a,i[s]);var d=new it({props:a});return{key:t,first:null,c(){r=u(),d.$$.fragment.c(),this.first=r},m(t,e){c(t,r,e),z(d,t,e),o=!0},p(t,e){var n=t.cards||t.scale||t.invert||t.interact||t.color||t.flip||t.onclick||t.young||t.tru_spread||t.position||t.spread_y||t.tru_rotate?P(i,[t.cards&&e.card,t.scale&&{scale:e.scale},t.invert&&{invert:e.invert},t.interact&&{interact:e.interact},t.color&&{color:e.color},(t.cards||t.flip)&&{flip:e.card.flip?e.card.flip:e.flip},t.onclick&&{onclick:e.onclick},(t.cards||t.young||t.tru_spread||t.scale||t.position||t.invert||t.spread_y)&&{position:e.card.position&&e.young?e.card.position:[e.index*e.tru_spread*e.scale-e.cards.length/2*e.tru_spread*e.scale+e.position[0],e.position[1]+(e.invert?-1:1)*Math.abs(e.index-e.cards.length/2)*e.spread_y]},(t.cards||t.tru_rotate||t.invert)&&{rotation:(e.index-e.cards.length/2)*e.tru_rotate*(e.invert?-1:1)+(e.invert?180:0)}]):{};d.$set(n)},i(t){o||(L(d.$$.fragment,t),o=!0)},o(t){N(d.$$.fragment,t),o=!1},d(t){t&&l(r),B(d,t)}}}function ct(t){var e,n,r=[],o=new Map,i=t.cards;const a=t=>t.card.id;for(var s=0;s<i.length;s+=1){let e=at(t,i,s),n=a(e);o.set(n,r[s]=st(n,e))}return{c(){for(s=0;s<r.length;s+=1)r[s].c();e=u()},m(t,o){for(s=0;s<r.length;s+=1)r[s].m(t,o);c(t,e,o),n=!0},p(t,n){const i=n.cards;S(),r=function(t,e,n,r,o,i,a,s,c,l,d,f){let p=t.length,u=i.length,g=p;const h={};for(;g--;)h[t[g].key]=g;const v=[],$=new Map,m=new Map;for(g=u;g--;){const t=f(o,i,g),s=n(t);let c=a.get(s);c?r&&c.p(e,t):(c=l(s,t)).c(),$.set(s,v[g]=c),s in h&&m.set(s,Math.abs(g-h[s]))}const w=new Set,y=new Set;function k(t){L(t,1),t.m(s,d),a.set(t.key,t),d=t.first,u--}for(;p&&u;){const e=v[u-1],n=t[p-1],r=e.key,o=n.key;e===n?(d=e.first,p--,u--):$.has(o)?!a.has(r)||w.has(r)?k(e):y.has(o)?p--:m.get(r)>m.get(o)?(y.add(r),k(e)):(w.add(o),p--):(c(n,a),p--)}for(;p--;){const e=t[p];$.has(e.key)||c(e,a)}for(;u;)k(v[u-1]);return v}(r,t,a,1,n,i,o,e.parentNode,D,st,e,at),j()},i(t){if(!n){for(var e=0;e<i.length;e+=1)L(r[e]);n=!0}},o(t){for(s=0;s<r.length;s+=1)N(r[s]);n=!1},d(t){for(s=0;s<r.length;s+=1)r[s].d(t);t&&l(e)}}}function lt(t,e,n){let r,o,i,{cards:a=[],position:s=[0,0],invert:c=!1,scale:l=1,spread:d=16.18,spread_y:f=2,interact:p=!0,rotate:u=16.18,color:g=90,onclick:h=(()=>{})}=e,{young:v=!0,flip:$=!0}=e;return k(()=>{setTimeout(()=>{n("young",v=!1),p&&n("flip",$=!1)},2e3)}),t.$set=(t=>{"cards"in t&&n("cards",a=t.cards),"position"in t&&n("position",s=t.position),"invert"in t&&n("invert",c=t.invert),"scale"in t&&n("scale",l=t.scale),"spread"in t&&n("spread",d=t.spread),"spread_y"in t&&n("spread_y",f=t.spread_y),"interact"in t&&n("interact",p=t.interact),"rotate"in t&&n("rotate",u=t.rotate),"color"in t&&n("color",g=t.color),"onclick"in t&&n("onclick",h=t.onclick),"young"in t&&n("young",v=t.young),"flip"in t&&n("flip",$=t.flip)}),t.$$.update=((t={cards:1,spread:1,x_factor:1,rotate:1})=>{t.cards&&n("x_factor",r=a.length/30),(t.spread||t.x_factor)&&n("tru_spread",o=d/r),(t.rotate||t.x_factor)&&n("tru_rotate",i=u*r)}),{cards:a,position:s,invert:c,scale:l,spread:d,spread_y:f,interact:p,rotate:u,color:g,onclick:h,young:v,flip:$,tru_spread:o,tru_rotate:i}}class dt extends q{constructor(t){super(),W(this,t,lt,ct,a,["cards","position","invert","scale","spread","spread_y","interact","rotate","color","onclick","young","flip"])}}function ft(t){var n,r,o,i,a=new dt({props:{cards:t.cards,scale:pt,position:[0,40]}}),s=new dt({props:{cards:t.cards,scale:pt,position:[0,-40],interact:!1,color:180,invert:!0}}),d=[t.deck,{position:[90,40]},{onclick:t.draw}];let f={};for(var u=0;u<d.length;u+=1)f=e(f,d[u]);var g=new dt({props:f}),h=[{invert:!0},t.deck,{color:180},{position:[90,-40]}];let v={};for(u=0;u<h.length;u+=1)v=e(v,h[u]);var $=new dt({props:v});return{c(){a.$$.fragment.c(),n=p(),s.$$.fragment.c(),r=p(),g.$$.fragment.c(),o=p(),$.$$.fragment.c()},m(t,e){z(a,t,e),c(t,n,e),z(s,t,e),c(t,r,e),z(g,t,e),c(t,o,e),z($,t,e),i=!0},p(t,e){var n={};t.cards&&(n.cards=e.cards),t.scale&&(n.scale=pt),a.$set(n);var r={};t.cards&&(r.cards=e.cards),t.scale&&(r.scale=pt),s.$set(r);var o=t.deck||t.draw?P(d,[t.deck&&e.deck,{position:[90,40]},t.draw&&{onclick:e.draw}]):{};g.$set(o);var i=t.deck?P(h,[{invert:!0},e.deck,{color:180},{position:[90,-40]}]):{};$.$set(i)},i(t){i||(L(a.$$.fragment,t),L(s.$$.fragment,t),L(g.$$.fragment,t),L($.$$.fragment,t),i=!0)},o(t){N(a.$$.fragment,t),N(s.$$.fragment,t),N(g.$$.fragment,t),N($.$$.fragment,t),i=!1},d(t){B(a,t),t&&l(n),B(s,t),t&&l(r),B(g,t),t&&l(o),B($,t)}}}const pt=.2;function ut(t,e,n){let r=[{id:1},{id:2},{id:3},{id:4},{id:5}];const o={cards:[],scale:pt,spread:0,interact:!1};for(let t=0;t<3;t++)o.cards.push({id:t});return{cards:r,deck:o,draw:()=>{r.push({id:r.length+1,position:[90,40],flip:!0}),n("cards",r)}}}class gt extends q{constructor(t){super(),W(this,t,ut,ft,a,[])}}function ht(e){var n,r,o,i=e.playing?"🕪":"🕨";return{c(){n=d("div"),r=f(i),h(n,"class","sound svelte-niubn2"),o=g(n,"click",e.toggle)},m(t,e){c(t,n,e),s(n,r)},p(t,e){t.playing&&i!==(i=e.playing?"🕪":"🕨")&&v(r,i)},i:t,o:t,d(t){t&&l(n),o()}}}function vt(t,e,n){const r=new Audio("/music/earthrock-final-theme.mp3");r.loop=!0,r.volume=.5;let o=!1;return{playing:o,toggle:()=>{o?r.pause():r.play(),n("playing",o=!o)}}}class $t extends q{constructor(t){super(),W(this,t,vt,ht,a,[])}}function mt(e){var n,r,o,i=new Z({}),a=new $t({}),s=new gt({});return{c(){i.$$.fragment.c(),n=p(),a.$$.fragment.c(),r=p(),s.$$.fragment.c()},m(t,e){z(i,t,e),c(t,n,e),z(a,t,e),c(t,r,e),z(s,t,e),o=!0},p:t,i(t){o||(L(i.$$.fragment,t),L(a.$$.fragment,t),L(s.$$.fragment,t),o=!0)},o(t){N(i.$$.fragment,t),N(a.$$.fragment,t),N(s.$$.fragment,t),o=!1},d(t){B(i,t),t&&l(n),B(a,t),t&&l(r),B(s,t)}}}return new class extends q{constructor(t){super(),W(this,t,null,mt,a,[])}}({target:document.body,props:{name:"stage"}})}();
+
+(function(l, i, v, e) { v = l.createElement(i); v.async = 1; v.src = '//' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; e = l.getElementsByTagName(i)[0]; e.parentNode.insertBefore(v, e)})(document, 'script');
+var app = (function () {
+    'use strict';
+
+    function noop() { }
+    function assign(tar, src) {
+        // @ts-ignore
+        for (const k in src)
+            tar[k] = src[k];
+        return tar;
+    }
+    function add_location(element, file, line, column, char) {
+        element.__svelte_meta = {
+            loc: { file, line, column, char }
+        };
+    }
+    function run(fn) {
+        return fn();
+    }
+    function blank_object() {
+        return Object.create(null);
+    }
+    function run_all(fns) {
+        fns.forEach(run);
+    }
+    function is_function(thing) {
+        return typeof thing === 'function';
+    }
+    function safe_not_equal(a, b) {
+        return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
+    }
+    function validate_store(store, name) {
+        if (!store || typeof store.subscribe !== 'function') {
+            throw new Error(`'${name}' is not a store with a 'subscribe' method`);
+        }
+    }
+    function subscribe(component, store, callback) {
+        const unsub = store.subscribe(callback);
+        component.$$.on_destroy.push(unsub.unsubscribe
+            ? () => unsub.unsubscribe()
+            : unsub);
+    }
+
+    function append(target, node) {
+        target.appendChild(node);
+    }
+    function insert(target, node, anchor) {
+        target.insertBefore(node, anchor || null);
+    }
+    function detach(node) {
+        node.parentNode.removeChild(node);
+    }
+    function destroy_each(iterations, detaching) {
+        for (let i = 0; i < iterations.length; i += 1) {
+            if (iterations[i])
+                iterations[i].d(detaching);
+        }
+    }
+    function element(name) {
+        return document.createElement(name);
+    }
+    function text(data) {
+        return document.createTextNode(data);
+    }
+    function space() {
+        return text(' ');
+    }
+    function empty() {
+        return text('');
+    }
+    function listen(node, event, handler, options) {
+        node.addEventListener(event, handler, options);
+        return () => node.removeEventListener(event, handler, options);
+    }
+    function attr(node, attribute, value) {
+        if (value == null)
+            node.removeAttribute(attribute);
+        else
+            node.setAttribute(attribute, value);
+    }
+    function children(element) {
+        return Array.from(element.childNodes);
+    }
+    function set_data(text, data) {
+        data = '' + data;
+        if (text.data !== data)
+            text.data = data;
+    }
+    function set_style(node, key, value) {
+        node.style.setProperty(key, value);
+    }
+    function toggle_class(element, name, toggle) {
+        element.classList[toggle ? 'add' : 'remove'](name);
+    }
+
+    let current_component;
+    function set_current_component(component) {
+        current_component = component;
+    }
+    function get_current_component() {
+        if (!current_component)
+            throw new Error(`Function called outside component initialization`);
+        return current_component;
+    }
+    function onMount(fn) {
+        get_current_component().$$.on_mount.push(fn);
+    }
+
+    const dirty_components = [];
+    const binding_callbacks = [];
+    const render_callbacks = [];
+    const flush_callbacks = [];
+    const resolved_promise = Promise.resolve();
+    let update_scheduled = false;
+    function schedule_update() {
+        if (!update_scheduled) {
+            update_scheduled = true;
+            resolved_promise.then(flush);
+        }
+    }
+    function add_render_callback(fn) {
+        render_callbacks.push(fn);
+    }
+    function flush() {
+        const seen_callbacks = new Set();
+        do {
+            // first, call beforeUpdate functions
+            // and update components
+            while (dirty_components.length) {
+                const component = dirty_components.shift();
+                set_current_component(component);
+                update(component.$$);
+            }
+            while (binding_callbacks.length)
+                binding_callbacks.pop()();
+            // then, once components are updated, call
+            // afterUpdate functions. This may cause
+            // subsequent updates...
+            for (let i = 0; i < render_callbacks.length; i += 1) {
+                const callback = render_callbacks[i];
+                if (!seen_callbacks.has(callback)) {
+                    callback();
+                    // ...so guard against infinite loops
+                    seen_callbacks.add(callback);
+                }
+            }
+            render_callbacks.length = 0;
+        } while (dirty_components.length);
+        while (flush_callbacks.length) {
+            flush_callbacks.pop()();
+        }
+        update_scheduled = false;
+    }
+    function update($$) {
+        if ($$.fragment) {
+            $$.update($$.dirty);
+            run_all($$.before_update);
+            $$.fragment.p($$.dirty, $$.ctx);
+            $$.dirty = null;
+            $$.after_update.forEach(add_render_callback);
+        }
+    }
+    const outroing = new Set();
+    let outros;
+    function group_outros() {
+        outros = {
+            remaining: 0,
+            callbacks: []
+        };
+    }
+    function check_outros() {
+        if (!outros.remaining) {
+            run_all(outros.callbacks);
+        }
+    }
+    function transition_in(block, local) {
+        if (block && block.i) {
+            outroing.delete(block);
+            block.i(local);
+        }
+    }
+    function transition_out(block, local, detach, callback) {
+        if (block && block.o) {
+            if (outroing.has(block))
+                return;
+            outroing.add(block);
+            outros.callbacks.push(() => {
+                outroing.delete(block);
+                if (callback) {
+                    if (detach)
+                        block.d(1);
+                    callback();
+                }
+            });
+            block.o(local);
+        }
+    }
+    function outro_and_destroy_block(block, lookup) {
+        transition_out(block, 1, 1, () => {
+            lookup.delete(block.key);
+        });
+    }
+    function update_keyed_each(old_blocks, changed, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block, next, get_context) {
+        let o = old_blocks.length;
+        let n = list.length;
+        let i = o;
+        const old_indexes = {};
+        while (i--)
+            old_indexes[old_blocks[i].key] = i;
+        const new_blocks = [];
+        const new_lookup = new Map();
+        const deltas = new Map();
+        i = n;
+        while (i--) {
+            const child_ctx = get_context(ctx, list, i);
+            const key = get_key(child_ctx);
+            let block = lookup.get(key);
+            if (!block) {
+                block = create_each_block(key, child_ctx);
+                block.c();
+            }
+            else if (dynamic) {
+                block.p(changed, child_ctx);
+            }
+            new_lookup.set(key, new_blocks[i] = block);
+            if (key in old_indexes)
+                deltas.set(key, Math.abs(i - old_indexes[key]));
+        }
+        const will_move = new Set();
+        const did_move = new Set();
+        function insert(block) {
+            transition_in(block, 1);
+            block.m(node, next);
+            lookup.set(block.key, block);
+            next = block.first;
+            n--;
+        }
+        while (o && n) {
+            const new_block = new_blocks[n - 1];
+            const old_block = old_blocks[o - 1];
+            const new_key = new_block.key;
+            const old_key = old_block.key;
+            if (new_block === old_block) {
+                // do nothing
+                next = new_block.first;
+                o--;
+                n--;
+            }
+            else if (!new_lookup.has(old_key)) {
+                // remove old block
+                destroy(old_block, lookup);
+                o--;
+            }
+            else if (!lookup.has(new_key) || will_move.has(new_key)) {
+                insert(new_block);
+            }
+            else if (did_move.has(old_key)) {
+                o--;
+            }
+            else if (deltas.get(new_key) > deltas.get(old_key)) {
+                did_move.add(new_key);
+                insert(new_block);
+            }
+            else {
+                will_move.add(old_key);
+                o--;
+            }
+        }
+        while (o--) {
+            const old_block = old_blocks[o];
+            if (!new_lookup.has(old_block.key))
+                destroy(old_block, lookup);
+        }
+        while (n)
+            insert(new_blocks[n - 1]);
+        return new_blocks;
+    }
+
+    function get_spread_update(levels, updates) {
+        const update = {};
+        const to_null_out = {};
+        const accounted_for = { $$scope: 1 };
+        let i = levels.length;
+        while (i--) {
+            const o = levels[i];
+            const n = updates[i];
+            if (n) {
+                for (const key in o) {
+                    if (!(key in n))
+                        to_null_out[key] = 1;
+                }
+                for (const key in n) {
+                    if (!accounted_for[key]) {
+                        update[key] = n[key];
+                        accounted_for[key] = 1;
+                    }
+                }
+                levels[i] = n;
+            }
+            else {
+                for (const key in o) {
+                    accounted_for[key] = 1;
+                }
+            }
+        }
+        for (const key in to_null_out) {
+            if (!(key in update))
+                update[key] = undefined;
+        }
+        return update;
+    }
+    function mount_component(component, target, anchor) {
+        const { fragment, on_mount, on_destroy, after_update } = component.$$;
+        fragment.m(target, anchor);
+        // onMount happens before the initial afterUpdate
+        add_render_callback(() => {
+            const new_on_destroy = on_mount.map(run).filter(is_function);
+            if (on_destroy) {
+                on_destroy.push(...new_on_destroy);
+            }
+            else {
+                // Edge case - component was destroyed immediately,
+                // most likely as a result of a binding initialising
+                run_all(new_on_destroy);
+            }
+            component.$$.on_mount = [];
+        });
+        after_update.forEach(add_render_callback);
+    }
+    function destroy_component(component, detaching) {
+        if (component.$$.fragment) {
+            run_all(component.$$.on_destroy);
+            component.$$.fragment.d(detaching);
+            // TODO null out other refs, including component.$$ (but need to
+            // preserve final state?)
+            component.$$.on_destroy = component.$$.fragment = null;
+            component.$$.ctx = {};
+        }
+    }
+    function make_dirty(component, key) {
+        if (!component.$$.dirty) {
+            dirty_components.push(component);
+            schedule_update();
+            component.$$.dirty = blank_object();
+        }
+        component.$$.dirty[key] = true;
+    }
+    function init(component, options, instance, create_fragment, not_equal, prop_names) {
+        const parent_component = current_component;
+        set_current_component(component);
+        const props = options.props || {};
+        const $$ = component.$$ = {
+            fragment: null,
+            ctx: null,
+            // state
+            props: prop_names,
+            update: noop,
+            not_equal,
+            bound: blank_object(),
+            // lifecycle
+            on_mount: [],
+            on_destroy: [],
+            before_update: [],
+            after_update: [],
+            context: new Map(parent_component ? parent_component.$$.context : []),
+            // everything else
+            callbacks: blank_object(),
+            dirty: null
+        };
+        let ready = false;
+        $$.ctx = instance
+            ? instance(component, props, (key, value) => {
+                if ($$.ctx && not_equal($$.ctx[key], $$.ctx[key] = value)) {
+                    if ($$.bound[key])
+                        $$.bound[key](value);
+                    if (ready)
+                        make_dirty(component, key);
+                }
+            })
+            : props;
+        $$.update();
+        ready = true;
+        run_all($$.before_update);
+        $$.fragment = create_fragment($$.ctx);
+        if (options.target) {
+            if (options.hydrate) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                $$.fragment.l(children(options.target));
+            }
+            else {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                $$.fragment.c();
+            }
+            if (options.intro)
+                transition_in(component.$$.fragment);
+            mount_component(component, options.target, options.anchor);
+            flush();
+        }
+        set_current_component(parent_component);
+    }
+    class SvelteComponent {
+        $destroy() {
+            destroy_component(this, 1);
+            this.$destroy = noop;
+        }
+        $on(type, callback) {
+            const callbacks = (this.$$.callbacks[type] || (this.$$.callbacks[type] = []));
+            callbacks.push(callback);
+            return () => {
+                const index = callbacks.indexOf(callback);
+                if (index !== -1)
+                    callbacks.splice(index, 1);
+            };
+        }
+        $set() {
+            // overridden by instance, if it has props
+        }
+    }
+    class SvelteComponentDev extends SvelteComponent {
+        constructor(options) {
+            if (!options || (!options.target && !options.$$inline)) {
+                throw new Error(`'target' is a required option`);
+            }
+            super();
+        }
+        $destroy() {
+            super.$destroy();
+            this.$destroy = () => {
+                console.warn(`Component was already destroyed`); // eslint-disable-line no-console
+            };
+        }
+    }
+
+    /* src\Tiles.svelte generated by Svelte v3.6.6 */
+
+    const file = "src\\Tiles.svelte";
+
+    function create_fragment(ctx) {
+    	var img;
+
+    	return {
+    		c: function create() {
+    			img = element("img");
+    			attr(img, "class", "tileset svelte-1bdmb53");
+    			attr(img, "alt", "tileset image");
+    			add_location(img, file, 106, 0, 2545);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, img, anchor);
+    			ctx.img_binding(img);
+    		},
+
+    		p: noop,
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(img);
+    			}
+
+    			ctx.img_binding(null);
+    		}
+    	};
+    }
+
+    const SIZE = 16;
+
+    const SPACING = 1;
+
+    const COLUMNS = 32;
+
+    const COUNT = 1024;
+
+    function instance($$self, $$props, $$invalidate) {
+    	const repo = new Map();
+
+    const ready = new Promise((resolve) => {
+        const tiles = new Image();
+        tiles.src = "/sheets/default.png";
+
+        tiles.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = tiles.width;
+            canvas.height = tiles.height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(tiles, 0, 0);
+
+            resolve({ctx, canvas});
+        };
+    });
+
+    let { data = "", width = 10, height = 7, spacing = 0, random = false } = $$props;
+    let image;
+
+    const num_random = (min, max) => 
+        Math.floor(Math.random() * (Math.abs(min) + Math.abs(max)) - Math.abs(min));
+
+    const randomize = (data_ctx, canvas) => {
+        let t_x, t_y;
+        let s_x, s_y;
+
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                t_x = x * SIZE; 
+                t_y = y * SIZE;
+                
+                s_x = num_random(0, COLUMNS) * (SIZE + SPACING);
+                s_y = num_random(0, COUNT / COLUMNS) * (SIZE + SPACING);
+
+                data_ctx.drawImage(
+                    canvas, 
+                    s_x, s_y, SIZE, SIZE, 
+                    t_x, t_y, SIZE, SIZE
+                );
+            }
+        }
+    };
+
+    onMount(async () => {
+        const { canvas } = await ready;
+
+        if(repo.has(key)) {
+            image.src = repo.get(key); $$invalidate('image', image);
+            return
+        }
+
+        let data_canvas = document.createElement("canvas");
+        const data_ctx = data_canvas.getContext("2d");
+        
+        data_canvas.width = SIZE * width;
+        data_canvas.height = SIZE * height;
+
+        if(random) {
+            randomize(data_ctx, canvas);
+        } else if(data.length > 0) {
+            
+            let x, y;
+            data.split(" ").forEach((loc, i) => {
+                x = i % width;
+                y = Math.floor(i / width);
+
+                let idx = parseInt(loc, 10);
+                let o_x = idx % COLUMNS; 
+                let o_y = Math.floor(idx / COLUMNS);
+
+                let t_x = x * SIZE; 
+                let t_y = y * SIZE;
+                
+                let s_x = o_x * (SIZE + SPACING);
+                let s_y = o_y * (SIZE + SPACING);
+
+                data_ctx.drawImage(
+                    canvas, 
+                    s_x, s_y, SIZE, SIZE, 
+                    t_x, t_y, SIZE, SIZE
+                );
+            });
+
+        }
+
+        image.src = data_canvas.toDataURL('image/png'); $$invalidate('image', image);
+        repo.set(KeyboardEvent, image.src);
+    });
+
+    	const writable_props = ['data', 'width', 'height', 'spacing', 'random'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Tiles> was created with unknown prop '${key}'`);
+    	});
+
+    	function img_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('image', image = $$value);
+    		});
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('data' in $$props) $$invalidate('data', data = $$props.data);
+    		if ('width' in $$props) $$invalidate('width', width = $$props.width);
+    		if ('height' in $$props) $$invalidate('height', height = $$props.height);
+    		if ('spacing' in $$props) $$invalidate('spacing', spacing = $$props.spacing);
+    		if ('random' in $$props) $$invalidate('random', random = $$props.random);
+    	};
+
+    	let key;
+
+    	$$self.$$.update = ($$dirty = { width: 1, height: 1, data: 1 }) => {
+    		if ($$dirty.width || $$dirty.height || $$dirty.data) { key = `${width}:${height}:${data}`; }
+    	};
+
+    	return {
+    		data,
+    		width,
+    		height,
+    		spacing,
+    		random,
+    		image,
+    		img_binding
+    	};
+    }
+
+    class Tiles extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance, create_fragment, safe_not_equal, ["data", "width", "height", "spacing", "random"]);
+    	}
+
+    	get data() {
+    		throw new Error("<Tiles>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set data(value) {
+    		throw new Error("<Tiles>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get width() {
+    		throw new Error("<Tiles>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set width(value) {
+    		throw new Error("<Tiles>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get height() {
+    		throw new Error("<Tiles>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set height(value) {
+    		throw new Error("<Tiles>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get spacing() {
+    		throw new Error("<Tiles>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set spacing(value) {
+    		throw new Error("<Tiles>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get random() {
+    		throw new Error("<Tiles>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set random(value) {
+    		throw new Error("<Tiles>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\Intro.svelte generated by Svelte v3.6.6 */
+
+    const file$1 = "src\\Intro.svelte";
+
+    function create_fragment$1(ctx) {
+    	var div0, t0, h1, t2, h2, t4, button, t6, div1, current, dispose;
+
+    	var tiles = new Tiles({ props: { random: true }, $$inline: true });
+
+    	return {
+    		c: function create() {
+    			div0 = element("div");
+    			tiles.$$.fragment.c();
+    			t0 = space();
+    			h1 = element("h1");
+    			h1.textContent = "EarthRock";
+    			t2 = space();
+    			h2 = element("h2");
+    			h2.textContent = "The Uncollectable Card Game";
+    			t4 = space();
+    			button = element("button");
+    			button.textContent = "START";
+    			t6 = space();
+    			div1 = element("div");
+    			div1.textContent = "We don't use cookies or store anything about you server side.";
+    			attr(div0, "class", "background svelte-1ks0xde");
+    			add_location(div0, file$1, 72, 0, 1208);
+    			attr(h1, "class", "title svelte-1ks0xde");
+    			add_location(h1, file$1, 76, 0, 1265);
+    			attr(h2, "class", "desc svelte-1ks0xde");
+    			add_location(h2, file$1, 77, 0, 1299);
+    			attr(button, "class", "svelte-1ks0xde");
+    			add_location(button, file$1, 79, 0, 1352);
+    			attr(div1, "class", "notice svelte-1ks0xde");
+    			add_location(div1, file$1, 81, 0, 1399);
+    			dispose = listen(button, "click", ctx.clicked);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div0, anchor);
+    			mount_component(tiles, div0, null);
+    			insert(target, t0, anchor);
+    			insert(target, h1, anchor);
+    			insert(target, t2, anchor);
+    			insert(target, h2, anchor);
+    			insert(target, t4, anchor);
+    			insert(target, button, anchor);
+    			insert(target, t6, anchor);
+    			insert(target, div1, anchor);
+    			current = true;
+    		},
+
+    		p: noop,
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tiles.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(tiles.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div0);
+    			}
+
+    			destroy_component(tiles, );
+
+    			if (detaching) {
+    				detach(t0);
+    				detach(h1);
+    				detach(t2);
+    				detach(h2);
+    				detach(t4);
+    				detach(button);
+    				detach(t6);
+    				detach(div1);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    function instance$1($$self) {
+    	
+
+    const clicked = () => {
+        alert("Woah there speedy aint got nothing more yet");
+    };
+
+    	return { clicked };
+    }
+
+    class Intro extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, []);
+    	}
+    }
+
+    /**
+     * Create a `Writable` store that allows both updating and reading by subscription.
+     * @param {*=}value initial value
+     * @param {StartStopNotifier=}start start and stop notifications for subscriptions
+     */
+    function writable(value, start = noop) {
+        let stop;
+        const subscribers = [];
+        function set(new_value) {
+            if (safe_not_equal(value, new_value)) {
+                value = new_value;
+                if (!stop) {
+                    return; // not ready
+                }
+                subscribers.forEach((s) => s[1]());
+                subscribers.forEach((s) => s[0](value));
+            }
+        }
+        function update(fn) {
+            set(fn(value));
+        }
+        function subscribe(run, invalidate = noop) {
+            const subscriber = [run, invalidate];
+            subscribers.push(subscriber);
+            if (subscribers.length === 1) {
+                stop = start(set) || noop;
+            }
+            run(value);
+            return () => {
+                const index = subscribers.indexOf(subscriber);
+                if (index !== -1) {
+                    subscribers.splice(index, 1);
+                }
+                if (subscribers.length === 0) {
+                    stop();
+                    stop = null;
+                }
+            };
+        }
+        return { set, update, subscribe };
+    }
+
+    const TILE_MAX = 1024;
+    const NAME_MAX = 5;
+    const COST_MAX = 10;
+    const EFFECT_MAX = 3;
+    const DECK_SIZE = 30;
+    const HAND_SIZE_INIT = 7;
+
+    // width * height
+    const IMAGE_COUNT = 10 * 10; 
+    const BACK_COUNT = 3 * 5;
+
+    // shitty shitty uuid generator but good nuff for our server fake
+    const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      
+    const tile_random = (count) => {
+        const tiles = [];
+        for(let i = 0; i < count; i++) {
+            tiles.push(Math.floor(Math.random() * TILE_MAX));
+        }
+
+        return tiles.join(" ")
+    };
+
+    const card_random = () => ({
+        id: uuidv4(),
+        name: tile_random(NAME_MAX),
+        image: tile_random(IMAGE_COUNT),
+        cost: Math.floor(Math.random() * COST_MAX),
+        effect1: tile_random(EFFECT_MAX),
+        effect2: tile_random(EFFECT_MAX),
+        effect3: tile_random(EFFECT_MAX)
+    });
+
+    const cards_random = (count) => {
+        const cards = [];
+        for(let i = 0; i < count; i++) {
+            cards.push(card_random());
+        }
+
+        return cards
+    };
+
+    const server_fake = (game) => {
+        const tasks = {
+            ERROR_404: () => ({
+                code: 404,
+                text: 'TaSk NoT FoUnD'
+            })
+        };
+
+        // Setup Game State
+        game.do({
+            task: 'STATE',
+            data: {
+                away_deck: cards_random(DECK_SIZE),
+                home_deck: cards_random(DECK_SIZE),
+                away_hand: cards_random(HAND_SIZE_INIT),
+                home_hand: cards_random(HAND_SIZE_INIT),
+                away_back: tile_random(BACK_COUNT),
+                home_back: tile_random(BACK_COUNT)
+            }
+        });
+       
+        return ({
+            task,
+            data
+        }) => {
+            if(!tasks[task]) {
+                return tasks.ERROR_404()
+            }
+
+            return tasks[task](data)
+        }
+    };
+
+    const game = {
+        faked: false,
+        tasks: {
+            STATE: new Set(),
+        },
+
+        state: {
+            away_deck: writable([]),
+            away_hand: writable([]),
+            away_discard: writable([]),
+            away_field: writable([]),
+            away_back: writable(""),
+            home_deck: writable([]),
+            home_hand: writable([]),
+            home_discard: writable([]),
+            home_field: writable([]),
+            home_back: writable("")
+        },
+
+        // fake out game rules for testing
+        server_fake: () => {
+            game.faked = server_fake(game);
+        },
+
+        do: ({
+            task,
+            data
+        }) => {
+            if(game.tasks[task] === undefined) {
+                console.error(`Tried to call an undefined task ${task}`);
+                return 
+            }
+
+            game.tasks[task].forEach((fn) => fn(data));
+        },
+
+        do_server: async (action) => {
+            if(game.faked) {
+                return game.faked(action) 
+            }
+
+            const response = await fetch('/do', {
+                method: 'POST',
+                mode: 'same-origin',
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(action)
+            });
+
+            return response.json()
+        },
+
+        when: (task, callback) => {
+            if(game.tasks[task] === undefined) {
+                console.error(`Tried to wait for an undefined task ${task}`);
+                return 
+            }
+
+            game.tasks[task].add(callback);
+
+            return () => {
+                game.tasks[task].delete(callback);
+            }
+        }
+    };
+
+    // Replicate STATE actions to the state stores
+    game.when('STATE', (changes) => 
+        Object.entries(changes).forEach(([key, value]) => 
+            game.state[key].set(value)
+        )
+    );
+
+    /* src\Card.svelte generated by Svelte v3.6.6 */
+
+    const file$2 = "src\\Card.svelte";
+
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.line = list[i];
+    	return child_ctx;
+    }
+
+    // (125:8) {#if borders}
+    function create_if_block(ctx) {
+    	var div0, t0, div1, t1, div2, t2, div3;
+
+    	return {
+    		c: function create() {
+    			div0 = element("div");
+    			t0 = space();
+    			div1 = element("div");
+    			t1 = space();
+    			div2 = element("div");
+    			t2 = space();
+    			div3 = element("div");
+    			attr(div0, "class", "border border-top svelte-k754m3");
+    			add_location(div0, file$2, 125, 8, 2859);
+    			attr(div1, "class", "border border-bottom svelte-k754m3");
+    			add_location(div1, file$2, 126, 8, 2902);
+    			attr(div2, "class", "border border-left svelte-k754m3");
+    			add_location(div2, file$2, 127, 8, 2948);
+    			attr(div3, "class", "border border-right svelte-k754m3");
+    			add_location(div3, file$2, 128, 8, 2992);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div0, anchor);
+    			insert(target, t0, anchor);
+    			insert(target, div1, anchor);
+    			insert(target, t1, anchor);
+    			insert(target, div2, anchor);
+    			insert(target, t2, anchor);
+    			insert(target, div3, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div0);
+    				detach(t0);
+    				detach(div1);
+    				detach(t1);
+    				detach(div2);
+    				detach(t2);
+    				detach(div3);
+    			}
+    		}
+    	};
+    }
+
+    // (156:16) {#each lines as line}
+    function create_each_block(ctx) {
+    	var div5, div1, div0, t0, div4, div2, t1, t2_value = ctx.vitals[0], t2, t3, div3, t4, t5_value = ctx.vitals[1], t5, current;
+
+    	var tiles0 = new Tiles({
+    		props: {
+    		width: 1,
+    		height: 1,
+    		random: true
+    	},
+    		$$inline: true
+    	});
+
+    	var tiles1 = new Tiles({
+    		props: {
+    		width: 1,
+    		height: 1,
+    		random: true
+    	},
+    		$$inline: true
+    	});
+
+    	var tiles2 = new Tiles({
+    		props: {
+    		width: 1,
+    		height: 1,
+    		random: true
+    	},
+    		$$inline: true
+    	});
+
+    	return {
+    		c: function create() {
+    			div5 = element("div");
+    			div1 = element("div");
+    			div0 = element("div");
+    			tiles0.$$.fragment.c();
+    			t0 = space();
+    			div4 = element("div");
+    			div2 = element("div");
+    			tiles1.$$.fragment.c();
+    			t1 = space();
+    			t2 = text(t2_value);
+    			t3 = space();
+    			div3 = element("div");
+    			tiles2.$$.fragment.c();
+    			t4 = space();
+    			t5 = text(t5_value);
+    			attr(div0, "class", "tile svelte-k754m3");
+    			add_location(div0, file$2, 158, 24, 4018);
+    			attr(div1, "class", "icon svelte-k754m3");
+    			add_location(div1, file$2, 157, 20, 3974);
+    			attr(div2, "class", "tile svelte-k754m3");
+    			add_location(div2, file$2, 163, 24, 4231);
+    			attr(div3, "class", "tile svelte-k754m3");
+    			add_location(div3, file$2, 167, 24, 4411);
+    			attr(div4, "class", "vitals svelte-k754m3");
+    			add_location(div4, file$2, 162, 20, 4185);
+    			attr(div5, "class", "line svelte-k754m3");
+    			add_location(div5, file$2, 156, 16, 3934);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div5, anchor);
+    			append(div5, div1);
+    			append(div1, div0);
+    			mount_component(tiles0, div0, null);
+    			append(div5, t0);
+    			append(div5, div4);
+    			append(div4, div2);
+    			mount_component(tiles1, div2, null);
+    			append(div4, t1);
+    			append(div4, t2);
+    			append(div4, t3);
+    			append(div4, div3);
+    			mount_component(tiles2, div3, null);
+    			append(div4, t4);
+    			append(div4, t5);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((!current || changed.vitals) && t2_value !== (t2_value = ctx.vitals[0])) {
+    				set_data(t2, t2_value);
+    			}
+
+    			if ((!current || changed.vitals) && t5_value !== (t5_value = ctx.vitals[1])) {
+    				set_data(t5, t5_value);
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tiles0.$$.fragment, local);
+
+    			transition_in(tiles1.$$.fragment, local);
+
+    			transition_in(tiles2.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(tiles0.$$.fragment, local);
+    			transition_out(tiles1.$$.fragment, local);
+    			transition_out(tiles2.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div5);
+    			}
+
+    			destroy_component(tiles0, );
+
+    			destroy_component(tiles1, );
+
+    			destroy_component(tiles2, );
+    		}
+    	};
+    }
+
+    function create_fragment$2(ctx) {
+    	var div11, div10, t0, div0, t1, div9, div4, div1, t2, div2, t3, div3, t4, t5, div5, t6, div7, t7, div6, t8, div8, current, dispose;
+
+    	var if_block = (ctx.borders) && create_if_block();
+
+    	var tiles0 = new Tiles({
+    		props: {
+    		width: 3,
+    		height: 5,
+    		data: ctx.back
+    	},
+    		$$inline: true
+    	});
+
+    	var tiles1 = new Tiles({
+    		props: {
+    		data: ctx.name,
+    		width: 5,
+    		height: 1
+    	},
+    		$$inline: true
+    	});
+
+    	var tiles2 = new Tiles({
+    		props: {
+    		width: 10,
+    		height: 10,
+    		data: ctx.image
+    	},
+    		$$inline: true
+    	});
+
+    	var each_value = ctx.lines;
+
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    	}
+
+    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+    		each_blocks[i] = null;
+    	});
+
+    	return {
+    		c: function create() {
+    			div11 = element("div");
+    			div10 = element("div");
+    			if (if_block) if_block.c();
+    			t0 = space();
+    			div0 = element("div");
+    			tiles0.$$.fragment.c();
+    			t1 = space();
+    			div9 = element("div");
+    			div4 = element("div");
+    			div1 = element("div");
+    			tiles1.$$.fragment.c();
+    			t2 = space();
+    			div2 = element("div");
+    			t3 = space();
+    			div3 = element("div");
+    			t4 = text(ctx.cost);
+    			t5 = space();
+    			div5 = element("div");
+    			tiles2.$$.fragment.c();
+    			t6 = space();
+    			div7 = element("div");
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t7 = space();
+    			div6 = element("div");
+    			t8 = space();
+    			div8 = element("div");
+    			div8.textContent = "E A R T H R O C K";
+    			attr(div0, "class", "back svelte-k754m3");
+    			set_style(div0, "filter", "sepia(1) hue-rotate(" + ctx.color + "deg)");
+    			add_location(div0, file$2, 131, 8, 3054);
+    			attr(div1, "class", "title svelte-k754m3");
+    			add_location(div1, file$2, 141, 16, 3411);
+    			attr(div2, "class", "flex svelte-k754m3");
+    			add_location(div2, file$2, 148, 16, 3635);
+    			attr(div3, "class", "cost svelte-k754m3");
+    			add_location(div3, file$2, 149, 16, 3677);
+    			attr(div4, "class", "header svelte-k754m3");
+    			add_location(div4, file$2, 140, 12, 3373);
+    			attr(div5, "class", "image svelte-k754m3");
+    			add_location(div5, file$2, 151, 12, 3741);
+    			attr(div6, "class", "flex svelte-k754m3");
+    			add_location(div6, file$2, 174, 16, 4660);
+    			attr(div7, "class", "details svelte-k754m3");
+    			add_location(div7, file$2, 154, 12, 3856);
+    			attr(div8, "class", "earthrock svelte-k754m3");
+    			add_location(div8, file$2, 176, 12, 4718);
+    			attr(div9, "class", "front svelte-k754m3");
+    			add_location(div9, file$2, 139, 8, 3281);
+    			attr(div10, "class", "contents svelte-k754m3");
+    			toggle_class(div10, "flip", ctx.flip);
+    			add_location(div10, file$2, 123, 4, 2793);
+    			attr(div11, "style", ctx.style);
+    			attr(div11, "class", "card svelte-k754m3");
+    			toggle_class(div11, "dragging", ctx.dragging);
+    			add_location(div11, file$2, 122, 0, 2683);
+
+    			dispose = [
+    				listen(div0, "click", ctx.beginInteract),
+    				listen(div9, "mousedown", ctx.beginInteract),
+    				listen(div9, "mouseup", ctx.stopInteract),
+    				listen(div11, "mouseenter", ctx.delay_hover.on),
+    				listen(div11, "mouseleave", ctx.delay_hover.off)
+    			];
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div11, anchor);
+    			append(div11, div10);
+    			if (if_block) if_block.m(div10, null);
+    			append(div10, t0);
+    			append(div10, div0);
+    			mount_component(tiles0, div0, null);
+    			append(div10, t1);
+    			append(div10, div9);
+    			append(div9, div4);
+    			append(div4, div1);
+    			mount_component(tiles1, div1, null);
+    			append(div4, t2);
+    			append(div4, div2);
+    			append(div4, t3);
+    			append(div4, div3);
+    			append(div3, t4);
+    			append(div9, t5);
+    			append(div9, div5);
+    			mount_component(tiles2, div5, null);
+    			append(div9, t6);
+    			append(div9, div7);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div7, null);
+    			}
+
+    			append(div7, t7);
+    			append(div7, div6);
+    			append(div9, t8);
+    			append(div9, div8);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (ctx.borders) {
+    				if (!if_block) {
+    					if_block = create_if_block();
+    					if_block.c();
+    					if_block.m(div10, t0);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			var tiles0_changes = {};
+    			if (changed.back) tiles0_changes.data = ctx.back;
+    			tiles0.$set(tiles0_changes);
+
+    			if (!current || changed.color) {
+    				set_style(div0, "filter", "sepia(1) hue-rotate(" + ctx.color + "deg)");
+    			}
+
+    			var tiles1_changes = {};
+    			if (changed.name) tiles1_changes.data = ctx.name;
+    			tiles1.$set(tiles1_changes);
+
+    			if (!current || changed.cost) {
+    				set_data(t4, ctx.cost);
+    			}
+
+    			var tiles2_changes = {};
+    			if (changed.image) tiles2_changes.data = ctx.image;
+    			tiles2.$set(tiles2_changes);
+
+    			if (changed.vitals || changed.lines) {
+    				each_value = ctx.lines;
+
+    				for (var i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(div7, t7);
+    					}
+    				}
+
+    				group_outros();
+    				for (i = each_value.length; i < each_blocks.length; i += 1) out(i);
+    				check_outros();
+    			}
+
+    			if (changed.flip) {
+    				toggle_class(div10, "flip", ctx.flip);
+    			}
+
+    			if (!current || changed.style) {
+    				attr(div11, "style", ctx.style);
+    			}
+
+    			if (changed.dragging) {
+    				toggle_class(div11, "dragging", ctx.dragging);
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tiles0.$$.fragment, local);
+
+    			transition_in(tiles1.$$.fragment, local);
+
+    			transition_in(tiles2.$$.fragment, local);
+
+    			for (var i = 0; i < each_value.length; i += 1) transition_in(each_blocks[i]);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(tiles0.$$.fragment, local);
+    			transition_out(tiles1.$$.fragment, local);
+    			transition_out(tiles2.$$.fragment, local);
+
+    			each_blocks = each_blocks.filter(Boolean);
+    			for (let i = 0; i < each_blocks.length; i += 1) transition_out(each_blocks[i]);
+
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div11);
+    			}
+
+    			if (if_block) if_block.d();
+
+    			destroy_component(tiles0, );
+
+    			destroy_component(tiles1, );
+
+    			destroy_component(tiles2, );
+
+    			destroy_each(each_blocks, detaching);
+
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    const DRAG_SCALE = 0.5;
+
+    function instance$2($$self, $$props, $$invalidate) {
+    	let $mouse_pos;
+
+    	
+
+    // Card Data
+    let { deck = ``, id = "foobar", cost = 0, name = "16 55 33 44 55", image = "", effect1 = "", effect2 = "", effect3 = "", back = "", borders = true, vitals = [1, 1], invert = false, interact = true, drag = false, position = [0, 0], rotation = 0, scale = 1, color = 90, card = {}, onclick = () => {} } = $$props;
+    let { young = true } = $$props;
+
+    const lines = [effect1, effect2, effect3];
+    const mouse_pos = writable([0, 0]); validate_store(mouse_pos, 'mouse_pos'); subscribe($$self, mouse_pos, $$value => { $mouse_pos = $$value; $$invalidate('$mouse_pos', $mouse_pos); });
+    const mouse_raw = [0, 0];
+
+    window.addEventListener("mousemove", (e) => {
+        mouse_raw[0] = e.clientX;    mouse_raw[1] = e.clientY;});
+
+    setInterval(() => {
+        if(mouse_raw[0] !== $mouse_pos[0] || mouse_raw[1] !== $mouse_pos[1]) {
+            mouse_pos.set([...mouse_raw]);
+        }
+    }, 50);
+
+    let flip = true;
+    onMount(() => {
+        setTimeout(() => {
+            $$invalidate('young', young = false);
+            $$invalidate('flip', flip = !interact);
+        }, 1000);
+    });
+
+    const delay = ({
+        time = 250,
+        on = () => {},
+        off = () => {}
+    }) => {
+        let timeout;
+        
+        return {
+            on: () => {
+                if(!interact) {
+                    return
+                }
+                if(timeout) {
+                    clearTimeout(timeout);
+                }
+                on();
+            },
+            off: () => {
+                if(!interact) {
+                    return
+                }
+                if(timeout) {
+                    clearTimeout(timeout);
+                }
+
+                timeout = setTimeout(() => {
+                    timeout = 0;
+                    off();
+                }, time);
+            }
+        }
+    };
+
+    let dragging = false;
+    const beginInteract = () => {
+        onclick();
+        if(drag) {
+            $$invalidate('dragging', dragging = true);
+        }
+        return
+    };
+
+    const stopInteract = () => {
+        $$invalidate('dragging', dragging = false);
+        return
+    };
+
+    const delay_hover = delay({
+        time: 250,
+        on: () => {
+            $$invalidate('hover', hover = true);
+        },
+        off: () => { const $$result = hover = false; $$invalidate('hover', hover); return $$result; }
+    });
+
+    let hover = false;
+
+    	const writable_props = ['deck', 'id', 'cost', 'name', 'image', 'effect1', 'effect2', 'effect3', 'back', 'borders', 'vitals', 'invert', 'interact', 'drag', 'position', 'rotation', 'scale', 'color', 'card', 'onclick', 'young'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Card> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ('deck' in $$props) $$invalidate('deck', deck = $$props.deck);
+    		if ('id' in $$props) $$invalidate('id', id = $$props.id);
+    		if ('cost' in $$props) $$invalidate('cost', cost = $$props.cost);
+    		if ('name' in $$props) $$invalidate('name', name = $$props.name);
+    		if ('image' in $$props) $$invalidate('image', image = $$props.image);
+    		if ('effect1' in $$props) $$invalidate('effect1', effect1 = $$props.effect1);
+    		if ('effect2' in $$props) $$invalidate('effect2', effect2 = $$props.effect2);
+    		if ('effect3' in $$props) $$invalidate('effect3', effect3 = $$props.effect3);
+    		if ('back' in $$props) $$invalidate('back', back = $$props.back);
+    		if ('borders' in $$props) $$invalidate('borders', borders = $$props.borders);
+    		if ('vitals' in $$props) $$invalidate('vitals', vitals = $$props.vitals);
+    		if ('invert' in $$props) $$invalidate('invert', invert = $$props.invert);
+    		if ('interact' in $$props) $$invalidate('interact', interact = $$props.interact);
+    		if ('drag' in $$props) $$invalidate('drag', drag = $$props.drag);
+    		if ('position' in $$props) $$invalidate('position', position = $$props.position);
+    		if ('rotation' in $$props) $$invalidate('rotation', rotation = $$props.rotation);
+    		if ('scale' in $$props) $$invalidate('scale', scale = $$props.scale);
+    		if ('color' in $$props) $$invalidate('color', color = $$props.color);
+    		if ('card' in $$props) $$invalidate('card', card = $$props.card);
+    		if ('onclick' in $$props) $$invalidate('onclick', onclick = $$props.onclick);
+    		if ('young' in $$props) $$invalidate('young', young = $$props.young);
+    	};
+
+    	let tru_scale, style;
+
+    	$$self.$$.update = ($$dirty = { hover: 1, scale: 1, dragging: 1, $mouse_pos: 1, position: 1, invert: 1, rotation: 1, tru_scale: 1 }) => {
+    		if ($$dirty.hover || $$dirty.scale) { $$invalidate('tru_scale', tru_scale = hover ? scale * 1.168 : scale); }
+    		if ($$dirty.dragging || $$dirty.$mouse_pos || $$dirty.position || $$dirty.hover || $$dirty.invert || $$dirty.rotation || $$dirty.tru_scale) { $$invalidate('style', style = dragging 
+                ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 - 250}px, ${$mouse_pos[1] - window.innerHeight/2 - 400}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
+                : `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`); }
+    	};
+
+    	return {
+    		deck,
+    		id,
+    		cost,
+    		name,
+    		image,
+    		effect1,
+    		effect2,
+    		effect3,
+    		back,
+    		borders,
+    		vitals,
+    		invert,
+    		interact,
+    		drag,
+    		position,
+    		rotation,
+    		scale,
+    		color,
+    		card,
+    		onclick,
+    		young,
+    		lines,
+    		mouse_pos,
+    		flip,
+    		dragging,
+    		beginInteract,
+    		stopInteract,
+    		delay_hover,
+    		style
+    	};
+    }
+
+    class Card extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$2, create_fragment$2, safe_not_equal, ["deck", "id", "cost", "name", "image", "effect1", "effect2", "effect3", "back", "borders", "vitals", "invert", "interact", "drag", "position", "rotation", "scale", "color", "card", "onclick", "young"]);
+    	}
+
+    	get deck() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set deck(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get id() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set id(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get cost() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set cost(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get name() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set name(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get image() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set image(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get effect1() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set effect1(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get effect2() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set effect2(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get effect3() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set effect3(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get back() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set back(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get borders() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set borders(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get vitals() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set vitals(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get invert() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set invert(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get interact() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set interact(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get drag() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set drag(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get position() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set position(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get rotation() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set rotation(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get scale() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set scale(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get color() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set color(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get card() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set card(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get onclick() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set onclick(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get young() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set young(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\Hand.svelte generated by Svelte v3.6.6 */
+
+    function get_each_context$1(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.card = list[i];
+    	child_ctx.index = i;
+    	return child_ctx;
+    }
+
+    // (31:4) {#if index < max}
+    function create_if_block$1(ctx) {
+    	var current;
+
+    	var card_spread_levels = [
+    		ctx.card,
+    		{ scale: ctx.scale },
+    		{ invert: ctx.invert },
+    		{ interact: ctx.interact },
+    		{ color: ctx.color },
+    		{ onclick: ctx.onclick },
+    		{ card: ctx.card },
+    		{ drag: ctx.drag },
+    		{ back: ctx.$back },
+    		{ position: [
+                        ctx.index * ctx.tru_spread * ctx.scale - ctx.tru_length/2 * ctx.tru_spread * ctx.scale + ctx.position[0], 
+                        ctx.position[1] + (ctx.invert ? -1 : 1) * Math.abs((ctx.index - ctx.tru_length/2)) * ctx.spread_y
+                    ] },
+    		{ rotation: (ctx.index - ctx.tru_length/2) * ctx.tru_rotate * (ctx.invert ? -1 : 1) + (ctx.invert ? 180 : 0) }
+    	];
+
+    	let card_props = {};
+    	for (var i = 0; i < card_spread_levels.length; i += 1) {
+    		card_props = assign(card_props, card_spread_levels[i]);
+    	}
+    	var card = new Card({ props: card_props, $$inline: true });
+
+    	return {
+    		c: function create() {
+    			card.$$.fragment.c();
+    		},
+
+    		m: function mount(target, anchor) {
+    			mount_component(card, target, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var card_changes = (changed.$cards || changed.scale || changed.invert || changed.interact || changed.color || changed.onclick || changed.drag || changed.$back || changed.tru_spread || changed.tru_length || changed.position || changed.spread_y || changed.tru_rotate) ? get_spread_update(card_spread_levels, [
+    				(changed.$cards) && ctx.card,
+    				(changed.scale) && { scale: ctx.scale },
+    				(changed.invert) && { invert: ctx.invert },
+    				(changed.interact) && { interact: ctx.interact },
+    				(changed.color) && { color: ctx.color },
+    				(changed.onclick) && { onclick: ctx.onclick },
+    				(changed.$cards) && { card: ctx.card },
+    				(changed.drag) && { drag: ctx.drag },
+    				(changed.$back) && { back: ctx.$back },
+    				(changed.$cards || changed.tru_spread || changed.scale || changed.tru_length || changed.position || changed.invert || changed.spread_y) && { position: [
+                        ctx.index * ctx.tru_spread * ctx.scale - ctx.tru_length/2 * ctx.tru_spread * ctx.scale + ctx.position[0], 
+                        ctx.position[1] + (ctx.invert ? -1 : 1) * Math.abs((ctx.index - ctx.tru_length/2)) * ctx.spread_y
+                    ] },
+    				(changed.$cards || changed.tru_length || changed.tru_rotate || changed.invert) && { rotation: (ctx.index - ctx.tru_length/2) * ctx.tru_rotate * (ctx.invert ? -1 : 1) + (ctx.invert ? 180 : 0) }
+    			]) : {};
+    			card.$set(card_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(card.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(card.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			destroy_component(card, detaching);
+    		}
+    	};
+    }
+
+    // (30:0) {#each $cards as card, index (card.id)}
+    function create_each_block$1(key_1, ctx) {
+    	var first, if_block_anchor, current;
+
+    	var if_block = (ctx.index < ctx.max) && create_if_block$1(ctx);
+
+    	return {
+    		key: key_1,
+
+    		first: null,
+
+    		c: function create() {
+    			first = empty();
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    			this.first = first;
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, first, anchor);
+    			if (if_block) if_block.m(target, anchor);
+    			insert(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (ctx.index < ctx.max) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    					transition_in(if_block, 1);
+    				} else {
+    					if_block = create_if_block$1(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+    				check_outros();
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(first);
+    			}
+
+    			if (if_block) if_block.d(detaching);
+
+    			if (detaching) {
+    				detach(if_block_anchor);
+    			}
+    		}
+    	};
+    }
+
+    function create_fragment$3(ctx) {
+    	var each_blocks = [], each_1_lookup = new Map(), each_1_anchor, current;
+
+    	var each_value = ctx.$cards;
+
+    	const get_key = ctx => ctx.card.id;
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		let child_ctx = get_each_context$1(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block$1(key, child_ctx));
+    	}
+
+    	return {
+    		c: function create() {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].c();
+
+    			each_1_anchor = empty();
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].m(target, anchor);
+
+    			insert(target, each_1_anchor, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			const each_value = ctx.$cards;
+
+    			group_outros();
+    			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, each_1_anchor.parentNode, outro_and_destroy_block, create_each_block$1, each_1_anchor, get_each_context$1);
+    			check_outros();
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			for (var i = 0; i < each_value.length; i += 1) transition_in(each_blocks[i]);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			for (i = 0; i < each_blocks.length; i += 1) transition_out(each_blocks[i]);
+
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].d(detaching);
+
+    			if (detaching) {
+    				detach(each_1_anchor);
+    			}
+    		}
+    	};
+    }
+
+    function instance$3($$self, $$props, $$invalidate) {
+    	let $cards, $back;
+
+    	
+
+    let { cards = writable([]), max = 10, position = [0, 0], invert = false, scale = 1, drag = false, spread = 16.18, spread_y = 2, interact = true, count_factor = 30, rotate = 16.18, color = 90, onclick = () => {} } = $$props; validate_store(cards, 'cards'); subscribe($$self, cards, $$value => { $cards = $$value; $$invalidate('$cards', $cards); });
+    let { back = writable(``) } = $$props; validate_store(back, 'back'); subscribe($$self, back, $$value => { $back = $$value; $$invalidate('$back', $back); });
+
+    	const writable_props = ['cards', 'max', 'position', 'invert', 'scale', 'drag', 'spread', 'spread_y', 'interact', 'count_factor', 'rotate', 'color', 'onclick', 'back'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Hand> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ('cards' in $$props) $$invalidate('cards', cards = $$props.cards);
+    		if ('max' in $$props) $$invalidate('max', max = $$props.max);
+    		if ('position' in $$props) $$invalidate('position', position = $$props.position);
+    		if ('invert' in $$props) $$invalidate('invert', invert = $$props.invert);
+    		if ('scale' in $$props) $$invalidate('scale', scale = $$props.scale);
+    		if ('drag' in $$props) $$invalidate('drag', drag = $$props.drag);
+    		if ('spread' in $$props) $$invalidate('spread', spread = $$props.spread);
+    		if ('spread_y' in $$props) $$invalidate('spread_y', spread_y = $$props.spread_y);
+    		if ('interact' in $$props) $$invalidate('interact', interact = $$props.interact);
+    		if ('count_factor' in $$props) $$invalidate('count_factor', count_factor = $$props.count_factor);
+    		if ('rotate' in $$props) $$invalidate('rotate', rotate = $$props.rotate);
+    		if ('color' in $$props) $$invalidate('color', color = $$props.color);
+    		if ('onclick' in $$props) $$invalidate('onclick', onclick = $$props.onclick);
+    		if ('back' in $$props) $$invalidate('back', back = $$props.back);
+    	};
+
+    	let tru_length, x_factor, tru_spread, tru_rotate;
+
+    	$$self.$$.update = ($$dirty = { $cards: 1, max: 1, count_factor: 1, spread: 1, x_factor: 1, rotate: 1 }) => {
+    		if ($$dirty.$cards || $$dirty.max) { $$invalidate('tru_length', tru_length = ($cards.length > max ? max : $cards.length)); }
+    		if ($$dirty.$cards || $$dirty.count_factor) { $$invalidate('x_factor', x_factor = ($cards.length / count_factor)); }
+    		if ($$dirty.spread || $$dirty.x_factor) { $$invalidate('tru_spread', tru_spread = spread / x_factor); }
+    		if ($$dirty.rotate || $$dirty.x_factor) { $$invalidate('tru_rotate', tru_rotate = rotate * x_factor); }
+    	};
+
+    	return {
+    		cards,
+    		max,
+    		position,
+    		invert,
+    		scale,
+    		drag,
+    		spread,
+    		spread_y,
+    		interact,
+    		count_factor,
+    		rotate,
+    		color,
+    		onclick,
+    		back,
+    		tru_length,
+    		$cards,
+    		tru_spread,
+    		tru_rotate,
+    		$back
+    	};
+    }
+
+    class Hand extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$3, create_fragment$3, safe_not_equal, ["cards", "max", "position", "invert", "scale", "drag", "spread", "spread_y", "interact", "count_factor", "rotate", "color", "onclick", "back"]);
+    	}
+
+    	get cards() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set cards(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get max() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set max(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get position() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set position(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get invert() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set invert(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get scale() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set scale(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get drag() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set drag(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get spread() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set spread(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get spread_y() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set spread_y(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get interact() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set interact(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get count_factor() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set count_factor(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get rotate() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set rotate(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get color() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set color(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get onclick() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set onclick(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get back() {
+    		throw new Error("<Hand>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set back(value) {
+    		throw new Error("<Hand>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\Board.svelte generated by Svelte v3.6.6 */
+
+    function create_fragment$4(ctx) {
+    	var t0, t1, t2, current;
+
+    	var hand0 = new Hand({
+    		props: {
+    		cards: game.state.home_hand,
+    		scale: scale,
+    		position: [0, 40],
+    		back: game.state.home_back,
+    		drag: true
+    	},
+    		$$inline: true
+    	});
+
+    	var hand1 = new Hand({
+    		props: {
+    		cards: game.state.away_hand,
+    		scale: scale,
+    		position: [0, -40],
+    		interact: false,
+    		color: 180,
+    		invert: true,
+    		back: game.state.away_back
+    	},
+    		$$inline: true
+    	});
+
+    	var hand2_spread_levels = [
+    		ctx.deck,
+    		{ cards: game.state.home_deck },
+    		{ position: [90, 40] },
+    		{ back: game.state.home_back }
+    	];
+
+    	let hand2_props = {};
+    	for (var i = 0; i < hand2_spread_levels.length; i += 1) {
+    		hand2_props = assign(hand2_props, hand2_spread_levels[i]);
+    	}
+    	var hand2 = new Hand({ props: hand2_props, $$inline: true });
+
+    	var hand3_spread_levels = [
+    		{ invert: true },
+    		ctx.deck,
+    		{ cards: game.state.away_deck },
+    		{ color: 180 },
+    		{ position: [90, -40] },
+    		{ back: game.state.away_back }
+    	];
+
+    	let hand3_props = {};
+    	for (var i = 0; i < hand3_spread_levels.length; i += 1) {
+    		hand3_props = assign(hand3_props, hand3_spread_levels[i]);
+    	}
+    	var hand3 = new Hand({ props: hand3_props, $$inline: true });
+
+    	return {
+    		c: function create() {
+    			hand0.$$.fragment.c();
+    			t0 = space();
+    			hand1.$$.fragment.c();
+    			t1 = space();
+    			hand2.$$.fragment.c();
+    			t2 = space();
+    			hand3.$$.fragment.c();
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			mount_component(hand0, target, anchor);
+    			insert(target, t0, anchor);
+    			mount_component(hand1, target, anchor);
+    			insert(target, t1, anchor);
+    			mount_component(hand2, target, anchor);
+    			insert(target, t2, anchor);
+    			mount_component(hand3, target, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var hand0_changes = {};
+    			if (changed.game) hand0_changes.cards = game.state.home_hand;
+    			if (changed.scale) hand0_changes.scale = scale;
+    			if (changed.game) hand0_changes.back = game.state.home_back;
+    			hand0.$set(hand0_changes);
+
+    			var hand1_changes = {};
+    			if (changed.game) hand1_changes.cards = game.state.away_hand;
+    			if (changed.scale) hand1_changes.scale = scale;
+    			if (changed.game) hand1_changes.back = game.state.away_back;
+    			hand1.$set(hand1_changes);
+
+    			var hand2_changes = (changed.deck || changed.game) ? get_spread_update(hand2_spread_levels, [
+    				(changed.deck) && ctx.deck,
+    				(changed.game) && { cards: game.state.home_deck },
+    				{ position: [90, 40] },
+    				(changed.game) && { back: game.state.home_back }
+    			]) : {};
+    			hand2.$set(hand2_changes);
+
+    			var hand3_changes = (changed.deck || changed.game) ? get_spread_update(hand3_spread_levels, [
+    				{ invert: true },
+    				(changed.deck) && ctx.deck,
+    				(changed.game) && { cards: game.state.away_deck },
+    				{ color: 180 },
+    				{ position: [90, -40] },
+    				(changed.game) && { back: game.state.away_back }
+    			]) : {};
+    			hand3.$set(hand3_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(hand0.$$.fragment, local);
+
+    			transition_in(hand1.$$.fragment, local);
+
+    			transition_in(hand2.$$.fragment, local);
+
+    			transition_in(hand3.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(hand0.$$.fragment, local);
+    			transition_out(hand1.$$.fragment, local);
+    			transition_out(hand2.$$.fragment, local);
+    			transition_out(hand3.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			destroy_component(hand0, detaching);
+
+    			if (detaching) {
+    				detach(t0);
+    			}
+
+    			destroy_component(hand1, detaching);
+
+    			if (detaching) {
+    				detach(t1);
+    			}
+
+    			destroy_component(hand2, detaching);
+
+    			if (detaching) {
+    				detach(t2);
+    			}
+
+    			destroy_component(hand3, detaching);
+    		}
+    	};
+    }
+
+    const scale = 0.25;
+
+    function instance$4($$self) {
+    	
+
+    const deck = {
+    	scale,
+        spread: 0,
+        max: 4,
+        count_factor: 250,
+    	interact: false 
+    };
+
+    game.server_fake();
+
+    	return { deck };
+    }
+
+    class Board extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$4, create_fragment$4, safe_not_equal, []);
+    	}
+    }
+
+    /* src\Sound.svelte generated by Svelte v3.6.6 */
+
+    const file$3 = "src\\Sound.svelte";
+
+    function create_fragment$5(ctx) {
+    	var div, t_value = ctx.playing ? '🕪' : '🕨', t, dispose;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			t = text(t_value);
+    			attr(div, "class", "sound svelte-niubn2");
+    			add_location(div, file$3, 17, 0, 284);
+    			dispose = listen(div, "click", ctx.toggle);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.playing) && t_value !== (t_value = ctx.playing ? '🕪' : '🕨')) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    function instance$5($$self, $$props, $$invalidate) {
+    	const audio = new Audio("/music/earthrock-final-theme.mp3");
+    audio.loop = true;audio.volume = 0.5;let playing = false;
+
+    const toggle = () => {
+        if(playing) {
+            audio.pause();
+        } else {
+            audio.play();
+        }
+
+        $$invalidate('playing', playing = !playing);
+    };
+
+    	return { playing, toggle };
+    }
+
+    class Sound extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$5, create_fragment$5, safe_not_equal, []);
+    	}
+    }
+
+    /* src\App.svelte generated by Svelte v3.6.6 */
+
+    function create_fragment$6(ctx) {
+    	var t0, t1, current;
+
+    	var intro = new Intro({ $$inline: true });
+
+    	var sound = new Sound({ $$inline: true });
+
+    	var board = new Board({ $$inline: true });
+
+    	return {
+    		c: function create() {
+    			intro.$$.fragment.c();
+    			t0 = space();
+    			sound.$$.fragment.c();
+    			t1 = space();
+    			board.$$.fragment.c();
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			mount_component(intro, target, anchor);
+    			insert(target, t0, anchor);
+    			mount_component(sound, target, anchor);
+    			insert(target, t1, anchor);
+    			mount_component(board, target, anchor);
+    			current = true;
+    		},
+
+    		p: noop,
+
+    		i: function intro_1(local) {
+    			if (current) return;
+    			transition_in(intro.$$.fragment, local);
+
+    			transition_in(sound.$$.fragment, local);
+
+    			transition_in(board.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(intro.$$.fragment, local);
+    			transition_out(sound.$$.fragment, local);
+    			transition_out(board.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			destroy_component(intro, detaching);
+
+    			if (detaching) {
+    				detach(t0);
+    			}
+
+    			destroy_component(sound, detaching);
+
+    			if (detaching) {
+    				detach(t1);
+    			}
+
+    			destroy_component(board, detaching);
+    		}
+    	};
+    }
+
+    class App extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, null, create_fragment$6, safe_not_equal, []);
+    	}
+    }
+
+    const app = new App({
+    	target: document.body,
+    	props: {
+    		name: 'stage'
+    	}
+    });
+
+    return app;
+
+}());
+//# sourceMappingURL=bundle.js.map

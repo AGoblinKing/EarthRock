@@ -1,21 +1,60 @@
 <script>
+import {writable} from "svelte/store"
+import {onMount} from "svelte"
+
 import Tiles from "./Tiles.svelte"
 
+const DRAG_SCALE = 0.5
+
+// Card Data
+export let deck = ``
 export let id = "foobar"
 export let cost = 0
 export let name = "16 55 33 44 55"
-export let flip = true
+export let image = ""
+export let effect1 = ""
+export let effect2 = ""
+export let effect3 = ""
+
+// Deck Data
+export let back = ""
+
+// Card Display Attributes
 export let borders = true
 export let vitals = [1, 1]
 export let invert = false
 export let interact = true
+export let drag = false
 export let position = [0, 0]
 export let rotation = 0
 export let scale = 1
 export let color = 90
+export let card = {}
 export let onclick = () => {}
+export let young = true
 
-const lines = [0, 1, 2]
+const lines = [effect1, effect2, effect3]
+const mouse_pos = writable([0, 0])
+const mouse_raw = [0, 0]
+
+window.addEventListener("mousemove", (e) => {
+    mouse_raw[0] = e.clientX
+    mouse_raw[1] = e.clientY
+})
+
+setInterval(() => {
+    if(mouse_raw[0] !== $mouse_pos[0] || mouse_raw[1] !== $mouse_pos[1]) {
+        mouse_pos.set([...mouse_raw])
+    }
+}, 50)
+
+let flip = true
+onMount(() => {
+    setTimeout(() => {
+        young = false
+        flip = !interact
+    }, 1000)
+})
 
 const delay = ({
     time = 250,
@@ -50,8 +89,17 @@ const delay = ({
     }
 }
 
-const doInteract = () => {
+let dragging = false
+const beginInteract = () => {
     onclick()
+    if(drag) {
+        dragging = true
+    }
+    return
+}
+
+const stopInteract = () => {
+    dragging = false
     return
 }
 
@@ -66,10 +114,13 @@ const delay_hover = delay({
 let hover = false
 
 $: tru_scale = hover ? scale * 1.168 : scale
-$: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+$: style = dragging 
+    ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 - 250}px, ${$mouse_pos[1] - window.innerHeight/2 - 400}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
+    : `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+
 </script>
 
-<div {style} on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
+<div {style} class:dragging on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
     <div class:flip class="contents">
         {#if borders}
         <div class="border border-top" />
@@ -80,13 +131,13 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
 
         <div 
             class="back" 
-            on:click="{doInteract}"
+            on:click="{beginInteract}"
             style="filter: sepia(1) hue-rotate({color}deg)"
         >
-            <Tiles width={3} height={5} />
+            <Tiles width={3} height={5} data={back}/>
         </div>
 
-        <div class="front" on:click="{doInteract}">
+        <div class="front" on:mousedown="{beginInteract}" on:mouseup="{stopInteract}">
             <div class="header">
                 <div class="title">
                     <Tiles 
@@ -99,23 +150,23 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
                 <div class="cost">{cost}</div>
             </div>
             <div class="image">
-                <Tiles/>
+                <Tiles width={10} height={10} data={image}/>
             </div>
             <div class="details">
                 {#each lines as line}
                 <div class="line">
                     <div class="icon">
                         <div class="tile">
-                            <Tiles width={1} height={1} />
+                            <Tiles width={1} height={1} random />
                         </div>
                     </div>
                     <div class="vitals">
                         <div class="tile">
-                            <Tiles width={1} height={1} />
+                            <Tiles width={1} height={1} random />
                         </div>
                         {vitals[0]}
                         <div class="tile">
-                            <Tiles width={1} height={1} />
+                            <Tiles width={1} height={1} random />
                         </div>
                         {vitals[1]}
                     </div>
@@ -198,9 +249,12 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
     perspective: 1000px;
     top: 50%;
     left: 50%;
-    transition: transform 0.618s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: transform 0.42s cubic-bezier(0.68, -0.5, 0.265, 1.5);
 }
 
+.card.dragging {
+    transition: transform 0.1s linear;
+}
 .image {
     display: flex;
     margin: 2rem 4rem;
@@ -226,7 +280,7 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
     width: 100%;
     position: relative;
     height: 100%;
-    transition: all 0.618s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: all 0.618s cubic-bezier(0.68, -1, 0.265, 2);
     transform-style: preserve-3d;
     transform:  rotateY(0deg);
 }
@@ -239,7 +293,8 @@ $: style = `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (h
     display: flex;
     flex-direction: column;
     border: 2rem solid #300;
-    transform: rotateX(0deg)
+    transform: rotateX(0deg);
+
 }
 
 .border {

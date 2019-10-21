@@ -71,7 +71,7 @@ button:hover {
 </style>
 
 <div class="background">
-    <Tiles />
+    <Tiles random/>
 </div>
 
 <h1 class="title">EarthRock</h1>

@@ -1,14 +1,12 @@
 <script>
 import { onMount } from 'svelte';
 
+const repo = new Map()
+
 const SIZE = 16
 const SPACING = 1
 const COLUMNS = 32
 const COUNT = 1024
-
-const random = (min, max) => 
-    Math.floor(Math.random() * (Math.abs(min) + Math.abs(max)) - Math.abs(min))
-
 
 const ready = new Promise((resolve) => {
     const tiles = new Image()
@@ -26,15 +24,17 @@ const ready = new Promise((resolve) => {
     };
 })
 
-// example Data
-// 55 55 55 55 55
-// 55 55 55 55 55
 export let data = ""
 export let width = 10
 export let height = 7
 export let spacing = 0
+export let random = false
 
+$: key = `${width}:${height}:${data}`
 let image;
+
+const num_random = (min, max) => 
+    Math.floor(Math.random() * (Math.abs(min) + Math.abs(max)) - Math.abs(min))
 
 const randomize = (data_ctx, canvas) => {
     let t_x, t_y
@@ -45,8 +45,8 @@ const randomize = (data_ctx, canvas) => {
             t_x = x * SIZE 
             t_y = y * SIZE
             
-            s_x = random(0, COLUMNS) * (SIZE + SPACING)
-            s_y = random(0, COUNT / COLUMNS) * (SIZE + SPACING)
+            s_x = num_random(0, COLUMNS) * (SIZE + SPACING)
+            s_y = num_random(0, COUNT / COLUMNS) * (SIZE + SPACING)
 
             data_ctx.drawImage(
                 canvas, 
@@ -60,57 +60,47 @@ const randomize = (data_ctx, canvas) => {
 onMount(async () => {
     const { canvas } = await ready
 
-    const data_canvas = document.createElement("canvas")
+    if(repo.has(key)) {
+        image.src = repo.get(key)
+        return
+    }
+
+    let data_canvas = document.createElement("canvas")
     const data_ctx = data_canvas.getContext("2d")
     
     data_canvas.width = SIZE * width
     data_canvas.height = SIZE * height
 
-    if(data.length > 0) {
-        try {
-            let x = 0
-            let y = -1
-
-            data.split("\n").forEach((row) => {
-                x = -1
-                y += 1
-
-                if(y >= height) {
-                    console.error("Data exceeded height")
-                    return
-                }
-
-                row.split(" ").forEach((loc) => {
-                    x += 1
-                    if(x >= width) {
-                        return console.error("Data exceeded width")
-                    }
-
-                    let idx = parseInt(loc, 10)
-                    let o_x = idx % COLUMNS 
-                    let o_y = Math.floor(idx / COLUMNS)
-
-                    let t_x = x * SIZE 
-                    let t_y = y * SIZE
-                    
-                    let s_x = o_x * (SIZE + SPACING)
-                    let s_y = o_y * (SIZE + SPACING)
-
-                    data_ctx.drawImage(
-                        canvas, 
-                        s_x, s_y, SIZE, SIZE, 
-                        t_x, t_y, SIZE, SIZE
-                    )
-                })
-            })
-        } catch (ex) {
-            console.log(`Error parsing data ${data}`)
-        }
-    } else {
+    if(random) {
         randomize(data_ctx, canvas)
+    } else if(data.length > 0) {
+        
+        let x, y
+        data.split(" ").forEach((loc, i) => {
+            x = i % width
+            y = Math.floor(i / width)
+
+            let idx = parseInt(loc, 10)
+            let o_x = idx % COLUMNS 
+            let o_y = Math.floor(idx / COLUMNS)
+
+            let t_x = x * SIZE 
+            let t_y = y * SIZE
+            
+            let s_x = o_x * (SIZE + SPACING)
+            let s_y = o_y * (SIZE + SPACING)
+
+            data_ctx.drawImage(
+                canvas, 
+                s_x, s_y, SIZE, SIZE, 
+                t_x, t_y, SIZE, SIZE
+            )
+        })
+
     }
 
-    image.src = data_canvas.toDataURL("image/png")
+    image.src = data_canvas.toDataURL('image/png')
+    repo.set(KeyboardEvent, image.src)
 })
 </script>
 

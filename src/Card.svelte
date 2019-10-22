@@ -1,10 +1,13 @@
 <script>
 import {writable} from "svelte/store"
-import {onMount} from "svelte"
+import {onMount, createEventDispatcher} from "svelte"
 
 import Tiles from "./Tiles.svelte"
 
 const DRAG_SCALE = 0.5
+const DRAG_TIME = 0.05
+
+const dispatch = createEventDispatcher()
 
 // Card Data
 export let deck = ``
@@ -26,12 +29,13 @@ export let invert = false
 export let interact = true
 export let drag = false
 export let position = [0, 0]
+export let position_raw = false
 export let rotation = 0
 export let scale = 1
 export let color = 90
 export let card = {}
-export let onclick = () => {}
 export let young = true
+export let fade = false
 
 const lines = [effect1, effect2, effect3]
 const mouse_pos = writable([0, 0])
@@ -40,20 +44,18 @@ const mouse_raw = [0, 0]
 window.addEventListener("mousemove", (e) => {
     mouse_raw[0] = e.clientX
     mouse_raw[1] = e.clientY
-})
-
-setInterval(() => {
     if(mouse_raw[0] !== $mouse_pos[0] || mouse_raw[1] !== $mouse_pos[1]) {
         mouse_pos.set([...mouse_raw])
     }
-}, 50)
+})
+
 
 let flip = true
 onMount(() => {
     setTimeout(() => {
         young = false
         flip = !interact
-    }, 1000)
+    }, 250)
 })
 
 const delay = ({
@@ -91,20 +93,17 @@ const delay = ({
 
 let dragging = false
 const beginInteract = () => {
-    onclick()
+    dispatch('click', card)
+
     if(drag) {
         dragging = true
         const id = window.addEventListener("mouseup", () => {
+            dispatch('dragend', card)
             dragging = false
             window.removeEventListener("mouseup", id)
         })
     }
 
-    return
-}
-
-const stopInteract = () => {
-    dragging = false
     return
 }
 
@@ -119,13 +118,17 @@ const delay_hover = delay({
 let hover = false
 
 $: tru_scale = hover ? scale * 1.168 : scale
+$: tru_rotation = hover ? 0 : rotation 
+
 $: style = dragging 
     ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 - 250}px, ${$mouse_pos[1] - window.innerHeight/2 - 400}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
-    : `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+    : position_raw 
+        ? `transform: translate(${position_raw[0] - window.innerWidth/2 - 250}px, ${position_raw[1] - window.innerHeight/2 - 400}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+        : `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
 
 </script>
 
-<div {style} class:dragging on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
+<div {style} class:fade class:dragging on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
     <div class:flip class="contents">
         {#if borders}
         <div class="border border-top" />
@@ -142,7 +145,7 @@ $: style = dragging
             <Tiles width={3} height={5} data={back}/>
         </div>
 
-        <div class="front" on:mousedown="{beginInteract}" on:mouseup="{stopInteract}">
+        <div class="front" on:mousedown="{beginInteract}">
             <div class="header">
                 <div class="title">
                     <Tiles 
@@ -155,7 +158,7 @@ $: style = dragging
                 <div class="cost">{cost}</div>
             </div>
             <div class="image">
-                <Tiles width={10} height={10} data={image}/>
+                <Tiles width={5} height={5} data={image}/>
             </div>
             <div class="details">
                 {#each lines as line}
@@ -256,9 +259,12 @@ $: style = dragging
     left: 50%;
     transition: transform 0.42s cubic-bezier(0.68, -0.25, 0.265, 1.5);
 }
+.fade .front {
+    filter: sepia(0.5) brightness(0.5);
+}
 
 .card.dragging {
-    transition: transform 0.1s linear;
+    transition: none;
 }
 .image {
     display: flex;

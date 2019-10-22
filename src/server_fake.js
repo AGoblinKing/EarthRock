@@ -1,12 +1,14 @@
+import { element } from "svelte/internal"
+
 const TILE_MAX = 1024
 const NAME_MAX = 5
 const COST_MAX = 10
 const EFFECT_MAX = 3
 const DECK_SIZE = 30
-const HAND_SIZE_INIT = 7
+const HAND_SIZE_INIT = 5
 
 // width * height
-const IMAGE_COUNT = 10 * 10 
+const IMAGE_COUNT = 5 * 5
 const BACK_COUNT = 3 * 5
 
 // shitty shitty uuid generator but good nuff for our server fake
@@ -54,7 +56,62 @@ const cards_random = (count) => {
 }
 
 const server_fake = (game) => {
+    const state = {
+        away_deck: cards_random(DECK_SIZE),
+        home_deck: cards_random(DECK_SIZE),
+        away_hand: cards_random(HAND_SIZE_INIT),
+        home_hand: cards_random(HAND_SIZE_INIT),
+        away_back: tile_random(BACK_COUNT),
+        home_back: tile_random(BACK_COUNT),
+        home_discard: [],
+        away_discard: []
+    };
+
     const tasks = {
+        PLAY: ({
+            id
+        }) => {
+            const {
+                home_hand,
+                home_discard
+            } = state
+
+            for(let i = 0; i < state.home_hand.length; i++) {
+                const card = state.home_hand[i]
+
+                if(card.id === id) {
+                    home_hand.splice(i, 1)
+                    home_discard.unshift(card)
+                    game.do({
+                        task: 'STATE',
+                        data: {
+                            home_hand,
+                            home_discard
+                        }
+                    })
+                    return tasks.SUCCESS()
+                }
+            }
+        },
+        DRAW: () => {
+            const { home_deck, home_hand } = state;
+
+            home_hand.push(home_deck.shift())
+
+            game.do({
+                task: 'STATE',
+                data: {
+                    home_deck,
+                    home_hand
+                }
+            })
+
+            return tasks.SUCCESS()
+        },
+        SUCCESS: () => ({
+            code: 200,
+            text: 'SuCcEsS'
+        }),
         ERROR_404: () => ({
             code: 404,
             text: 'TaSk NoT FoUnD'
@@ -64,14 +121,7 @@ const server_fake = (game) => {
     // Setup Game State
     game.do({
         task: 'STATE',
-        data: {
-            away_deck: cards_random(DECK_SIZE),
-            home_deck: cards_random(DECK_SIZE),
-            away_hand: cards_random(HAND_SIZE_INIT),
-            home_hand: cards_random(HAND_SIZE_INIT),
-            away_back: tile_random(BACK_COUNT),
-            home_back: tile_random(BACK_COUNT)
-        }
+        data: state
     })
    
     return ({

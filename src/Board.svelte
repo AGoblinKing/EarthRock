@@ -8,6 +8,7 @@ const deck = {
 	scale,
     spread: 1,
     max: 4,
+    reverse: true,
     interact: false,
 }
 

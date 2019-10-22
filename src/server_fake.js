@@ -96,7 +96,7 @@ const server_fake = (game) => {
         DRAW: () => {
             const { home_deck, home_hand } = state;
 
-            home_hand.push(home_deck.shift())
+            home_hand.push(home_deck.pop())
 
             game.do({
                 task: 'STATE',

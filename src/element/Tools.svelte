@@ -20,10 +20,6 @@ const toggle = () => {
 }
 
 
-if(!IS_DEV) {
-    toggle()
-}
-
 </script>
 
 <div class="tools">

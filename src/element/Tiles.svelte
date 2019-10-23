@@ -1,6 +1,6 @@
 <script>
 import { onMount } from 'svelte'
-import Tile from './tile_data.js'
+import Tile from '../tile_data.js'
 
 export let data = ""
 export let width = 10

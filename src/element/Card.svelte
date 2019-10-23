@@ -1,7 +1,7 @@
 <script>
 import {writable} from "svelte/store"
 import {onMount, createEventDispatcher} from "svelte"
-
+import mouse_pos from "../mouse.js"
 import Tiles from "./Tiles.svelte"
 
 const DRAG_SCALE = 0.5
@@ -36,19 +36,9 @@ export let color = 90
 export let card = {}
 export let young = true
 export let fade = false
+export let anchor = [50, 50]
 
 const lines = [effect1, effect2, effect3]
-const mouse_pos = writable([0, 0])
-const mouse_raw = [0, 0]
-
-window.addEventListener("mousemove", (e) => {
-    mouse_raw[0] = e.clientX
-    mouse_raw[1] = e.clientY
-    if(mouse_raw[0] !== $mouse_pos[0] || mouse_raw[1] !== $mouse_pos[1]) {
-        mouse_pos.set([...mouse_raw])
-    }
-})
-
 
 let flip = true
 onMount(() => {
@@ -117,14 +107,24 @@ const delay_hover = delay({
 
 let hover = false
 
-$: tru_scale = hover ? scale * 1.168 : scale
+$: tru_scale = (hover ? scale * 1.168 : scale)
 $: tru_rotation = hover ? 0 : rotation 
+$: tru_invert = invert ? -1 : 1
+$: tru_anchor = dragging ? [50, 50] : anchor
+$: tru_width = 250 * (tru_anchor[0] <= 50 ? -1 : 1)
+$: tru_height = 400 * (tru_anchor[1] <= 50 ? -1 : 1)
 
-$: style = dragging 
-    ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 - 250}px, ${$mouse_pos[1] - window.innerHeight/2 - 400}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
+$: transforms = dragging 
+    ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 + tru_width}px, ${$mouse_pos[1] - window.innerHeight/2 + tru_height}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
     : position_raw 
-        ? `transform: translate(${position_raw[0] - window.innerWidth/2 - 250}px, ${position_raw[1] - window.innerHeight/2 - 400}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
-        : `transform: translate(${-50 + position[0]}%, ${-50 + position[1] + (hover ? (invert ? 5 : -5) : 0)}%) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+        ? `transform: translate(${position_raw[0] - window.innerWidth/2 - tru_width}px, ${position_raw[1] - window.innerHeight/2 - tru_height}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+        : `transform: translate(${position[0] * 5 + tru_width}px, ${(position[1] + (hover ? tru_invert * -5 : 0)) * 8 +  tru_height}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+
+$: style = [
+    transforms,
+    (tru_anchor[0] <= 50 ?  `left: ${tru_anchor[0]}%` : `right: ${100 - tru_anchor[0]}%`),
+    (tru_anchor[1] <= 50 ?  `top: ${tru_anchor[1]}%` : `bottom: ${100 - tru_anchor[1]}%`)
+].join(';')
 
 </script>
 
@@ -140,7 +140,7 @@ $: style = dragging
         <div 
             class="back" 
             on:click="{beginInteract}"
-            style="filter: sepia(1) hue-rotate({color}deg)"
+            style="filter: sepia(1) hue-rotate({color}deg) brightness({fade ? 0.5 : 1})"
         >
             <Tiles width={3} height={5} data={back}/>
         </div>
@@ -255,8 +255,6 @@ $: style = dragging
     width: 50rem;
     height: 80rem;
     perspective: 1000px;
-    top: 50%;
-    left: 50%;
     transition: transform 0.42s cubic-bezier(0.68, -0.25, 0.265, 1.5);
 }
 .fade .front {

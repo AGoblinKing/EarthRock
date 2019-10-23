@@ -1,10 +1,10 @@
 <script>
-import Popup from "./Popup.svelte"
-import Tiles from "./Tiles.svelte"
+import {createEventDispatcher} from "svelte"
+import { fade, fly} from 'svelte/transition'
+import { linear } from 'svelte/easing'
 
-const clicked = () => {
-    alert("Woah there speedy aint got nothing more yet")
-}
+const dispatch = createEventDispatcher()
+
 </script>
 
 <style>
@@ -26,15 +26,6 @@ const clicked = () => {
     font-size: 10rem;
 }
 
-.background {
-    display: flex;
-    z-index: 0;
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    filter: sepia(1) hue-rotate(-90deg);
-    opacity: 0.05
-}
 .desc {
     text-align: center;
     font-size: 2rem;
@@ -64,19 +55,24 @@ button {
     padding: 1rem;
     cursor: pointer;
 }
+.intro {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
 
 button:hover {
     background-color: #333;
 }
 </style>
 
-<div class="background">
-    <Tiles random/>
-</div>
-
+<div class="intro" out:fly={{delay: 100, duration:1000, x: 0, y: 4000, opacity: 0, easing: linear}}>
 <h1 class="title">EarthRock</h1>
 <h2 class="desc">The Uncollectable Card Game</h2>
 
-<button on:click="{clicked}">START</button>
+<button on:click="{() => dispatch("start")}">START</button>
 
 <div class="notice">We don't use cookies or store anything about you server side.</div>
+</div>

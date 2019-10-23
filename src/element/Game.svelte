@@ -1,12 +1,14 @@
 <script>
-import game from "./game.js"
+import { fade, fly} from 'svelte/transition'
+
+import game from "../game.js"
 import Hand from "./Hand.svelte"
 
 const scale = 0.25;
 
 const deck = {
 	scale,
-    spread: 1,
+    spread: 0,
     max: 4,
     reverse: true,
     interact: false,
@@ -20,22 +22,23 @@ const discard = {
     rotation: 90,
     fade: true,
     drag: true,
-    max: 7
+    max: 10
 }
 
 game.server_fake()
 
 </script>
 
+<div class="game" out:fly={{delay: 100, duration:1000, x: 0, y: 1000, opacity: 0}}>
 <!-- Home Hands -->
 <Hand 
 	cards = {game.state.home_hand}
 	{scale} 
-	position={[0, 40]} 
+	position={[0, 0]} 
     back = {game.state.home_back}
     drag = {true}
+    anchor = {[50, 90]}
     on:dragend = {({ detail: { id } }) => {
-
         game.do_server({
             task: 'PLAY',
             data: { id }
@@ -45,8 +48,9 @@ game.server_fake()
 
 <Hand 
 	{...deck}
+    anchor = {[90, 70]}
     cards = {game.state.home_deck}
-	position={[90, 40]} 
+	position={[0, 0]} 
     back = {game.state.home_back}
     on:click = {() => {
         game.do_server({
@@ -58,7 +62,8 @@ game.server_fake()
 <Hand 
 	{...discard}
     cards = {game.state.home_discard}
-	position={[-110, 50]} 
+	position={[0, 0]} 
+    anchor ={[0, 90]}
     back = {game.state.home_back}
 />
 
@@ -67,26 +72,36 @@ game.server_fake()
 <Hand 
 	cards = {game.state.away_hand}
 	{scale}
-	position={[0, -40]} 
+	anchor={[50, 0]} 
 	interact={false}
 	color={180}
-	invert 
+    
+    invert
     back = {game.state.away_back}
 />
 
 <Hand 
-	invert 
 	{...deck}
     cards = {game.state.away_deck}
 	color={180}
-	position={[90, -40]} 
+	anchor={[90, 30]}
     back = {game.state.away_back}
 />
 
 <Hand 
 	{...discard}
     cards = {game.state.away_discard}
-	position={[-40, 40]} 
+    anchor={[0, 10]}
     back = {game.state.away_back}
-    invert
 />
+</div>
+
+<style>
+.game {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+}
+</style>

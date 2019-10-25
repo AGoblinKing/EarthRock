@@ -64,7 +64,9 @@ const server_fake = (game) => {
         away_back: tile_random(BACK_COUNT),
         home_back: tile_random(BACK_COUNT),
         home_discard: [],
-        away_discard: []
+        home_gems: 0,
+        away_discard: [],
+        away_gems: 0
     };
 
     const tasks = {

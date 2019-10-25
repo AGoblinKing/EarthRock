@@ -1,8 +1,11 @@
 <script>
+import {writable} from "svelte/store"
 import { fade, fly} from 'svelte/transition'
 
+import Spatial from "./Spatial.svelte"
 import game from "../game.js"
 import Hand from "./Hand.svelte"
+import Gems from "./Gems.svelte"
 
 const scale = 0.25;
 
@@ -13,6 +16,9 @@ const deck = {
     reverse: true,
     interact: false,
 }
+
+const play_home = writable([])
+const play_away = writable([])
 
 const discard = {
     scale,
@@ -60,6 +66,24 @@ game.server_fake()
 />
 
 <Hand 
+    cards = {play_home}
+	position={[0, 0]} 
+    anchor ={[50, 50]}
+    scale = 0.4
+    back = {game.state.home_back}
+/>
+
+<Hand 
+    cards = {play_away}
+	position={[0, 0]} 
+    anchor ={[50, 50]}
+    scale = 0.4
+    back = {game.state.away_back}
+/>
+
+
+
+<Hand 
 	{...discard}
     cards = {game.state.home_discard}
 	position={[0, 0]} 
@@ -94,6 +118,11 @@ game.server_fake()
     anchor={[0, 10]}
     back = {game.state.away_back}
 />
+
+<Spatial anchor = {[90, 90]}>
+    <Gems count = {game.state.home_gems} />
+</Spatial>
+
 </div>
 
 <style>

@@ -17,7 +17,9 @@ const game = {
         home_hand: writable([]),
         home_discard: writable([]),
         home_field: writable([]),
-        home_back: writable("")
+        home_back: writable(""),
+        home_gems: writable(0),
+        away_gems: writable(0)
     },
 
     // fake out game rules for testing

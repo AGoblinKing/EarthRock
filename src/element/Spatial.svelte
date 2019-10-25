@@ -13,7 +13,7 @@ $: offset = [
     bias[1] * .01 * area[1] / 2 * (anchor[1] <= 50 ? -1 : 1)
 ]
 
-$: transform = `transform: translate(${position[0] + offset[0]}px, ${position[1] + offset[1]}px); rotate(${rotate}deg) scale(${scale * scaling});`
+$: transform = `transform: translate(${position[0] + offset[0]}px, ${position[1] + offset[1]}px) rotate(${rotate}deg) scale(${scale * $scaling});`
 
 $: anchor = [
     (anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`),
@@ -29,7 +29,6 @@ $: style = [zIndex, anchor, transform].join(" ")
 <div class="spatial" {style}>
     <slot />
 </div>
-
 
 <style>
 .spatial {

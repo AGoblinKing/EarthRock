@@ -2,11 +2,16 @@
 import {writable} from "svelte/store"
 import { fade, fly} from 'svelte/transition'
 
+import Pattern from "./Pattern.svelte"
 import Spatial from "./Spatial.svelte"
+
 import game from "../game.js"
 import Hand from "./Hand.svelte"
-import Gems from "./Gems.svelte"
+import Gem from "./Gem.svelte"
 
+const {home_gems} = game.state
+
+$: arr_home_gems = Array.from(Array($home_gems))
 const scale = 0.25;
 
 const deck = {
@@ -36,6 +41,7 @@ game.server_fake()
 </script>
 
 <div class="game" out:fly={{delay: 100, duration:1000, x: 0, y: 1000, opacity: 0}}>
+
 <!-- Home Hands -->
 <Hand 
 	cards = {game.state.home_hand}
@@ -52,11 +58,12 @@ game.server_fake()
     }}
 />
 
+
 <Hand 
-	{...deck}
+    {...deck}
     anchor = {[90, 70]}
     cards = {game.state.home_deck}
-	position={[0, 0]} 
+    position={[0, 0]} 
     back = {game.state.home_back}
     on:click = {() => {
         game.do_server({
@@ -119,9 +126,9 @@ game.server_fake()
     back = {game.state.away_back}
 />
 
-<Spatial anchor = {[90, 90]}>
-    <Gems count = {game.state.home_gems} />
-</Spatial>
+<Pattern anchor={[90, 90]} items={arr_home_gems} >
+    <Gem />
+</Pattern>
 
 </div>
 

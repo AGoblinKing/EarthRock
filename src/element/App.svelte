@@ -1,5 +1,4 @@
 <script>
-
 import Intro from "./Intro.svelte"
 import Tools from "./Tools.svelte"
 import Game from "./Game.svelte"
@@ -8,7 +7,7 @@ import Tiles from "./Tiles.svelte"
 let playing = window.location.pathname === "/play"
 
 const start = () => {
-    playing = true 
+    playing = true
     history.pushState({page: 1}, "", "/play")
 }
 

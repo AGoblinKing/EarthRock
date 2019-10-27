@@ -41,19 +41,27 @@ const dispatch = createEventDispatcher()
 }
 
 button {
-    position: absolute;
-    border: 0.5rem solid #333;
 
+    border: 0.5rem solid #333;
     border-radius: 1rem;
     background-color: #666;
     color: white;
     text-align: center;
-    margin: 0 25%;
-    width: 50%;
-    top: 61.8%; 
+;
+
+
     font-size: 2rem;
     padding: 1rem;
     cursor: pointer;
+}
+
+.menu {
+    position: absolute;
+    top: 61.8%; 
+    width: 50%;
+    margin: 0 25%;
+    display: flex;
+    flex-direction: column;
 }
 .intro {
     width: 100%;
@@ -72,7 +80,10 @@ button:hover {
 <h1 class="title">EarthRock</h1>
 <h2 class="desc">The Uncollectable Card Game</h2>
 
-<button on:click="{() => dispatch("start")}">START</button>
-
+<div class="menu">
+    <button on:click="{() => dispatch("start")}">START</button>
+    <button on:click="{() => dispatch("design")}">DESIGN</button>
+    <button on:click="{() => window.open("https://discord.gg/HnvRaKS", "_blank")}">DISCORD</button>
+</div>
 <div class="notice">We don't use cookies or store anything about you server side.</div>
 </div>

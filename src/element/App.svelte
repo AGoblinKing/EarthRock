@@ -3,9 +3,16 @@ import Intro from "./Intro.svelte"
 import Tools from "./Tools.svelte"
 import Game from "./Game.svelte"
 import Tiles from "./Tiles.svelte"
+import Design from "./Design.svelte"
+
 
 let playing = window.location.pathname === "/play"
+let designing = window.location.pathname === "/design"
 
+const design = () => {
+    designing = true
+    history.pushState({page: 1}, "", "/design")
+}
 const start = () => {
     playing = true
     history.pushState({page: 1}, "", "/play")
@@ -13,6 +20,7 @@ const start = () => {
 
 const end = () => {
     playing = false 
+    designing = false
     history.pushState({page: 1}, "", "/")
 }
 
@@ -20,11 +28,13 @@ const end = () => {
 
 {#if playing}
     <Game on:end={end}/>
-{:else} 
-    <Intro on:start={start}/>
+{:else if designing}
+    <Design on:end={end}/>
+{:else}
+    <Intro on:start={start} on:design={design}/>
 {/if}
 
-<Tools on:end={end} {playing}/>
+<Tools on:end={end} {playing} {designing}/>
 
 <div class="background">
     <Tiles random/>

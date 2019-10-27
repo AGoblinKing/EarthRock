@@ -1,5 +1,7 @@
 const TILE_MAX = 1024
 const NAME_MAX = 5
+const TOKEN_MAX = 7
+const HEART_MAX = 6
 const COST_MAX = 10
 const EFFECT_MAX = 3
 const DECK_SIZE = 30
@@ -13,6 +15,12 @@ const BACK_COUNT = 3 * 5
 const uuidv4 = () => `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g, (c) => {
   var r = Math.random() * 16 | 0; var v = c === `x` ? r : (r & 0x3 | 0x8)
   return v.toString(16)
+})
+
+const token_random = (overides) => ({
+    id: uuidv4(),
+    data: tile_random(IMAGE_COUNT),
+    ...overides
 })
 
 const tile_random = (count) => {
@@ -63,9 +71,22 @@ const server_fake = (game) => {
     home_back: tile_random(BACK_COUNT),
     home_discard: [],
     home_gems: Math.floor(Math.random() * 10),
+    home_hearts: Math.floor(Math.random() * 6),
+    away_hearts: Math.floor(Math.random() * 6),
     away_discard: [],
-    away_gems: Math.floor(Math.random() * 10)
+    away_gems: Math.floor(Math.random() * 10),
+    away_tokens: [token_random({
+        king: true, 
+    })]
   }
+
+    state.home_tokens = [
+        token_random({
+            king: true,
+            data: state.home_back,
+            color: 90
+        })
+    ]
 
   const tasks = {
     PLAY: ({

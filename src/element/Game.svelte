@@ -1,17 +1,27 @@
 <script>
 import {writable} from "svelte/store"
 import { fade, fly} from 'svelte/transition'
-
-import Pattern from "./Pattern.svelte"
+import scaling from "../scaling.js"
+import tick from "../tick.js"
 import Spatial from "./Spatial.svelte"
-
 import game from "../game.js"
 import Hand from "./Hand.svelte"
 import Gem from "./Gem.svelte"
+import Heart from "./Heart.svelte"
+import Token from "./Token.svelte"
+import {Grid, Circle} from "../curves.js"
 
-const {home_gems} = game.state
+const {home_gems, home_hearts, home_tokens} = game.state
 
-$: arr_home_gems = Array.from(Array($home_gems))
+$: arr_home_gems = Array.from(Array(9)).map((_,i) => ({
+    empty: i < $home_gems
+}))
+
+$: arr_home_hearts = Array.from(Array(6)).map((_,i) => ({
+    empty: i < $home_hearts
+}))
+
+
 const scale = 0.25;
 
 const deck = {
@@ -21,7 +31,14 @@ const deck = {
     reverse: true,
     interact: false,
 }
-
+const circle = Circle({
+    max: 32, 
+    radius: 75
+})
+const circle_heart = Circle({
+    max: 6, 
+    radius: 15
+})
 const play_home = writable([])
 const play_away = writable([])
 
@@ -126,10 +143,55 @@ game.server_fake()
     back = {game.state.away_back}
 />
 
-<Pattern anchor={[90, 90]} items={arr_home_gems} >
-    <Gem />
-</Pattern>
+<!-- Gem Dragon -->
+{#each arr_home_gems as item, i }
+<Spatial 
+    anchor={[50, 70]}
+    bias={[50, 100]} 
+    position={circle({i: i + $tick * 0.368, scale: $scaling})}
+    scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
+    rotate={90 + Math.abs(Math.sin(i - $tick * 0.05)) * 45 }
+>   
+    <Gem {...item} i={(i % 8 === 0 ? 0 : i + $tick * 0.25)  } />
+</Spatial>
+{/each}
 
+<!-- Heart dragon -->
+{#each arr_home_hearts as item, i }
+<Spatial 
+    anchor={[50, 70]}
+    bias={[50, 50]} 
+    zIndex={-20}
+    position={ circle_heart({i: i + $tick * 0.168, scale: $scaling})}
+    scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
+>   
+    <Heart {...item} {i}  />
+</Spatial>
+{/each}
+
+{#each $home_tokens as item, i }
+
+<Spatial 
+    anchor={[50, 70]}
+    bias={[50, 50]} 
+    zIndex={-1000}
+    area={[-30, -40]}
+    position={[0, 25]}
+    scale={3 + Math.sin(i - $tick * 0.168) * 0.1 }
+>   
+    <Token {...item} {i}  />
+</Spatial>
+{/each}
+<!-- 
+<Pattern 
+    anchor={[50, 60]}
+    bias={[50, 50]}
+    items={arr_home_tokens}
+    vertex={Grid({
+        columns: 7
+    })}
+>
+</Pattern> -->
 </div>
 
 <style>

@@ -5,16 +5,16 @@ export let empty = false
 export let i = 0
 
 $: is_first = i % 9 !== 0 
-$: bright_default = empty ? 0.25 : 0.75
-$: hue = `${empty ? -90 : 90}deg`
+$: bright_default = empty ? 0 : 0.9
+$: hue = `230deg`
 </script>
 
-<div class="gem" class:empty style="{`filter: sepia(0.5) hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168});`}">
-    <Tiles data="{(is_first ? 180 :68).toString()}" width={1} height={1}/>
+<div class="heart" class:empty style="{`filter:sepia(1) hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168});`}">
+    <Tiles data="88" width={1} height={1}/>
 </div>
 
 <style>
-.gem {
+.heart {
     border-radius: 3rem;
     display: flex;
     width: 3rem;
@@ -23,8 +23,11 @@ $: hue = `${empty ? -90 : 90}deg`
     transition: all 1s cubic-bezier(0.075, 0.82, 0.165, 1)
 }
 
+.heart.empty {
+    opacity: 0;
+}
 
-.gem:hover  {
+.heart:hover  {
     filter: hue-rotate(0deg) !important;
 }
 </style>

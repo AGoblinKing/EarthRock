@@ -3,6 +3,8 @@ import { createEventDispatcher } from "svelte"
 import {IS_DEV} from "../flags.js"
 
 export let playing = false
+export let designing = false
+
 const dispatch = createEventDispatcher()
 const audio = new Audio("/music/earthrock-final-theme.mp3")
 audio.loop = true
@@ -26,7 +28,7 @@ const toggle = () => {
     <div on:click={toggle}>
         {audo_playing ? '<>' : '>'}
     </div>
-    {#if playing}
+    {#if playing || designing}
         <div on:click={() => dispatch("end")}>
             X
         </div>

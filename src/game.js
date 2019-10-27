@@ -19,7 +19,11 @@ const game = {
         home_field: writable([]),
         home_back: writable(""),
         home_gems: writable(0),
-        away_gems: writable(0)
+        away_gems: writable(0),
+        home_hearts: writable(0),
+        away_hearts: writable(0),
+        home_tokens: writable([]),
+        away_tokens:writable([])
     },
 
     // fake out game rules for testing

@@ -38,5 +38,7 @@ $: style = [tru_zIndex, anchor, transform].join(" ")
     position: absolute;
     perspective: 1000px;
     transition: transform 0.1s linear;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 </style>

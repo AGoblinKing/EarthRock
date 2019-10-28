@@ -35,10 +35,24 @@ const circle = Circle({
     max: 32, 
     radius: 75
 })
-const circle_heart = Circle({
-    max: 6, 
-    radius: 15
+let gem_clutch = false
+const circle_clutch = Circle({
+    max: 9,
+    radius: 75
 })
+
+const circle_heart = Circle({
+    max: 60, 
+    radius: 20
+})
+
+let heart_clutch = false
+const circle_heart_clutch = Circle({
+    max: 6, 
+    radius: 30,
+    wobble: [5, 5]
+})
+
 const play_home = writable([])
 const play_away = writable([])
 
@@ -143,34 +157,46 @@ game.server_fake()
     back = {game.state.away_back}
 />
 
+<div on:click={() => gem_clutch = !gem_clutch }>
 <!-- Gem Dragon -->
 {#each arr_home_gems as item, i }
 <Spatial 
     anchor={[50, 70]}
     bias={[50, 100]} 
-    position={circle({i: i + $tick * 0.368, scale: $scaling})}
+    position={
+        gem_clutch
+        ?  circle_clutch({i, scale: $scaling })
+        :  circle({i: i + $tick * 0.368, scale: $scaling})
+    }
+    area={[-150, 25]}
     scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
     rotate={90 + Math.abs(Math.sin(i - $tick * 0.05)) * 45 }
 >   
     <Gem {...item} i={(i % 8 === 0 ? 0 : i + $tick * 0.25)  } />
 </Spatial>
 {/each}
+</div>
 
+<div on:click={() => heart_clutch = !heart_clutch }>
 <!-- Heart dragon -->
 {#each arr_home_hearts as item, i }
 <Spatial 
     anchor={[50, 70]}
     bias={[50, 50]} 
     zIndex={-20}
-    position={ circle_heart({i: i + $tick * 0.168, scale: $scaling})}
+    position={ 
+        heart_clutch 
+        ? circle_heart_clutch({ i, scale: $scaling})
+        : circle_heart({i: i * 10 + $tick * 0.168 , scale: $scaling})
+    }
     scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
+    area={[-50, 25]}
 >   
     <Heart {...item} {i}  />
 </Spatial>
 {/each}
-
+</div>
 {#each $home_tokens as item, i }
-
 <Spatial 
     anchor={[50, 70]}
     bias={[50, 50]} 

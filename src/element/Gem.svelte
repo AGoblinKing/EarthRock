@@ -1,30 +1,37 @@
 <script>
 import Tiles from "./Tiles.svelte"
+import tick from "../tick.js"
 
 export let empty = false
 export let i = 0
 
+let hover = false
+
 $: is_first = i % 9 !== 0 
 $: bright_default = empty ? 0.25 : 0.75
 $: hue = `${empty ? -90 : 90}deg`
+
+
 </script>
 
-<div class="gem" class:empty style="{`filter: sepia(0.5) hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168});`}">
+<div class="gem" class:hover class:empty style="{`filter:hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168}) drop-shadow(0.5vh -0.5vw 0 rgba(0,0,0,0.25));`}">
     <Tiles data="{(is_first ? 180 :68).toString()}" width={1} height={1}/>
 </div>
 
 <style>
 .gem {
-    border-radius: 3rem;
+    border-radius: 2rem;
     display: flex;
     width: 3rem;
+    border: 0.1rem inset black;
+    background-color: black;
     height: 3rem;
     overflow:hidden;
-    transition: all 1s cubic-bezier(0.075, 0.82, 0.165, 1)
+    transition: all 1s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
 
-.gem:hover  {
+.gem.hover  {
     filter: hue-rotate(0deg) !important;
 }
 </style>

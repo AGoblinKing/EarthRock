@@ -23,7 +23,7 @@ export let effect3 = ""
 export let back = ""
 
 // Card Display Attributes
-export let borders = true
+export let borders = false
 export let vitals = [1, 1]
 export let invert = false
 export let interact = true
@@ -115,10 +115,10 @@ $: tru_width = 250 * (tru_anchor[0] <= 50 ? -1 : 1)
 $: tru_height = 400 * (tru_anchor[1] <= 50 ? -1 : 1)
 
 $: transforms = dragging 
-    ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 + tru_width}px, ${$mouse_pos[1] - window.innerHeight/2 + tru_height}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 100`
+    ? `transform: translate(${$mouse_pos[0] - window.innerWidth/2 + tru_width}px, ${$mouse_pos[1] - window.innerHeight/2 + tru_height}px) rotate(0deg) scale(${DRAG_SCALE});z-index: 1000`
     : position_raw 
         ? `transform: translate(${position_raw[0] - window.innerWidth/2 - tru_width}px, ${position_raw[1] - window.innerHeight/2 - tru_height}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
-        : `transform: translate(${position[0] * 5 + tru_width}px, ${(position[1] + (hover ? tru_invert * -5 : 0)) * 8 +  tru_height}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100)}`
+        : `transform: translate(${position[0] * 5 + tru_width}px, ${(position[1] + (hover ? tru_invert * -5 : 0)) * 8 +  tru_height}px) rotate(${tru_rotation}deg) scale(${tru_scale}) ; z-index: ${Math.round(tru_scale * 100) + 100}`
 
 $: style = [
     transforms,
@@ -236,6 +236,9 @@ $: style = [
     flex-direction: column;
 }
 
+.back, .front {
+    background-color: black;
+}
 .flex {
     flex: 1;
 }
@@ -256,6 +259,7 @@ $: style = [
     height: 80rem;
     perspective: 1000px;
     transition: transform 0.42s cubic-bezier(0.68, -0.25, 0.265, 1.5);
+    filter: drop-shadow(5rem 5rem 0 rgba(0,0,0,0.25));
 }
 .fade .front {
     filter: sepia(0.5) brightness(0.5);

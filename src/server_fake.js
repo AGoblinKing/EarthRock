@@ -84,7 +84,11 @@ const server_fake = (game) => {
         token_random({
             king: true,
             data: state.home_back,
-            color: 90
+            color: 90,
+            stats: {
+              gems: state.home_gems,
+              hearts: state.home_hearts,
+            }
         })
     ]
 

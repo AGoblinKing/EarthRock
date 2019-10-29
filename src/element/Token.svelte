@@ -6,6 +6,8 @@ export let king = false
 export let data = ""
 export let color = 0
 export let stats = {}
+export let id 
+export let i 
 
 let hover = false
 
@@ -36,13 +38,17 @@ $: stats_arr = Object.entries(stats)
     {/each}
 </div>
 
-
 <div class="token" class:king {style}>
     <Tile width={grid[0]} height={grid[1]} {data} />
 </div>
-<div class="bg">
-<Tile width={grid[1]} height={grid[0]} {data} />
-</div>
+{#if king}
+    <div class="hat" {style}>
+        <Tile width={grid[0]} height={grid[1] - 2} {data} />
+    </div>
+    <div class="bg">
+        <Tile width={grid[1]} height={grid[0]} {data} />
+    </div>
+{/if}
 
 <style>
 .token {
@@ -65,22 +71,37 @@ $: stats_arr = Object.entries(stats)
     width: 5rem;
     height: 3rem;
     background-color: black;
-    filter:grayscale(1) brightness(0.25);
+    filter: sepia(1) contrast(0.5) hue-rotate(-45deg) brightness(0.4);
     border: 0.1rem solid black;
     overflow: hidden;
     border-radius: 0.5rem;
 }
 .token.king {
-    width: 2.5rem; 
-
-    height: 4rem;
+    width: 2rem; 
+    height: 3rem;
+    margin-left: 0.25rem;
     border-radius: 0.5rem 0.5rem 0 0;
+    filter: sepia(1) contrast(1.5) hue-rotate(-45deg) !important;
 }
 
+.hat {
+    position: absolute;
+    display: flex;
+    z-index: 2;
+    margin-top: -5rem;
+    filter: sepia(1);
+    border: 0.1rem solid black;
+    height: 2.5rem;
+    width: 3rem;
+    border-radius: 0.25rem;
+    margin-left: -0.25rem;
+    background-color: black;
+    overflow: hidden;
+}
 .text {
     z-index:1;
     position: absolute;
-    margin-top: 5rem;
+    margin-top: 4rem;
     font-size: 1rem;
     display: grid;
     width: 4rem;

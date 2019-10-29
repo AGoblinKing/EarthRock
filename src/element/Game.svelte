@@ -34,17 +34,21 @@ const deck = {
 }
 const circle = Circle({
     max: 32, 
-    radius: 75
+    radius: 50,
+    wobble: [1, 15]
 })
+
 let gem_clutch = false
 const circle_clutch = Circle({
     max: 9,
-    radius: 75
+    radius: 50,
+    wobble: [0, 0]
 })
 
 const circle_heart = Circle({
     max: 60, 
     radius: 20
+
 })
 
 let heart_clutch = false
@@ -169,11 +173,11 @@ game.server_fake()
     position={
         gem_clutch
         ?  circle_clutch({i: i, scale: $scaling })
-        :  circle({i: i + $tick * 0.368, scale: $scaling})
+        :  circle({i: i + $tick * 0.2, scale: $scaling})
     }
-    area={[-150, 25]}
+    area={[-125, -200]}
     scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
-    rotate={90 + Math.abs(Math.sin(i - $tick * 0.05)) * 45 }
+    rotate={90 + Math.abs(Math.sin(i - $tick * 0.01)) * 45 }
 >   
     <Gem {...item} i={(i % 8 === 0 ? 0 : i + $tick * 0.25)  } />
 </Spatial>
@@ -190,10 +194,10 @@ game.server_fake()
     position={ 
         heart_clutch 
         ? circle_heart_clutch({ i, scale: $scaling})
-        : circle_heart({i: i * 10 + $tick * 0.168 , scale: $scaling})
+        : circle_heart({i: i * 10 + $tick * 0.05 , scale: $scaling})
     }
     scale={1 + Math.sin(i - $tick * 0.5) * 0.1 }
-    area={[-50, 25]}
+    area={[-50, 150]}
 >   
     <Heart {...item} {i}  />
 </Spatial>

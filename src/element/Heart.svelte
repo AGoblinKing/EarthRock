@@ -7,7 +7,7 @@ export let i = 0
 
 $: is_first = i % 9 !== 0 
 $: bright_default = empty ? 0 : 0.9
-$: hue = `230deg`
+$: hue = `90deg`
 
 let playing = false
 const onMouseOver = () => {
@@ -22,7 +22,7 @@ const onMouseOver = () => {
 }
 </script>
 
-<div class="heart" class:empty on:mouseenter={onMouseOver} style="{`filter:sepia(1) hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168}) drop-shadow(0.5vh 0.5vw 0 rgba(0,0,0,0.25));`}">
+<div class="heart" class:empty on:mouseenter={onMouseOver} style="{`filter:contrast(1.5) hue-rotate(${hue}) drop-shadow(0.5vh 0.5vw 0 rgba(0,0,0,0.25));`}">
     <Tiles data="88" width={1} height={1}/>
 </div>
 
@@ -30,8 +30,8 @@ const onMouseOver = () => {
 .heart {
     border-radius: 0.5rem;
     display: flex;
-    width: 3rem;
-    height: 3rem;
+    width: 2rem;
+    height: 2rem;
     overflow:hidden;
     border: 0.1rem inset black;
     background-color: black;

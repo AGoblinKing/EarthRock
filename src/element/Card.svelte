@@ -3,6 +3,7 @@ import {writable} from "svelte/store"
 import {onMount, createEventDispatcher} from "svelte"
 import mouse_pos from "../mouse.js"
 import Tiles from "./Tiles.svelte"
+import {card as card_sound, wind_off, wind_on} from "../sounds.js"
 
 const DRAG_SCALE = 0.5
 const DRAG_TIME = 0.05
@@ -87,10 +88,12 @@ const beginInteract = () => {
 
     if(drag) {
         dragging = true
+        wind_on()
         const id = window.addEventListener("mouseup", () => {
             dispatch('dragend', card)
             dragging = false
             window.removeEventListener("mouseup", id)
+            wind_off()
         })
     }
 
@@ -101,9 +104,14 @@ const delay_hover = delay({
     time: 100,
     on: () => {
         hover = true
+        card_sound()
     },
     off: () => hover = false
 })
+
+const onMouseEnter = () => {
+    delay_hover.on()
+}
 
 let hover = false
 
@@ -128,7 +136,7 @@ $: style = [
 
 </script>
 
-<div {style} class:fade class:dragging on:mouseenter={delay_hover.on} on:mouseleave={delay_hover.off} class="card">
+<div {style} class:fade class:dragging on:mouseenter={onMouseEnter} on:mouseleave={delay_hover.off} class="card">
     <div class:flip class="contents">
         {#if borders}
         <div class="border border-top" />

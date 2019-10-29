@@ -7,6 +7,20 @@ export let data = ""
 export let color = 0
 export let stats = {}
 
+let hover = false
+
+const mouseOver = () => {
+    if(hover) {
+        return
+    }
+    
+    hover = true
+
+    setTimeout(() => {
+        hover = false
+    }, 250)
+}
+
 $: grid = king ? [3, 5] : [5, 5]
 
 $: style = `filter:sepia(1) hue-rotate(${color}deg) drop-shadow(0px 0px 1rem rgba(0, 255, 0, 0.2));`

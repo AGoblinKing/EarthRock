@@ -1,6 +1,7 @@
 <script>
 import { createEventDispatcher } from "svelte"
 import {IS_DEV} from "../flags.js"
+import {button_press, button} from "../sounds.js"
 
 export let playing = false
 export let designing = false
@@ -21,7 +22,10 @@ const toggle = () => {
     audo_playing = !audo_playing
 }
 
-
+const end = () => {
+    dispatch("end")
+    button_press()
+}
 </script>
 
 <div class="tools">
@@ -29,7 +33,7 @@ const toggle = () => {
         {audo_playing ? '<>' : '>'}
     </div>
     {#if playing || designing}
-        <div on:click={() => dispatch("end")}>
+        <div on:click={end} on:mouseenter={button}>
             X
         </div>
     {/if}

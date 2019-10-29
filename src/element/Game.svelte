@@ -10,6 +10,7 @@ import Gem from "./Gem.svelte"
 import Heart from "./Heart.svelte"
 import Token from "./Token.svelte"
 import {Grid, Circle} from "../curves.js"
+import {card as sound_card} from "../sounds.js"
 
 const {home_gems, home_hearts, home_tokens} = game.state
 
@@ -97,6 +98,7 @@ game.server_fake()
     position={[0, 0]} 
     back = {game.state.home_back}
     on:click = {() => {
+        sound_card()
         game.do_server({
             task: 'DRAW'
         })
@@ -158,6 +160,7 @@ game.server_fake()
 />
 
 <div on:click={() => gem_clutch = !gem_clutch }>
+
 <!-- Gem Dragon -->
 {#each arr_home_gems as item, i }
 <Spatial 
@@ -165,7 +168,7 @@ game.server_fake()
     bias={[50, 100]} 
     position={
         gem_clutch
-        ?  circle_clutch({i, scale: $scaling })
+        ?  circle_clutch({i: i, scale: $scaling })
         :  circle({i: i + $tick * 0.368, scale: $scaling})
     }
     area={[-150, 25]}

@@ -18,7 +18,8 @@
     "rollup-plugin-replace-html-vars": "^1.0.3",
     "rollup-plugin-svelte": "^5.0.3",
     "rollup-plugin-terser": "^4.0.4",
-    "svelte": "^3.0.0"
+    "svelte": "^3.0.0",
+    "tone": "^13.8.25"
   },
   "dependencies": {
     "aframe-watcher": "^1.4.0",

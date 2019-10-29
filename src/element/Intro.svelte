@@ -2,10 +2,57 @@
 import {createEventDispatcher} from "svelte"
 import { fade, fly} from 'svelte/transition'
 import { linear } from 'svelte/easing'
+import { button, button_press } from "../sounds.js"
 
 const dispatch = createEventDispatcher()
 
+const mouseOver = () => {
+    button()
+}
+
+const click = () => {
+    button_press()
+}
+
+const start = () => {
+    dispatch("start")
+    click()
+}
+
+const design = () => {
+    dispatch("design")
+    click()
+}
+
+const discord = () => {
+    window.open("https://discord.gg/HnvRaKS", "_blank")
+    click()
+}
+
 </script>
+
+<div class="intro" out:fly={{delay: 100, duration:1000, x: 0, y: 4000, opacity: 0, easing: linear}}>
+<h1 class="title">EarthRock</h1>
+<h2 class="desc">The Uncollectable Card Game</h2>
+
+<div class="menu">
+    <button 
+        on:mouseenter={mouseOver} 
+        on:click="{start}"
+    >START</button>
+    
+    <button  
+        on:mouseenter={mouseOver} 
+        on:click="{design}"
+    >DESIGN</button>
+
+    <button 
+        on:mouseenter={mouseOver} 
+        on:click="{discord}"
+    >DISCORD</button>
+</div>
+<div class="notice">We don't use cookies or store anything about you server side.</div>
+</div>
 
 <style>
 .notice {
@@ -72,15 +119,3 @@ button:hover {
     background-color: #333;
 }
 </style>
-
-<div class="intro" out:fly={{delay: 100, duration:1000, x: 0, y: 4000, opacity: 0, easing: linear}}>
-<h1 class="title">EarthRock</h1>
-<h2 class="desc">The Uncollectable Card Game</h2>
-
-<div class="menu">
-    <button on:click="{() => dispatch("start")}">START</button>
-    <button on:click="{() => dispatch("design")}">DESIGN</button>
-    <button on:click="{() => window.open("https://discord.gg/HnvRaKS", "_blank")}">DISCORD</button>
-</div>
-<div class="notice">We don't use cookies or store anything about you server side.</div>
-</div>

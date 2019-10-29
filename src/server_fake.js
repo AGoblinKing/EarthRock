@@ -80,17 +80,17 @@ const server_fake = (game) => {
     })]
   }
 
-    state.home_tokens = [
-        token_random({
-            king: true,
-            data: state.home_back,
-            color: 90,
-            stats: {
-              gems: state.home_gems,
-              hearts: state.home_hearts,
-            }
-        })
-    ]
+  state.home_tokens = [
+    token_random({
+      king: true,
+      data: state.home_back,
+      color: 90,
+      stats: {
+        gems: state.home_gems,
+        hearts: state.home_hearts,
+      }
+    })
+  ]
 
   const tasks = {
     PLAY: ({

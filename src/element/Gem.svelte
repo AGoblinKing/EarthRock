@@ -1,4 +1,5 @@
 <script>
+import {test} from "../sounds.js"
 import Tiles from "./Tiles.svelte"
 import tick from "../tick.js"
 
@@ -11,10 +12,22 @@ $: is_first = i % 9 !== 0
 $: bright_default = empty ? 0.25 : 0.75
 $: hue = `${empty ? -90 : 90}deg`
 
+const mouseOver = () => {
+    if(hover) {
+        return
+    }
+    
+    test()
+    hover = true
+
+    setTimeout(() => {
+        hover = false
+    }, 250)
+}
 
 </script>
 
-<div class="gem" class:hover class:empty style="{`filter:hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168}) drop-shadow(0.5vh -0.5vw 0 rgba(0,0,0,0.25));`}">
+<div class="gem" class:hover on:mouseover={mouseOver} class:empty style="{`filter:hue-rotate(${hue}) brightness(${bright_default + Math.sin(i) * 0.168}) drop-shadow(0.5vh -0.5vw 0 rgba(0,0,0,0.25));`}">
     <Tiles data="{(is_first ? 180 :68).toString()}" width={1} height={1}/>
 </div>
 
@@ -33,5 +46,6 @@ $: hue = `${empty ? -90 : 90}deg`
 
 .gem.hover  {
     filter: hue-rotate(0deg) !important;
+
 }
 </style>

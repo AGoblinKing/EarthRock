@@ -1,27 +1,25 @@
 <script>
 import { get } from "svelte/store"
 
-import Weave from "../../weave/type/weave.js"
+import Weave from "../../weave/weave.js"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
-import Node from "./Node.svelte"
+import Hole from "./Hole.svelte"
 
 import stitch from "./Stitch.svelte"
-import value from "./Value.svelte"
-import name from "./Name.svelte"
+import view from "./View.svelte"
 
 const weave = Weave()
-const nodes = $weave.nodes
-
-const node_types = { stitch, value, name }
+const holes = weave.holes
+const holes_types = { stitch, view }
 
 const get_type = (node) => {
-  const split = get(node).type.split(` `)
+  const split = node.type.slice(1).split(` `)
 
   let type
 
   while ((type = split.pop())) {
-    if (node_types[type]) return node_types[type]
+    if (holes_types[type]) return holes_types[type]
   }
 
   return false
@@ -31,12 +29,11 @@ const get_type = (node) => {
 <Picker {weave} />
 <Threads {weave} />
 
-{#each Object.entries($nodes) as [_, node]} 
-  <Node 
-    {node}
+{#each Object.entries($holes) as [id, hole]} 
+  <Hole 
+    {hole}
     position={[window.innerWidth / 2, window.innerHeight / 2]}
-    has_name={get(node).type !== ` name`}
   >
-    <svelte:component this={get_type(node)} {node} /> 
-  </Node>
+    <svelte:component this={get_type(hole)} {hole} /> 
+  </Hole>
 {/each}

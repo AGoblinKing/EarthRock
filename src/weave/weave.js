@@ -1,29 +1,42 @@
 import { writable, get, readable } from "svelte/store"
 
-import Stitch from "../type/stitch.js"
-import Node from "../type/node.js"
+import * as Types from "./types.js"
+import Hole from "./type/hole.js"
 import { random } from "/util/text.js"
 
 export default ({
   // just some default nodes for start
-  nodes = {
+  holes = {
     // guarantees the key and id will be the same
-    example: Stitch({
-      id: `example`,
-      chan: {
-        [random(1)]: false,
-        [random(1)]: false
+    example: {
+      name: `example`,
+      type: ` stitch`,
+      value: {
+        [random(1)]: random(2),
+        [random(1)]: random(2)
       }
-    })
+    }
   },
   type = ``,
   threads = {},
+  name = `\\/\\/eave ${random(2)}`,
   ...junk
 } = false) => {
   let threads_set
-  const w = Node({
+
+  const w = Hole({
     ...junk,
-    nodes: writable(nodes),
+    name,
+    holes: writable(Object
+      .entries(holes)
+      .reduce((res, [hole_name, val]) => {
+        const type = val.type.slice(1).split(` `).pop()
+
+        if (!Types[type]) return console.error(`!UnKoWn TyPe> ${type} - ${name}|${name}`)
+        res[hole_name] = Types[type](val)
+        return res
+      }, {})
+    ),
     type: `${type} weave`,
     threads: readable(threads, set => {
       threads_set = set
@@ -33,9 +46,7 @@ export default ({
     take_thread: writable()
   })
 
-  const weave = get(w)
-
-  weave.give_thread.subscribe((match) => {
+  w.give_thread.subscribe((match) => {
     if (!match) return
 
     const [x, y] = match
@@ -47,7 +58,7 @@ export default ({
     // red to blue not samies
     if (!is_name && x.slice(-1) === y.slice(-1)) return
     if (is_name && x[0] === `/` && y[0] === `/`) return
-    const threads = get(weave.threads)
+    const threads = get(w.threads)
 
     // clean up
     if (threads[x]) {

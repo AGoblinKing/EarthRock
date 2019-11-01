@@ -17,7 +17,7 @@ const get_color = (id) => {
       : `url(#${loc.x < $position[0] ? `linear` : `linear-other`})`
 }
 
-$: threads = $Tick ? $weave.threads : $weave.threads
+$: threads = $Tick ? weave.threads : weave.threads
 $: rects = Object.entries($threads)
   .map(
     ([x, y]) =>
@@ -80,8 +80,9 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
 <style>
 .line {
   stroke-width: 4;
-  stroke-linecap:round;
+
   transition: all 250ms linear;
+  stroke-dasharray: 0.1rem;
 }
 
 .threads {

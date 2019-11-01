@@ -1,36 +1,16 @@
 <script>
+import color from "/action/color.js"
 import Spatial from "../Spatial.svelte"
 import { position as Mouse } from "/channel/mouse.js"
 import { zoom } from "/channel/zoom.js"
+import { add } from "/util/vector.js"
 import Scaling from "/channel/scaling.js"
-import { readable } from "svelte/store"
-import Port from './Port.svelte'
 
 export let position = [0, 0]
 export let has_name = true
-export let node = readable()
+export let hole
 
-const multiply = (...arrs) => arrs.reduce((result, arr) => {
-  arr.forEach((val, i) => {
-    if (i > result.length - 1) {
-      result.push(val)
-    }
-
-    result[i] *= val
-  })
-  return result
-}, [])
-
-const add = (...arrs) => arrs.reduce((result, arr) => {
-  arr.forEach((val, i) => {
-    if (i > result.length - 1) {
-      result.push(val)
-    }
-
-    result[i] += val
-  })
-  return result
-}, [])
+$: name = hole.name
 
 let dragging = false
 
@@ -60,38 +40,48 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
   scale = {tru_scale}
 >
   {#if has_name}
-    <div class="port">
-      <Port name address={$node.id} />
+    <div class="nameit" on:mousedown={drag} >
+      <div use:color={$name}>
+        <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
+      </div>
     </div>
   {/if}
 
-  <div class="node" on:mousedown={drag}>
+  <div class="hole" on:mousedown={drag}>
     <slot />
   </div>
 </Spatial>
 
 <style>
-.node {
-  color: white;
+.hole {
   display: flex;
   flex-direction: column;
   background-color: #222;
-  border: 0.5rem inset black;
+  border: 0.5rem solid black;
   z-index: 1;
   border-radius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
 }
 
-.port {
-  position: relative;
-  border-radius: 1rem 1rem 0 0;
+.nameit {
   align-self: center;
-  justify-self: center;
-  padding: 0.5rem 1rem;
   background-color: #222;
-  border: 0.5rem inset black;
+  border: 0.5rem solid black;
   border-bottom: none;
-  margin-bottom: -1px;
-  z-index: 2;
+  
+  margin: 0 2rem;
+  margin-bottom: -0.5rem;
+
+  overflow: hidden;
+  filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
+}
+
+.edit {
+  text-align: center;
+  padding: 1rem;
+}
+
+.edit:hover {
+  background-color: green;
 }
 </style>

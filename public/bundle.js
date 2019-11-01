@@ -142,9 +142,6 @@ var app = (function () {
         if (text.data !== data)
             text.data = data;
     }
-    function set_style(node, key, value) {
-        node.style.setProperty(key, value);
-    }
     function toggle_class(element, name, toggle) {
         element.classList[toggle ? 'add' : 'remove'](name);
     }
@@ -1761,32 +1758,6 @@ var app = (function () {
     	}
     }
 
-    const str_color = (str) => {
-      let hash = 0;
-      for (var i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      var color = `#`;
-      for (var i = 0; i < 3; i++) {
-        var value = (hash >> (i * 8)) & 0xFF;
-        color += (`00` + value.toString(16)).substr(-2);
-      }
-      return color
-    };
-
-    const color = str_color;
-
-    const words = [
-      `groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
-      `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`
-    ];
-
-    const random = (count) => Array
-      .from(new Array(count))
-      .map(() => Math.floor(Math.random() * words.length))
-      .map((i) => words[i])
-      .join(` `);
-
     var rngBrowser = createCommonjsModule(function (module) {
     // Unique ID creation requires a high quality random # generator.  In the
     // browser this is a little complicated due to unknown quality of Math.random()
@@ -1876,47 +1847,129 @@ var app = (function () {
 
     var v4_1 = v4;
 
-    var node = ({
+    const str_color = (str) => {
+      let hash = 0;
+      for (var i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      var color = `#`;
+      for (var i = 0; i < 3; i++) {
+        var value = (hash >> (i * 8)) & 0xFF;
+        color += (`00` + value.toString(16)).substr(-2);
+      }
+      return color
+    };
+
+    const color = str_color;
+
+    const words = [
+      `groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
+      `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`
+    ];
+
+    const random = (count) => Array
+      .from(new Array(count))
+      .map(() => Math.floor(Math.random() * words.length))
+      .map((i) => words[i])
+      .join(` `);
+
+    var Hole = ({
       id = `/${v4_1()}`,
+      value = random(2),
+      value_overwrite = false,
+      type = ` `,
+      name = random(2),
       ...junk
-    } = false) => writable({
+    } = false) => ({
       ...junk,
-      id: id[0] === `/` ? id : `/${id}`
+      id: id[0] === `/` ? id : `/${id}`,
+      name: writable(name),
+      type,
+      value: value_overwrite ? value : writable(value)
     });
 
-    var Stitch = ({
-      chan = {
-        [random(1)]: ``,
-        [random(1)]: ``
+    var stitch = ({
+      value = {
+        [random(2)]: `"${random(2)}"`
       },
       type = ``,
       ...junk
-    } = false) => node({
+    } = false) => Hole({
       ...junk,
-      chan: writable(chan),
-      type: `${type} stitch`
+      type: `${type} stitch`,
+      value: Object
+        .entries(value)
+        .reduce((res, [name, val]) => {
+          res[name] = writable(val);
+          return res
+        }, {})
+    });
+
+    var view = ({
+      view = `JSON`,
+      type = ``,
+      ...junk
+    } = false) => {
+      const value = writable(random(2));
+      const set = value.set;
+
+      value.set = (val) => {
+        try {
+          set(JSON.parse(val));
+        } catch (ex) {
+          set(`! ErRoR !`);
+        }
+      };
+
+      return Hole({
+        ...junk,
+        type: `${type} view`,
+        value,
+        value_overwrite: true
+      })
+    };
+
+
+
+    var types = /*#__PURE__*/Object.freeze({
+        stitch: stitch,
+        hole: Hole,
+        view: view
     });
 
     var Weave = ({
       // just some default nodes for start
-      nodes = {
+      holes = {
         // guarantees the key and id will be the same
-        example: Stitch({
-          id: `example`,
-          chan: {
-            [random(1)]: false,
-            [random(1)]: false
+        example: {
+          name: `example`,
+          type: ` stitch`,
+          value: {
+            [random(1)]: random(2),
+            [random(1)]: random(2)
           }
-        })
+        }
       },
       type = ``,
       threads = {},
+      name = `\\/\\/eave ${random(2)}`,
       ...junk
     } = false) => {
       let threads_set;
-      const w = node({
+
+      const w = Hole({
         ...junk,
-        nodes: writable(nodes),
+        name,
+        holes: writable(Object
+          .entries(holes)
+          .reduce((res, [hole_name, val]) => {
+            const type = val.type.slice(1).split(` `).pop();
+
+            if (!types[type]) return console.error(`!UnKoWn TyPe> ${type} - ${name}|${name}`)
+            res[hole_name] = types[type](val);
+            return res
+          }, {})
+        ),
         type: `${type} weave`,
         threads: readable(threads, set => {
           threads_set = set;
@@ -1926,9 +1979,7 @@ var app = (function () {
         take_thread: writable()
       });
 
-      const weave = get_store_value(w);
-
-      weave.give_thread.subscribe((match) => {
+      w.give_thread.subscribe((match) => {
         if (!match) return
 
         const [x, y] = match;
@@ -1940,7 +1991,7 @@ var app = (function () {
         // red to blue not samies
         if (!is_name && x.slice(-1) === y.slice(-1)) return
         if (is_name && x[0] === `/` && y[0] === `/`) return
-        const threads = get_store_value(weave.threads);
+        const threads = get_store_value(w.threads);
 
         // clean up
         if (threads[x]) {
@@ -2019,8 +2070,8 @@ var app = (function () {
     			attr(line, "y1", line_y__value = ctx.first_rec.y + ctx.first_rec.height / 2);
     			attr(line, "x2", line_x__value_1 = ctx.$position[0]);
     			attr(line, "y2", line_y__value_1 = ctx.$position[1]);
-    			attr(line, "class", "line svelte-17f61a9");
-    			add_location(line, file$5, 47, 4, 1462);
+    			attr(line, "class", "line svelte-1992g2y");
+    			add_location(line, file$5, 47, 4, 1460);
     		},
 
     		m: function mount(target, anchor) {
@@ -2069,8 +2120,8 @@ var app = (function () {
     			attr(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
     			attr(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-    			attr(line, "class", "line svelte-17f61a9");
-    			add_location(line, file$5, 68, 6, 2053);
+    			attr(line, "class", "line svelte-1992g2y");
+    			add_location(line, file$5, 68, 6, 2051);
     		},
 
     		m: function mount(target, anchor) {
@@ -2119,8 +2170,8 @@ var app = (function () {
     			attr(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
     			attr(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-    			attr(line, "class", "line svelte-17f61a9");
-    			add_location(line, file$5, 60, 4, 1821);
+    			attr(line, "class", "line svelte-1992g2y");
+    			add_location(line, file$5, 60, 4, 1819);
     		},
 
     		m: function mount(target, anchor) {
@@ -2230,33 +2281,33 @@ var app = (function () {
     			}
     			attr(stop0, "offset", "30%");
     			attr(stop0, "stop-color", "#F00");
-    			add_location(stop0, file$5, 37, 8, 1106);
+    			add_location(stop0, file$5, 37, 8, 1104);
     			attr(stop1, "offset", "70%");
     			attr(stop1, "stop-color", "#00F");
-    			add_location(stop1, file$5, 38, 8, 1156);
+    			add_location(stop1, file$5, 38, 8, 1154);
     			attr(linearGradient0, "id", "linear");
     			attr(linearGradient0, "x1", "0%");
     			attr(linearGradient0, "y1", "0%");
     			attr(linearGradient0, "x2", "100%");
     			attr(linearGradient0, "y2", "0%");
-    			add_location(linearGradient0, file$5, 36, 6, 1034);
+    			add_location(linearGradient0, file$5, 36, 6, 1032);
     			attr(stop2, "offset", "30%");
     			attr(stop2, "stop-color", "#00F");
-    			add_location(stop2, file$5, 41, 10, 1307);
+    			add_location(stop2, file$5, 41, 10, 1305);
     			attr(stop3, "offset", "70%");
     			attr(stop3, "stop-color", "#F00");
-    			add_location(stop3, file$5, 42, 10, 1359);
+    			add_location(stop3, file$5, 42, 10, 1357);
     			attr(linearGradient1, "id", "linear-other");
     			attr(linearGradient1, "x1", "0%");
     			attr(linearGradient1, "y1", "0%");
     			attr(linearGradient1, "x2", "100%");
     			attr(linearGradient1, "y2", "0%");
-    			add_location(linearGradient1, file$5, 40, 6, 1227);
-    			add_location(defs, file$5, 35, 4, 1020);
+    			add_location(linearGradient1, file$5, 40, 6, 1225);
+    			add_location(defs, file$5, 35, 4, 1018);
     			attr(svg, "width", svg_width_value = ctx.$size[0]);
     			attr(svg, "height", svg_height_value = ctx.$size[1]);
-    			attr(svg, "class", "threads svelte-17f61a9");
-    			add_location(svg, file$5, 34, 0, 958);
+    			attr(svg, "class", "threads svelte-1992g2y");
+    			add_location(svg, file$5, 34, 0, 956);
     		},
 
     		l: function claim(nodes) {
@@ -2340,7 +2391,7 @@ var app = (function () {
     }
 
     function instance$4($$self, $$props, $$invalidate) {
-    	let $position, $Tick, $weave, $threads, $$unsubscribe_threads = noop, $$subscribe_threads = () => { $$unsubscribe_threads(); $$unsubscribe_threads = threads.subscribe($$value => { $threads = $$value; $$invalidate('$threads', $threads); }); }, $first, $size;
+    	let $position, $Tick, $threads, $$unsubscribe_threads = noop, $$subscribe_threads = () => { $$unsubscribe_threads(); $$unsubscribe_threads = threads.subscribe($$value => { $threads = $$value; $$invalidate('$threads', $threads); }); }, $first, $size;
 
     	validate_store(position, 'position');
     	subscribe($$self, position, $$value => { $position = $$value; $$invalidate('$position', $position); });
@@ -2355,7 +2406,7 @@ var app = (function () {
 
     	
 
-    let { weave } = $$props; validate_store(weave, 'weave'); subscribe($$self, weave, $$value => { $weave = $$value; $$invalidate('$weave', $weave); });
+    let { weave } = $$props;
 
     const get_pos = (id) => document.getElementById(id).getBoundingClientRect();
 
@@ -2379,8 +2430,8 @@ var app = (function () {
 
     	let threads, rects, first_rec;
 
-    	$$self.$$.update = ($$dirty = { $Tick: 1, $weave: 1, $threads: 1, $first: 1 }) => {
-    		if ($$dirty.$Tick || $$dirty.$weave) { threads = $Tick ? $weave.threads : $weave.threads; $$subscribe_threads(), $$invalidate('threads', threads); }
+    	$$self.$$.update = ($$dirty = { $Tick: 1, weave: 1, $threads: 1, $first: 1 }) => {
+    		if ($$dirty.$Tick || $$dirty.weave) { threads = $Tick ? weave.threads : weave.threads; $$subscribe_threads(), $$invalidate('threads', threads); }
     		if ($$dirty.$threads) { $$invalidate('rects', rects = Object.entries($threads)
           .map(
             ([x, y]) =>
@@ -2424,494 +2475,6 @@ var app = (function () {
 
     	set weave(value) {
     		throw new Error("<Threads>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-    }
-
-    var value = ({
-      value = {
-        [random(2)]: `"${random(2)}"`
-      },
-      type = ``,
-      ...junk
-    } = false) => {
-      const write = writable(value);
-
-      return node({
-        ...junk,
-        type: `${type} value`,
-        write,
-        read: derived(write, ($write) => {
-          try {
-            return JSON.parse($write)
-          } catch (ex) {
-            return $write
-          }
-        })
-      })
-    };
-
-    // give a human readable name to a thing
-
-    var name = ({
-      name = random(2),
-      whom,
-      type = ``,
-      ...junk
-    } = false) => node({
-      ...junk,
-      type: `${type} name`,
-      name: writable(name),
-      whom: writable(whom)
-    });
-
-    var view = ({
-      view = `JSON`,
-      ...junk
-    }) => node({
-      ...junk,
-      view
-    });
-
-
-
-    var types = /*#__PURE__*/Object.freeze({
-        value: value,
-        stitch: Stitch,
-        node: node,
-        name: name,
-        view: view
-    });
-
-    const zoom = derived(
-      scroll,
-      ($scroll) => Math.min(3, Math.max(-0.5, $scroll * 0.01))
-    );
-
-    /* src\element\weave\Port.svelte generated by Svelte v3.6.6 */
-
-    const file$6 = "src\\element\\weave\\Port.svelte";
-
-    function create_fragment$6(ctx) {
-    	var div, dispose;
-
-    	return {
-    		c: function create() {
-    			div = element("div");
-    			attr(div, "class", "port svelte-1dfo49d");
-    			attr(div, "id", ctx.address);
-    			toggle_class(div, "writable", ctx.writable);
-    			toggle_class(div, "name", ctx.name);
-    			add_location(div, file$6, 19, 0, 298);
-
-    			dispose = [
-    				listen(div, "mousedown", ctx.mousedown),
-    				listen(div, "mouseup", ctx.mouseup)
-    			];
-    		},
-
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-    		},
-
-    		m: function mount(target, anchor) {
-    			insert(target, div, anchor);
-    		},
-
-    		p: function update(changed, ctx) {
-    			if (changed.address) {
-    				attr(div, "id", ctx.address);
-    			}
-
-    			if (changed.writable) {
-    				toggle_class(div, "writable", ctx.writable);
-    			}
-
-    			if (changed.name) {
-    				toggle_class(div, "name", ctx.name);
-    			}
-    		},
-
-    		i: noop,
-    		o: noop,
-
-    		d: function destroy(detaching) {
-    			if (detaching) {
-    				detach(div);
-    			}
-
-    			run_all(dispose);
-    		}
-    	};
-    }
-
-    function instance$5($$self, $$props, $$invalidate) {
-    	// In/out ports
-    let { writable = false, name = false, address = `` } = $$props;
-
-    const mousedown = () => {
-      first.set(address);
-    };
-
-    const mouseup = () => {
-      second.set(address);
-    };
-
-    	const writable_props = ['writable', 'name', 'address'];
-    	Object.keys($$props).forEach(key => {
-    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Port> was created with unknown prop '${key}'`);
-    	});
-
-    	$$self.$set = $$props => {
-    		if ('writable' in $$props) $$invalidate('writable', writable = $$props.writable);
-    		if ('name' in $$props) $$invalidate('name', name = $$props.name);
-    		if ('address' in $$props) $$invalidate('address', address = $$props.address);
-    	};
-
-    	return {
-    		writable,
-    		name,
-    		address,
-    		mousedown,
-    		mouseup
-    	};
-    }
-
-    class Port extends SvelteComponentDev {
-    	constructor(options) {
-    		super(options);
-    		init(this, options, instance$5, create_fragment$6, safe_not_equal, ["writable", "name", "address"]);
-    	}
-
-    	get writable() {
-    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set writable(value) {
-    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get name() {
-    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set name(value) {
-    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get address() {
-    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set address(value) {
-    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-    }
-
-    /* src\element\weave\Node.svelte generated by Svelte v3.6.6 */
-
-    const file$7 = "src\\element\\weave\\Node.svelte";
-
-    // (62:2) {#if has_name}
-    function create_if_block$3(ctx) {
-    	var div, current;
-
-    	var port = new Port({
-    		props: { name: true, address: ctx.$node.id },
-    		$$inline: true
-    	});
-
-    	return {
-    		c: function create() {
-    			div = element("div");
-    			port.$$.fragment.c();
-    			attr(div, "class", "port svelte-glahha");
-    			add_location(div, file$7, 62, 4, 1419);
-    		},
-
-    		m: function mount(target, anchor) {
-    			insert(target, div, anchor);
-    			mount_component(port, div, null);
-    			current = true;
-    		},
-
-    		p: function update(changed, ctx) {
-    			var port_changes = {};
-    			if (changed.$node) port_changes.address = ctx.$node.id;
-    			port.$set(port_changes);
-    		},
-
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(port.$$.fragment, local);
-
-    			current = true;
-    		},
-
-    		o: function outro(local) {
-    			transition_out(port.$$.fragment, local);
-    			current = false;
-    		},
-
-    		d: function destroy(detaching) {
-    			if (detaching) {
-    				detach(div);
-    			}
-
-    			destroy_component(port, );
-    		}
-    	};
-    }
-
-    // (56:0) <Spatial    anchor = {[0, 0]}    position = {tru_position}    transition = {!dragging}    scale = {tru_scale}  >
-    function create_default_slot$1(ctx) {
-    	var t, div, current, dispose;
-
-    	var if_block = (ctx.has_name) && create_if_block$3(ctx);
-
-    	const default_slot_1 = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_1, ctx, null);
-
-    	return {
-    		c: function create() {
-    			if (if_block) if_block.c();
-    			t = space();
-    			div = element("div");
-
-    			if (default_slot) default_slot.c();
-
-    			attr(div, "class", "node svelte-glahha");
-    			add_location(div, file$7, 67, 2, 1504);
-    			dispose = listen(div, "mousedown", ctx.drag);
-    		},
-
-    		l: function claim(nodes) {
-    			if (default_slot) default_slot.l(div_nodes);
-    		},
-
-    		m: function mount(target, anchor) {
-    			if (if_block) if_block.m(target, anchor);
-    			insert(target, t, anchor);
-    			insert(target, div, anchor);
-
-    			if (default_slot) {
-    				default_slot.m(div, null);
-    			}
-
-    			current = true;
-    		},
-
-    		p: function update(changed, ctx) {
-    			if (ctx.has_name) {
-    				if (if_block) {
-    					if_block.p(changed, ctx);
-    					transition_in(if_block, 1);
-    				} else {
-    					if_block = create_if_block$3(ctx);
-    					if_block.c();
-    					transition_in(if_block, 1);
-    					if_block.m(t.parentNode, t);
-    				}
-    			} else if (if_block) {
-    				group_outros();
-    				transition_out(if_block, 1, 1, () => {
-    					if_block = null;
-    				});
-    				check_outros();
-    			}
-
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(get_slot_changes(default_slot_1, ctx, changed, null), get_slot_context(default_slot_1, ctx, null));
-    			}
-    		},
-
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(if_block);
-    			transition_in(default_slot, local);
-    			current = true;
-    		},
-
-    		o: function outro(local) {
-    			transition_out(if_block);
-    			transition_out(default_slot, local);
-    			current = false;
-    		},
-
-    		d: function destroy(detaching) {
-    			if (if_block) if_block.d(detaching);
-
-    			if (detaching) {
-    				detach(t);
-    				detach(div);
-    			}
-
-    			if (default_slot) default_slot.d(detaching);
-    			dispose();
-    		}
-    	};
-    }
-
-    function create_fragment$7(ctx) {
-    	var current;
-
-    	var spatial = new Spatial({
-    		props: {
-    		anchor: [0, 0],
-    		position: ctx.tru_position,
-    		transition: !ctx.dragging,
-    		scale: ctx.tru_scale,
-    		$$slots: { default: [create_default_slot$1] },
-    		$$scope: { ctx }
-    	},
-    		$$inline: true
-    	});
-
-    	return {
-    		c: function create() {
-    			spatial.$$.fragment.c();
-    		},
-
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-    		},
-
-    		m: function mount(target, anchor) {
-    			mount_component(spatial, target, anchor);
-    			current = true;
-    		},
-
-    		p: function update(changed, ctx) {
-    			var spatial_changes = {};
-    			if (changed.tru_position) spatial_changes.position = ctx.tru_position;
-    			if (changed.dragging) spatial_changes.transition = !ctx.dragging;
-    			if (changed.tru_scale) spatial_changes.scale = ctx.tru_scale;
-    			if (changed.$$scope || changed.has_name || changed.$node) spatial_changes.$$scope = { changed, ctx };
-    			spatial.$set(spatial_changes);
-    		},
-
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(spatial.$$.fragment, local);
-
-    			current = true;
-    		},
-
-    		o: function outro(local) {
-    			transition_out(spatial.$$.fragment, local);
-    			current = false;
-    		},
-
-    		d: function destroy(detaching) {
-    			destroy_component(spatial, detaching);
-    		}
-    	};
-    }
-
-    function instance$6($$self, $$props, $$invalidate) {
-    	let $Mouse, $Scaling, $zoom, $node;
-
-    	validate_store(position, 'Mouse');
-    	subscribe($$self, position, $$value => { $Mouse = $$value; $$invalidate('$Mouse', $Mouse); });
-    	validate_store(scaling, 'Scaling');
-    	subscribe($$self, scaling, $$value => { $Scaling = $$value; $$invalidate('$Scaling', $Scaling); });
-    	validate_store(zoom, 'zoom');
-    	subscribe($$self, zoom, $$value => { $zoom = $$value; $$invalidate('$zoom', $zoom); });
-
-    	
-
-    let { position: position$1 = [0, 0], has_name = true, node = readable() } = $$props; validate_store(node, 'node'); subscribe($$self, node, $$value => { $node = $$value; $$invalidate('$node', $node); });
-
-    const add = (...arrs) => arrs.reduce((result, arr) => {
-      arr.forEach((val, i) => {
-        if (i > result.length - 1) {
-          result.push(val);
-        }
-
-        result[i] += val;
-      });
-      return result
-    }, []);
-
-    let dragging = false;
-
-    const drag = (e) => {
-      if (dragging || e.target.classList.contains(`port`) || e.target.tagName === `INPUT`) {
-        return
-      }
-
-      $$invalidate('dragging', dragging = true);
-      const handler = () => {
-        $$invalidate('dragging', dragging = false);
-        $$invalidate('position', position$1 = $Mouse);
-        window.removeEventListener(`mouseup`, handler);
-      };
-
-      window.addEventListener(`mouseup`, handler);
-    };
-
-    	const writable_props = ['position', 'has_name', 'node'];
-    	Object.keys($$props).forEach(key => {
-    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Node> was created with unknown prop '${key}'`);
-    	});
-
-    	let { $$slots = {}, $$scope } = $$props;
-
-    	$$self.$set = $$props => {
-    		if ('position' in $$props) $$invalidate('position', position$1 = $$props.position);
-    		if ('has_name' in $$props) $$invalidate('has_name', has_name = $$props.has_name);
-    		if ('node' in $$props) $$invalidate('node', node = $$props.node);
-    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
-    	};
-
-    	let tru_position, tru_scale;
-
-    	$$self.$$.update = ($$dirty = { $Scaling: 1, dragging: 1, $Mouse: 1, position: 1, $zoom: 1 }) => {
-    		if ($$dirty.$Scaling || $$dirty.dragging || $$dirty.$Mouse || $$dirty.position) { $$invalidate('tru_position', tru_position = add([-50 * $Scaling, -25 * $Scaling], dragging ? $Mouse : position$1)); }
-    		if ($$dirty.dragging || $$dirty.$zoom) { $$invalidate('tru_scale', tru_scale = (dragging ? 1.168 : 1) + $zoom); }
-    	};
-
-    	return {
-    		position: position$1,
-    		has_name,
-    		node,
-    		dragging,
-    		drag,
-    		tru_position,
-    		tru_scale,
-    		$node,
-    		$$slots,
-    		$$scope
-    	};
-    }
-
-    class Node extends SvelteComponentDev {
-    	constructor(options) {
-    		super(options);
-    		init(this, options, instance$6, create_fragment$7, safe_not_equal, ["position", "has_name", "node"]);
-    	}
-
-    	get position() {
-    		throw new Error("<Node>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set position(value) {
-    		throw new Error("<Node>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get has_name() {
-    		throw new Error("<Node>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set has_name(value) {
-    		throw new Error("<Node>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get node() {
-    		throw new Error("<Node>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set node(value) {
-    		throw new Error("<Node>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -4884,8 +4447,11 @@ var app = (function () {
     var color$2 = (node, txt_init) => {
       const handler = {
         update: (txt) => {
-          node.style.color = color(txt);
-          node.style.backgroundColor = color$1(node.style.color).negate().fade(0.5).toString();
+          let col = color$1(color(txt));
+          if (col.isDark()) col = col.whiten(0.5);
+
+          // node.style.color = col.toString()
+          node.style.backgroundColor = col.negate().fade(0.5).toString();
         }
       };
 
@@ -4893,10 +4459,332 @@ var app = (function () {
       return handler
     };
 
+    const zoom = derived(
+      scroll,
+      ($scroll) => Math.min(3, Math.max(-0.5, $scroll * 0.01))
+    );
+
+    const add = (...arrs) => arrs.reduce((result, arr) => {
+      arr.forEach((val, i) => {
+        if (i > result.length - 1) {
+          result.push(val);
+        }
+
+        result[i] += val;
+      });
+      return result
+    }, []);
+
+    /* src\element\weave\Hole.svelte generated by Svelte v3.6.6 */
+
+    const file$6 = "src\\element\\weave\\Hole.svelte";
+
+    // (42:2) {#if has_name}
+    function create_if_block$3(ctx) {
+    	var div1, div0, input, color_action, dispose;
+
+    	return {
+    		c: function create() {
+    			div1 = element("div");
+    			div0 = element("div");
+    			input = element("input");
+    			attr(input, "type", "text");
+    			attr(input, "class", "edit svelte-kdlwf7");
+    			attr(input, "placeholder", "Name It!");
+    			add_location(input, file$6, 44, 8, 1092);
+    			add_location(div0, file$6, 43, 6, 1059);
+    			attr(div1, "class", "nameit svelte-kdlwf7");
+    			add_location(div1, file$6, 42, 4, 1010);
+
+    			dispose = [
+    				listen(input, "input", ctx.input_input_handler),
+    				listen(div1, "mousedown", ctx.drag)
+    			];
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div1, anchor);
+    			append(div1, div0);
+    			append(div0, input);
+
+    			input.value = ctx.$name;
+
+    			color_action = color$2.call(null, div0, ctx.$name) || {};
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.$name && (input.value !== ctx.$name)) input.value = ctx.$name;
+
+    			if (typeof color_action.update === 'function' && changed.$name) {
+    				color_action.update.call(null, ctx.$name);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div1);
+    			}
+
+    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    // (36:0) <Spatial    anchor = {[0, 0]}    position = {tru_position}    transition = {!dragging}    scale = {tru_scale}  >
+    function create_default_slot$1(ctx) {
+    	var t, div, current, dispose;
+
+    	var if_block = (ctx.has_name) && create_if_block$3(ctx);
+
+    	const default_slot_1 = ctx.$$slots.default;
+    	const default_slot = create_slot(default_slot_1, ctx, null);
+
+    	return {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			t = space();
+    			div = element("div");
+
+    			if (default_slot) default_slot.c();
+
+    			attr(div, "class", "hole svelte-kdlwf7");
+    			add_location(div, file$6, 49, 2, 1210);
+    			dispose = listen(div, "mousedown", ctx.drag);
+    		},
+
+    		l: function claim(nodes) {
+    			if (default_slot) default_slot.l(div_nodes);
+    		},
+
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert(target, t, anchor);
+    			insert(target, div, anchor);
+
+    			if (default_slot) {
+    				default_slot.m(div, null);
+    			}
+
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (ctx.has_name) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    				} else {
+    					if_block = create_if_block$3(ctx);
+    					if_block.c();
+    					if_block.m(t.parentNode, t);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if (default_slot && default_slot.p && changed.$$scope) {
+    				default_slot.p(get_slot_changes(default_slot_1, ctx, changed, null), get_slot_context(default_slot_1, ctx, null));
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(default_slot, local);
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(default_slot, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+
+    			if (detaching) {
+    				detach(t);
+    				detach(div);
+    			}
+
+    			if (default_slot) default_slot.d(detaching);
+    			dispose();
+    		}
+    	};
+    }
+
+    function create_fragment$6(ctx) {
+    	var current;
+
+    	var spatial = new Spatial({
+    		props: {
+    		anchor: [0, 0],
+    		position: ctx.tru_position,
+    		transition: !ctx.dragging,
+    		scale: ctx.tru_scale,
+    		$$slots: { default: [create_default_slot$1] },
+    		$$scope: { ctx }
+    	},
+    		$$inline: true
+    	});
+
+    	return {
+    		c: function create() {
+    			spatial.$$.fragment.c();
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			mount_component(spatial, target, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var spatial_changes = {};
+    			if (changed.tru_position) spatial_changes.position = ctx.tru_position;
+    			if (changed.dragging) spatial_changes.transition = !ctx.dragging;
+    			if (changed.tru_scale) spatial_changes.scale = ctx.tru_scale;
+    			if (changed.$$scope || changed.has_name || changed.$name) spatial_changes.$$scope = { changed, ctx };
+    			spatial.$set(spatial_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(spatial.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(spatial.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			destroy_component(spatial, detaching);
+    		}
+    	};
+    }
+
+    function instance$5($$self, $$props, $$invalidate) {
+    	let $Mouse, $Scaling, $zoom, $name, $$unsubscribe_name = noop, $$subscribe_name = () => { $$unsubscribe_name(); $$unsubscribe_name = name.subscribe($$value => { $name = $$value; $$invalidate('$name', $name); }); };
+
+    	validate_store(position, 'Mouse');
+    	subscribe($$self, position, $$value => { $Mouse = $$value; $$invalidate('$Mouse', $Mouse); });
+    	validate_store(scaling, 'Scaling');
+    	subscribe($$self, scaling, $$value => { $Scaling = $$value; $$invalidate('$Scaling', $Scaling); });
+    	validate_store(zoom, 'zoom');
+    	subscribe($$self, zoom, $$value => { $zoom = $$value; $$invalidate('$zoom', $zoom); });
+
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+
+    	
+
+    let { position: position$1 = [0, 0], has_name = true, hole } = $$props;
+
+    let dragging = false;
+
+    const drag = (e) => {
+      if (dragging || e.target.classList.contains(`port`) || e.target.tagName === `INPUT`) {
+        return
+      }
+
+      $$invalidate('dragging', dragging = true);
+      const handler = () => {
+        $$invalidate('dragging', dragging = false);
+        $$invalidate('position', position$1 = $Mouse);
+        window.removeEventListener(`mouseup`, handler);
+      };
+
+      window.addEventListener(`mouseup`, handler);
+    };
+
+    	const writable_props = ['position', 'has_name', 'hole'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Hole> was created with unknown prop '${key}'`);
+    	});
+
+    	let { $$slots = {}, $$scope } = $$props;
+
+    	function input_input_handler() {
+    		name.set(this.value);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('position' in $$props) $$invalidate('position', position$1 = $$props.position);
+    		if ('has_name' in $$props) $$invalidate('has_name', has_name = $$props.has_name);
+    		if ('hole' in $$props) $$invalidate('hole', hole = $$props.hole);
+    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    	};
+
+    	let name, tru_position, tru_scale;
+
+    	$$self.$$.update = ($$dirty = { hole: 1, $Scaling: 1, dragging: 1, $Mouse: 1, position: 1, $zoom: 1 }) => {
+    		if ($$dirty.hole) { name = hole.name; $$subscribe_name(), $$invalidate('name', name); }
+    		if ($$dirty.$Scaling || $$dirty.dragging || $$dirty.$Mouse || $$dirty.position) { $$invalidate('tru_position', tru_position = add([-50 * $Scaling, -25 * $Scaling], dragging ? $Mouse : position$1)); }
+    		if ($$dirty.dragging || $$dirty.$zoom) { $$invalidate('tru_scale', tru_scale = (dragging ? 1.168 : 1) + $zoom); }
+    	};
+
+    	return {
+    		position: position$1,
+    		has_name,
+    		hole,
+    		dragging,
+    		drag,
+    		name,
+    		tru_position,
+    		tru_scale,
+    		$name,
+    		input_input_handler,
+    		$$slots,
+    		$$scope
+    	};
+    }
+
+    class Hole$1 extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$5, create_fragment$6, safe_not_equal, ["position", "has_name", "hole"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.hole === undefined && !('hole' in props)) {
+    			console.warn("<Hole> was created without expected prop 'hole'");
+    		}
+    	}
+
+    	get position() {
+    		throw new Error("<Hole>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set position(value) {
+    		throw new Error("<Hole>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get has_name() {
+    		throw new Error("<Hole>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set has_name(value) {
+    		throw new Error("<Hole>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get hole() {
+    		throw new Error("<Hole>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set hole(value) {
+    		throw new Error("<Hole>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
     /* src\element\weave\Picker.svelte generated by Svelte v3.6.6 */
     const { Object: Object_1$1 } = globals;
 
-    const file$8 = "src\\element\\weave\\Picker.svelte";
+    const file$7 = "src\\element\\weave\\Picker.svelte";
 
     function get_each_context$1(ctx, list, i) {
     	const child_ctx = Object_1$1.create(ctx);
@@ -4909,10 +4797,11 @@ var app = (function () {
     function create_if_block$4(ctx) {
     	var current;
 
-    	var node = new Node({
+    	var hole_1 = new Hole$1({
     		props: {
     		position: ctx.position,
     		has_name: false,
+    		hole: ctx.hole,
     		$$slots: { default: [create_default_slot$2] },
     		$$scope: { ctx }
     	},
@@ -4921,40 +4810,41 @@ var app = (function () {
 
     	return {
     		c: function create_1() {
-    			node.$$.fragment.c();
+    			hole_1.$$.fragment.c();
     		},
 
     		m: function mount(target, anchor) {
-    			mount_component(node, target, anchor);
+    			mount_component(hole_1, target, anchor);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			var node_changes = {};
-    			if (changed.position) node_changes.position = ctx.position;
-    			if (changed.$$scope || changed.arr_types) node_changes.$$scope = { changed, ctx };
-    			node.$set(node_changes);
+    			var hole_1_changes = {};
+    			if (changed.position) hole_1_changes.position = ctx.position;
+    			if (changed.hole) hole_1_changes.hole = ctx.hole;
+    			if (changed.$$scope || changed.arr_types) hole_1_changes.$$scope = { changed, ctx };
+    			hole_1.$set(hole_1_changes);
     		},
 
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(node.$$.fragment, local);
+    			transition_in(hole_1.$$.fragment, local);
 
     			current = true;
     		},
 
     		o: function outro(local) {
-    			transition_out(node.$$.fragment, local);
+    			transition_out(hole_1.$$.fragment, local);
     			current = false;
     		},
 
     		d: function destroy(detaching) {
-    			destroy_component(node, detaching);
+    			destroy_component(hole_1, detaching);
     		}
     	};
     }
 
-    // (55:8) {#if type !== `node`}
+    // (55:8) {#if type !== `hole`}
     function create_if_block_1$1(ctx) {
     	var div, t0_value = ctx.type, t0, t1, color_action, dispose;
 
@@ -4968,7 +4858,7 @@ var app = (function () {
     			t0 = text(t0_value);
     			t1 = space();
     			attr(div, "class", "type svelte-113vo01");
-    			add_location(div, file$8, 55, 8, 1160);
+    			add_location(div, file$7, 55, 8, 1099);
     			dispose = listen(div, "mouseup", mouseup_handler);
     		},
 
@@ -5005,7 +4895,7 @@ var app = (function () {
     function create_each_block$1(key_1, ctx) {
     	var first, if_block_anchor;
 
-    	var if_block = (ctx.type !== `node`) && create_if_block_1$1(ctx);
+    	var if_block = (ctx.type !== `hole`) && create_if_block_1$1(ctx);
 
     	return {
     		key: key_1,
@@ -5026,7 +4916,7 @@ var app = (function () {
     		},
 
     		p: function update(changed, ctx) {
-    			if (ctx.type !== `node`) {
+    			if (ctx.type !== `hole`) {
     				if (if_block) {
     					if_block.p(changed, ctx);
     				} else {
@@ -5054,7 +4944,7 @@ var app = (function () {
     	};
     }
 
-    // (49:2) <Node {position} has_name={false}>
+    // (49:2) <Hole {position} has_name={false} {hole}>
     function create_default_slot$2(ctx) {
     	var div1, div0, t_1, each_blocks = [], each_1_lookup = new Map();
 
@@ -5077,9 +4967,9 @@ var app = (function () {
 
     			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].c();
     			attr(div0, "class", "title svelte-113vo01");
-    			add_location(div0, file$8, 50, 6, 1021);
+    			add_location(div0, file$7, 50, 6, 960);
     			attr(div1, "class", "prompt");
-    			add_location(div1, file$8, 49, 4, 993);
+    			add_location(div1, file$7, 49, 4, 932);
     		},
 
     		m: function mount(target, anchor) {
@@ -5105,7 +4995,7 @@ var app = (function () {
     	};
     }
 
-    function create_fragment$8(ctx) {
+    function create_fragment$7(ctx) {
     	var div, current, dispose;
 
     	var if_block = (ctx.picking) && create_if_block$4(ctx);
@@ -5116,7 +5006,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr(div, "class", "picker svelte-113vo01");
     			toggle_class(div, "picking", ctx.picking);
-    			add_location(div, file$8, 42, 0, 866);
+    			add_location(div, file$7, 42, 0, 798);
 
     			dispose = [
     				listen(window, "mouseup", ctx.nopick),
@@ -5180,18 +5070,17 @@ var app = (function () {
     	};
     }
 
-    function instance$7($$self, $$props, $$invalidate) {
-    	let $weave, $Scaling;
+    function instance$6($$self, $$props, $$invalidate) {
+    	let $Scaling;
 
     	validate_store(scaling, 'Scaling');
     	subscribe($$self, scaling, $$value => { $Scaling = $$value; $$invalidate('$Scaling', $Scaling); });
 
     	
 
-    let { weave } = $$props; validate_store(weave, 'weave'); subscribe($$self, weave, $$value => { $weave = $$value; $$invalidate('$weave', $weave); });
+    let { weave } = $$props;
 
-    const wires = $weave.wires;
-
+    const hole = Hole();
     let picking = false;
 
     const pick = (e) => {
@@ -5204,9 +5093,9 @@ var app = (function () {
     };
 
     const create = (type) => {
-      $weave.nodes.update((nodes) => {
-        const node = types[type]();
-        nodes[get_store_value(node).id] = node;
+      weave.holes.update((nodes) => {
+        const h = types[type]();
+        nodes[h.id] = h;
 
         return nodes
       });
@@ -5214,7 +5103,7 @@ var app = (function () {
 
     onDestroy(match.subscribe((new_match) => {
       if (!new_match) return
-      $weave.give_thread.set(new_match);
+      weave.give_thread.set(new_match);
     }));
 
     let position = [0, 0];
@@ -5238,6 +5127,7 @@ var app = (function () {
 
     	return {
     		weave,
+    		hole,
     		picking,
     		pick,
     		nopick,
@@ -5251,7 +5141,7 @@ var app = (function () {
     class Picker extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$7, create_fragment$8, safe_not_equal, ["weave"]);
+    		init(this, options, instance$6, create_fragment$7, safe_not_equal, ["weave"]);
 
     		const { ctx } = this.$$;
     		const props = options.props || {};
@@ -5269,20 +5159,132 @@ var app = (function () {
     	}
     }
 
-    /* src\element\weave\Stitch.svelte generated by Svelte v3.6.6 */
+    /* src\element\weave\Port.svelte generated by Svelte v3.6.6 */
 
-    const file$9 = "src\\element\\weave\\Stitch.svelte";
+    const file$8 = "src\\element\\weave\\Port.svelte";
 
-    function get_each_context$2(ctx, list, i) {
-    	const child_ctx = Object.create(ctx);
-    	child_ctx.name = list[i][0];
-    	child_ctx.channel = list[i][1];
-    	return child_ctx;
+    function create_fragment$8(ctx) {
+    	var div, dispose;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			attr(div, "class", "port svelte-7kx0kl");
+    			attr(div, "id", ctx.address);
+    			toggle_class(div, "writable", ctx.writable);
+    			toggle_class(div, "name", ctx.name);
+    			add_location(div, file$8, 19, 0, 298);
+
+    			dispose = [
+    				listen(div, "mousedown", ctx.mousedown),
+    				listen(div, "mouseup", ctx.mouseup)
+    			];
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.address) {
+    				attr(div, "id", ctx.address);
+    			}
+
+    			if (changed.writable) {
+    				toggle_class(div, "writable", ctx.writable);
+    			}
+
+    			if (changed.name) {
+    				toggle_class(div, "name", ctx.name);
+    			}
+    		},
+
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			run_all(dispose);
+    		}
+    	};
     }
 
-    // (29:4) {#each Object.entries($chan) as [name, channel] (name)}
-    function create_each_block$2(key_1, ctx) {
-    	var div1, t0, div0, t1_value = ctx.name, t1, t2, current;
+    function instance$7($$self, $$props, $$invalidate) {
+    	// In/out ports
+    let { writable = false, name = false, address = `` } = $$props;
+
+    const mousedown = () => {
+      first.set(address);
+    };
+
+    const mouseup = () => {
+      second.set(address);
+    };
+
+    	const writable_props = ['writable', 'name', 'address'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Port> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ('writable' in $$props) $$invalidate('writable', writable = $$props.writable);
+    		if ('name' in $$props) $$invalidate('name', name = $$props.name);
+    		if ('address' in $$props) $$invalidate('address', address = $$props.address);
+    	};
+
+    	return {
+    		writable,
+    		name,
+    		address,
+    		mousedown,
+    		mouseup
+    	};
+    }
+
+    class Port extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$7, create_fragment$8, safe_not_equal, ["writable", "name", "address"]);
+    	}
+
+    	get writable() {
+    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set writable(value) {
+    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get name() {
+    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set name(value) {
+    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get address() {
+    		throw new Error("<Port>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set address(value) {
+    		throw new Error("<Port>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\element\weave\Channel.svelte generated by Svelte v3.6.6 */
+
+    const file$9 = "src\\element\\weave\\Channel.svelte";
+
+    function create_fragment$9(ctx) {
+    	var div2, t0, div1, div0, t1, color_action, t2, input, color_action_1, t3, current, dispose;
 
     	var port0 = new Port({
     		props: { writable: true, address: `${ctx.address(ctx.name)}|write` },
@@ -5295,52 +5297,74 @@ var app = (function () {
     	});
 
     	return {
-    		key: key_1,
-
-    		first: null,
-
     		c: function create() {
-    			div1 = element("div");
+    			div2 = element("div");
     			port0.$$.fragment.c();
     			t0 = space();
+    			div1 = element("div");
     			div0 = element("div");
-    			t1 = text(t1_value);
+    			t1 = text(ctx.name);
     			t2 = space();
+    			input = element("input");
+    			t3 = space();
     			port1.$$.fragment.c();
-    			attr(div0, "class", "channel_name svelte-q7j5ih");
-    			set_style(div0, "color", color(ctx.name));
-    			add_location(div0, file$9, 31, 8, 653);
-    			attr(div1, "class", "channel svelte-q7j5ih");
-    			add_location(div1, file$9, 29, 6, 561);
-    			this.first = div1;
+    			attr(div0, "class", "name svelte-1mjypaz");
+    			add_location(div0, file$9, 13, 4, 312);
+    			attr(input, "type", "text");
+    			attr(input, "class", "edit svelte-1mjypaz");
+    			attr(input, "placeholder", "JSON plz");
+    			add_location(input, file$9, 14, 4, 365);
+    			attr(div1, "class", "vbox svelte-1mjypaz");
+    			add_location(div1, file$9, 12, 2, 287);
+    			attr(div2, "class", "channel svelte-1mjypaz");
+    			add_location(div2, file$9, 10, 0, 207);
+    			dispose = listen(input, "input", ctx.input_input_handler);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, div1, anchor);
-    			mount_component(port0, div1, null);
-    			append(div1, t0);
+    			insert(target, div2, anchor);
+    			mount_component(port0, div2, null);
+    			append(div2, t0);
+    			append(div2, div1);
     			append(div1, div0);
     			append(div0, t1);
+    			color_action = color$2.call(null, div0, ctx.name) || {};
     			append(div1, t2);
-    			mount_component(port1, div1, null);
+    			append(div1, input);
+
+    			input.value = ctx.$chan;
+
+    			color_action_1 = color$2.call(null, input, ctx.$chan) || {};
+    			append(div2, t3);
+    			mount_component(port1, div2, null);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
     			var port0_changes = {};
-    			if (changed.address || changed.$chan) port0_changes.address = `${ctx.address(ctx.name)}|write`;
+    			if (changed.address || changed.name) port0_changes.address = `${ctx.address(ctx.name)}|write`;
     			port0.$set(port0_changes);
 
-    			if ((!current || changed.$chan) && t1_value !== (t1_value = ctx.name)) {
-    				set_data(t1, t1_value);
+    			if (!current || changed.name) {
+    				set_data(t1, ctx.name);
     			}
 
-    			if (!current || changed.color || changed.$chan) {
-    				set_style(div0, "color", color(ctx.name));
+    			if (typeof color_action.update === 'function' && changed.name) {
+    				color_action.update.call(null, ctx.name);
+    			}
+
+    			if (changed.$chan && (input.value !== ctx.$chan)) input.value = ctx.$chan;
+
+    			if (typeof color_action_1.update === 'function' && changed.$chan) {
+    				color_action_1.update.call(null, ctx.$chan);
     			}
 
     			var port1_changes = {};
-    			if (changed.address || changed.$chan) port1_changes.address = `${ctx.address(ctx.name)}|read`;
+    			if (changed.address || changed.name) port1_changes.address = `${ctx.address(ctx.name)}|read`;
     			port1.$set(port1_changes);
     		},
 
@@ -5361,22 +5385,175 @@ var app = (function () {
 
     		d: function destroy(detaching) {
     			if (detaching) {
-    				detach(div1);
+    				detach(div2);
     			}
 
     			destroy_component(port0, );
 
+    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
+    			if (color_action_1 && typeof color_action_1.destroy === 'function') color_action_1.destroy();
+
     			destroy_component(port1, );
+
+    			dispose();
     		}
     	};
     }
 
-    function create_fragment$9(ctx) {
+    function instance$8($$self, $$props, $$invalidate) {
+    	let $chan;
+
+    	
+
+    let { hole, chan, name } = $$props; validate_store(chan, 'chan'); subscribe($$self, chan, $$value => { $chan = $$value; $$invalidate('$chan', $chan); });
+
+    const address = (channel) => `${hole.id}|chan|${channel}`;
+
+    	const writable_props = ['hole', 'chan', 'name'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Channel> was created with unknown prop '${key}'`);
+    	});
+
+    	function input_input_handler() {
+    		chan.set(this.value);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('hole' in $$props) $$invalidate('hole', hole = $$props.hole);
+    		if ('chan' in $$props) $$invalidate('chan', chan = $$props.chan);
+    		if ('name' in $$props) $$invalidate('name', name = $$props.name);
+    	};
+
+    	return {
+    		hole,
+    		chan,
+    		name,
+    		address,
+    		$chan,
+    		input_input_handler
+    	};
+    }
+
+    class Channel extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$8, create_fragment$9, safe_not_equal, ["hole", "chan", "name"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.hole === undefined && !('hole' in props)) {
+    			console.warn("<Channel> was created without expected prop 'hole'");
+    		}
+    		if (ctx.chan === undefined && !('chan' in props)) {
+    			console.warn("<Channel> was created without expected prop 'chan'");
+    		}
+    		if (ctx.name === undefined && !('name' in props)) {
+    			console.warn("<Channel> was created without expected prop 'name'");
+    		}
+    	}
+
+    	get hole() {
+    		throw new Error("<Channel>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set hole(value) {
+    		throw new Error("<Channel>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get chan() {
+    		throw new Error("<Channel>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set chan(value) {
+    		throw new Error("<Channel>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get name() {
+    		throw new Error("<Channel>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set name(value) {
+    		throw new Error("<Channel>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\element\weave\Stitch.svelte generated by Svelte v3.6.6 */
+
+    const file$a = "src\\element\\weave\\Stitch.svelte";
+
+    function get_each_context$2(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.chan_name = list[i][0];
+    	child_ctx.chan = list[i][1];
+    	return child_ctx;
+    }
+
+    // (31:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
+    function create_each_block$2(key_1, ctx) {
+    	var first, current;
+
+    	var channel = new Channel({
+    		props: {
+    		chan: ctx.chan,
+    		hole: ctx.hole,
+    		name: ctx.chan_name
+    	},
+    		$$inline: true
+    	});
+
+    	return {
+    		key: key_1,
+
+    		first: null,
+
+    		c: function create() {
+    			first = empty();
+    			channel.$$.fragment.c();
+    			this.first = first;
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, first, anchor);
+    			mount_component(channel, target, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var channel_changes = {};
+    			if (changed.$value) channel_changes.chan = ctx.chan;
+    			if (changed.hole) channel_changes.hole = ctx.hole;
+    			if (changed.$value) channel_changes.name = ctx.chan_name;
+    			channel.$set(channel_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(channel.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(channel.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(first);
+    			}
+
+    			destroy_component(channel, detaching);
+    		}
+    	};
+    }
+
+    function create_fragment$a(ctx) {
     	var div, each_blocks = [], each_1_lookup = new Map(), t, input, current, dispose;
 
-    	var each_value = Object.entries(ctx.$chan);
+    	var each_value = Object.entries(ctx.$value);
 
-    	const get_key = ctx => ctx.name;
+    	const get_key = ctx => ctx.chan_name;
 
     	for (var i = 0; i < each_value.length; i += 1) {
     		let child_ctx = get_each_context$2(ctx, each_value, i);
@@ -5393,11 +5570,11 @@ var app = (function () {
     			t = space();
     			input = element("input");
     			attr(input, "type", "text");
-    			attr(input, "class", "add_channel svelte-q7j5ih");
+    			attr(input, "class", "add_channel svelte-pf1ezl");
     			attr(input, "placeholder", "STITCH IT!");
-    			add_location(input, file$9, 38, 4, 835);
-    			attr(div, "class", "board draggable svelte-q7j5ih");
-    			add_location(div, file$9, 27, 0, 463);
+    			add_location(input, file$a, 34, 4, 653);
+    			attr(div, "class", "board svelte-pf1ezl");
+    			add_location(div, file$a, 29, 0, 492);
 
     			dispose = [
     				listen(input, "input", ctx.input_input_handler),
@@ -5424,7 +5601,7 @@ var app = (function () {
     		},
 
     		p: function update(changed, ctx) {
-    			const each_value = Object.entries(ctx.$chan);
+    			const each_value = Object.entries(ctx.$value);
 
     			group_outros();
     			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$2, t, get_each_context$2);
@@ -5458,33 +5635,32 @@ var app = (function () {
     	};
     }
 
-    function instance$8($$self, $$props, $$invalidate) {
-    	let $node, $chan;
+    function instance$9($$self, $$props, $$invalidate) {
+    	let $value, $$unsubscribe_value = noop, $$subscribe_value = () => { $$unsubscribe_value(); $$unsubscribe_value = value.subscribe($$value => { $value = $$value; $$invalidate('$value', $value); }); };
+
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 
     	
 
-    let { node } = $$props; validate_store(node, 'node'); subscribe($$self, node, $$value => { $node = $$value; $$invalidate('$node', $node); });
+    let { hole } = $$props;
 
     let weave_add = ``;
 
-    const chan = $node.chan; validate_store(chan, 'chan'); subscribe($$self, chan, $$value => { $chan = $$value; $$invalidate('$chan', $chan); });
-
     const check_add = ({ which }) => {
       if (which !== 13) return
-      const c = $chan;
+      const val = $value;
+
       if (weave_add[0] === `-`) {
-        delete c[weave_add.slice(1)];
+        delete val[weave_add.slice(1)];
       } else {
-        c[weave_add] = true;
+        val[weave_add] = writable(random(2));
       }
 
-      chan.set(c);
+      value.set(val);
       $$invalidate('weave_add', weave_add = ``);
     };
 
-    const address = (channel) => `${$node.id}|chan|${channel}`;
-
-    	const writable_props = ['node'];
+    	const writable_props = ['hole'];
     	Object.keys($$props).forEach(key => {
     		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Stitch> was created with unknown prop '${key}'`);
     	});
@@ -5497,105 +5673,79 @@ var app = (function () {
     	function blur_handler() { weave_add = ``; $$invalidate('weave_add', weave_add); }
 
     	$$self.$set = $$props => {
-    		if ('node' in $$props) $$invalidate('node', node = $$props.node);
+    		if ('hole' in $$props) $$invalidate('hole', hole = $$props.hole);
+    	};
+
+    	let value, name;
+
+    	$$self.$$.update = ($$dirty = { hole: 1 }) => {
+    		if ($$dirty.hole) { value = hole.value; $$subscribe_value(), $$invalidate('value', value); }
+    		if ($$dirty.hole) { name = hole.name; }
     	};
 
     	return {
-    		node,
+    		hole,
     		weave_add,
-    		chan,
     		check_add,
-    		address,
-    		$chan,
+    		value,
+    		$value,
     		input_input_handler,
     		blur_handler
     	};
     }
 
-    class Stitch$1 extends SvelteComponentDev {
+    class Stitch extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$8, create_fragment$9, safe_not_equal, ["node"]);
+    		init(this, options, instance$9, create_fragment$a, safe_not_equal, ["hole"]);
 
     		const { ctx } = this.$$;
     		const props = options.props || {};
-    		if (ctx.node === undefined && !('node' in props)) {
-    			console.warn("<Stitch> was created without expected prop 'node'");
+    		if (ctx.hole === undefined && !('hole' in props)) {
+    			console.warn("<Stitch> was created without expected prop 'hole'");
     		}
     	}
 
-    	get node() {
+    	get hole() {
     		throw new Error("<Stitch>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set node(value) {
+    	set hole(value) {
     		throw new Error("<Stitch>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
-    /* src\element\weave\Value.svelte generated by Svelte v3.6.6 */
+    /* src\element\weave\View.svelte generated by Svelte v3.6.6 */
 
-    const file$a = "src\\element\\weave\\Value.svelte";
+    const file$b = "src\\element\\weave\\View.svelte";
 
-    function create_fragment$a(ctx) {
-    	var div6, div0, t0, div1, input0, t1, div4, input1, t2, div3, div2, t3_value = JSON.stringify(ctx.$read), t3, color_action, t4, div5, current, dispose;
+    function create_fragment$b(ctx) {
+    	var pre, t0, color_action, t1, div, t2, current;
 
     	var port0 = new Port({
-    		props: { writable: true, address: `${ctx.$node.id}|write` },
+    		props: { writable: true, address: `${ctx.hole.id}|write` },
     		$$inline: true
     	});
 
     	var port1 = new Port({
-    		props: { address: `${ctx.$node.id}|read` },
+    		props: { address: `${ctx.hole.id}|read` },
     		$$inline: true
     	});
 
     	return {
     		c: function create() {
-    			div6 = element("div");
-    			div0 = element("div");
-    			port0.$$.fragment.c();
-    			t0 = space();
-    			div1 = element("div");
-    			input0 = element("input");
+    			pre = element("pre");
+    			t0 = text(ctx.$value);
     			t1 = space();
-    			div4 = element("div");
-    			input1 = element("input");
+    			div = element("div");
+    			port0.$$.fragment.c();
     			t2 = space();
-    			div3 = element("div");
-    			div2 = element("div");
-    			t3 = text(t3_value);
-    			t4 = space();
-    			div5 = element("div");
     			port1.$$.fragment.c();
-    			attr(div0, "class", "ports svelte-16jdbqg");
-    			add_location(div0, file$a, 12, 2, 223);
-    			attr(input0, "type", "text");
-    			attr(input0, "class", "edit svelte-16jdbqg");
-    			attr(input0, "placeholder", "Name!");
-    			add_location(input0, file$a, 16, 4, 332);
-    			attr(div1, "class", "name");
-    			add_location(div1, file$a, 15, 2, 308);
-    			attr(input1, "type", "text");
-    			attr(input1, "class", "edit svelte-16jdbqg");
-    			attr(input1, "placeholder", "JSON plz");
-    			add_location(input1, file$a, 19, 6, 451);
-    			attr(div2, "class", "pad svelte-16jdbqg");
-    			toggle_class(div2, "error", ctx.error);
-    			add_location(div2, file$a, 21, 10, 566);
-    			attr(div3, "class", "value svelte-16jdbqg");
-    			add_location(div3, file$a, 20, 6, 535);
-    			attr(div4, "class", "middle svelte-16jdbqg");
-    			add_location(div4, file$a, 18, 2, 423);
-    			attr(div5, "class", "ports svelte-16jdbqg");
-    			add_location(div5, file$a, 24, 2, 675);
-    			attr(div6, "class", "container svelte-16jdbqg");
-    			add_location(div6, file$a, 11, 0, 196);
-
-    			dispose = [
-    				listen(input0, "input", ctx.input0_input_handler),
-    				listen(input1, "input", ctx.input1_input_handler)
-    			];
+    			attr(pre, "class", "JSON svelte-1xkcxyi");
+    			toggle_class(pre, "error", ctx.error);
+    			add_location(pre, file$b, 10, 0, 172);
+    			attr(div, "class", "box");
+    			add_location(div, file$b, 13, 0, 257);
     		},
 
     		l: function claim(nodes) {
@@ -5603,54 +5753,36 @@ var app = (function () {
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, div6, anchor);
-    			append(div6, div0);
-    			mount_component(port0, div0, null);
-    			append(div6, t0);
-    			append(div6, div1);
-    			append(div1, input0);
-
-    			input0.value = ctx.$node.name;
-
-    			append(div6, t1);
-    			append(div6, div4);
-    			append(div4, input1);
-
-    			input1.value = ctx.$write;
-
-    			append(div4, t2);
-    			append(div4, div3);
-    			append(div3, div2);
-    			append(div2, t3);
-    			color_action = color$2.call(null, div2, `${ctx.$read}`) || {};
-    			append(div6, t4);
-    			append(div6, div5);
-    			mount_component(port1, div5, null);
+    			insert(target, pre, anchor);
+    			append(pre, t0);
+    			color_action = color$2.call(null, pre, JSON.stringify(ctx.$value)) || {};
+    			insert(target, t1, anchor);
+    			insert(target, div, anchor);
+    			mount_component(port0, div, null);
+    			append(div, t2);
+    			mount_component(port1, div, null);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			var port0_changes = {};
-    			if (changed.$node) port0_changes.address = `${ctx.$node.id}|write`;
-    			port0.$set(port0_changes);
-
-    			if (changed.$node && (input0.value !== ctx.$node.name)) input0.value = ctx.$node.name;
-    			if (changed.$write && (input1.value !== ctx.$write)) input1.value = ctx.$write;
-
-    			if ((!current || changed.$read) && t3_value !== (t3_value = JSON.stringify(ctx.$read))) {
-    				set_data(t3, t3_value);
+    			if (!current || changed.$value) {
+    				set_data(t0, ctx.$value);
     			}
 
-    			if (typeof color_action.update === 'function' && changed.$read) {
-    				color_action.update.call(null, `${ctx.$read}`);
+    			if (typeof color_action.update === 'function' && changed.$value) {
+    				color_action.update.call(null, JSON.stringify(ctx.$value));
     			}
 
     			if (changed.error) {
-    				toggle_class(div2, "error", ctx.error);
+    				toggle_class(pre, "error", ctx.error);
     			}
 
+    			var port0_changes = {};
+    			if (changed.hole) port0_changes.address = `${ctx.hole.id}|write`;
+    			port0.$set(port0_changes);
+
     			var port1_changes = {};
-    			if (changed.$node) port1_changes.address = `${ctx.$node.id}|read`;
+    			if (changed.hole) port1_changes.address = `${ctx.hole.id}|read`;
     			port1.$set(port1_changes);
     		},
 
@@ -5671,210 +5803,69 @@ var app = (function () {
 
     		d: function destroy(detaching) {
     			if (detaching) {
-    				detach(div6);
+    				detach(pre);
+    			}
+
+    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
+
+    			if (detaching) {
+    				detach(t1);
+    				detach(div);
     			}
 
     			destroy_component(port0, );
 
-    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
-
     			destroy_component(port1, );
-
-    			run_all(dispose);
-    		}
-    	};
-    }
-
-    function instance$9($$self, $$props, $$invalidate) {
-    	let $node, $read, $$unsubscribe_read = noop, $$subscribe_read = () => { $$unsubscribe_read(); $$unsubscribe_read = read.subscribe($$value => { $read = $$value; $$invalidate('$read', $read); }); }, $write, $$unsubscribe_write = noop, $$subscribe_write = () => { $$unsubscribe_write(); $$unsubscribe_write = write.subscribe($$value => { $write = $$value; $$invalidate('$write', $write); }); };
-
-    	$$self.$$.on_destroy.push(() => $$unsubscribe_read());
-    	$$self.$$.on_destroy.push(() => $$unsubscribe_write());
-
-    	
-
-    let { node } = $$props; validate_store(node, 'node'); subscribe($$self, node, $$value => { $node = $$value; $$invalidate('$node', $node); });
-
-    	const writable_props = ['node'];
-    	Object.keys($$props).forEach(key => {
-    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Value> was created with unknown prop '${key}'`);
-    	});
-
-    	function input0_input_handler() {
-    		node.update($$value => ($$value.name = this.value, $$value));
-    	}
-
-    	function input1_input_handler() {
-    		write.set(this.value);
-    	}
-
-    	$$self.$set = $$props => {
-    		if ('node' in $$props) $$invalidate('node', node = $$props.node);
-    	};
-
-    	let write, read, error;
-
-    	$$self.$$.update = ($$dirty = { $node: 1, $read: 1 }) => {
-    		if ($$dirty.$node) { write = $node.write; $$subscribe_write(), $$invalidate('write', write); }
-    		if ($$dirty.$node) { read = $node.read; $$subscribe_read(), $$invalidate('read', read); }
-    		if ($$dirty.$read) { $$invalidate('error', error = $read === undefined); }
-    	};
-
-    	return {
-    		node,
-    		write,
-    		$node,
-    		read,
-    		error,
-    		$read,
-    		$write,
-    		input0_input_handler,
-    		input1_input_handler
-    	};
-    }
-
-    class Value extends SvelteComponentDev {
-    	constructor(options) {
-    		super(options);
-    		init(this, options, instance$9, create_fragment$a, safe_not_equal, ["node"]);
-
-    		const { ctx } = this.$$;
-    		const props = options.props || {};
-    		if (ctx.node === undefined && !('node' in props)) {
-    			console.warn("<Value> was created without expected prop 'node'");
-    		}
-    	}
-
-    	get node() {
-    		throw new Error("<Value>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set node(value) {
-    		throw new Error("<Value>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-    }
-
-    /* src\element\weave\Name.svelte generated by Svelte v3.6.6 */
-
-    const file$b = "src\\element\\weave\\Name.svelte";
-
-    function create_fragment$b(ctx) {
-    	var div, input, t, current, dispose;
-
-    	var port = new Port({
-    		props: { address: ctx.$name, name: true },
-    		$$inline: true
-    	});
-
-    	return {
-    		c: function create() {
-    			div = element("div");
-    			input = element("input");
-    			t = space();
-    			port.$$.fragment.c();
-    			attr(input, "type", "text");
-    			attr(input, "class", "edit svelte-1xb8mv3");
-    			attr(input, "placeholder", "Name It!");
-    			add_location(input, file$b, 9, 2, 122);
-    			attr(div, "class", "name svelte-1xb8mv3");
-    			add_location(div, file$b, 8, 0, 100);
-    			dispose = listen(input, "input", ctx.input_input_handler);
-    		},
-
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-    		},
-
-    		m: function mount(target, anchor) {
-    			insert(target, div, anchor);
-    			append(div, input);
-
-    			input.value = ctx.$name;
-
-    			append(div, t);
-    			mount_component(port, div, null);
-    			current = true;
-    		},
-
-    		p: function update(changed, ctx) {
-    			if (changed.$name && (input.value !== ctx.$name)) input.value = ctx.$name;
-
-    			var port_changes = {};
-    			if (changed.$name) port_changes.address = ctx.$name;
-    			port.$set(port_changes);
-    		},
-
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(port.$$.fragment, local);
-
-    			current = true;
-    		},
-
-    		o: function outro(local) {
-    			transition_out(port.$$.fragment, local);
-    			current = false;
-    		},
-
-    		d: function destroy(detaching) {
-    			if (detaching) {
-    				detach(div);
-    			}
-
-    			destroy_component(port, );
-
-    			dispose();
     		}
     	};
     }
 
     function instance$a($$self, $$props, $$invalidate) {
-    	let $node, $name, $$unsubscribe_name = noop, $$subscribe_name = () => { $$unsubscribe_name(); $$unsubscribe_name = name.subscribe($$value => { $name = $$value; $$invalidate('$name', $name); }); };
+    	let $value, $$unsubscribe_value = noop, $$subscribe_value = () => { $$unsubscribe_value(); $$unsubscribe_value = value.subscribe($$value => { $value = $$value; $$invalidate('$value', $value); }); };
 
-    	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 
-    	let { node } = $$props; validate_store(node, 'node'); subscribe($$self, node, $$value => { $node = $$value; $$invalidate('$node', $node); });
+    	
 
-    	const writable_props = ['node'];
+    let { hole } = $$props;
+
+    	const writable_props = ['hole'];
     	Object.keys($$props).forEach(key => {
-    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Name> was created with unknown prop '${key}'`);
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<View> was created with unknown prop '${key}'`);
     	});
 
-    	function input_input_handler() {
-    		name.set(this.value);
-    	}
-
     	$$self.$set = $$props => {
-    		if ('node' in $$props) $$invalidate('node', node = $$props.node);
+    		if ('hole' in $$props) $$invalidate('hole', hole = $$props.hole);
     	};
 
-    	let name;
+    	let value, error;
 
-    	$$self.$$.update = ($$dirty = { $node: 1 }) => {
-    		if ($$dirty.$node) { name = $node.name; $$subscribe_name(), $$invalidate('name', name); }
+    	$$self.$$.update = ($$dirty = { hole: 1, $value: 1 }) => {
+    		if ($$dirty.hole) { value = hole.value; $$subscribe_value(), $$invalidate('value', value); }
+    		if ($$dirty.$value) { $$invalidate('error', error = $value === undefined); }
     	};
 
-    	return { node, name, $name, input_input_handler };
+    	return { hole, value, error, $value };
     }
 
-    class Name extends SvelteComponentDev {
+    class View extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$a, create_fragment$b, safe_not_equal, ["node"]);
+    		init(this, options, instance$a, create_fragment$b, safe_not_equal, ["hole"]);
 
     		const { ctx } = this.$$;
     		const props = options.props || {};
-    		if (ctx.node === undefined && !('node' in props)) {
-    			console.warn("<Name> was created without expected prop 'node'");
+    		if (ctx.hole === undefined && !('hole' in props)) {
+    			console.warn("<View> was created without expected prop 'hole'");
     		}
     	}
 
-    	get node() {
-    		throw new Error("<Name>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	get hole() {
+    		throw new Error("<View>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set node(value) {
-    		throw new Error("<Name>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	set hole(value) {
+    		throw new Error("<View>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -5882,20 +5873,20 @@ var app = (function () {
 
     function get_each_context$3(ctx, list, i) {
     	const child_ctx = Object.create(ctx);
-    	child_ctx._ = list[i][0];
-    	child_ctx.node = list[i][1];
+    	child_ctx.id = list[i][0];
+    	child_ctx.hole = list[i][1];
     	return child_ctx;
     }
 
-    // (35:2) <Node       {node}      position={[window.innerWidth / 2, window.innerHeight / 2]}      has_name={get(node).type !== ` name`}    >
+    // (33:2) <Hole       {hole}      position={[window.innerWidth / 2, window.innerHeight / 2]}    >
     function create_default_slot$3(ctx) {
     	var t, current;
 
-    	var switch_value = ctx.get_type(ctx.node);
+    	var switch_value = ctx.get_type(ctx.hole);
 
     	function switch_props(ctx) {
     		return {
-    			props: { node: ctx.node },
+    			props: { hole: ctx.hole },
     			$$inline: true
     		};
     	}
@@ -5921,9 +5912,9 @@ var app = (function () {
 
     		p: function update(changed, ctx) {
     			var switch_instance_changes = {};
-    			if (changed.$nodes) switch_instance_changes.node = ctx.node;
+    			if (changed.$holes) switch_instance_changes.hole = ctx.hole;
 
-    			if (switch_value !== (switch_value = ctx.get_type(ctx.node))) {
+    			if (switch_value !== (switch_value = ctx.get_type(ctx.hole))) {
     				if (switch_instance) {
     					group_outros();
     					const old_component = switch_instance;
@@ -5971,15 +5962,14 @@ var app = (function () {
     	};
     }
 
-    // (34:0) {#each Object.entries($nodes) as [_, node]}
+    // (32:0) {#each Object.entries($holes) as [id, hole]}
     function create_each_block$3(ctx) {
     	var current;
 
-    	var node = new Node({
+    	var hole = new Hole$1({
     		props: {
-    		node: ctx.node,
+    		hole: ctx.hole,
     		position: [window.innerWidth / 2, window.innerHeight / 2],
-    		has_name: get_store_value(ctx.node).type !== ` name`,
     		$$slots: { default: [create_default_slot$3] },
     		$$scope: { ctx }
     	},
@@ -5988,36 +5978,35 @@ var app = (function () {
 
     	return {
     		c: function create() {
-    			node.$$.fragment.c();
+    			hole.$$.fragment.c();
     		},
 
     		m: function mount(target, anchor) {
-    			mount_component(node, target, anchor);
+    			mount_component(hole, target, anchor);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			var node_changes = {};
-    			if (changed.$nodes) node_changes.node = ctx.node;
-    			if (changed.get || changed.$nodes) node_changes.has_name = get_store_value(ctx.node).type !== ` name`;
-    			if (changed.$$scope || changed.$nodes) node_changes.$$scope = { changed, ctx };
-    			node.$set(node_changes);
+    			var hole_changes = {};
+    			if (changed.$holes) hole_changes.hole = ctx.hole;
+    			if (changed.$$scope || changed.$holes) hole_changes.$$scope = { changed, ctx };
+    			hole.$set(hole_changes);
     		},
 
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(node.$$.fragment, local);
+    			transition_in(hole.$$.fragment, local);
 
     			current = true;
     		},
 
     		o: function outro(local) {
-    			transition_out(node.$$.fragment, local);
+    			transition_out(hole.$$.fragment, local);
     			current = false;
     		},
 
     		d: function destroy(detaching) {
-    			destroy_component(node, detaching);
+    			destroy_component(hole, detaching);
     		}
     	};
     }
@@ -6035,7 +6024,7 @@ var app = (function () {
     		$$inline: true
     	});
 
-    	var each_value = Object.entries(ctx.$nodes);
+    	var each_value = Object.entries(ctx.$holes);
 
     	var each_blocks = [];
 
@@ -6088,8 +6077,8 @@ var app = (function () {
     			if (changed.weave) threads_changes.weave = ctx.weave;
     			threads.$set(threads_changes);
 
-    			if (changed.$nodes || changed.get || changed.get_type) {
-    				each_value = Object.entries(ctx.$nodes);
+    			if (changed.$holes || changed.get_type) {
+    				each_value = Object.entries(ctx.$holes);
 
     				for (var i = 0; i < each_value.length; i += 1) {
     					const child_ctx = get_each_context$3(ctx, each_value, i);
@@ -6155,28 +6144,27 @@ var app = (function () {
     }
 
     function instance$b($$self, $$props, $$invalidate) {
-    	let $weave, $nodes;
+    	let $holes;
 
     	
 
-    const weave = Weave(); validate_store(weave, 'weave'); subscribe($$self, weave, $$value => { $weave = $$value; $$invalidate('$weave', $weave); });
-    const nodes = $weave.nodes; validate_store(nodes, 'nodes'); subscribe($$self, nodes, $$value => { $nodes = $$value; $$invalidate('$nodes', $nodes); });
-
-    const node_types = { stitch: Stitch$1, value: Value, name: Name };
+    const weave = Weave();
+    const holes = weave.holes; validate_store(holes, 'holes'); subscribe($$self, holes, $$value => { $holes = $$value; $$invalidate('$holes', $holes); });
+    const holes_types = { stitch: Stitch, view: View };
 
     const get_type = (node) => {
-      const split = get_store_value(node).type.split(` `);
+      const split = node.type.slice(1).split(` `);
 
       let type;
 
       while ((type = split.pop())) {
-        if (node_types[type]) return node_types[type]
+        if (holes_types[type]) return holes_types[type]
       }
 
       return false
     };
 
-    	return { weave, nodes, get_type, $nodes };
+    	return { weave, holes, get_type, $holes };
     }
 
     class Weave_1 extends SvelteComponentDev {

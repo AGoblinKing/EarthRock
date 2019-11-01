@@ -1,16 +1,16 @@
 <script>
 import { onDestroy } from "svelte"
-import { get } from "svelte/store"
-import * as types from "../../weave/types.js"
-import Scaling from "../../channel/scaling.js"
-import Node from "./Node.svelte"
-import color from "../action/color.js"
-import { match } from "../../channel/port-connection.js"
+
+import * as types from "/weave/types.js"
+import Scaling from "/channel/scaling.js"
+import { match } from "/channel/port-connection.js"
+import color from "/action/color.js"
+
+import Hole from "./Hole.svelte"
 
 export let weave
 
-const wires = $weave.wires
-
+const hole = types.hole()
 let picking = false
 
 const pick = (e) => {
@@ -23,9 +23,9 @@ const nopick = () => {
 }
 
 const create = (type) => {
-  $weave.nodes.update((nodes) => {
-    const node = types[type]()
-    nodes[get(node).id] = node
+  weave.holes.update((nodes) => {
+    const h = types[type]()
+    nodes[h.id] = h
 
     return nodes
   })
@@ -33,7 +33,7 @@ const create = (type) => {
 
 onDestroy(match.subscribe((new_match) => {
   if (!new_match) return
-  $weave.give_thread.set(new_match)
+  weave.give_thread.set(new_match)
 }))
 
 let position = [0, 0]
@@ -46,20 +46,20 @@ $: arr_types = Object.entries(types)
   on:mousedown={pick}
 >
 {#if picking}
-  <Node {position} has_name={false}>
+  <Hole {position} has_name={false} {hole}>
     <div class="prompt">
       <div class="title">
       SPAWN A ...
       </div>
       {#each arr_types as [type, fn] (type)}
-        {#if type !== `node`}
+        {#if type !== `hole`}
         <div class="type" use:color={type} on:mouseup={() => create(type)}>
           {type}
         </div>
         {/if}
       {/each}
     </div>
-  </Node>
+  </Hole>
 {/if}
 </div>
 

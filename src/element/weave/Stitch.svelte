@@ -1,39 +1,35 @@
 <script>
-import { color } from "../../util/text.js"
+import Channel from "./Channel.svelte"
+import { random } from "/util/text.js"
+import { writable } from "svelte/store"
 
-import Port from "./Port.svelte"
-
-export let node
+export let hole
 
 let weave_add = ``
 
-const chan = $node.chan
+$: value = hole.value
+$: name = hole.name
 
 const check_add = ({ which }) => {
   if (which !== 13) return
-  const c = $chan
+  const val = $value
+
   if (weave_add[0] === `-`) {
-    delete c[weave_add.slice(1)]
+    delete val[weave_add.slice(1)]
   } else {
-    c[weave_add] = true
+    val[weave_add] = writable(random(2))
   }
 
-  chan.set(c)
+  value.set(val)
   weave_add = ``
 }
-
-const address = (channel) => `${$node.id}|chan|${channel}`
 </script>
 
-<div class="board draggable">
-    {#each Object.entries($chan) as [name, channel] (name)}
-      <div class="channel">
-        <Port writable address={`${address(name)}|write`}/>
-        <div class="channel_name" style="color: {color(name)};">
-          { name }
-        </div>
-        <Port address={`${address(name)}|read`} />
-      </div>
+
+
+<div class="board">
+    {#each Object.entries($value) as [chan_name, chan] (chan_name)}
+      <Channel {chan} {hole} name={chan_name}/>
     {/each}
    
     <input 
@@ -65,51 +61,14 @@ const address = (channel) => `${$node.id}|chan|${channel}`
 
 
 
-.channel {
-  display: flex;
-  background-color: #333;
-  margin: 0.5rem 0;
-  padding: 0.5rem 1rem;
-  justify-content: center;
-  align-items: center;
-  border:solid 0.25rem #111;
-
-  width: 100%;
-}
-
-.channel:hover {
-  filter: brightness(1.2);
-}
-
-.channel_name {
-  color: white;
-  text-align: center;
-  font-size: 1rem;
-  margin: 0;
-  flex: 1;
-  filter: drop-shadow(1px 1px 0 black) brightness(2);
-}
-
-.name {
-  color: white;
-  text-align: center;
-  padding: 0;
-  margin: 0;
-  width: 20rem;
-  font-size: 1.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  filter: drop-shadow(1px 1px 0 black) ;
-}
-
 .board {
   padding-top: 0.5rem;
-  width: 20rem;
   text-align: center;
   color: white;
   text-transform: uppercase;
   display: flex;
   flex-direction: column;
+  width: 30rem;
   align-items: center;
 }
 

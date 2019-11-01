@@ -1878,15 +1878,18 @@ var app = (function () {
       value = random(2),
       value_overwrite = false,
       type = ` `,
-      name = random(2),
+      name,
       ...junk
-    } = false) => ({
-      ...junk,
-      id: id[0] === `/` ? id : `/${id}`,
-      name: writable(name),
-      type,
-      value: value_overwrite ? value : writable(value)
-    });
+    } = false) => {
+      name = name === undefined ? `${type.slice(1).split(` `).shift()} ${random(2)}` : name;
+      return ({
+        ...junk,
+        id: id[0] === `/` ? id : `/${id}`,
+        name: writable(name),
+        type,
+        value: value_overwrite ? value : writable(value)
+      })
+    };
 
     var stitch = ({
       value = {
@@ -5741,10 +5744,10 @@ var app = (function () {
     			port0.$$.fragment.c();
     			t2 = space();
     			port1.$$.fragment.c();
-    			attr(pre, "class", "JSON svelte-1xkcxyi");
+    			attr(pre, "class", "JSON svelte-1l9i3nv");
     			toggle_class(pre, "error", ctx.error);
     			add_location(pre, file$b, 10, 0, 172);
-    			attr(div, "class", "box");
+    			attr(div, "class", "box svelte-1l9i3nv");
     			add_location(div, file$b, 13, 0, 257);
     		},
 

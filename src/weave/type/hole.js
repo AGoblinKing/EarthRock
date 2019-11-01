@@ -8,12 +8,15 @@ export default ({
   value = random(2),
   value_overwrite = false,
   type = ` `,
-  name = random(2),
+  name,
   ...junk
-} = false) => ({
-  ...junk,
-  id: id[0] === `/` ? id : `/${id}`,
-  name: writable(name),
-  type,
-  value: value_overwrite ? value : writable(value)
-})
+} = false) => {
+  name = name === undefined ? `${type.slice(1).split(` `).shift()} ${random(2)}` : name
+  return ({
+    ...junk,
+    id: id[0] === `/` ? id : `/${id}`,
+    name: writable(name),
+    type,
+    value: value_overwrite ? value : writable(value)
+  })
+}

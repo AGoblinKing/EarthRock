@@ -17,11 +17,18 @@ $: error = $value === undefined
   </div>
 <style>
 .JSON {
-  width: 10rem;
-  height: 10rem;
+
   padding: 2rem;
   color: white;
+  margin: 0;
+  height: 10rem;
+  border-bottom: 0.25rem dashed #222;
 }  
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 
 </style>

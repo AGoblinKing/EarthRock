@@ -27,7 +27,9 @@
         - Trap
             - Persistant spell with a trigger
             - [ON ATTACK] [DESTROY ATTACKER] +3
-
+    - Use Rock Paper Scissors for "randomness"
+    - Offline can use dice instead decide ahead of time
+    
  3. Internet Matches
     - Paste deck in
     - Types

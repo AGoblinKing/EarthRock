@@ -1,10 +1,10 @@
-import App from './element/App.svelte';
+import App from '/element/app/App.svelte'
 
 const app = new App({
-	target: document.body,
-	props: {
-		name: 'stage'
-	}
-});
+  target: document.body,
+  props: {
+    name: `stage`
+  }
+})
 
-export default app;
+export default app

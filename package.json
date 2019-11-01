@@ -2,12 +2,14 @@
   "name": "svelte-app",
   "version": "1.0.0",
   "devDependencies": {
+    "color": "^3.1.2",
     "eslint": "^6.5.1",
     "eslint-config-standard": "^14.1.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-node": "^10.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
+    "eslint-plugin-svelte3": "^2.7.3",
     "npm-run-all": "^4.1.5",
     "rollup": "^1.10.1",
     "rollup-plugin-commonjs": "^9.3.4",
@@ -16,10 +18,12 @@
     "rollup-plugin-livereload": "^1.0.0",
     "rollup-plugin-node-resolve": "^4.2.3",
     "rollup-plugin-replace-html-vars": "^1.0.3",
+    "rollup-plugin-root-import": "^0.2.4",
     "rollup-plugin-svelte": "^5.0.3",
     "rollup-plugin-terser": "^4.0.4",
     "svelte": "^3.0.0",
-    "tone": "^13.8.25"
+    "tone": "^13.8.25",
+    "uuid": "^3.3.3"
   },
   "dependencies": {
     "aframe-watcher": "^1.4.0",

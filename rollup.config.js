@@ -5,8 +5,9 @@ import livereload from 'rollup-plugin-livereload'
 import { terser } from 'rollup-plugin-terser'
 import json from "rollup-plugin-json"
 import replaceHtmlVars from 'rollup-plugin-replace-html-vars'
-
-const production = !process.env.ROLLUP_WATCH
+import rootImport from 'rollup-plugin-root-import'
+const
+  production = !process.env.ROLLUP_WATCH
 
 export default {
   input: `src/main.js`,
@@ -17,6 +18,11 @@ export default {
     file: `public/bundle.js`
   },
   plugins: [
+    rootImport({
+      // Will first look in `client/src/*` and then `common/src/*`.
+      root: `${__dirname}/src`,
+      useEntry: `prepend`
+    }),
     svelte({
       // enable run-time checks when not in production
       dev: !production,

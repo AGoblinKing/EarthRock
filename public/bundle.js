@@ -340,6 +340,68 @@ var app = (function () {
             block.o(local);
         }
     }
+    function create_in_transition(node, fn, params) {
+        let config = fn(node, params);
+        let running = false;
+        let animation_name;
+        let task;
+        let uid = 0;
+        function cleanup() {
+            if (animation_name)
+                delete_rule(node, animation_name);
+        }
+        function go() {
+            const { delay = 0, duration = 300, easing = identity, tick = noop, css } = config;
+            if (css)
+                animation_name = create_rule(node, 0, 1, duration, delay, easing, css, uid++);
+            tick(0, 1);
+            const start_time = now() + delay;
+            const end_time = start_time + duration;
+            if (task)
+                task.abort();
+            running = true;
+            add_render_callback(() => dispatch(node, true, 'start'));
+            task = loop(now => {
+                if (running) {
+                    if (now >= end_time) {
+                        tick(1, 0);
+                        dispatch(node, true, 'end');
+                        cleanup();
+                        return running = false;
+                    }
+                    if (now >= start_time) {
+                        const t = easing((now - start_time) / duration);
+                        tick(t, 1 - t);
+                    }
+                }
+                return running;
+            });
+        }
+        let started = false;
+        return {
+            start() {
+                if (started)
+                    return;
+                delete_rule(node);
+                if (is_function(config)) {
+                    config = config();
+                    wait().then(go);
+                }
+                else {
+                    go();
+                }
+            },
+            invalidate() {
+                started = false;
+            },
+            end() {
+                if (running) {
+                    cleanup();
+                    running = false;
+                }
+            }
+        };
+    }
     function create_out_transition(node, fn, params) {
         let config = fn(node, params);
         let running = true;
@@ -785,30 +847,21 @@ var app = (function () {
         };
     }
 
-    const mouse_pos = writable([0, 0]);
-    const mouse_raw = [0, 0];
+    const position = readable([0, 0], set => window
+      .addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))
+    );
 
-    window.addEventListener(`mousemove`, (e) => {
-      mouse_raw[0] = e.clientX;
-      mouse_raw[1] = e.clientY;
-
-      if (mouse_raw[0] !== get_store_value(mouse_pos)[0] || mouse_raw[1] !== get_store_value(mouse_pos)[1]) {
-        mouse_pos.set([...mouse_raw]);
-      }
-    });
-
-    const position = mouse_pos;
-    const mouse_up = readable(null, set => {
+    const mouse_up = readable(null, set =>
       window.addEventListener(`mouseup`, (e) => {
         set(e);
-      });
-    });
+      })
+    );
 
-    const scroll = readable(0, (set) => {
+    const scroll = readable(0, (set) =>
       window.addEventListener(`mousewheel`, (e) => {
         set(get_store_value(scroll) + e.deltaY);
-      });
-    });
+      })
+    );
 
     const player = ({
       instrument,
@@ -1864,7 +1917,9 @@ var app = (function () {
 
     const words = [
       `groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
-      `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`
+      `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
+      `luna`, `ember`, `embear`, `lunatic`, `boring`,
+      `under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`
     ];
 
     const random = (count) => Array
@@ -1908,25 +1963,26 @@ var app = (function () {
         }, {})
     });
 
-    var view = ({
-      view = `JSON`,
+    var json = ({
       type = ``,
       ...junk
     } = false) => {
-      const value = writable(random(2));
+      const value = writable();
       const set = value.set;
 
       value.set = (val) => {
         try {
           set(JSON.parse(val));
         } catch (ex) {
-          set(`! ErRoR !`);
+          set(`! ErRoR ! - BAD JSON`);
         }
       };
 
+      value.set(`null`);
+
       return Hole({
         ...junk,
-        type: `${type} view`,
+        type: `${type} json`,
         value,
         value_overwrite: true
       })
@@ -1937,7 +1993,7 @@ var app = (function () {
     var types = /*#__PURE__*/Object.freeze({
         stitch: stitch,
         hole: Hole,
-        view: view
+        json: json
     });
 
     var Weave = ({
@@ -4492,11 +4548,11 @@ var app = (function () {
     			div0 = element("div");
     			input = element("input");
     			attr(input, "type", "text");
-    			attr(input, "class", "edit svelte-kdlwf7");
+    			attr(input, "class", "edit svelte-xi7zzy");
     			attr(input, "placeholder", "Name It!");
     			add_location(input, file$6, 44, 8, 1092);
     			add_location(div0, file$6, 43, 6, 1059);
-    			attr(div1, "class", "nameit svelte-kdlwf7");
+    			attr(div1, "class", "nameit svelte-xi7zzy");
     			add_location(div1, file$6, 42, 4, 1010);
 
     			dispose = [
@@ -4551,7 +4607,7 @@ var app = (function () {
 
     			if (default_slot) default_slot.c();
 
-    			attr(div, "class", "hole svelte-kdlwf7");
+    			attr(div, "class", "hole svelte-xi7zzy");
     			add_location(div, file$6, 49, 2, 1210);
     			dispose = listen(div, "mousedown", ctx.drag);
     		},
@@ -5287,7 +5343,7 @@ var app = (function () {
     const file$9 = "src\\element\\weave\\Channel.svelte";
 
     function create_fragment$9(ctx) {
-    	var div2, t0, div1, div0, t1, color_action, t2, input, color_action_1, t3, current, dispose;
+    	var div2, t0, div1, div0, t1, t2, input, color_action, t3, current, dispose;
 
     	var port0 = new Port({
     		props: { writable: true, address: `${ctx.address(ctx.name)}|write` },
@@ -5312,11 +5368,11 @@ var app = (function () {
     			t3 = space();
     			port1.$$.fragment.c();
     			attr(div0, "class", "name svelte-1mjypaz");
-    			add_location(div0, file$9, 13, 4, 312);
+    			add_location(div0, file$9, 13, 4, 329);
     			attr(input, "type", "text");
     			attr(input, "class", "edit svelte-1mjypaz");
     			attr(input, "placeholder", "JSON plz");
-    			add_location(input, file$9, 14, 4, 365);
+    			add_location(input, file$9, 14, 4, 366);
     			attr(div1, "class", "vbox svelte-1mjypaz");
     			add_location(div1, file$9, 12, 2, 287);
     			attr(div2, "class", "channel svelte-1mjypaz");
@@ -5335,13 +5391,12 @@ var app = (function () {
     			append(div2, div1);
     			append(div1, div0);
     			append(div0, t1);
-    			color_action = color$2.call(null, div0, ctx.name) || {};
     			append(div1, t2);
     			append(div1, input);
 
     			input.value = ctx.$chan;
 
-    			color_action_1 = color$2.call(null, input, ctx.$chan) || {};
+    			color_action = color$2.call(null, div1, ctx.$chan) || {};
     			append(div2, t3);
     			mount_component(port1, div2, null);
     			current = true;
@@ -5356,14 +5411,10 @@ var app = (function () {
     				set_data(t1, ctx.name);
     			}
 
-    			if (typeof color_action.update === 'function' && changed.name) {
-    				color_action.update.call(null, ctx.name);
-    			}
-
     			if (changed.$chan && (input.value !== ctx.$chan)) input.value = ctx.$chan;
 
-    			if (typeof color_action_1.update === 'function' && changed.$chan) {
-    				color_action_1.update.call(null, ctx.$chan);
+    			if (typeof color_action.update === 'function' && changed.$chan) {
+    				color_action.update.call(null, ctx.$chan);
     			}
 
     			var port1_changes = {};
@@ -5394,7 +5445,6 @@ var app = (function () {
     			destroy_component(port0, );
 
     			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
-    			if (color_action_1 && typeof color_action_1.destroy === 'function') color_action_1.destroy();
 
     			destroy_component(port1, );
 
@@ -5491,6 +5541,30 @@ var app = (function () {
     	return child_ctx;
     }
 
+    // (33:4) {:else}
+    function create_else_block(ctx) {
+    	var div;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			div.textContent = "/\\/\\";
+    			attr(div, "class", "no-stitches svelte-1hayk1m");
+    			add_location(div, file$a, 33, 6, 650);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+    		}
+    	};
+    }
+
     // (31:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
     function create_each_block$2(key_1, ctx) {
     	var first, current;
@@ -5564,6 +5638,13 @@ var app = (function () {
     		each_1_lookup.set(key, each_blocks[i] = create_each_block$2(key, child_ctx));
     	}
 
+    	var each_1_else = null;
+
+    	if (!each_value.length) {
+    		each_1_else = create_else_block();
+    		each_1_else.c();
+    	}
+
     	return {
     		c: function create() {
     			div = element("div");
@@ -5573,10 +5654,10 @@ var app = (function () {
     			t = space();
     			input = element("input");
     			attr(input, "type", "text");
-    			attr(input, "class", "add_channel svelte-pf1ezl");
+    			attr(input, "class", "add_channel svelte-1hayk1m");
     			attr(input, "placeholder", "STITCH IT!");
-    			add_location(input, file$a, 34, 4, 653);
-    			attr(div, "class", "board svelte-pf1ezl");
+    			add_location(input, file$a, 36, 4, 709);
+    			attr(div, "class", "board svelte-1hayk1m");
     			add_location(div, file$a, 29, 0, 492);
 
     			dispose = [
@@ -5595,6 +5676,10 @@ var app = (function () {
 
     			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].m(div, null);
 
+    			if (each_1_else) {
+    				each_1_else.m(div, null);
+    			}
+
     			append(div, t);
     			append(div, input);
 
@@ -5609,6 +5694,17 @@ var app = (function () {
     			group_outros();
     			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$2, t, get_each_context$2);
     			check_outros();
+
+    			if (each_value.length) {
+    				if (each_1_else) {
+    					each_1_else.d(1);
+    					each_1_else = null;
+    				}
+    			} else if (!each_1_else) {
+    				each_1_else = create_else_block();
+    				each_1_else.c();
+    				each_1_else.m(div, t);
+    			}
 
     			if (changed.weave_add && (input.value !== ctx.weave_add)) input.value = ctx.weave_add;
     		},
@@ -5632,6 +5728,8 @@ var app = (function () {
     			}
 
     			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].d();
+
+    			if (each_1_else) each_1_else.d();
 
     			run_all(dispose);
     		}
@@ -5718,17 +5816,72 @@ var app = (function () {
     	}
     }
 
-    /* src\element\weave\View.svelte generated by Svelte v3.6.6 */
+    const animation = writable({ delay: 250, duration: 300 });
 
-    const file$b = "src\\element\\weave\\View.svelte";
+    /* src\element\weave\Json.svelte generated by Svelte v3.6.6 */
+
+    const file$b = "src\\element\\weave\\Json.svelte";
+
+    // (27:6) {#if $value === null}
+    function create_if_block$5(ctx) {
+    	var div0, div0_intro, t_1, div1, div1_intro;
+
+    	return {
+    		c: function create() {
+    			div0 = element("div");
+    			div0.textContent = "\\/\\/";
+    			t_1 = space();
+    			div1 = element("div");
+    			div1.textContent = "JSON IT!";
+    			attr(div0, "class", "doit svelte-1egsm3d");
+    			add_location(div0, file$b, 27, 8, 627);
+    			attr(div1, "class", "doit svelte-1egsm3d");
+    			add_location(div1, file$b, 28, 8, 684);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div0, anchor);
+    			insert(target, t_1, anchor);
+    			insert(target, div1, anchor);
+    		},
+
+    		i: function intro(local) {
+    			if (!div0_intro) {
+    				add_render_callback(() => {
+    					div0_intro = create_in_transition(div0, fly, animation);
+    					div0_intro.start();
+    				});
+    			}
+
+    			if (!div1_intro) {
+    				add_render_callback(() => {
+    					div1_intro = create_in_transition(div1, fly, animation);
+    					div1_intro.start();
+    				});
+    			}
+    		},
+
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div0);
+    				detach(t_1);
+    				detach(div1);
+    			}
+    		}
+    	};
+    }
 
     function create_fragment$b(ctx) {
-    	var pre, t0, color_action, t1, div, t2, current;
+    	var div3, t0, div2, div1, div0, t1, t2, color_action, t3, current;
 
     	var port0 = new Port({
     		props: { writable: true, address: `${ctx.hole.id}|write` },
     		$$inline: true
     	});
+
+    	var if_block = (ctx.$value === null) && create_if_block$5();
 
     	var port1 = new Port({
     		props: { address: `${ctx.hole.id}|read` },
@@ -5737,18 +5890,26 @@ var app = (function () {
 
     	return {
     		c: function create() {
-    			pre = element("pre");
-    			t0 = text(ctx.$value);
-    			t1 = space();
-    			div = element("div");
+    			div3 = element("div");
     			port0.$$.fragment.c();
+    			t0 = space();
+    			div2 = element("div");
+    			div1 = element("div");
+    			div0 = element("div");
+    			t1 = text(ctx.$value);
     			t2 = space();
+    			if (if_block) if_block.c();
+    			t3 = space();
     			port1.$$.fragment.c();
-    			attr(pre, "class", "JSON svelte-1l9i3nv");
-    			toggle_class(pre, "error", ctx.error);
-    			add_location(pre, file$b, 10, 0, 172);
-    			attr(div, "class", "box svelte-1l9i3nv");
-    			add_location(div, file$b, 13, 0, 257);
+    			attr(div0, "class", "flex svelte-1egsm3d");
+    			add_location(div0, file$b, 25, 6, 555);
+    			attr(div1, "class", "value_add svelte-1egsm3d");
+    			add_location(div1, file$b, 24, 4, 524);
+    			attr(div2, "class", "JSON svelte-1egsm3d");
+    			toggle_class(div2, "error", ctx.error);
+    			add_location(div2, file$b, 23, 2, 459);
+    			attr(div3, "class", "box svelte-1egsm3d");
+    			add_location(div3, file$b, 21, 0, 388);
     		},
 
     		l: function claim(nodes) {
@@ -5756,33 +5917,51 @@ var app = (function () {
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, pre, anchor);
-    			append(pre, t0);
-    			color_action = color$2.call(null, pre, JSON.stringify(ctx.$value)) || {};
-    			insert(target, t1, anchor);
-    			insert(target, div, anchor);
-    			mount_component(port0, div, null);
-    			append(div, t2);
-    			mount_component(port1, div, null);
+    			insert(target, div3, anchor);
+    			mount_component(port0, div3, null);
+    			append(div3, t0);
+    			append(div3, div2);
+    			append(div2, div1);
+    			append(div1, div0);
+    			append(div0, t1);
+    			append(div1, t2);
+    			if (if_block) if_block.m(div1, null);
+    			color_action = color$2.call(null, div2, ctx.try_json(ctx.$value)) || {};
+    			append(div3, t3);
+    			mount_component(port1, div3, null);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			if (!current || changed.$value) {
-    				set_data(t0, ctx.$value);
-    			}
-
-    			if (typeof color_action.update === 'function' && changed.$value) {
-    				color_action.update.call(null, JSON.stringify(ctx.$value));
-    			}
-
-    			if (changed.error) {
-    				toggle_class(pre, "error", ctx.error);
-    			}
-
     			var port0_changes = {};
     			if (changed.hole) port0_changes.address = `${ctx.hole.id}|write`;
     			port0.$set(port0_changes);
+
+    			if (!current || changed.$value) {
+    				set_data(t1, ctx.$value);
+    			}
+
+    			if (ctx.$value === null) {
+    				if (!if_block) {
+    					if_block = create_if_block$5();
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(div1, null);
+    				} else {
+    									transition_in(if_block, 1);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if (typeof color_action.update === 'function' && changed.$value) {
+    				color_action.update.call(null, ctx.try_json(ctx.$value));
+    			}
+
+    			if (changed.error) {
+    				toggle_class(div2, "error", ctx.error);
+    			}
 
     			var port1_changes = {};
     			if (changed.hole) port1_changes.address = `${ctx.hole.id}|read`;
@@ -5792,6 +5971,8 @@ var app = (function () {
     		i: function intro(local) {
     			if (current) return;
     			transition_in(port0.$$.fragment, local);
+
+    			transition_in(if_block);
 
     			transition_in(port1.$$.fragment, local);
 
@@ -5806,17 +5987,13 @@ var app = (function () {
 
     		d: function destroy(detaching) {
     			if (detaching) {
-    				detach(pre);
-    			}
-
-    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
-
-    			if (detaching) {
-    				detach(t1);
-    				detach(div);
+    				detach(div3);
     			}
 
     			destroy_component(port0, );
+
+    			if (if_block) if_block.d();
+    			if (color_action && typeof color_action.destroy === 'function') color_action.destroy();
 
     			destroy_component(port1, );
     		}
@@ -5832,9 +6009,17 @@ var app = (function () {
 
     let { hole } = $$props;
 
+    const try_json = (val) => {
+      try {
+        return JSON.stringify(val)
+      } catch (ex) {
+        return `! ErRoR !`
+      }
+    };
+
     	const writable_props = ['hole'];
     	Object.keys($$props).forEach(key => {
-    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<View> was created with unknown prop '${key}'`);
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Json> was created with unknown prop '${key}'`);
     	});
 
     	$$self.$set = $$props => {
@@ -5848,10 +6033,10 @@ var app = (function () {
     		if ($$dirty.$value) { $$invalidate('error', error = $value === undefined); }
     	};
 
-    	return { hole, value, error, $value };
+    	return { hole, try_json, value, error, $value };
     }
 
-    class View extends SvelteComponentDev {
+    class Json extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
     		init(this, options, instance$a, create_fragment$b, safe_not_equal, ["hole"]);
@@ -5859,16 +6044,16 @@ var app = (function () {
     		const { ctx } = this.$$;
     		const props = options.props || {};
     		if (ctx.hole === undefined && !('hole' in props)) {
-    			console.warn("<View> was created without expected prop 'hole'");
+    			console.warn("<Json> was created without expected prop 'hole'");
     		}
     	}
 
     	get hole() {
-    		throw new Error("<View>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    		throw new Error("<Json>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
     	set hole(value) {
-    		throw new Error("<View>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    		throw new Error("<Json>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -5881,7 +6066,7 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (33:2) <Hole       {hole}      position={[window.innerWidth / 2, window.innerHeight / 2]}    >
+    // (31:2) <Hole       {hole}      position={[window.innerWidth / 2, window.innerHeight / 2]}    >
     function create_default_slot$3(ctx) {
     	var t, current;
 
@@ -5965,7 +6150,7 @@ var app = (function () {
     	};
     }
 
-    // (32:0) {#each Object.entries($holes) as [id, hole]}
+    // (30:0) {#each Object.entries($holes) as [id, hole]}
     function create_each_block$3(ctx) {
     	var current;
 
@@ -6153,7 +6338,7 @@ var app = (function () {
 
     const weave = Weave();
     const holes = weave.holes; validate_store(holes, 'holes'); subscribe($$self, holes, $$value => { $holes = $$value; $$invalidate('$holes', $holes); });
-    const holes_types = { stitch: Stitch, view: View };
+    const holes_types = { stitch: Stitch, json: Json };
 
     const get_type = (node) => {
       const split = node.type.slice(1).split(` `);
@@ -6182,7 +6367,7 @@ var app = (function () {
     const file$c = "src\\element\\app\\App.svelte";
 
     // (26:0) {:else}
-    function create_else_block(ctx) {
+    function create_else_block$1(ctx) {
     	var current;
 
     	var intro = new Intro({ $$inline: true });
@@ -6254,7 +6439,7 @@ var app = (function () {
     }
 
     // (22:0) {#if designing}
-    function create_if_block$5(ctx) {
+    function create_if_block$6(ctx) {
     	var current;
 
     	var design = new Design({ $$inline: true });
@@ -6292,9 +6477,9 @@ var app = (function () {
     	var current_block_type_index, if_block, t0, t1, div, current;
 
     	var if_block_creators = [
-    		create_if_block$5,
+    		create_if_block$6,
     		create_if_block_1$2,
-    		create_else_block
+    		create_else_block$1
     	];
 
     	var if_blocks = [];

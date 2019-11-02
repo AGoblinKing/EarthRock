@@ -64,16 +64,18 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
 }
 
 .nameit {
+  z-index: 2;
   align-self: center;
   background-color: #222;
   border: 0.5rem solid black;
-  border-bottom: none;
+  border-bottom: 0.25rem dashed #333;
   
   margin: 0 2rem;
   margin-bottom: -0.5rem;
 
+  border-radius: 1rem 1rem 0 0;
   overflow: hidden;
-  filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
+  filter: drop-shadow(1rem 0rem 0 rgba(0,0,0,0.25));
 }
 
 .edit {

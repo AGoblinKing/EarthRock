@@ -30,6 +30,8 @@ const check_add = ({ which }) => {
 <div class="board">
     {#each Object.entries($value) as [chan_name, chan] (chan_name)}
       <Channel {chan} {hole} name={chan_name}/>
+    {:else}
+      <div class="no-stitches">/\/\</div>
     {/each}
    
     <input 
@@ -46,20 +48,25 @@ const check_add = ({ which }) => {
 
 <style>
 
+.no-stitches {
+  font-size: 7rem;
+  justify-self: center;
+  align-self: center;
+}
 .add_channel:hover {
   background-color: #151;
 }
 
 .add_channel {
+  border-top: 0.25rem dashed #111;
+  background-color: #333;
   flex: 1;
   text-transform: uppercase;
   color: white;
   text-align: center;
-  width: 20rem;
+  width: 30rem;
 
 }
-
-
 
 .board {
   padding-top: 0.5rem;

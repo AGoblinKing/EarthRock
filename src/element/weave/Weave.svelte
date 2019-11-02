@@ -1,17 +1,15 @@
 <script>
-import { get } from "svelte/store"
-
-import Weave from "../../weave/weave.js"
+import Weave from "/weave/weave.js"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Hole from "./Hole.svelte"
 
 import stitch from "./Stitch.svelte"
-import view from "./View.svelte"
+import json from "./Json.svelte"
 
 const weave = Weave()
 const holes = weave.holes
-const holes_types = { stitch, view }
+const holes_types = { stitch, json }
 
 const get_type = (node) => {
   const split = node.type.slice(1).split(` `)
@@ -37,3 +35,13 @@ const get_type = (node) => {
     <svelte:component this={get_type(hole)} {hole} /> 
   </Hole>
 {/each}
+
+<style>
+:global(input:hover::placeholder, input:focus::placeholder) {
+  color: black;
+}
+
+:global(input:hover), :global(input:focus) {
+background-color: green !important;
+}
+</style>

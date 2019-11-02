@@ -10,9 +10,9 @@ const address = (channel) => `${hole.id}|chan|${channel}`
 </script>
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>
-  <div class="vbox" >
-    <div class="name" use:color={name}>{name}</div>
-    <input type="text" use:color={$chan} class="edit" bind:value={$chan} placeholder="JSON plz"/>
+  <div class="vbox" use:color={$chan}>
+    <div class="name" >{name}</div>
+    <input type="text" class="edit" bind:value={$chan} placeholder="JSON plz"/>
   </div>
   <Port address={`${address(name)}|read`} />
 </div>

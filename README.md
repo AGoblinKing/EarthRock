@@ -4,7 +4,7 @@
 ### <Uncollectable Card Game>
 ![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/weave-latest.png)
  
-![gif](https://agoblinking.github.io/EarthRock/public/weave/demo/img/gif.gif)
+![ohya][https://agoblinking.github.io/EarthRock/public/weave/demo/img/ohya.png)
  
 # WARNING
 ### THIS IS AND ALWAYS WILL BE AN EXPERIMENTAL BRANCH. 

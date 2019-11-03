@@ -1,4 +1,4 @@
-[!/weave/demo/img/logo.gif](logo)
+![logo](./public/weave/demo/img/logo.gif])
 # Earthrock
 ### <Uncollectable Card Game>
 

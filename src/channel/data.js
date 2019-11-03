@@ -1,12 +1,21 @@
 import { writable, readable, get } from "svelte/store"
+import uuid from "uuid/v4"
 
 const VERSION = 1
 
 let db
 
-const init = async () => weave.set(await query({
-  action: `getAll`
-}))
+const init = async () => {
+  weave.set(await query({
+    action: `getAll`
+  }))
+
+  query({
+    store: `flags`
+  })
+}
+
+export const flags = writable()
 
 export const name = writable({
   // [alias]: uuid
@@ -24,9 +33,6 @@ export const ready = readable(false, set => {
   req.onupgradeneeded = ({ event: { target: result } }) => {
     db = result
 
-    // Create an objectStore to hold information about our customers. We're
-    // going to use "ssn" as our key path because it's guaranteed to be
-    // unique - or at least that's what I was told during the kickoff meeting.
     db.createObjectStore(`weave`, { keyPath: `id` })
     db.createObjectStore(`trash`, { keyPath: `id` })
 

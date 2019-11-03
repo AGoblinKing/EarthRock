@@ -1,6 +1,7 @@
 {
-  "name": "svelte-app",
+  "name": "earthrock",
   "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
   "devDependencies": {
     "color": "^3.1.2",
     "eslint": "^6.5.1",

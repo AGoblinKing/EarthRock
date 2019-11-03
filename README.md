@@ -3,7 +3,7 @@
 # Earthrock
 ### <Uncollectable Card Game>
 ![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/weave-latest.png)
-![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/I need a bigger island.gif)
+![gif](https://agoblinking.github.io/EarthRock/public/weave/demo/img/gif.gif)
  
 ## Basis for MVP
  1. Custom Decks

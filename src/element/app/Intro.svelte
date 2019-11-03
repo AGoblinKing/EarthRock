@@ -55,12 +55,12 @@ const develop = () => {
         on:mouseenter={mouseOver} 
         on:click="{discord}"
     >CHAT</button>
-    {#if IS_DEV}
+
     <button  
         on:mouseenter={mouseOver} 
         on:click="{develop}"
     >WEAVE</button>
-     {/if}
+ 
 </div>
 <div class="notice">We don't use cookies or store anything about you server side.</div>
 </div>

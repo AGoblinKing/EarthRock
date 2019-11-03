@@ -2,7 +2,7 @@
 
 # Earthrock
 ### <Uncollectable Card Game>
-
+![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/weave-latest.png)
 ## Basis for MVP
  1. Custom Decks
     - Maximum point value, eg: 60

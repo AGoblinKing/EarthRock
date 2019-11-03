@@ -1,3 +1,4 @@
+[!/weave/demo/img/logo.gif](logo)
 # Earthrock
 ### <Uncollectable Card Game>
 
@@ -11,7 +12,8 @@
     - Name [from set list]
     - Ability chosen from set
     - Portrait from image map
-    - public/private key for each deck
+    - private uuid to ID the player
+    - kept in database
  2. Custom Cards
     - Name [From set list of words combined]
     - Image from image map
@@ -40,6 +42,7 @@
 
 ## Technology
     - Node.js server for now
+    - Go Wheel Server ASAP
     - Use JSON for messaging right now
     - POST w/ SSE down.
     

@@ -7,7 +7,8 @@
 ![gif](https://agoblinking.github.io/EarthRock/public/weave/demo/img/gif.gif)
  
 # WARNING
-## THIS IS AND ALWAYS WILL BE AN EXPERIMENTAL BRANCH. FORK IT FOR STABILITY
+### THIS IS AND ALWAYS WILL BE AN EXPERIMENTAL BRANCH. 
+### FORK IT FOR STABILITY.
 
 ## Basis for MVP
  1. Custom Decks

@@ -1,4 +1,5 @@
-![logo](./public/weave/demo/img/logo.gif])
+![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/logo.gif)
+
 # Earthrock
 ### <Uncollectable Card Game>
 

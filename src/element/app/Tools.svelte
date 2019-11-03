@@ -1,7 +1,7 @@
 <script>
 import { createEventDispatcher } from "svelte"
 import { button_press, button } from "/sound/ui.js"
-import path from "/channel/path.js"
+import {path} from "/channel/path.js"
 
 const dispatch = createEventDispatcher()
 const audio = new Audio(`/music/earthrock-final-theme.mp3`)

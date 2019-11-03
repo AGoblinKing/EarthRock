@@ -6,8 +6,10 @@ import { terser } from 'rollup-plugin-terser'
 import json from "rollup-plugin-json"
 import replaceHtmlVars from 'rollup-plugin-replace-html-vars'
 import rootImport from 'rollup-plugin-root-import'
-const
-  production = !process.env.ROLLUP_WATCH
+
+const production = !process.env.ROLLUP_WATCH
+
+const output = `docs`
 
 export default {
   input: `src/main.js`,
@@ -15,7 +17,7 @@ export default {
     sourcemap: !production,
     format: `iife`,
     name: `app`,
-    file: `public/bundle.js`
+    file: `${output}/bundle.js`
   },
   plugins: [
     rootImport({
@@ -29,11 +31,11 @@ export default {
       // we'll extract any component CSS out into
       // a separate file — better for performance
       css: css => {
-        css.write(`public/bundle.css`)
+        css.write(`${output}/bundle.css`)
       }
     }),
     replaceHtmlVars({
-      files: `public/*.html`,
+      files: `${output}/*.html`,
       from: /.js\?t=[0-9]+/g,
       to: `.js?t=${Date.now()}`
     }),
@@ -47,9 +49,9 @@ export default {
     commonjs(),
     json(),
 
-    // Watch the `public` directory and refresh the
+    // Watch the `${output}` directory and refresh the
     // browser on changes when not in production
-    !production && livereload(`public`),
+    !production && livereload(`${output}`),
 
     // If we're building for production (npm run build
     // instead of npm run dev), minify

@@ -6,7 +6,7 @@ import Tile from "../image/Tile.svelte"
 import Design from "./Design.svelte"
 import Weave from "../weave/Weave.svelte"
 import Credits from "./Credits.svelte"
-import path from "../../channel/path.js"
+import {path} from "../../channel/path.js"
 
 $: playing = $path === `play`
 $: designing = $path === `cards`

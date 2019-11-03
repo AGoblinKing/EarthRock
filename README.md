@@ -3,6 +3,7 @@
 # Earthrock
 ### <Uncollectable Card Game>
 ![logo](https://agoblinking.github.io/EarthRock/public/weave/demo/img/weave-latest.png)
+ 
 ![gif](https://agoblinking.github.io/EarthRock/public/weave/demo/img/gif.gif)
  
 ## Basis for MVP

@@ -26,11 +26,11 @@ const mouseOver = () => {
 }
 </script>
 
-<div 
-    class="gem" 
-    class:hover 
-    on:mouseover={mouseOver} 
-    class:empty 
+<div
+    class="gem"
+    class:hover
+    on:mouseover={mouseOver}
+    class:empty
     style="{`filter: contrast(1.5) grayscale(${grayscale}) hue-rotate(${hue}) brightness(${bright_default}) drop-shadow(0.5vh -0.5vw 0 rgba(0,0,0,0.25));`}"
 >
     <Tiles data="{(is_first ? 180 : 68).toString()}" width={1} height={1}/>

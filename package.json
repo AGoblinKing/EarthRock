@@ -27,15 +27,11 @@
     "tone": "^13.8.25",
     "uuid": "^3.3.3"
   },
-  "dependencies": {
-    "aframe-watcher": "^1.4.0",
-    "sirv-cli": "^0.4.4"
-  },
   "scripts": {
     "build": "rollup -c",
     "autobuild": "rollup -c -w",
     "dev": "run-p start:dev autobuild",
-    "start": "sirv docs --single",
-    "start:dev": "sirv docs --single --dev"
+    "start": "./bin/bifrost",
+    "start:dev": "./bin/bifrost"
   }
 }

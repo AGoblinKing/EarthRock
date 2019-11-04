@@ -1,10 +1,10 @@
-![logo](http://isekai.dev/public/weave/demo/img/logo.gif)
+![logo](https://earthrock.run/weave/demo/img/logo.gif)
 
 # Earthrock
 ### <Uncollectable Card Game>
-![logo](http://isekai.dev/public/weave/demo/img/weave-latest.png)
+![logo](https://earthrock.run/weave/demo/img/weave-latest.png)
  
-![ohya](http://isekai.dev/public/weave/demo/img/ohya.png)
+![ohya](https://earthrock.run/weave/demo/img/ohya.png)
  
 # WARNING
 ### THIS IS AND ALWAYS WILL BE AN EXPERIMENTAL BRANCH. 

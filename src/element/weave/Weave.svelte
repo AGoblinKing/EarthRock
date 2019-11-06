@@ -3,13 +3,10 @@ import Weave from "/weave/weave.js"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Hole from "./Hole.svelte"
-
-import stitch from "./Stitch.svelte"
-import json from "./Json.svelte"
+import * as holes_types from "./spawnable.js"
 
 const weave = Weave()
 const holes = weave.holes
-const holes_types = { stitch, json }
 
 const get_type = (node) => {
   const split = node.type.slice(1).split(` `)

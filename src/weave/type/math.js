@@ -1,4 +1,4 @@
-import Hole from "./Hole.js"
+import Hole from "./hole.js"
 import { math as math_run } from "/util/math.js"
 import { writable, get } from "svelte/store"
 

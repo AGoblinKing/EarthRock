@@ -11,7 +11,10 @@ export let has_name = true
 export let hole
 
 $: name = hole.name
-$: has_name = hole.type.indexOf("stitch") === -1
+
+// if hole is not a stitch 
+$: has_name = hole.type.indexOf("stitch") !== -1
+
 let dragging = false
 
 const drag = (e) => {

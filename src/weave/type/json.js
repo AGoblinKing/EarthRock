@@ -23,6 +23,7 @@ export default ({
     ...junk,
     type: `${type} json`,
     value,
+    // these value overwrites feel wrong
     value_overwrite: true
   })
 }

@@ -1461,10 +1461,10 @@ var app = (function () {
 
     			if (default_slot) default_slot.c();
 
-    			attr(div, "class", "spatial svelte-1aitebw");
+    			attr(div, "class", "spatial svelte-11h49fw");
     			attr(div, "style", ctx.style);
     			toggle_class(div, "transition", ctx.transition);
-    			add_location(div, file$3, 31, 0, 942);
+    			add_location(div, file$3, 33, 0, 966);
     		},
 
     		l: function claim(nodes) {
@@ -1549,15 +1549,17 @@ var app = (function () {
 
     	$$self.$$.update = ($$dirty = { anchor: 1, bias: 1, area: 1, autoscale: 1, scale: 1, $scaling: 1, position: 1, offset: 1, rotate: 1, tru_scale: 1, zIndex: 1, tru_zIndex: 1, transform: 1 }) => {
     		if ($$dirty.anchor) { $$invalidate('anchor', anchor = [
-          (anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`),
-          (anchor[1] <= 50 ? `top: ${anchor[1]}%;` : `bottom: ${100 - anchor[1]}%;`)
+          anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`,
+          anchor[1] <= 50 ? `top: ${anchor[1]}%;` : `bottom: ${100 - anchor[1]}%;`
         ].join(` `)); }
     		if ($$dirty.bias || $$dirty.area || $$dirty.anchor) { $$invalidate('offset', offset = [
-          bias[0] * 0.01 * area[0] / 2 * (anchor[0] <= 50 ? -1 : 1),
-          bias[1] * 0.01 * area[1] / 2 * (anchor[1] <= 50 ? -1 : 1)
+          ((bias[0] * 0.01 * area[0]) / 2) * (anchor[0] <= 50 ? -1 : 1),
+          ((bias[1] * 0.01 * area[1]) / 2) * (anchor[1] <= 50 ? -1 : 1)
         ]); }
     		if ($$dirty.autoscale || $$dirty.scale || $$dirty.$scaling) { $$invalidate('tru_scale', tru_scale = autoscale ? scale * $scaling : scale); }
-    		if ($$dirty.position || $$dirty.offset || $$dirty.rotate || $$dirty.tru_scale) { $$invalidate('transform', transform = `transform: translate(${position[0] + offset[0]}px, ${position[1] + offset[1]}px) rotate(${rotate}deg) scale(${tru_scale});`); }
+    		if ($$dirty.position || $$dirty.offset || $$dirty.rotate || $$dirty.tru_scale) { $$invalidate('transform', transform = `transform: translate(${position[0] +
+      offset[0]}px, ${position[1] +
+      offset[1]}px) rotate(${rotate}deg) scale(${tru_scale});`); }
     		if ($$dirty.scale || $$dirty.zIndex) { $$invalidate('tru_zIndex', tru_zIndex = `z-index: ${Math.max(1, Math.round(scale * 100 + zIndex))};`); }
     		if ($$dirty.tru_zIndex || $$dirty.anchor || $$dirty.transform) { $$invalidate('style', style = [tru_zIndex, anchor, transform].join(` `)); }
     	};
@@ -4500,10 +4502,10 @@ var app = (function () {
     			attr(input, "type", "text");
     			attr(input, "class", "edit svelte-1vpy6cw");
     			attr(input, "placeholder", "Name It!");
-    			add_location(input, file$6, 44, 8, 1048);
-    			add_location(div0, file$6, 43, 6, 1016);
+    			add_location(input, file$6, 44, 8, 1096);
+    			add_location(div0, file$6, 43, 6, 1064);
     			attr(div1, "class", "nameit svelte-1vpy6cw");
-    			add_location(div1, file$6, 42, 4, 968);
+    			add_location(div1, file$6, 42, 4, 1016);
 
     			dispose = [
     				listen(input, "input", ctx.input_input_handler),
@@ -4558,7 +4560,7 @@ var app = (function () {
     			if (default_slot) default_slot.c();
 
     			attr(div, "class", "hole svelte-1vpy6cw");
-    			add_location(div, file$6, 49, 2, 1161);
+    			add_location(div, file$6, 49, 2, 1209);
     			dispose = listen(div, "mousedown", ctx.drag);
     		},
 
@@ -4693,7 +4695,6 @@ var app = (function () {
     	
 
     let { position: position$1 = [0, 0], has_name = true, hole } = $$props;
-
     let dragging = false;
 
     const drag = (e) => {
@@ -4733,6 +4734,7 @@ var app = (function () {
 
     	$$self.$$.update = ($$dirty = { hole: 1, $Scaling: 1, dragging: 1, $Mouse: 1, position: 1, $zoom: 1 }) => {
     		if ($$dirty.hole) { name = hole.name; $$subscribe_name(), $$invalidate('name', name); }
+    		if ($$dirty.hole) { $$invalidate('has_name', has_name = hole.type.indexOf("stitch") === -1); }
     		if ($$dirty.$Scaling || $$dirty.dragging || $$dirty.$Mouse || $$dirty.position) { $$invalidate('tru_position', tru_position = add([-50 * $Scaling, -25 * $Scaling], dragging ? $Mouse : position$1)); }
     		if ($$dirty.dragging || $$dirty.$zoom) { $$invalidate('tru_scale', tru_scale = (dragging ? 1.168 : 1) + $zoom); }
     	};

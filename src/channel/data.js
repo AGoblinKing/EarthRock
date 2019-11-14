@@ -1,5 +1,4 @@
 import { writable, readable, get } from "svelte/store"
-import uuid from "uuid/v4"
 
 const VERSION = 1
 

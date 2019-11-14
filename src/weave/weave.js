@@ -1,50 +1,65 @@
-import { writable, get, readable } from "svelte/store"
+import { write, get, read, derived } from "/util/store.js"
 
-import * as Types from "./types.js"
-import Hole from "./type/hole.js"
 import { random } from "/util/text.js"
 
+import Knot from "./knot.js"
+import uuid from "cuid"
+
+// Weave of holes connected with threads
 export default ({
+  name = random(2),
+  id = uuid(),
+
   // just some default nodes for start
-  holes = {
-    // guarantees the key and id will be the same
-    example: {
-      name: `example`,
-      type: ` stitch`,
-      value: {
-        [random(1)]: random(2),
-        [random(1)]: random(2)
-      }
+  knots = {
+    mail: {
+      knot: `math`
     }
   },
-  type = ``,
-  threads = {},
-  name = `\\/\\/eave ${random(2)}`,
-  ...junk
+
+  threads = {}
 } = false) => {
   let threads_set
 
-  const w = Hole({
-    ...junk,
-    name,
-    holes: writable(Object
-      .entries(holes)
-      .reduce((res, [hole_name, val]) => {
-        const type = val.type.slice(1).split(` `).pop()
+  const w = {
+    id: read(id),
+    knot: read(`weave`),
 
-        if (!Types[type]) return console.error(`!UnKoWn TyPe> ${type} - ${name}|${name}`)
-        res[hole_name] = Types[type](val)
-        return res
-      }, {})
-    ),
-    type: `${type} weave`,
-    threads: readable(threads, set => {
+    name: write(name),
+
+    threads: read(threads, set => {
       threads_set = set
     }),
+
+    // index by name, uniqueness not guaranteed
+    names: derived(knots, ($knots) => Object.fromEntries(
+      Object.values($knots)
+        .map(
+          (knot) => [get(knot.name), knot]
+        )
+    )),
+
     // okay this important so you can clean up bad wires
-    give_thread: writable(),
-    take_thread: writable()
-  })
+    give_thread: write(),
+    take_thread: write()
+  }
+
+  w.knots = write(Object
+    .entries(knots)
+    .reduce((res, [knot_id, val]) => {
+      if (val.id !== knot_id) {
+        val.id = knot_id
+        console.warn(`Mismatch on IDs ${val.id} vs ${knot_id}`)
+      }
+
+      res[knot_id] = Knot({
+        ...val,
+        weave: w
+      })
+
+      return res
+    }, {})
+  )
 
   w.give_thread.subscribe((match) => {
     if (!match) return

@@ -1,20 +1,20 @@
-// Should run off the compiled out JSON from weave
-import Weave from './weave.js'
+import Weave from "./weave.js"
 
-export default () => {
-  const weaves = new Map()
+// weaves [id]weave
+const weaves = new Map()
 
-  const wheel = {
-    load: (weave_json) => {
-      const weave = Weave(weave_json)
+// maybe create a bunch of locked stitches per channel
+// .instead?
+weaves.set(`root`, Weave({
+  id: `root`,
+  name: `root`,
 
-      weaves.set(weave.id, weave)
-      return weave
-    },
-    start: (weave_id) => {
-      if (!weaves.has(weave_id)) return
-    }
+  // have a bunch of locked stitches
+  knots: {
+
   }
+}))
 
-  return wheel
-}
+export default ({
+  weaves
+})

@@ -1,7 +1,6 @@
 const TILE_MAX = 1024
 const NAME_MAX = 5
-const TOKEN_MAX = 7
-const HEART_MAX = 6
+
 const COST_MAX = 10
 const EFFECT_MAX = 3
 const DECK_SIZE = 30
@@ -13,7 +12,11 @@ const BACK_COUNT = 3 * 5
 
 // shitty shitty uuid generator but good nuff for our server fake
 const uuidv4 = () => `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g, (c) => {
-  var r = Math.random() * 16 | 0; var v = c === `x` ? r : (r & 0x3 | 0x8)
+  const r = Math.random() * 16 | 0
+  const v = c === `x`
+    ? r
+    : (r & 0x3 | 0x8)
+
   return v.toString(16)
 })
 
@@ -32,15 +35,15 @@ const tile_random = (count) => {
   return tiles.join(` `)
 }
 
-const card_blank = () => ({
-  id: uuidv4(),
-  name: ``,
-  image: ``,
-  cost: 0,
-  effect1: null,
-  effect2: null,
-  effect3: null
-})
+// const card_blank = () => ({
+//   id: uuidv4(),
+//   name: ``,
+//   image: ``,
+//   cost: 0,
+//   effect1: null,
+//   effect2: null,
+//   effect3: null
+// })
 
 const card_random = () => ({
   id: uuidv4(),

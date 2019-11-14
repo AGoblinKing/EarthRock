@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store'
-import server_fake from './server_fake.js'
+import server_fake from './server_fake.js.js.js'
 
 const game = {
   faked: false,

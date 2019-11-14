@@ -89,7 +89,7 @@ export default async ({
 
   const result = data_canvas.toDataURL(`image/png`)
   if (!random) {
-    repo.set(KeyboardEvent, result)
+    repo.set(key, result)
   }
 
   return result

@@ -90,6 +90,7 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
 .edit {
   text-align: center;
   padding: 1rem;
+  width: 100%;
 }
 
 .edit:hover {

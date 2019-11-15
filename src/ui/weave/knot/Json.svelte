@@ -8,11 +8,11 @@ export let knot
 
 $: value = knot.value
 $: error = $value === undefined
-
+$: id = knot.id
 </script>
 
 <div class="box">
-  <Port writable address={`${knot.id}|write`} />
+  <Port writable address={`${$id}|write`} />
   <div class="JSON" class:error use:color={`${$error}`}>
     <div class="value_add">
       <div class="flex">{$value}</div>
@@ -25,7 +25,7 @@ JSON IT!
   
     </div>
   </div>
-  <Port address={`${knot.id}|read`} />
+  <Port address={`${$id}|read`} />
 </div>
 
 

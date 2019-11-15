@@ -6,7 +6,10 @@ export let knot
 export let chan
 export let name
 
-const address = (channel) => `${knot.id}|chan|${channel}`
+$: id = knot.id
+
+const address = (channel) => `${$id}|chan|${channel}`
+
 </script>
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>

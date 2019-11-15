@@ -7,20 +7,21 @@ export let knot
 
 $: math = knot.math
 $: value = knot.value
+$: id = knot.id
 </script>
 
 <div class="mail" use:color={$value}>
   <div class="math">mAtH</div>
   <div class="center" >
     <div class="port left">
-      <Port writable address={`${knot.id}|write`} />
+      <Port writable address={`${$id}|write`} />
     </div>
     <div class="address">
       <input type="text" bind:value={$math} placeholder="2 + 2 = ChAiR"/>
       {$value}
     </div>
     <div class="port right">
-      <Port address={`${knot.id}|read`} />
+      <Port address={`${$id}|read`} />
   </div>
   </div>
 </div>

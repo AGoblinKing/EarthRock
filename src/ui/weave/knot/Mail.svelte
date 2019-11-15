@@ -6,6 +6,8 @@ import color from "/ui/action/color.js"
 export let knot
 
 $: whom = knot.whom
+$: id = knot.id
+
 </script>
 
 <div class="mail" use:color={$whom}>
@@ -14,14 +16,14 @@ $: whom = knot.whom
   </div>
   <div class="center"  >
     <div class="port left">
-      <Port writable address={`${knot.id}|write`} />
+      <Port writable address={`${$id}|write`} />
     </div>
     <div class="address">
-      Mail To:
+      Mail:
       <input type="text" bind:value={$whom} placeholder="AdDrEsS hErE"/>
     </div>
     <div class="port right">
-      <Port address={`${knot.id}|read`} />
+      <Port address={`${$id}|read`} />
   </div>
   </div>
 </div>

@@ -6,7 +6,7 @@ import { write } from "/util/store.js"
 export let knot
 
 let weave_add = ``
-console.log(knot)
+
 $: value = knot.value
 
 const check_add = ({ which }) => {

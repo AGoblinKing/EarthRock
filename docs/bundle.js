@@ -4993,11 +4993,11 @@ var app = (function (Tone, uuid, expr, Color) {
     			div0 = element("div");
     			input = element("input");
     			attr_dev(input, "type", "text");
-    			attr_dev(input, "class", "edit svelte-brdhl7");
+    			attr_dev(input, "class", "edit svelte-1pj9zca");
     			attr_dev(input, "placeholder", "Name It!");
     			add_location(input, file$6, 48, 10, 1122);
     			add_location(div0, file$6, 47, 8, 1088);
-    			attr_dev(div1, "class", "nameit svelte-brdhl7");
+    			attr_dev(div1, "class", "nameit svelte-1pj9zca");
     			attr_dev(div1, "name", ctx.name);
     			add_location(div1, file$6, 46, 6, 1032);
 
@@ -5060,9 +5060,9 @@ var app = (function (Tone, uuid, expr, Color) {
     			t = space();
     			div0 = element("div");
     			if (default_slot) default_slot.c();
-    			attr_dev(div0, "class", "knot svelte-brdhl7");
+    			attr_dev(div0, "class", "knot svelte-1pj9zca");
     			add_location(div0, file$6, 53, 4, 1243);
-    			attr_dev(div1, "class", "adjust svelte-brdhl7");
+    			attr_dev(div1, "class", "adjust svelte-1pj9zca");
     			add_location(div1, file$6, 44, 2, 986);
     			dispose = listen_dev(div0, "mousedown", ctx.drag, false, false, false);
     		},
@@ -5902,13 +5902,13 @@ var app = (function (Tone, uuid, expr, Color) {
     	const port0 = new Port({
     			props: {
     				writable: true,
-    				address: `${ctx.knot.id}|write`
+    				address: `${ctx.$id}|write`
     			},
     			$$inline: true
     		});
 
     	const port1 = new Port({
-    			props: { address: `${ctx.knot.id}|read` },
+    			props: { address: `${ctx.$id}|read` },
     			$$inline: true
     		});
 
@@ -5923,27 +5923,27 @@ var app = (function (Tone, uuid, expr, Color) {
     			create_component(port0.$$.fragment);
     			t1 = space();
     			div2 = element("div");
-    			t2 = text("Mail To:\n      ");
+    			t2 = text("Mail:\n      ");
     			input = element("input");
     			t3 = space();
     			div3 = element("div");
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "postage svelte-13p3ve6");
-    			add_location(div0, file$9, 11, 2, 219);
+    			add_location(div0, file$9, 13, 2, 236);
     			attr_dev(div1, "class", "port left svelte-13p3ve6");
-    			add_location(div1, file$9, 15, 4, 320);
+    			add_location(div1, file$9, 17, 4, 337);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "AdDrEsS hErE");
     			attr_dev(input, "class", "svelte-13p3ve6");
-    			add_location(input, file$9, 20, 6, 455);
+    			add_location(input, file$9, 22, 6, 465);
     			attr_dev(div2, "class", "address svelte-13p3ve6");
-    			add_location(div2, file$9, 18, 4, 412);
+    			add_location(div2, file$9, 20, 4, 425);
     			attr_dev(div3, "class", "port right svelte-13p3ve6");
-    			add_location(div3, file$9, 22, 4, 537);
+    			add_location(div3, file$9, 24, 4, 547);
     			attr_dev(div4, "class", "center svelte-13p3ve6");
-    			add_location(div4, file$9, 14, 2, 293);
+    			add_location(div4, file$9, 16, 2, 310);
     			attr_dev(div5, "class", "mail svelte-13p3ve6");
-    			add_location(div5, file$9, 10, 0, 180);
+    			add_location(div5, file$9, 12, 0, 197);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -5970,7 +5970,7 @@ var app = (function (Tone, uuid, expr, Color) {
     		},
     		p: function update(changed, ctx) {
     			const port0_changes = {};
-    			if (changed.knot) port0_changes.address = `${ctx.knot.id}|write`;
+    			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
     			port0.$set(port0_changes);
 
     			if (changed.$whom && input.value !== ctx.$whom) {
@@ -5978,7 +5978,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			}
 
     			const port1_changes = {};
-    			if (changed.knot) port1_changes.address = `${ctx.knot.id}|read`;
+    			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
     			port1.$set(port1_changes);
     			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom);
     		},
@@ -6021,7 +6021,12 @@ var app = (function (Tone, uuid, expr, Color) {
     		$$unsubscribe_whom = noop,
     		$$subscribe_whom = () => ($$unsubscribe_whom(), $$unsubscribe_whom = subscribe(whom, $$value => $$invalidate("$whom", $whom = $$value)), whom);
 
+    	let $id,
+    		$$unsubscribe_id = noop,
+    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
     	$$self.$$.on_destroy.push(() => $$unsubscribe_whom());
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
     	let { knot } = $$props;
     	const writable_props = ["knot"];
 
@@ -6039,24 +6044,38 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	$$self.$capture_state = () => {
-    		return { knot, whom, $whom };
+    		return { knot, whom, id, $whom, $id };
     	};
 
     	$$self.$inject_state = $$props => {
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("whom" in $$props) $$subscribe_whom($$invalidate("whom", whom = $$props.whom));
+    		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$whom" in $$props) whom.set($whom = $$props.$whom);
+    		if ("$id" in $$props) id.set($id = $$props.$id);
     	};
 
     	let whom;
+    	let id;
 
     	$$self.$$.update = (changed = { knot: 1 }) => {
     		if (changed.knot) {
     			 $$subscribe_whom($$invalidate("whom", whom = knot.whom));
     		}
+
+    		if (changed.knot) {
+    			 $$subscribe_id($$invalidate("id", id = knot.id));
+    		}
     	};
 
-    	return { knot, whom, $whom, input_input_handler };
+    	return {
+    		knot,
+    		whom,
+    		id,
+    		$whom,
+    		$id,
+    		input_input_handler
+    	};
     }
 
     class Mail extends SvelteComponentDev {
@@ -6111,13 +6130,13 @@ var app = (function (Tone, uuid, expr, Color) {
     	const port0 = new Port({
     			props: {
     				writable: true,
-    				address: `${ctx.knot.id}|write`
+    				address: `${ctx.$id}|write`
     			},
     			$$inline: true
     		});
 
     	const port1 = new Port({
-    			props: { address: `${ctx.knot.id}|read` },
+    			props: { address: `${ctx.$id}|read` },
     			$$inline: true
     		});
 
@@ -6139,21 +6158,21 @@ var app = (function (Tone, uuid, expr, Color) {
     			div3 = element("div");
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "math svelte-awskfb");
-    			add_location(div0, file$a, 12, 2, 242);
+    			add_location(div0, file$a, 13, 2, 258);
     			attr_dev(div1, "class", "port left svelte-awskfb");
-    			add_location(div1, file$a, 14, 4, 299);
+    			add_location(div1, file$a, 15, 4, 315);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "2 + 2 = ChAiR");
     			attr_dev(input, "class", "svelte-awskfb");
-    			add_location(input, file$a, 18, 6, 419);
+    			add_location(input, file$a, 19, 6, 431);
     			attr_dev(div2, "class", "address svelte-awskfb");
-    			add_location(div2, file$a, 17, 4, 391);
+    			add_location(div2, file$a, 18, 4, 403);
     			attr_dev(div3, "class", "port right svelte-awskfb");
-    			add_location(div3, file$a, 21, 4, 517);
+    			add_location(div3, file$a, 22, 4, 529);
     			attr_dev(div4, "class", "center svelte-awskfb");
-    			add_location(div4, file$a, 13, 2, 273);
+    			add_location(div4, file$a, 14, 2, 289);
     			attr_dev(div5, "class", "mail svelte-awskfb");
-    			add_location(div5, file$a, 11, 0, 202);
+    			add_location(div5, file$a, 12, 0, 218);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -6180,7 +6199,7 @@ var app = (function (Tone, uuid, expr, Color) {
     		},
     		p: function update(changed, ctx) {
     			const port0_changes = {};
-    			if (changed.knot) port0_changes.address = `${ctx.knot.id}|write`;
+    			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
     			port0.$set(port0_changes);
 
     			if (changed.$math && input.value !== ctx.$math) {
@@ -6189,7 +6208,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     			if (!current || changed.$value) set_data_dev(t4, ctx.$value);
     			const port1_changes = {};
-    			if (changed.knot) port1_changes.address = `${ctx.knot.id}|read`;
+    			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
     			port1.$set(port1_changes);
     			if (is_function(color_action.update) && changed.$value) color_action.update.call(null, ctx.$value);
     		},
@@ -6229,11 +6248,16 @@ var app = (function (Tone, uuid, expr, Color) {
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
+    	let $id,
+    		$$unsubscribe_id = noop,
+    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
     	let $math,
     		$$unsubscribe_math = noop,
     		$$subscribe_math = () => ($$unsubscribe_math(), $$unsubscribe_math = subscribe(math, $$value => $$invalidate("$math", $math = $$value)), math);
 
     	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_math());
     	let { knot } = $$props;
     	const writable_props = ["knot"];
@@ -6252,19 +6276,30 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	$$self.$capture_state = () => {
-    		return { knot, math, value, $value, $math };
+    		return {
+    			knot,
+    			math,
+    			value,
+    			id,
+    			$value,
+    			$id,
+    			$math
+    		};
     	};
 
     	$$self.$inject_state = $$props => {
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("math" in $$props) $$subscribe_math($$invalidate("math", math = $$props.math));
     		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
+    		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$value" in $$props) value.set($value = $$props.$value);
+    		if ("$id" in $$props) id.set($id = $$props.$id);
     		if ("$math" in $$props) math.set($math = $$props.$math);
     	};
 
     	let math;
     	let value;
+    	let id;
 
     	$$self.$$.update = (changed = { knot: 1 }) => {
     		if (changed.knot) {
@@ -6274,13 +6309,19 @@ var app = (function (Tone, uuid, expr, Color) {
     		if (changed.knot) {
     			 $$subscribe_value($$invalidate("value", value = knot.value));
     		}
+
+    		if (changed.knot) {
+    			 $$subscribe_id($$invalidate("id", id = knot.id));
+    		}
     	};
 
     	return {
     		knot,
     		math,
     		value,
+    		id,
     		$value,
+    		$id,
     		$math,
     		input_input_handler
     	};
@@ -6357,15 +6398,15 @@ var app = (function (Tone, uuid, expr, Color) {
     			t3 = space();
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "name svelte-1u78qvq");
-    			add_location(div0, file$b, 13, 4, 327);
+    			add_location(div0, file$b, 16, 4, 341);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "class", "edit svelte-1u78qvq");
     			attr_dev(input, "placeholder", "JSON plz");
-    			add_location(input, file$b, 14, 4, 363);
+    			add_location(input, file$b, 17, 4, 377);
     			attr_dev(div1, "class", "vbox svelte-1u78qvq");
-    			add_location(div1, file$b, 12, 2, 286);
+    			add_location(div1, file$b, 15, 2, 300);
     			attr_dev(div2, "class", "channel svelte-1u78qvq");
-    			add_location(div2, file$b, 10, 0, 208);
+    			add_location(div2, file$b, 13, 0, 222);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -6433,17 +6474,22 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     function instance$a($$self, $$props, $$invalidate) {
+    	let $id,
+    		$$unsubscribe_id = noop,
+    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
     	let $chan,
     		$$unsubscribe_chan = noop,
     		$$subscribe_chan = () => ($$unsubscribe_chan(), $$unsubscribe_chan = subscribe(chan, $$value => $$invalidate("$chan", $chan = $$value)), chan);
 
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_chan());
     	let { knot } = $$props;
     	let { chan } = $$props;
     	validate_store(chan, "chan");
     	$$subscribe_chan();
     	let { name } = $$props;
-    	const address = channel => `${knot.id}|chan|${channel}`;
+    	const address = channel => `${$id}|chan|${channel}`;
     	const writable_props = ["knot", "chan", "name"];
 
     	Object.keys($$props).forEach(key => {
@@ -6462,14 +6508,24 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	$$self.$capture_state = () => {
-    		return { knot, chan, name, $chan };
+    		return { knot, chan, name, id, $id, $chan };
     	};
 
     	$$self.$inject_state = $$props => {
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("chan" in $$props) $$subscribe_chan($$invalidate("chan", chan = $$props.chan));
     		if ("name" in $$props) $$invalidate("name", name = $$props.name);
+    		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
+    		if ("$id" in $$props) id.set($id = $$props.$id);
     		if ("$chan" in $$props) chan.set($chan = $$props.$chan);
+    	};
+
+    	let id;
+
+    	$$self.$$.update = (changed = { knot: 1 }) => {
+    		if (changed.knot) {
+    			 $$subscribe_id($$invalidate("id", id = knot.id));
+    		}
     	};
 
     	return {
@@ -6477,6 +6533,7 @@ var app = (function (Tone, uuid, expr, Color) {
     		chan,
     		name,
     		address,
+    		id,
     		$chan,
     		input_input_handler
     	};
@@ -6537,7 +6594,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     /* src/ui/weave/knot/Stitch.svelte generated by Svelte v3.14.1 */
 
-    const { Object: Object_1$2, console: console_1 } = globals;
+    const { Object: Object_1$2 } = globals;
     const file$c = "src/ui/weave/knot/Stitch.svelte";
 
     function get_each_context$2(ctx, list, i) {
@@ -6556,7 +6613,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			div = element("div");
     			div.textContent = "/\\/\\";
     			attr_dev(div, "class", "no-stitches svelte-1w40fld");
-    			add_location(div, file$c, 30, 6, 615);
+    			add_location(div, file$c, 30, 6, 598);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -6674,9 +6731,9 @@ var app = (function (Tone, uuid, expr, Color) {
     			attr_dev(input, "type", "text");
     			attr_dev(input, "class", "add_channel svelte-1w40fld");
     			attr_dev(input, "placeholder", "STITCH IT!");
-    			add_location(input, file$c, 33, 4, 671);
+    			add_location(input, file$c, 33, 4, 654);
     			attr_dev(div, "class", "board svelte-1w40fld");
-    			add_location(div, file$c, 26, 0, 461);
+    			add_location(div, file$c, 26, 0, 444);
 
     			dispose = [
     				listen_dev(input, "input", ctx.input_input_handler),
@@ -6771,7 +6828,6 @@ var app = (function (Tone, uuid, expr, Color) {
     	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
     	let { knot } = $$props;
     	let weave_add = ``;
-    	console.log(knot);
 
     	const check_add = ({ which }) => {
     		if (which !== 13) return;
@@ -6790,7 +6846,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	const writable_props = ["knot"];
 
     	Object_1$2.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Stitch> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Stitch> was created with unknown prop '${key}'`);
     	});
 
     	function input_input_handler() {
@@ -6852,7 +6908,7 @@ var app = (function (Tone, uuid, expr, Color) {
     		const props = options.props || ({});
 
     		if (ctx.knot === undefined && !("knot" in props)) {
-    			console_1.warn("<Stitch> was created without expected prop 'knot'");
+    			console.warn("<Stitch> was created without expected prop 'knot'");
     		}
     	}
 
@@ -6884,9 +6940,9 @@ var app = (function (Tone, uuid, expr, Color) {
     			div1 = element("div");
     			div1.textContent = "JSON IT!";
     			attr_dev(div0, "class", "doit svelte-1v2tuul");
-    			add_location(div0, file$d, 19, 8, 487);
+    			add_location(div0, file$d, 19, 8, 498);
     			attr_dev(div1, "class", "doit svelte-1v2tuul");
-    			add_location(div1, file$d, 20, 8, 543);
+    			add_location(div1, file$d, 20, 8, 554);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -6942,7 +6998,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	const port0 = new Port({
     			props: {
     				writable: true,
-    				address: `${ctx.knot.id}|write`
+    				address: `${ctx.$id}|write`
     			},
     			$$inline: true
     		});
@@ -6950,7 +7006,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	let if_block = ctx.$value === null && create_if_block$4(ctx);
 
     	const port1 = new Port({
-    			props: { address: `${ctx.knot.id}|read` },
+    			props: { address: `${ctx.$id}|read` },
     			$$inline: true
     		});
 
@@ -6968,14 +7024,14 @@ var app = (function (Tone, uuid, expr, Color) {
     			t3 = space();
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "flex svelte-1v2tuul");
-    			add_location(div0, file$d, 17, 6, 417);
+    			add_location(div0, file$d, 17, 6, 428);
     			attr_dev(div1, "class", "value_add svelte-1v2tuul");
-    			add_location(div1, file$d, 16, 4, 387);
+    			add_location(div1, file$d, 16, 4, 398);
     			attr_dev(div2, "class", "JSON svelte-1v2tuul");
     			toggle_class(div2, "error", ctx.error);
-    			add_location(div2, file$d, 15, 2, 328);
+    			add_location(div2, file$d, 15, 2, 339);
     			attr_dev(div3, "class", "box svelte-1v2tuul");
-    			add_location(div3, file$d, 13, 0, 259);
+    			add_location(div3, file$d, 13, 0, 274);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -6997,7 +7053,7 @@ var app = (function (Tone, uuid, expr, Color) {
     		},
     		p: function update(changed, ctx) {
     			const port0_changes = {};
-    			if (changed.knot) port0_changes.address = `${ctx.knot.id}|write`;
+    			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
     			port0.$set(port0_changes);
     			if (!current || changed.$value) set_data_dev(t1, ctx.$value);
 
@@ -7022,7 +7078,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			}
 
     			const port1_changes = {};
-    			if (changed.knot) port1_changes.address = `${ctx.knot.id}|read`;
+    			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
     			port1.$set(port1_changes);
     		},
     		i: function intro(local) {
@@ -7062,11 +7118,16 @@ var app = (function (Tone, uuid, expr, Color) {
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
+    	let $id,
+    		$$unsubscribe_id = noop,
+    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
     	let $error,
     		$$unsubscribe_error = noop,
     		$$subscribe_error = () => ($$unsubscribe_error(), $$unsubscribe_error = subscribe(error, $$value => $$invalidate("$error", $error = $$value)), error);
 
     	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_error());
     	let { knot } = $$props;
     	const writable_props = ["knot"];
@@ -7080,7 +7141,15 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	$$self.$capture_state = () => {
-    		return { knot, value, error, $value, $error };
+    		return {
+    			knot,
+    			value,
+    			error,
+    			$value,
+    			id,
+    			$id,
+    			$error
+    		};
     	};
 
     	$$self.$inject_state = $$props => {
@@ -7088,11 +7157,14 @@ var app = (function (Tone, uuid, expr, Color) {
     		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
     		if ("error" in $$props) $$subscribe_error($$invalidate("error", error = $$props.error));
     		if ("$value" in $$props) value.set($value = $$props.$value);
+    		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
+    		if ("$id" in $$props) id.set($id = $$props.$id);
     		if ("$error" in $$props) error.set($error = $$props.$error);
     	};
 
     	let value;
     	let error;
+    	let id;
 
     	$$self.$$.update = (changed = { knot: 1, $value: 1 }) => {
     		if (changed.knot) {
@@ -7102,9 +7174,21 @@ var app = (function (Tone, uuid, expr, Color) {
     		if (changed.$value) {
     			 $$subscribe_error($$invalidate("error", error = $value === undefined));
     		}
+
+    		if (changed.knot) {
+    			 $$subscribe_id($$invalidate("id", id = knot.id));
+    		}
     	};
 
-    	return { knot, value, error, $value, $error };
+    	return {
+    		knot,
+    		value,
+    		error,
+    		$value,
+    		id,
+    		$id,
+    		$error
+    	};
     }
 
     class Json extends SvelteComponentDev {

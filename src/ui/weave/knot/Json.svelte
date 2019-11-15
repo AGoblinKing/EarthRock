@@ -7,13 +7,12 @@ import { fly } from 'svelte/transition'
 export let knot
 
 $: value = knot.value
-$: error = $value === undefined
 $: id = knot.id
 </script>
 
 <div class="box">
   <Port writable address={`${$id}|write`} />
-  <div class="JSON" class:error use:color={`${$error}`}>
+  <div class="JSON" use:color={$value}>
     <div class="value_add">
       <div class="flex">{$value}</div>
       {#if $value === null} 

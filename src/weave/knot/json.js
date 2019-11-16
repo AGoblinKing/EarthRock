@@ -8,7 +8,7 @@ export default () => {
     try {
       set(JSON.parse(val))
     } catch (ex) {
-      set(`! ErRoR ! - BAD JSON`)
+      set(val)
     }
   }
 

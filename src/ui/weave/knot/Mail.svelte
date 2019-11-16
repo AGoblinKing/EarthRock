@@ -10,7 +10,7 @@ $: id = knot.id
 
 </script>
 
-<div class="mail" use:color={$whom}>
+<div class="mail" use:color={$whom || "/???/"}>
   <div class="postage">
     <Tile width={1} height={1} random />
   </div>

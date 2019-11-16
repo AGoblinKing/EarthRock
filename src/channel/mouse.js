@@ -1,13 +1,13 @@
-import { get, readable } from "svelte/store"
+import { read } from "/util/store.js"
 
-export const position = readable([0, 0], set => window
+export const position = read([0, 0], set => window
   .addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))
 )
 
-export const mouse_up = readable(null, set => window
+export const mouse_up = read(null, set => window
   .addEventListener(`mouseup`, (e) => set(e))
 )
 
-export const scroll = readable(0, set => window
-  .addEventListener(`mousewheel`, (e) => set(get(scroll) + e.deltaY))
+export const scroll = read(0, set => window
+  .addEventListener(`mousewheel`, (e) => set(scroll.get() + e.deltaY))
 )

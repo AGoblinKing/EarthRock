@@ -12,10 +12,13 @@ second.subscribe((value) => {
   const $second = get(second)
 
   if ($first && $second) {
-    match.set([$first, $second])
+    match.set([
+      $first, $second
+    ])
   }
 })
 
+// clean up
 mouse_up.subscribe(() => {
   requestAnimationFrame(() => {
     const $first = get(first)

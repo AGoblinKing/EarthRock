@@ -2,6 +2,7 @@
 import color from "/ui/action/color.js"
 import Spatial from "/ui/Spatial.svelte"
 import { add } from "/util/vector.js"
+import { read } from "/util/store.js"
 
 import { position as Mouse } from "/channel/mouse.js"
 import { scale as Scaling, zoom} from "/channel/screen.js"
@@ -9,8 +10,10 @@ import { scale as Scaling, zoom} from "/channel/screen.js"
 export let position = [0, 0]
 export let knot
 
-$: name = knot.name
 $: type = knot.knot
+$: name = has_name 
+  ? knot.name
+  : read()
 
 // if knot is not a stitch 
 $: has_name = $type === `stitch`
@@ -44,7 +47,7 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
 >
   <div class="adjust">
     {#if has_name}
-      <div class="nameit" on:mousedown={drag} {name}>
+      <div class="nameit" on:mousedown={drag}>
         <div use:color={$name}>
           <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
         </div>
@@ -68,6 +71,7 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
   background-color: #222;
   border: 0.5rem solid black;
   z-index: 1;
+  
   border-radius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
 }

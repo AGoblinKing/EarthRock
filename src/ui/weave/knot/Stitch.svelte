@@ -58,7 +58,6 @@ const check_add = ({ which }) => {
   border-top: 0.25rem dashed #111;
   background-color: #333;
   flex: 1;
-  text-transform: uppercase;
   color: white;
   text-align: center;
   width: 30rem;
@@ -69,7 +68,6 @@ const check_add = ({ which }) => {
   padding-top: 0.5rem;
   text-align: center;
   color: white;
-  text-transform: uppercase;
   display: flex;
   flex-direction: column;
   width: 30rem;

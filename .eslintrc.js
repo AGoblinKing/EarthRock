@@ -4,6 +4,9 @@ module.exports = {
     "env": {
         browser: true
     },
+    "globals": {
+      "Wheel": "readonly"
+    },
     "plugins": [
         "svelte3"
     ],

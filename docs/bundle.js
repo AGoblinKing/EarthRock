@@ -2911,17 +2911,49 @@ var app = (function (Tone, uuid, expr, Color) {
         });
     }
 
-    const position = readable([0, 0], set => window
+    const json = (store) => {
+      store.get = () => internal_73(store);
+      store.toJSON = () => internal_73(store);
+      store.poke = () => store.set(internal_73(store));
+      store.set = store.set || (() => {});
+      return store
+    };
+
+    const write = (thing) => json(writable(thing));
+    const read = (thing, handler) => json(readable(thing, handler));
+
+    const transformer = (transform) => {
+      const store = write();
+
+      const set = store.set;
+      store.set = (update) => {
+        set(transform(update));
+        return store
+      };
+
+      return store
+    };
+
+    const derived$1 = (...args) => json(derived(...args));
+
+    const position = read([0, 0], set => window
       .addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))
     );
 
-    const mouse_up = readable(null, set => window
+    const mouse_up = read(null, set => window
       .addEventListener(`mouseup`, (e) => set(e))
     );
 
-    const scroll = readable(0, set => window
-      .addEventListener(`mousewheel`, (e) => set(internal_73(scroll) + e.deltaY))
+    const scroll = read(0, set => window
+      .addEventListener(`mousewheel`, (e) => set(scroll.get() + e.deltaY))
     );
+
+    var mouse = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        position: position,
+        mouse_up: mouse_up,
+        scroll: scroll
+    });
 
     const player = ({
       instrument,
@@ -3627,36 +3659,6 @@ var app = (function (Tone, uuid, expr, Color) {
     	}
     }
 
-    const json = (store) => {
-      store.toJSON = () => get(store);
-      store.poke = () => store.set(get(store));
-
-      return store
-    };
-
-    const get = (thing) => is(thing)
-      ? internal_73(thing)
-      : thing;
-
-    const is = (thing) => typeof thing.subscribe === `function`;
-
-    const write = (thing) => json(writable(thing));
-    const read = (thing, handler) => json(readable(thing, handler));
-
-    const transformer = (transform) => {
-      const store = write();
-
-      const set = store.set;
-      store.set = (update) => {
-        set(transform(update));
-        return store
-      };
-
-      return store
-    };
-
-    const derived$1 = derived;
-
     const size = read([window.innerWidth, window.innerHeight], (set) => {
       window.addEventListener(`resize`, () => {
         set([window.innerWidth, window.innerHeight]);
@@ -4164,18 +4166,27 @@ var app = (function (Tone, uuid, expr, Color) {
     }, []);
 
     var stitch = ({
-      value = {
-        [random(2)]: `"${random(2)}"`
-      }
+      value = {},
+      name = random(2),
+      weave
     }) => ({
       knot: read(`stitch`),
 
       value: write(Object
         .entries(value)
         .reduce((res, [key, val]) => {
-          res[key] = write(val);
+          res[key] = (val && typeof val.subscribe === `function`)
+            ? val
+            : write(val);
           return res
-        }, {}))
+        }, {})),
+
+      name: transformer((name_new) => {
+        // tell weave it update its knots
+        // probably should be on a channel instead
+        weave && weave.knots && weave.knots.poke();
+        return name_new
+      }).set(name)
     });
 
     var json$1 = () => {
@@ -4186,7 +4197,7 @@ var app = (function (Tone, uuid, expr, Color) {
         try {
           set(JSON.parse(val));
         } catch (ex) {
-          set(`! ErRoR ! - BAD JSON`);
+          set(val);
         }
       };
 
@@ -4228,34 +4239,48 @@ var app = (function (Tone, uuid, expr, Color) {
       set(math_run(math, val_in));
 
       m.value.set = (val) => {
-        val_in = val;
-        set(math_run(math, val));
+        val_in = typeof val === `object` && !Array.isArray(val)
+          ? val
+          : { v: val };
+
+        set(math_run(math, val_in));
       };
 
-      m.math.subscribe((expression) => {
-        console.log(expression);
-        set(math_run(expression, val_in));
-      });
+      m.math.subscribe((expression) =>
+        set(math_run(expression, val_in))
+      );
 
       return m
     };
 
     // instead use the weave messaging channel
     var mail = ({
-      whom = ``
+      whom = `/sys/mouse/position`,
+      weave,
+      id
     }) => {
+      const value = write();
+      const { set } = value;
+
+      // use the mail channel
+      value.set = (value_new) => Wheel.get(`/sys/mail/send`).set({
+        whom: m.whom.get(),
+        value: value_new
+      });
+
       // Subscribe to remote
       const m = ({
         knot: read(`mail`),
-        whom: write(whom),
-        remote: write(),
-        value: transformer((value) => {
-          // Got a write onto value
-          m.remote(value);
+        whom: transformer((whom_new) => {
+          weave.mails.update(($mails) => ({
+            ...$mails,
+            [id]: whom_new
+          }));
 
-          // Send off to remote and rely results
-          return get(m.remote)
-        })
+          return whom_new
+        }).set(whom),
+        value,
+        set
       });
 
       return m
@@ -4275,24 +4300,18 @@ var app = (function (Tone, uuid, expr, Color) {
     var Knot_Factory = ({
       id = uuid(),
       knot,
-      name = random(2),
-      weave,
 
       ...rest
     } = false) => powerToJSON({
       ...(knots[knot]
-        ? knots[knot](rest)
+        ? knots[knot]({
+          ...rest,
+          id
+        })
         : { knot: read(knot) }
       ),
 
-      id: read(id),
-
-      name: transformer((name_new) => {
-        // tell weave it update its knots
-        // probably should be on a channel instead
-        weave && weave.knots && weave.knots.poke();
-        return name_new
-      }).set(name)
+      id: read(id)
     });
 
     // Weave of holes connected with threads
@@ -4303,11 +4322,29 @@ var app = (function (Tone, uuid, expr, Color) {
       // just some default nodes for start
       knots = {
         mail: {
-          knot: `math`
+          knot: `mail`
+        },
+        json: {
+          knot: `json`
+        },
+        math: {
+          knot: `math`,
+          math: `[v[0]/10, v[1]/10]`
+        },
+        stitch: {
+          name: `player`,
+          knot: `stitch`,
+          value: {
+            position: [0, 0]
+          }
         }
       },
 
-      threads = {}
+      threads = {
+        mail: `json`,
+        json: `math`,
+        math: `stitch/position`
+      }
     } = false) => {
       let threads_set;
 
@@ -4321,17 +4358,19 @@ var app = (function (Tone, uuid, expr, Color) {
           threads_set = set;
         }),
 
-        // index by name, uniqueness not guaranteed
-        names: derived$1(knots, ($knots) => Object.fromEntries(
-          Object.values($knots)
-            .map(
-              (knot) => [get(knot.name), knot]
-            )
-        )),
-
-        // okay this important so you can clean up bad wires
+        // mail knot id to address
+        mails: write({}),
         give_thread: write(),
-        take_thread: write()
+        give_knot: transformer((knot) => {
+          const k = Knot_Factory(knot);
+
+          w.knots.update((knots) => ({
+            ...knots,
+            [k.id]: k
+          }));
+
+          return k
+        })
       };
 
       w.knots = write(Object
@@ -4339,7 +4378,6 @@ var app = (function (Tone, uuid, expr, Color) {
         .reduce((res, [knot_id, val]) => {
           if (val.id !== knot_id) {
             val.id = knot_id;
-            console.warn(`Mismatch on IDs ${val.id} vs ${knot_id}`);
           }
 
           res[knot_id] = Knot_Factory({
@@ -4351,37 +4389,556 @@ var app = (function (Tone, uuid, expr, Color) {
         }, {})
       );
 
+      // index by name, uniqueness not guaranteed
+      // Stitches only right now
+      w.names = derived$1(w.knots, ($knots) => Object.fromEntries(
+        Object.values($knots)
+          .filter(({ knot }) => knot.get() === `stitch`)
+          .map(
+            (knot) => [
+              knot.name.get(),
+              knot
+            ]
+          )
+      ));
+
       w.give_thread.subscribe((match) => {
         if (!match) return
 
-        const [x, y] = match;
+        const [[
+          x_id,
+          x_dir
+        ], [
+          y_id,
+          y_dir
+        ]] = match.map((address) => address.split(`|`));
 
-        const [x_name, y_name] = [x.split(`|`).length === 1, y.split(`|`).length === 1];
-
-        const is_name = x_name || y_name;
-
-        // red to blue not samies
-        if (!is_name && x.slice(-1) === y.slice(-1)) return
-        if (is_name && x[0] === `/` && y[0] === `/`) return
-        const threads = get(w.threads);
-
-        // clean up
-        if (threads[x]) {
-          delete threads[threads[x]];
+        if (x_dir === y_dir) {
+          console.warn(`Tried to match same direction`);
+          return
         }
 
-        if (threads[y]) {
-          delete threads[threads[y]];
-        }
+        const target = [x_id, y_id];
+        x_dir === `write` && target.reverse();
 
-        threads[x] = y;
-        threads[y] = x;
+        const threads = w.threads.get();
 
+        threads[target[0]] = target[1];
         threads_set(threads);
       });
 
       return w
     };
+
+    var system = Weave({
+      knots: {
+        mouse: {
+          name: `mouse`,
+          knot: `stitch`,
+          value: mouse
+        }
+      }
+    });
+
+    const SYSTEM = `sys`;
+
+    let weaves_set;
+    // weaves [name]weave
+    const weaves = read({
+      [SYSTEM]: system
+    }, (set) => {
+      weaves_set = set;
+    });
+
+    const highways = new Map();
+
+    let running_set;
+    // run the system weave by default (safe idle)
+    const running$1 = read({
+      [SYSTEM]: true
+    }, (set) => { running_set = set; });
+
+    const trash = write([]);
+
+    // put into trash bin
+    const del = (path) => {
+      if (path[0] === `/`) {
+        path.unshift();
+      }
+
+      const [weave_name, knot_name, chan] = path.split(`/`);
+      if (weave_name === SYSTEM) {
+        throw new Error(`attempted to delete ${SYSTEM}`)
+      }
+
+      const ws = weaves.get();
+
+      if (knot_name === undefined) {
+        const garbo = ws[weave_name];
+        delete ws[weave_name];
+        weaves.set(ws);
+
+        if (garbo) {
+          trash.update(($trash) => [...$trash, garbo]);
+        }
+
+        return
+      }
+      const { names, knots } = ws[weave_name];
+      const k = names.get()[knot_name];
+
+      if (!k) {
+        throw new Error(`tried to delete non-existant path ${path}`)
+      }
+
+      if (chan === undefined) {
+        const ks = knots.get();
+        delete ks[k.id];
+
+        if (k) {
+          trash.update(($trash) => [...$trash, k]);
+        }
+        knots.set(ks);
+        return
+      }
+
+      const chans = k.value.get();
+      const garbo = chans[chan];
+      delete chans[chan];
+
+      garbo && trash.update(($trash) => [...$trash, garbo]);
+      k.value.set(chans);
+    };
+
+    // return back whether this thing exists
+    const exists = (path) => {
+      if (path[0] === `/`) {
+        path.unshift();
+      }
+
+      const [weave_name, knot_name, chan] = path.split(`/`);
+      const w = weaves.get()[weave_name];
+      if (w === undefined || knot_name === undefined) {
+        return w !== undefined
+      }
+
+      const k = w.names.get()[knot_name];
+      if (k === undefined || chan === undefined) {
+        return k !== undefined
+      }
+
+      const c = k.value.get()[chan];
+
+      return c !== undefined
+    };
+
+    // always assume they're right
+    const get = (path) => {
+      if (path[0] === `/`) {
+        path = path.slice(1);
+      }
+
+      const [weave_name, knot_name, chan] = path.split(`/`);
+
+      let w = weaves.get()[weave_name];
+      if (w === undefined) {
+        w = Weave({
+          name: weave_name
+        });
+
+        weaves_set({
+          ...weaves.get(),
+          [weave_name]: w
+        });
+      }
+
+      if (knot_name === undefined) {
+        return w
+      }
+
+      const names = w.names;
+
+      let s = names.get()[knot_name];
+
+      if (!s) {
+        w.give_knot.set({
+          knot: `stitch`,
+          name: knot_name
+        });
+
+        s = names.get()[knot_name];
+      }
+
+      if (chan === undefined) {
+        return s
+      }
+
+      let c = s.value.get()[chan];
+      if (!c) {
+        s.value.set({
+          ...s.value.get(),
+          [chan]: write(`heLLo default value`)
+        });
+
+        c = s.value.get()[chan];
+      }
+
+      return c
+    };
+
+    const start = (weave_name) => {
+      if (weave_name === SYSTEM) {
+        throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
+      }
+      const w = get(weave_name);
+      const knots = w.knots.get();
+
+      const by_id = (id) => {
+        const [knot_id, knot_chan] = id.split(`/`);
+        const knot = knots[knot_id];
+
+        if (knot === undefined) {
+          debugger
+        }
+
+        if (knot_chan === undefined) {
+          return knot.value
+        }
+
+        return knot.value.get()[knot_chan]
+      };
+
+      // this could be reactive
+      highways.set(weave_name, [
+        // the internal streets
+        ...Object.entries(w.threads.get())
+          .map(([
+            reader,
+            writer
+          ]) => {
+            const r = by_id(reader);
+            const w = by_id(writer);
+
+            return r.subscribe(($val) => w.set($val))
+          }),
+        // ramp to/from the bifrost
+        ...Object.entries(w.mails.get())
+          .map(
+            ([
+              mail_id,
+              address
+            ]) => get(address).subscribe((value_new) =>
+              knots[mail_id].set(value_new)
+            )
+          )
+      ]);
+
+      running_set({
+        ...running$1.get(),
+        [weave_name]: true
+      });
+    };
+
+    const stop = (weave_name) => {
+      if (weave_name === SYSTEM) {
+        throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
+      }
+
+      const h = highways.get(weave_name);
+
+      const r = running$1.get();
+      delete r[weave_name];
+
+      running$1.set(r);
+
+      if (h === undefined) {
+        throw new Error(`can't stop ${weave_name}`)
+      }
+
+      h.forEach((cancel) => cancel());
+
+      highways.delete(weave_name);
+    };
+
+    var Wheel$1 = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        weaves: weaves,
+        running: running$1,
+        trash: trash,
+        del: del,
+        exists: exists,
+        get: get,
+        start: start,
+        stop: stop
+    });
+
+    /* src/ui/weave/Controls.svelte generated by Svelte v3.14.1 */
+    const file$5 = "src/ui/weave/Controls.svelte";
+
+    // (29:4) {:else}
+    function create_else_block(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("|>");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block.name,
+    		type: "else",
+    		source: "(29:4) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (27:4) {#if runs}
+    function create_if_block$1(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("||");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$1.name,
+    		type: "if",
+    		source: "(27:4) {#if runs}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (23:0) <Spatial   anchor={[50, 100]} >
+    function create_default_slot$1(ctx) {
+    	let div;
+    	let dispose;
+
+    	function select_block_type(changed, ctx) {
+    		if (ctx.runs) return create_if_block$1;
+    		return create_else_block;
+    	}
+
+    	let current_block_type = select_block_type(null, ctx);
+    	let if_block = current_block_type(ctx);
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			if_block.c();
+    			attr_dev(div, "class", "play svelte-11xfd0o");
+    			toggle_class(div, "runs", ctx.runs);
+    			add_location(div, file$5, 25, 2, 346);
+    			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			if_block.m(div, null);
+    		},
+    		p: function update(changed, ctx) {
+    			if (current_block_type !== (current_block_type = select_block_type(changed, ctx))) {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(div, null);
+    				}
+    			}
+
+    			if (changed.runs) {
+    				toggle_class(div, "runs", ctx.runs);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			if_block.d();
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot$1.name,
+    		type: "slot",
+    		source: "(23:0) <Spatial   anchor={[50, 100]} >",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$5(ctx) {
+    	let div;
+    	let t;
+    	let current;
+
+    	const spatial = new Spatial({
+    			props: {
+    				anchor: [50, 100],
+    				$$slots: { default: [create_default_slot$1] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			t = space();
+    			create_component(spatial.$$.fragment);
+    			attr_dev(div, "class", "bar svelte-11xfd0o");
+    			add_location(div, file$5, 20, 0, 287);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			insert_dev(target, t, anchor);
+    			mount_component(spatial, target, anchor);
+    			current = true;
+    		},
+    		p: function update(changed, ctx) {
+    			const spatial_changes = {};
+
+    			if (changed.$$scope || changed.runs) {
+    				spatial_changes.$$scope = { changed, ctx };
+    			}
+
+    			spatial.$set(spatial_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(spatial.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(spatial.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			if (detaching) detach_dev(t);
+    			destroy_component(spatial, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$5.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$4($$self, $$props, $$invalidate) {
+    	let $running;
+
+    	let $name,
+    		$$unsubscribe_name = noop,
+    		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
+
+    	validate_store(running$1, "running");
+    	component_subscribe($$self, running$1, $$value => $$invalidate("$running", $running = $$value));
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+    	let { weave } = $$props;
+    	let runs = $running[$name];
+
+    	const toggle = () => {
+    		if (runs) {
+    			stop($name);
+    		} else {
+    			start($name);
+    		}
+
+    		$$invalidate("runs", runs = !runs);
+    	};
+
+    	const writable_props = ["weave"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Controls> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+    	};
+
+    	$$self.$capture_state = () => {
+    		return { weave, runs, name, $running, $name };
+    	};
+
+    	$$self.$inject_state = $$props => {
+    		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+    		if ("runs" in $$props) $$invalidate("runs", runs = $$props.runs);
+    		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
+    		if ("$running" in $$props) running$1.set($running = $$props.$running);
+    		if ("$name" in $$props) name.set($name = $$props.$name);
+    	};
+
+    	let name;
+
+    	$$self.$$.update = (changed = { weave: 1 }) => {
+    		if (changed.weave) {
+    			 $$subscribe_name($$invalidate("name", name = weave.name));
+    		}
+    	};
+
+    	return { weave, runs, toggle, name };
+    }
+
+    class Controls extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$4, create_fragment$5, safe_not_equal, { weave: 0 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Controls",
+    			options,
+    			id: create_fragment$5.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || ({});
+
+    		if (ctx.weave === undefined && !("weave" in props)) {
+    			console.warn("<Controls> was created without expected prop 'weave'");
+    		}
+    	}
+
+    	get weave() {
+    		throw new Error("<Controls>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set weave(value) {
+    		throw new Error("<Controls>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
 
     const tick = writable(1);
 
@@ -4400,10 +4957,13 @@ var app = (function (Tone, uuid, expr, Color) {
       const $second = internal_73(second);
 
       if ($first && $second) {
-        match.set([$first, $second]);
+        match.set([
+          $first, $second
+        ]);
       }
     });
 
+    // clean up
     mouse_up.subscribe(() => {
       requestAnimationFrame(() => {
         const $first = internal_73(first);
@@ -4417,7 +4977,7 @@ var app = (function (Tone, uuid, expr, Color) {
     /* src/ui/weave/Threads.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1 } = globals;
-    const file$5 = "src/ui/weave/Threads.svelte";
+    const file$6 = "src/ui/weave/Threads.svelte";
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = Object_1.create(ctx);
@@ -4428,8 +4988,8 @@ var app = (function (Tone, uuid, expr, Color) {
     	return child_ctx;
     }
 
-    // (47:2) {#if $first}
-    function create_if_block_2(ctx) {
+    // (50:2) {#if $first}
+    function create_if_block$2(ctx) {
     	let line;
     	let line_stroke_value;
     	let line_x__value;
@@ -4446,7 +5006,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			attr_dev(line, "x2", line_x__value_1 = ctx.$position[0]);
     			attr_dev(line, "y2", line_y__value_1 = ctx.$position[1]);
     			attr_dev(line, "class", "line svelte-1amtju9");
-    			add_location(line, file$5, 47, 4, 1413);
+    			add_location(line, file$6, 50, 4, 1532);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -4479,17 +5039,17 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_2.name,
+    		id: create_if_block$2.name,
     		type: "if",
-    		source: "(47:2) {#if $first}",
+    		source: "(50:2) {#if $first}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (68:38) 
-    function create_if_block_1(ctx) {
+    // (61:2) {#each rects as [x, y, x_id, y_id]}
+    function create_each_block(ctx) {
     	let line;
     	let line_stroke_value;
     	let line_x__value;
@@ -4500,19 +5060,19 @@ var app = (function (Tone, uuid, expr, Color) {
     	const block = {
     		c: function create() {
     			line = svg_element("line");
-    			attr_dev(line, "stroke", line_stroke_value = "url(#" + (ctx.x.x < ctx.y.x ? "linear" : "linear-other") + ")");
+    			attr_dev(line, "stroke", line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear" : "linear-other") + ")");
     			attr_dev(line, "x1", line_x__value = ctx.x.x + ctx.x.width / 2);
     			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
     			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
     			attr_dev(line, "class", "line svelte-1amtju9");
-    			add_location(line, file$5, 68, 6, 1983);
+    			add_location(line, file$6, 61, 6, 1814);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
     		},
     		p: function update(changed, ctx) {
-    			if (changed.rects && line_stroke_value !== (line_stroke_value = "url(#" + (ctx.x.x < ctx.y.x ? "linear" : "linear-other") + ")")) {
+    			if (changed.rects && line_stroke_value !== (line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear" : "linear-other") + ")")) {
     				attr_dev(line, "stroke", line_stroke_value);
     			}
 
@@ -4539,129 +5099,16 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_1.name,
-    		type: "if",
-    		source: "(68:38) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (60:4) {#if x_id.split(`|`).length === 1 || y_id.split(`|`) === 1}
-    function create_if_block$1(ctx) {
-    	let line;
-    	let line_x__value;
-    	let line_y__value;
-    	let line_x__value_1;
-    	let line_y__value_1;
-
-    	const block = {
-    		c: function create() {
-    			line = svg_element("line");
-    			attr_dev(line, "stroke", "gray");
-    			attr_dev(line, "x1", line_x__value = ctx.x.x + ctx.x.width / 2);
-    			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
-    			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
-    			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-    			attr_dev(line, "class", "line svelte-1amtju9");
-    			add_location(line, file$5, 60, 4, 1759);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, line, anchor);
-    		},
-    		p: function update(changed, ctx) {
-    			if (changed.rects && line_x__value !== (line_x__value = ctx.x.x + ctx.x.width / 2)) {
-    				attr_dev(line, "x1", line_x__value);
-    			}
-
-    			if (changed.rects && line_y__value !== (line_y__value = ctx.x.y + ctx.x.height / 2)) {
-    				attr_dev(line, "y1", line_y__value);
-    			}
-
-    			if (changed.rects && line_x__value_1 !== (line_x__value_1 = ctx.y.x + ctx.y.width / 2)) {
-    				attr_dev(line, "x2", line_x__value_1);
-    			}
-
-    			if (changed.rects && line_y__value_1 !== (line_y__value_1 = ctx.y.y + ctx.y.height / 2)) {
-    				attr_dev(line, "y2", line_y__value_1);
-    			}
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(line);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block$1.name,
-    		type: "if",
-    		source: "(60:4) {#if x_id.split(`|`).length === 1 || y_id.split(`|`) === 1}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (58:2) {#each rects as [x, y, x_id, y_id]}
-    function create_each_block(ctx) {
-    	let show_if;
-    	let show_if_1;
-    	let if_block_anchor;
-
-    	function select_block_type(changed, ctx) {
-    		if (show_if == null || changed.rects) show_if = !!(ctx.x_id.split(`|`).length === 1 || ctx.y_id.split(`|`) === 1);
-    		if (show_if) return create_if_block$1;
-    		if (show_if_1 == null || changed.rects) show_if_1 = !!(ctx.x_id.slice(-1) === `e`);
-    		if (show_if_1) return create_if_block_1;
-    	}
-
-    	let current_block_type = select_block_type(null, ctx);
-    	let if_block = current_block_type && current_block_type(ctx);
-
-    	const block = {
-    		c: function create() {
-    			if (if_block) if_block.c();
-    			if_block_anchor = empty();
-    		},
-    		m: function mount(target, anchor) {
-    			if (if_block) if_block.m(target, anchor);
-    			insert_dev(target, if_block_anchor, anchor);
-    		},
-    		p: function update(changed, ctx) {
-    			if (current_block_type === (current_block_type = select_block_type(changed, ctx)) && if_block) {
-    				if_block.p(changed, ctx);
-    			} else {
-    				if (if_block) if_block.d(1);
-    				if_block = current_block_type && current_block_type(ctx);
-
-    				if (if_block) {
-    					if_block.c();
-    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
-    				}
-    			}
-    		},
-    		d: function destroy(detaching) {
-    			if (if_block) {
-    				if_block.d(detaching);
-    			}
-
-    			if (detaching) detach_dev(if_block_anchor);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(58:2) {#each rects as [x, y, x_id, y_id]}",
+    		source: "(61:2) {#each rects as [x, y, x_id, y_id]}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$5(ctx) {
+    function create_fragment$6(ctx) {
     	let svg;
     	let defs;
     	let linearGradient0;
@@ -4673,7 +5120,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	let if_block_anchor;
     	let svg_width_value;
     	let svg_height_value;
-    	let if_block = ctx.$first && create_if_block_2(ctx);
+    	let if_block = ctx.$first && create_if_block$2(ctx);
     	let each_value = ctx.rects;
     	let each_blocks = [];
 
@@ -4700,33 +5147,33 @@ var app = (function (Tone, uuid, expr, Color) {
 
     			attr_dev(stop0, "offset", "30%");
     			attr_dev(stop0, "stop-color", "#F00");
-    			add_location(stop0, file$5, 37, 8, 1067);
+    			add_location(stop0, file$6, 40, 8, 1186);
     			attr_dev(stop1, "offset", "70%");
     			attr_dev(stop1, "stop-color", "#00F");
-    			add_location(stop1, file$5, 38, 8, 1116);
+    			add_location(stop1, file$6, 41, 8, 1235);
     			attr_dev(linearGradient0, "id", "linear");
     			attr_dev(linearGradient0, "x1", "0%");
     			attr_dev(linearGradient0, "y1", "0%");
     			attr_dev(linearGradient0, "x2", "100%");
     			attr_dev(linearGradient0, "y2", "0%");
-    			add_location(linearGradient0, file$5, 36, 6, 996);
+    			add_location(linearGradient0, file$6, 39, 6, 1115);
     			attr_dev(stop2, "offset", "30%");
     			attr_dev(stop2, "stop-color", "#00F");
-    			add_location(stop2, file$5, 41, 10, 1264);
+    			add_location(stop2, file$6, 44, 10, 1383);
     			attr_dev(stop3, "offset", "70%");
     			attr_dev(stop3, "stop-color", "#F00");
-    			add_location(stop3, file$5, 42, 10, 1315);
+    			add_location(stop3, file$6, 45, 10, 1434);
     			attr_dev(linearGradient1, "id", "linear-other");
     			attr_dev(linearGradient1, "x1", "0%");
     			attr_dev(linearGradient1, "y1", "0%");
     			attr_dev(linearGradient1, "x2", "100%");
     			attr_dev(linearGradient1, "y2", "0%");
-    			add_location(linearGradient1, file$5, 40, 6, 1185);
-    			add_location(defs, file$5, 35, 4, 983);
+    			add_location(linearGradient1, file$6, 43, 6, 1304);
+    			add_location(defs, file$6, 38, 4, 1102);
     			attr_dev(svg, "width", svg_width_value = ctx.$size[0]);
     			attr_dev(svg, "height", svg_height_value = ctx.$size[1]);
     			attr_dev(svg, "class", "threads svelte-1amtju9");
-    			add_location(svg, file$5, 34, 0, 922);
+    			add_location(svg, file$6, 37, 0, 1041);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -4752,7 +5199,7 @@ var app = (function (Tone, uuid, expr, Color) {
     				if (if_block) {
     					if_block.p(changed, ctx);
     				} else {
-    					if_block = create_if_block_2(ctx);
+    					if_block = create_if_block$2(ctx);
     					if_block.c();
     					if_block.m(svg, if_block_anchor);
     				}
@@ -4803,7 +5250,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$5.name,
+    		id: create_fragment$6.name,
     		type: "component",
     		source: "",
     		ctx
@@ -4812,7 +5259,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$4($$self, $$props, $$invalidate) {
+    function instance$5($$self, $$props, $$invalidate) {
     	let $position;
     	let $Tick;
 
@@ -4890,9 +5337,9 @@ var app = (function (Tone, uuid, expr, Color) {
     		}
 
     		if (changed.$threads) {
-    			 $$invalidate("rects", rects = Object.entries($threads).map(([x, y]) => [
-    				document.getElementById(x).getBoundingClientRect(),
-    				document.getElementById(y).getBoundingClientRect(),
+    			 $$invalidate("rects", rects = Object.entries($threads).filter(([x, y]) => document.getElementById(`${x}|read`) && document.getElementById(`${y}|write`)).map(([x, y]) => [
+    				document.getElementById(`${x}|read`).getBoundingClientRect(),
+    				document.getElementById(`${y}|write`).getBoundingClientRect(),
     				x,
     				y
     			]));
@@ -4918,13 +5365,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Threads extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$4, create_fragment$5, safe_not_equal, { weave: 0 });
+    		init(this, options, instance$5, create_fragment$6, safe_not_equal, { weave: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Threads",
     			options,
-    			id: create_fragment$5.name
+    			id: create_fragment$6.name
     		});
 
     		const { ctx } = this.$$;
@@ -4977,10 +5424,10 @@ var app = (function (Tone, uuid, expr, Color) {
     };
 
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
-    const file$6 = "src/ui/weave/Knot.svelte";
+    const file$7 = "src/ui/weave/Knot.svelte";
 
-    // (46:4) {#if has_name}
-    function create_if_block$2(ctx) {
+    // (49:4) {#if has_name}
+    function create_if_block$3(ctx) {
     	let div1;
     	let div0;
     	let input;
@@ -4993,13 +5440,12 @@ var app = (function (Tone, uuid, expr, Color) {
     			div0 = element("div");
     			input = element("input");
     			attr_dev(input, "type", "text");
-    			attr_dev(input, "class", "edit svelte-1pj9zca");
+    			attr_dev(input, "class", "edit svelte-rhmgl2");
     			attr_dev(input, "placeholder", "Name It!");
-    			add_location(input, file$6, 48, 10, 1122);
-    			add_location(div0, file$6, 47, 8, 1088);
-    			attr_dev(div1, "class", "nameit svelte-1pj9zca");
-    			attr_dev(div1, "name", ctx.name);
-    			add_location(div1, file$6, 46, 6, 1032);
+    			add_location(input, file$7, 51, 10, 1178);
+    			add_location(div0, file$7, 50, 8, 1144);
+    			attr_dev(div1, "class", "nameit svelte-rhmgl2");
+    			add_location(div1, file$7, 49, 6, 1095);
 
     			dispose = [
     				listen_dev(input, "input", ctx.input_input_handler),
@@ -5019,10 +5465,6 @@ var app = (function (Tone, uuid, expr, Color) {
     			}
 
     			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
-
-    			if (changed.name) {
-    				attr_dev(div1, "name", ctx.name);
-    			}
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div1);
@@ -5033,23 +5475,23 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$2.name,
+    		id: create_if_block$3.name,
     		type: "if",
-    		source: "(46:4) {#if has_name}",
+    		source: "(49:4) {#if has_name}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (39:0) <Spatial   anchor = {[0, 0]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale} >
-    function create_default_slot$1(ctx) {
+    // (42:0) <Spatial   anchor = {[0, 0]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale} >
+    function create_default_slot$2(ctx) {
     	let div1;
     	let t;
     	let div0;
     	let current;
     	let dispose;
-    	let if_block = ctx.has_name && create_if_block$2(ctx);
+    	let if_block = ctx.has_name && create_if_block$3(ctx);
     	const default_slot_template = ctx.$$slots.default;
     	const default_slot = create_slot(default_slot_template, ctx, null);
 
@@ -5060,10 +5502,10 @@ var app = (function (Tone, uuid, expr, Color) {
     			t = space();
     			div0 = element("div");
     			if (default_slot) default_slot.c();
-    			attr_dev(div0, "class", "knot svelte-1pj9zca");
-    			add_location(div0, file$6, 53, 4, 1243);
-    			attr_dev(div1, "class", "adjust svelte-1pj9zca");
-    			add_location(div1, file$6, 44, 2, 986);
+    			attr_dev(div0, "class", "knot svelte-rhmgl2");
+    			add_location(div0, file$7, 56, 4, 1299);
+    			attr_dev(div1, "class", "adjust svelte-rhmgl2");
+    			add_location(div1, file$7, 47, 2, 1049);
     			dispose = listen_dev(div0, "mousedown", ctx.drag, false, false, false);
     		},
     		m: function mount(target, anchor) {
@@ -5083,7 +5525,7 @@ var app = (function (Tone, uuid, expr, Color) {
     				if (if_block) {
     					if_block.p(changed, ctx);
     				} else {
-    					if_block = create_if_block$2(ctx);
+    					if_block = create_if_block$3(ctx);
     					if_block.c();
     					if_block.m(div1, t);
     				}
@@ -5115,16 +5557,16 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_default_slot$1.name,
+    		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(39:0) <Spatial   anchor = {[0, 0]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale} >",
+    		source: "(42:0) <Spatial   anchor = {[0, 0]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale} >",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$6(ctx) {
+    function create_fragment$7(ctx) {
     	let current;
 
     	const spatial = new Spatial({
@@ -5133,7 +5575,7 @@ var app = (function (Tone, uuid, expr, Color) {
     				position: ctx.tru_position,
     				transition: !ctx.dragging,
     				scale: ctx.tru_scale,
-    				$$slots: { default: [create_default_slot$1] },
+    				$$slots: { default: [create_default_slot$2] },
     				$$scope: { ctx }
     			},
     			$$inline: true
@@ -5156,7 +5598,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			if (changed.dragging) spatial_changes.transition = !ctx.dragging;
     			if (changed.tru_scale) spatial_changes.scale = ctx.tru_scale;
 
-    			if (changed.$$scope || changed.has_name || changed.name || changed.$name) {
+    			if (changed.$$scope || changed.has_name || changed.$name) {
     				spatial_changes.$$scope = { changed, ctx };
     			}
 
@@ -5178,7 +5620,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$6.name,
+    		id: create_fragment$7.name,
     		type: "component",
     		source: "",
     		ctx
@@ -5187,7 +5629,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$5($$self, $$props, $$invalidate) {
+    function instance$6($$self, $$props, $$invalidate) {
     	let $type,
     		$$unsubscribe_type = noop,
     		$$subscribe_type = () => ($$unsubscribe_type(), $$unsubscribe_type = subscribe(type, $$value => $$invalidate("$type", $type = $$value)), type);
@@ -5252,8 +5694,8 @@ var app = (function (Tone, uuid, expr, Color) {
     			position: position$1,
     			knot,
     			dragging,
-    			name,
     			type,
+    			name,
     			has_name,
     			$type,
     			$Mouse,
@@ -5269,8 +5711,8 @@ var app = (function (Tone, uuid, expr, Color) {
     		if ("position" in $$props) $$invalidate("position", position$1 = $$props.position);
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("dragging" in $$props) $$invalidate("dragging", dragging = $$props.dragging);
-    		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
     		if ("type" in $$props) $$subscribe_type($$invalidate("type", type = $$props.type));
+    		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
     		if ("has_name" in $$props) $$invalidate("has_name", has_name = $$props.has_name);
     		if ("$type" in $$props) type.set($type = $$props.$type);
     		if ("$Mouse" in $$props) position.set($Mouse = $$props.$Mouse);
@@ -5281,23 +5723,23 @@ var app = (function (Tone, uuid, expr, Color) {
     		if ("$name" in $$props) name.set($name = $$props.$name);
     	};
 
-    	let name;
     	let type;
+    	let name;
     	let has_name;
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, $type: 1, $Scaling: 1, dragging: 1, $Mouse: 1, position: 1, $zoom: 1 }) => {
-    		if (changed.knot) {
-    			 $$subscribe_name($$invalidate("name", name = knot.name));
-    		}
-
+    	$$self.$$.update = (changed = { knot: 1, $type: 1, has_name: 1, $Scaling: 1, dragging: 1, $Mouse: 1, position: 1, $zoom: 1 }) => {
     		if (changed.knot) {
     			 $$subscribe_type($$invalidate("type", type = knot.knot));
     		}
 
     		if (changed.$type) {
     			 $$invalidate("has_name", has_name = $type === `stitch`);
+    		}
+
+    		if (changed.has_name || changed.knot) {
+    			 $$subscribe_name($$invalidate("name", name = has_name ? knot.name : read()));
     		}
 
     		if (changed.$Scaling || changed.dragging || changed.$Mouse || changed.position) {
@@ -5314,8 +5756,8 @@ var app = (function (Tone, uuid, expr, Color) {
     		knot,
     		dragging,
     		drag,
-    		name,
     		type,
+    		name,
     		has_name,
     		tru_position,
     		tru_scale,
@@ -5329,13 +5771,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Knot extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$5, create_fragment$6, safe_not_equal, { position: 0, knot: 0 });
+    		init(this, options, instance$6, create_fragment$7, safe_not_equal, { position: 0, knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Knot",
     			options,
-    			id: create_fragment$6.name
+    			id: create_fragment$7.name
     		});
 
     		const { ctx } = this.$$;
@@ -5366,7 +5808,7 @@ var app = (function (Tone, uuid, expr, Color) {
     /* src/ui/weave/Picker.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1$1 } = globals;
-    const file$7 = "src/ui/weave/Picker.svelte";
+    const file$8 = "src/ui/weave/Picker.svelte";
 
     function get_each_context$1(ctx, list, i) {
     	const child_ctx = Object_1$1.create(ctx);
@@ -5376,14 +5818,14 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     // (57:0) {#if picking}
-    function create_if_block$3(ctx) {
+    function create_if_block$4(ctx) {
     	let current;
 
     	const knot_1 = new Knot({
     			props: {
     				position: ctx.position,
     				knot: ctx.knot,
-    				$$slots: { default: [create_default_slot$2] },
+    				$$slots: { default: [create_default_slot$3] },
     				$$scope: { ctx }
     			},
     			$$inline: true
@@ -5423,7 +5865,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$3.name,
+    		id: create_if_block$4.name,
     		type: "if",
     		source: "(57:0) {#if picking}",
     		ctx
@@ -5453,7 +5895,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			t0 = text(t0_value);
     			t1 = space();
     			attr_dev(div, "class", "kind svelte-1tr4ggx");
-    			add_location(div, file$7, 63, 8, 1131);
+    			add_location(div, file$8, 63, 8, 1108);
     			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
     			this.first = div;
     		},
@@ -5487,7 +5929,7 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     // (58:2) <Knot {position} {knot}>
-    function create_default_slot$2(ctx) {
+    function create_default_slot$3(ctx) {
     	let div1;
     	let div0;
     	let t1;
@@ -5514,9 +5956,9 @@ var app = (function (Tone, uuid, expr, Color) {
     			}
 
     			attr_dev(div0, "class", "title svelte-1tr4ggx");
-    			add_location(div0, file$7, 59, 6, 1027);
+    			add_location(div0, file$8, 59, 6, 1004);
     			attr_dev(div1, "class", "prompt");
-    			add_location(div1, file$7, 58, 4, 1000);
+    			add_location(div1, file$8, 58, 4, 977);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -5542,7 +5984,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_default_slot$2.name,
+    		id: create_default_slot$3.name,
     		type: "slot",
     		source: "(58:2) <Knot {position} {knot}>",
     		ctx
@@ -5551,11 +5993,11 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function create_fragment$7(ctx) {
+    function create_fragment$8(ctx) {
     	let div;
     	let current;
     	let dispose;
-    	let if_block = ctx.picking && create_if_block$3(ctx);
+    	let if_block = ctx.picking && create_if_block$4(ctx);
 
     	const block = {
     		c: function create() {
@@ -5563,7 +6005,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "picker svelte-1tr4ggx");
     			toggle_class(div, "picking", ctx.picking);
-    			add_location(div, file$7, 51, 0, 890);
+    			add_location(div, file$8, 51, 0, 867);
 
     			dispose = [
     				listen_dev(window, "mouseup", ctx.nopick, false, false, false),
@@ -5584,7 +6026,7 @@ var app = (function (Tone, uuid, expr, Color) {
     					if_block.p(changed, ctx);
     					transition_in(if_block, 1);
     				} else {
-    					if_block = create_if_block$3(ctx);
+    					if_block = create_if_block$4(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
     					if_block.m(div, null);
@@ -5621,7 +6063,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$7.name,
+    		id: create_fragment$8.name,
     		type: "component",
     		source: "",
     		ctx
@@ -5630,7 +6072,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$6($$self, $$props, $$invalidate) {
+    function instance$7($$self, $$props, $$invalidate) {
     	let $Scaling;
     	validate_store(scale, "Scaling");
     	component_subscribe($$self, scale, $$value => $$invalidate("$Scaling", $Scaling = $$value));
@@ -5648,8 +6090,8 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	const create = kind => weave.knots.update(nodes => {
-    		const h = Knot_Factory({ knot: kind });
-    		nodes[get(h.id)] = h;
+    		const h = Knot_Factory({ knot: kind, weave });
+    		nodes[h.id.get()] = h;
     		return nodes;
     	});
 
@@ -5708,13 +6150,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Picker extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$6, create_fragment$7, safe_not_equal, { weave: 0 });
+    		init(this, options, instance$7, create_fragment$8, safe_not_equal, { weave: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Picker",
     			options,
-    			id: create_fragment$7.name
+    			id: create_fragment$8.name
     		});
 
     		const { ctx } = this.$$;
@@ -5735,9 +6177,9 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     /* src/ui/weave/Port.svelte generated by Svelte v3.14.1 */
-    const file$8 = "src/ui/weave/Port.svelte";
+    const file$9 = "src/ui/weave/Port.svelte";
 
-    function create_fragment$8(ctx) {
+    function create_fragment$9(ctx) {
     	let div;
     	let dispose;
 
@@ -5748,7 +6190,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			attr_dev(div, "id", ctx.address);
     			toggle_class(div, "writable", ctx.writable);
     			toggle_class(div, "name", ctx.name);
-    			add_location(div, file$8, 19, 0, 274);
+    			add_location(div, file$9, 19, 0, 274);
 
     			dispose = [
     				listen_dev(div, "mousedown", ctx.mousedown, false, false, false),
@@ -5784,7 +6226,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$8.name,
+    		id: create_fragment$9.name,
     		type: "component",
     		source: "",
     		ctx
@@ -5793,7 +6235,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$7($$self, $$props, $$invalidate) {
+    function instance$8($$self, $$props, $$invalidate) {
     	let { writable = false } = $$props;
     	let { name = false } = $$props;
     	let { address = `` } = $$props;
@@ -5840,13 +6282,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Port extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$7, create_fragment$8, safe_not_equal, { writable: 0, name: 0, address: 0 });
+    		init(this, options, instance$8, create_fragment$9, safe_not_equal, { writable: 0, name: 0, address: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Port",
     			options,
-    			id: create_fragment$8.name
+    			id: create_fragment$9.name
     		});
     	}
 
@@ -5876,9 +6318,9 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     /* src/ui/weave/knot/Mail.svelte generated by Svelte v3.14.1 */
-    const file$9 = "src/ui/weave/knot/Mail.svelte";
+    const file$a = "src/ui/weave/knot/Mail.svelte";
 
-    function create_fragment$9(ctx) {
+    function create_fragment$a(ctx) {
     	let div5;
     	let div0;
     	let t0;
@@ -5929,21 +6371,21 @@ var app = (function (Tone, uuid, expr, Color) {
     			div3 = element("div");
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "postage svelte-13p3ve6");
-    			add_location(div0, file$9, 13, 2, 236);
+    			add_location(div0, file$a, 13, 2, 247);
     			attr_dev(div1, "class", "port left svelte-13p3ve6");
-    			add_location(div1, file$9, 17, 4, 337);
+    			add_location(div1, file$a, 17, 4, 348);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "AdDrEsS hErE");
     			attr_dev(input, "class", "svelte-13p3ve6");
-    			add_location(input, file$9, 22, 6, 465);
+    			add_location(input, file$a, 22, 6, 476);
     			attr_dev(div2, "class", "address svelte-13p3ve6");
-    			add_location(div2, file$9, 20, 4, 425);
+    			add_location(div2, file$a, 20, 4, 436);
     			attr_dev(div3, "class", "port right svelte-13p3ve6");
-    			add_location(div3, file$9, 24, 4, 547);
+    			add_location(div3, file$a, 24, 4, 558);
     			attr_dev(div4, "class", "center svelte-13p3ve6");
-    			add_location(div4, file$9, 16, 2, 310);
+    			add_location(div4, file$a, 16, 2, 321);
     			attr_dev(div5, "class", "mail svelte-13p3ve6");
-    			add_location(div5, file$9, 12, 0, 197);
+    			add_location(div5, file$a, 12, 0, 197);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -5965,7 +6407,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			append_dev(div4, t3);
     			append_dev(div4, div3);
     			mount_component(port1, div3, null);
-    			color_action = color$1.call(null, div5, ctx.$whom) || ({});
+    			color_action = color$1.call(null, div5, ctx.$whom || "/???/") || ({});
     			current = true;
     		},
     		p: function update(changed, ctx) {
@@ -5980,7 +6422,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			const port1_changes = {};
     			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
     			port1.$set(port1_changes);
-    			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom);
+    			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom || "/???/");
     		},
     		i: function intro(local) {
     			if (current) return;
@@ -6007,7 +6449,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$9.name,
+    		id: create_fragment$a.name,
     		type: "component",
     		source: "",
     		ctx
@@ -6016,7 +6458,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$8($$self, $$props, $$invalidate) {
+    function instance$9($$self, $$props, $$invalidate) {
     	let $whom,
     		$$unsubscribe_whom = noop,
     		$$subscribe_whom = () => ($$unsubscribe_whom(), $$unsubscribe_whom = subscribe(whom, $$value => $$invalidate("$whom", $whom = $$value)), whom);
@@ -6081,13 +6523,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Mail extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$8, create_fragment$9, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$9, create_fragment$a, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Mail",
     			options,
-    			id: create_fragment$9.name
+    			id: create_fragment$a.name
     		});
 
     		const { ctx } = this.$$;
@@ -6108,9 +6550,9 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     /* src/ui/weave/knot/Math.svelte generated by Svelte v3.14.1 */
-    const file$a = "src/ui/weave/knot/Math.svelte";
+    const file$b = "src/ui/weave/knot/Math.svelte";
 
-    function create_fragment$a(ctx) {
+    function create_fragment$b(ctx) {
     	let div5;
     	let div0;
     	let t1;
@@ -6158,21 +6600,21 @@ var app = (function (Tone, uuid, expr, Color) {
     			div3 = element("div");
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "math svelte-awskfb");
-    			add_location(div0, file$a, 13, 2, 258);
+    			add_location(div0, file$b, 13, 2, 258);
     			attr_dev(div1, "class", "port left svelte-awskfb");
-    			add_location(div1, file$a, 15, 4, 315);
+    			add_location(div1, file$b, 15, 4, 315);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "2 + 2 = ChAiR");
     			attr_dev(input, "class", "svelte-awskfb");
-    			add_location(input, file$a, 19, 6, 431);
+    			add_location(input, file$b, 19, 6, 431);
     			attr_dev(div2, "class", "address svelte-awskfb");
-    			add_location(div2, file$a, 18, 4, 403);
+    			add_location(div2, file$b, 18, 4, 403);
     			attr_dev(div3, "class", "port right svelte-awskfb");
-    			add_location(div3, file$a, 22, 4, 529);
+    			add_location(div3, file$b, 22, 4, 529);
     			attr_dev(div4, "class", "center svelte-awskfb");
-    			add_location(div4, file$a, 14, 2, 289);
+    			add_location(div4, file$b, 14, 2, 289);
     			attr_dev(div5, "class", "mail svelte-awskfb");
-    			add_location(div5, file$a, 12, 0, 218);
+    			add_location(div5, file$b, 12, 0, 218);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -6234,7 +6676,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$a.name,
+    		id: create_fragment$b.name,
     		type: "component",
     		source: "",
     		ctx
@@ -6243,7 +6685,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$9($$self, $$props, $$invalidate) {
+    function instance$a($$self, $$props, $$invalidate) {
     	let $value,
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
@@ -6330,13 +6772,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Math$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$9, create_fragment$a, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$a, create_fragment$b, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Math",
     			options,
-    			id: create_fragment$a.name
+    			id: create_fragment$b.name
     		});
 
     		const { ctx } = this.$$;
@@ -6357,9 +6799,9 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     /* src/ui/weave/knot/stitch/Channel.svelte generated by Svelte v3.14.1 */
-    const file$b = "src/ui/weave/knot/stitch/Channel.svelte";
+    const file$c = "src/ui/weave/knot/stitch/Channel.svelte";
 
-    function create_fragment$b(ctx) {
+    function create_fragment$c(ctx) {
     	let div2;
     	let t0;
     	let div1;
@@ -6397,16 +6839,16 @@ var app = (function (Tone, uuid, expr, Color) {
     			input = element("input");
     			t3 = space();
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "name svelte-1u78qvq");
-    			add_location(div0, file$b, 16, 4, 341);
+    			attr_dev(div0, "class", "name svelte-c2na98");
+    			add_location(div0, file$c, 29, 4, 561);
     			attr_dev(input, "type", "text");
-    			attr_dev(input, "class", "edit svelte-1u78qvq");
+    			attr_dev(input, "class", "edit svelte-c2na98");
     			attr_dev(input, "placeholder", "JSON plz");
-    			add_location(input, file$b, 17, 4, 377);
-    			attr_dev(div1, "class", "vbox svelte-1u78qvq");
-    			add_location(div1, file$b, 15, 2, 300);
-    			attr_dev(div2, "class", "channel svelte-1u78qvq");
-    			add_location(div2, file$b, 13, 0, 222);
+    			add_location(input, file$c, 30, 4, 597);
+    			attr_dev(div1, "class", "vbox svelte-c2na98");
+    			add_location(div1, file$c, 28, 2, 504);
+    			attr_dev(div2, "class", "channel svelte-c2na98");
+    			add_location(div2, file$c, 26, 0, 426);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -6422,7 +6864,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			append_dev(div1, t2);
     			append_dev(div1, input);
     			set_input_value(input, ctx.$chan);
-    			color_action = color$1.call(null, div1, ctx.$chan) || ({});
+    			color_action = color$1.call(null, div1, JSON.stringify(ctx.$chan)) || ({});
     			append_dev(div2, t3);
     			mount_component(port1, div2, null);
     			current = true;
@@ -6437,7 +6879,7 @@ var app = (function (Tone, uuid, expr, Color) {
     				set_input_value(input, ctx.$chan);
     			}
 
-    			if (is_function(color_action.update) && changed.$chan) color_action.update.call(null, ctx.$chan);
+    			if (is_function(color_action.update) && changed.$chan) color_action.update.call(null, JSON.stringify(ctx.$chan));
     			const port1_changes = {};
     			if (changed.name) port1_changes.address = `${ctx.address(ctx.name)}|read`;
     			port1.$set(port1_changes);
@@ -6464,7 +6906,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$b.name,
+    		id: create_fragment$c.name,
     		type: "component",
     		source: "",
     		ctx
@@ -6473,23 +6915,37 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$a($$self, $$props, $$invalidate) {
-    	let $id,
-    		$$unsubscribe_id = noop,
-    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
-
+    function instance$b($$self, $$props, $$invalidate) {
     	let $chan,
     		$$unsubscribe_chan = noop,
     		$$subscribe_chan = () => ($$unsubscribe_chan(), $$unsubscribe_chan = subscribe(chan, $$value => $$invalidate("$chan", $chan = $$value)), chan);
 
-    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
+    	let $id,
+    		$$unsubscribe_id = noop,
+    		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
     	$$self.$$.on_destroy.push(() => $$unsubscribe_chan());
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
     	let { knot } = $$props;
     	let { chan } = $$props;
     	validate_store(chan, "chan");
     	$$subscribe_chan();
     	let { name } = $$props;
-    	const address = channel => `${$id}|chan|${channel}`;
+    	const edit = write($chan);
+    	const address = channel => `${$id}/${channel}`;
+
+    	const cancel = edit.subscribe(txt => {
+    		let v = txt;
+
+    		try {
+    			v = JSON.parse(txt);
+    		} catch(ex) {
+    			
+    		}
+
+    		chan.set(v);
+    	});
+
     	const writable_props = ["knot", "chan", "name"];
 
     	Object.keys($$props).forEach(key => {
@@ -6508,16 +6964,16 @@ var app = (function (Tone, uuid, expr, Color) {
     	};
 
     	$$self.$capture_state = () => {
-    		return { knot, chan, name, id, $id, $chan };
+    		return { knot, chan, name, $chan, id, $id };
     	};
 
     	$$self.$inject_state = $$props => {
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("chan" in $$props) $$subscribe_chan($$invalidate("chan", chan = $$props.chan));
     		if ("name" in $$props) $$invalidate("name", name = $$props.name);
+    		if ("$chan" in $$props) chan.set($chan = $$props.$chan);
     		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$id" in $$props) id.set($id = $$props.$id);
-    		if ("$chan" in $$props) chan.set($chan = $$props.$chan);
     	};
 
     	let id;
@@ -6533,8 +6989,8 @@ var app = (function (Tone, uuid, expr, Color) {
     		chan,
     		name,
     		address,
-    		id,
     		$chan,
+    		id,
     		input_input_handler
     	};
     }
@@ -6542,13 +6998,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Channel extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$a, create_fragment$b, safe_not_equal, { knot: 0, chan: 0, name: 0 });
+    		init(this, options, instance$b, create_fragment$c, safe_not_equal, { knot: 0, chan: 0, name: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Channel",
     			options,
-    			id: create_fragment$b.name
+    			id: create_fragment$c.name
     		});
 
     		const { ctx } = this.$$;
@@ -6595,7 +7051,7 @@ var app = (function (Tone, uuid, expr, Color) {
     /* src/ui/weave/knot/Stitch.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1$2 } = globals;
-    const file$c = "src/ui/weave/knot/Stitch.svelte";
+    const file$d = "src/ui/weave/knot/Stitch.svelte";
 
     function get_each_context$2(ctx, list, i) {
     	const child_ctx = Object_1$2.create(ctx);
@@ -6605,15 +7061,15 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     // (30:4) {:else}
-    function create_else_block(ctx) {
+    function create_else_block$1(ctx) {
     	let div;
 
     	const block = {
     		c: function create() {
     			div = element("div");
     			div.textContent = "/\\/\\";
-    			attr_dev(div, "class", "no-stitches svelte-1w40fld");
-    			add_location(div, file$c, 30, 6, 598);
+    			attr_dev(div, "class", "no-stitches svelte-1ok2jpp");
+    			add_location(div, file$d, 30, 6, 598);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -6625,7 +7081,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_else_block.name,
+    		id: create_else_block$1.name,
     		type: "else",
     		source: "(30:4) {:else}",
     		ctx
@@ -6694,7 +7150,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function create_fragment$c(ctx) {
+    function create_fragment$d(ctx) {
     	let div;
     	let each_blocks = [];
     	let each_1_lookup = new Map();
@@ -6714,7 +7170,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	let each_1_else = null;
 
     	if (!each_value.length) {
-    		each_1_else = create_else_block(ctx);
+    		each_1_else = create_else_block$1(ctx);
     		each_1_else.c();
     	}
 
@@ -6729,11 +7185,11 @@ var app = (function (Tone, uuid, expr, Color) {
     			t = space();
     			input = element("input");
     			attr_dev(input, "type", "text");
-    			attr_dev(input, "class", "add_channel svelte-1w40fld");
+    			attr_dev(input, "class", "add_channel svelte-1ok2jpp");
     			attr_dev(input, "placeholder", "STITCH IT!");
-    			add_location(input, file$c, 33, 4, 654);
-    			attr_dev(div, "class", "board svelte-1w40fld");
-    			add_location(div, file$c, 26, 0, 444);
+    			add_location(input, file$d, 33, 4, 654);
+    			attr_dev(div, "class", "board svelte-1ok2jpp");
+    			add_location(div, file$d, 26, 0, 444);
 
     			dispose = [
     				listen_dev(input, "input", ctx.input_input_handler),
@@ -6772,7 +7228,7 @@ var app = (function (Tone, uuid, expr, Color) {
     					each_1_else = null;
     				}
     			} else if (!each_1_else) {
-    				each_1_else = create_else_block(ctx);
+    				each_1_else = create_else_block$1(ctx);
     				each_1_else.c();
     				each_1_else.m(div, t);
     			}
@@ -6811,7 +7267,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$c.name,
+    		id: create_fragment$d.name,
     		type: "component",
     		source: "",
     		ctx
@@ -6820,7 +7276,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$b($$self, $$props, $$invalidate) {
+    function instance$c($$self, $$props, $$invalidate) {
     	let $value,
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
@@ -6895,13 +7351,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Stitch extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$b, create_fragment$c, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$c, create_fragment$d, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Stitch",
     			options,
-    			id: create_fragment$c.name
+    			id: create_fragment$d.name
     		});
 
     		const { ctx } = this.$$;
@@ -6922,10 +7378,10 @@ var app = (function (Tone, uuid, expr, Color) {
     }
 
     /* src/ui/weave/knot/Json.svelte generated by Svelte v3.14.1 */
-    const file$d = "src/ui/weave/knot/Json.svelte";
+    const file$e = "src/ui/weave/knot/Json.svelte";
 
     // (18:6) {#if $value === null}
-    function create_if_block$4(ctx) {
+    function create_if_block$5(ctx) {
     	let div0;
     	let div0_intro;
     	let t1;
@@ -6939,10 +7395,10 @@ var app = (function (Tone, uuid, expr, Color) {
     			t1 = space();
     			div1 = element("div");
     			div1.textContent = "JSON IT!";
-    			attr_dev(div0, "class", "doit svelte-1v2tuul");
-    			add_location(div0, file$d, 18, 8, 449);
-    			attr_dev(div1, "class", "doit svelte-1v2tuul");
-    			add_location(div1, file$d, 19, 8, 505);
+    			attr_dev(div0, "class", "doit svelte-19dmdaw");
+    			add_location(div0, file$e, 18, 8, 474);
+    			attr_dev(div1, "class", "doit svelte-19dmdaw");
+    			add_location(div1, file$e, 19, 8, 530);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -6974,7 +7430,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$4.name,
+    		id: create_if_block$5.name,
     		type: "if",
     		source: "(18:6) {#if $value === null}",
     		ctx
@@ -6983,12 +7439,13 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function create_fragment$d(ctx) {
-    	let div3;
-    	let t0;
+    function create_fragment$e(ctx) {
     	let div2;
+    	let t0;
     	let div1;
     	let div0;
+    	let pre;
+    	let t1_value = JSON.stringify(ctx.$value, null, 2) + "";
     	let t1;
     	let t2;
     	let color_action;
@@ -7003,7 +7460,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			$$inline: true
     		});
 
-    	let if_block = ctx.$value === null && create_if_block$4(ctx);
+    	let if_block = ctx.$value === null && create_if_block$5(ctx);
 
     	const port1 = new Port({
     			props: { address: `${ctx.$id}|read` },
@@ -7012,56 +7469,56 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	const block = {
     		c: function create() {
-    			div3 = element("div");
+    			div2 = element("div");
     			create_component(port0.$$.fragment);
     			t0 = space();
-    			div2 = element("div");
     			div1 = element("div");
     			div0 = element("div");
-    			t1 = text(ctx.$value);
+    			pre = element("pre");
+    			t1 = text(t1_value);
     			t2 = space();
     			if (if_block) if_block.c();
     			t3 = space();
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "flex svelte-1v2tuul");
-    			add_location(div0, file$d, 16, 6, 379);
-    			attr_dev(div1, "class", "value_add svelte-1v2tuul");
-    			add_location(div1, file$d, 15, 4, 349);
-    			attr_dev(div2, "class", "JSON svelte-1v2tuul");
-    			add_location(div2, file$d, 14, 2, 307);
-    			attr_dev(div3, "class", "box svelte-1v2tuul");
-    			add_location(div3, file$d, 12, 0, 242);
+    			attr_dev(pre, "class", "flex svelte-19dmdaw");
+    			add_location(pre, file$e, 16, 6, 379);
+    			attr_dev(div0, "class", "value_add svelte-19dmdaw");
+    			add_location(div0, file$e, 15, 4, 349);
+    			attr_dev(div1, "class", "JSON svelte-19dmdaw");
+    			add_location(div1, file$e, 14, 2, 307);
+    			attr_dev(div2, "class", "box svelte-19dmdaw");
+    			add_location(div2, file$e, 12, 0, 242);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div3, anchor);
-    			mount_component(port0, div3, null);
-    			append_dev(div3, t0);
-    			append_dev(div3, div2);
+    			insert_dev(target, div2, anchor);
+    			mount_component(port0, div2, null);
+    			append_dev(div2, t0);
     			append_dev(div2, div1);
     			append_dev(div1, div0);
-    			append_dev(div0, t1);
-    			append_dev(div1, t2);
-    			if (if_block) if_block.m(div1, null);
-    			color_action = color$1.call(null, div2, ctx.$value) || ({});
-    			append_dev(div3, t3);
-    			mount_component(port1, div3, null);
+    			append_dev(div0, pre);
+    			append_dev(pre, t1);
+    			append_dev(div0, t2);
+    			if (if_block) if_block.m(div0, null);
+    			color_action = color$1.call(null, div1, ctx.$value) || ({});
+    			append_dev(div2, t3);
+    			mount_component(port1, div2, null);
     			current = true;
     		},
     		p: function update(changed, ctx) {
     			const port0_changes = {};
     			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
     			port0.$set(port0_changes);
-    			if (!current || changed.$value) set_data_dev(t1, ctx.$value);
+    			if ((!current || changed.$value) && t1_value !== (t1_value = JSON.stringify(ctx.$value, null, 2) + "")) set_data_dev(t1, t1_value);
 
     			if (ctx.$value === null) {
     				if (!if_block) {
-    					if_block = create_if_block$4(ctx);
+    					if_block = create_if_block$5(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
-    					if_block.m(div1, null);
+    					if_block.m(div0, null);
     				} else {
     					transition_in(if_block, 1);
     				}
@@ -7088,7 +7545,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div3);
+    			if (detaching) detach_dev(div2);
     			destroy_component(port0);
     			if (if_block) if_block.d();
     			if (color_action && is_function(color_action.destroy)) color_action.destroy();
@@ -7098,7 +7555,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$d.name,
+    		id: create_fragment$e.name,
     		type: "component",
     		source: "",
     		ctx
@@ -7107,7 +7564,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$c($$self, $$props, $$invalidate) {
+    function instance$d($$self, $$props, $$invalidate) {
     	let $id,
     		$$unsubscribe_id = noop,
     		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
@@ -7160,13 +7617,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Json extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$c, create_fragment$d, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$d, create_fragment$e, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Json",
     			options,
-    			id: create_fragment$d.name
+    			id: create_fragment$e.name
     		});
 
     		const { ctx } = this.$$;
@@ -7188,9 +7645,9 @@ var app = (function (Tone, uuid, expr, Color) {
 
     /* src/ui/weave/knot/Unknown.svelte generated by Svelte v3.14.1 */
 
-    const file$e = "src/ui/weave/knot/Unknown.svelte";
+    const file$f = "src/ui/weave/knot/Unknown.svelte";
 
-    function create_fragment$e(ctx) {
+    function create_fragment$f(ctx) {
     	let h1;
     	let t0;
     	let t1;
@@ -7200,7 +7657,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			h1 = element("h1");
     			t0 = text("Unknown Knot ");
     			t1 = text(ctx.$type);
-    			add_location(h1, file$e, 7, 0, 58);
+    			add_location(h1, file$f, 7, 0, 58);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -7222,7 +7679,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$e.name,
+    		id: create_fragment$f.name,
     		type: "component",
     		source: "",
     		ctx
@@ -7231,7 +7688,7 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$d($$self, $$props, $$invalidate) {
+    function instance$e($$self, $$props, $$invalidate) {
     	let $type,
     		$$unsubscribe_type = noop,
     		$$subscribe_type = () => ($$unsubscribe_type(), $$unsubscribe_type = subscribe(type, $$value => $$invalidate("$type", $type = $$value)), type);
@@ -7272,13 +7729,13 @@ var app = (function (Tone, uuid, expr, Color) {
     class Unknown extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$d, create_fragment$e, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$e, create_fragment$f, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Unknown",
     			options,
-    			id: create_fragment$e.name
+    			id: create_fragment$f.name
     		});
 
     		const { ctx } = this.$$;
@@ -7319,8 +7776,8 @@ var app = (function (Tone, uuid, expr, Color) {
     	return child_ctx;
     }
 
-    // (25:2) <Knot      {knot}     position={[window.innerWidth / 2, window.innerHeight / 2]}   >
-    function create_default_slot$3(ctx) {
+    // (28:2) <Knot      {knot}     position={[window.innerWidth / 2, window.innerHeight / 2]}   >
+    function create_default_slot$4(ctx) {
     	let t;
     	let current;
     	var switch_value = ctx.get_ui(ctx.knot);
@@ -7394,34 +7851,40 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_default_slot$3.name,
+    		id: create_default_slot$4.name,
     		type: "slot",
-    		source: "(25:2) <Knot      {knot}     position={[window.innerWidth / 2, window.innerHeight / 2]}   >",
+    		source: "(28:2) <Knot      {knot}     position={[window.innerWidth / 2, window.innerHeight / 2]}   >",
     		ctx
     	});
 
     	return block;
     }
 
-    // (24:0) {#each Object.values($knots) as knot}
-    function create_each_block$3(ctx) {
+    // (27:0) {#each Object.values($knots) as knot (knot.id.get())}
+    function create_each_block$3(key_1, ctx) {
+    	let first;
     	let current;
 
     	const knot = new Knot({
     			props: {
     				knot: ctx.knot,
     				position: [window.innerWidth / 2, window.innerHeight / 2],
-    				$$slots: { default: [create_default_slot$3] },
+    				$$slots: { default: [create_default_slot$4] },
     				$$scope: { ctx }
     			},
     			$$inline: true
     		});
 
     	const block = {
+    		key: key_1,
+    		first: null,
     		c: function create() {
+    			first = empty();
     			create_component(knot.$$.fragment);
+    			this.first = first;
     		},
     		m: function mount(target, anchor) {
+    			insert_dev(target, first, anchor);
     			mount_component(knot, target, anchor);
     			current = true;
     		},
@@ -7445,6 +7908,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			current = false;
     		},
     		d: function destroy(detaching) {
+    			if (detaching) detach_dev(first);
     			destroy_component(knot, detaching);
     		}
     	};
@@ -7453,18 +7917,26 @@ var app = (function (Tone, uuid, expr, Color) {
     		block,
     		id: create_each_block$3.name,
     		type: "each",
-    		source: "(24:0) {#each Object.values($knots) as knot}",
+    		source: "(27:0) {#each Object.values($knots) as knot (knot.id.get())}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$f(ctx) {
+    function create_fragment$g(ctx) {
     	let t0;
     	let t1;
+    	let t2;
+    	let each_blocks = [];
+    	let each_1_lookup = new Map();
     	let each_1_anchor;
     	let current;
+
+    	const controls = new Controls({
+    			props: { weave: ctx.weave },
+    			$$inline: true
+    		});
 
     	const picker = new Picker({
     			props: { weave: ctx.weave },
@@ -7477,22 +7949,22 @@ var app = (function (Tone, uuid, expr, Color) {
     		});
 
     	let each_value = Object.values(ctx.$knots);
-    	let each_blocks = [];
+    	const get_key = ctx => ctx.knot.id.get();
 
     	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block$3(get_each_context$3(ctx, each_value, i));
+    		let child_ctx = get_each_context$3(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block$3(key, child_ctx));
     	}
-
-    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
-    		each_blocks[i] = null;
-    	});
 
     	const block = {
     		c: function create() {
-    			create_component(picker.$$.fragment);
+    			create_component(controls.$$.fragment);
     			t0 = space();
-    			create_component(threads.$$.fragment);
+    			create_component(picker.$$.fragment);
     			t1 = space();
+    			create_component(threads.$$.fragment);
+    			t2 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
@@ -7504,10 +7976,12 @@ var app = (function (Tone, uuid, expr, Color) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			mount_component(picker, target, anchor);
+    			mount_component(controls, target, anchor);
     			insert_dev(target, t0, anchor);
-    			mount_component(threads, target, anchor);
+    			mount_component(picker, target, anchor);
     			insert_dev(target, t1, anchor);
+    			mount_component(threads, target, anchor);
+    			insert_dev(target, t2, anchor);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(target, anchor);
@@ -7517,35 +7991,14 @@ var app = (function (Tone, uuid, expr, Color) {
     			current = true;
     		},
     		p: function update(changed, ctx) {
-    			if (changed.Object || changed.$knots || changed.window || changed.get_ui) {
-    				each_value = Object.values(ctx.$knots);
-    				let i;
-
-    				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context$3(ctx, each_value, i);
-
-    					if (each_blocks[i]) {
-    						each_blocks[i].p(changed, child_ctx);
-    						transition_in(each_blocks[i], 1);
-    					} else {
-    						each_blocks[i] = create_each_block$3(child_ctx);
-    						each_blocks[i].c();
-    						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(each_1_anchor.parentNode, each_1_anchor);
-    					}
-    				}
-
-    				group_outros();
-
-    				for (i = each_value.length; i < each_blocks.length; i += 1) {
-    					out(i);
-    				}
-
-    				check_outros();
-    			}
+    			const each_value = Object.values(ctx.$knots);
+    			group_outros();
+    			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, each_1_anchor.parentNode, outro_and_destroy_block, create_each_block$3, each_1_anchor, get_each_context$3);
+    			check_outros();
     		},
     		i: function intro(local) {
     			if (current) return;
+    			transition_in(controls.$$.fragment, local);
     			transition_in(picker.$$.fragment, local);
     			transition_in(threads.$$.fragment, local);
 
@@ -7556,9 +8009,9 @@ var app = (function (Tone, uuid, expr, Color) {
     			current = true;
     		},
     		o: function outro(local) {
+    			transition_out(controls.$$.fragment, local);
     			transition_out(picker.$$.fragment, local);
     			transition_out(threads.$$.fragment, local);
-    			each_blocks = each_blocks.filter(Boolean);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				transition_out(each_blocks[i]);
@@ -7567,18 +8020,24 @@ var app = (function (Tone, uuid, expr, Color) {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(picker, detaching);
+    			destroy_component(controls, detaching);
     			if (detaching) detach_dev(t0);
-    			destroy_component(threads, detaching);
+    			destroy_component(picker, detaching);
     			if (detaching) detach_dev(t1);
-    			destroy_each(each_blocks, detaching);
+    			destroy_component(threads, detaching);
+    			if (detaching) detach_dev(t2);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].d(detaching);
+    			}
+
     			if (detaching) detach_dev(each_1_anchor);
     		}
     	};
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$f.name,
+    		id: create_fragment$g.name,
     		type: "component",
     		source: "",
     		ctx
@@ -7587,15 +8046,15 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$e($$self, $$props, $$invalidate) {
+    function instance$f($$self, $$props, $$invalidate) {
     	let $knots;
-    	const weave = Weave();
+    	const weave = get(random(2));
     	const knots = weave.knots;
     	validate_store(knots, "knots");
     	component_subscribe($$self, knots, value => $$invalidate("$knots", $knots = value));
 
     	const get_ui = knot => {
-    		const ui = knot_kinds[get(knot.knot)];
+    		const ui = knot_kinds[knot.knot.get()];
     		return ui === undefined ? Unknown : ui;
     	};
 
@@ -7610,23 +8069,23 @@ var app = (function (Tone, uuid, expr, Color) {
     	return { weave, knots, get_ui, $knots };
     }
 
-    class Weave_1 extends SvelteComponentDev {
+    class Weave$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$e, create_fragment$f, safe_not_equal, {});
+    		init(this, options, instance$f, create_fragment$g, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
-    			tagName: "Weave_1",
+    			tagName: "Weave",
     			options,
-    			id: create_fragment$f.name
+    			id: create_fragment$g.name
     		});
     	}
     }
 
     /* src/ui/app/Credits.svelte generated by Svelte v3.14.1 */
 
-    function create_fragment$g(ctx) {
+    function create_fragment$h(ctx) {
     	const block = {
     		c: noop,
     		l: function claim(nodes) {
@@ -7641,7 +8100,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$g.name,
+    		id: create_fragment$h.name,
     		type: "component",
     		source: "",
     		ctx
@@ -7653,21 +8112,21 @@ var app = (function (Tone, uuid, expr, Color) {
     class Credits extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, null, create_fragment$g, safe_not_equal, {});
+    		init(this, options, null, create_fragment$h, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Credits",
     			options,
-    			id: create_fragment$g.name
+    			id: create_fragment$h.name
     		});
     	}
     }
 
     /* src/ui/app/app.svelte generated by Svelte v3.14.1 */
-    const file$f = "src/ui/app/app.svelte";
+    const file$g = "src/ui/app/app.svelte";
 
-    function create_fragment$h(ctx) {
+    function create_fragment$i(ctx) {
     	let t0;
     	let t1;
     	let div;
@@ -7694,7 +8153,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			div = element("div");
     			create_component(tile.$$.fragment);
     			attr_dev(div, "class", "background svelte-4esgp2");
-    			add_location(div, file$f, 28, 0, 567);
+    			add_location(div, file$g, 28, 0, 567);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -7759,7 +8218,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$h.name,
+    		id: create_fragment$i.name,
     		type: "component",
     		source: "",
     		ctx
@@ -7768,12 +8227,12 @@ var app = (function (Tone, uuid, expr, Color) {
     	return block;
     }
 
-    function instance$f($$self, $$props, $$invalidate) {
+    function instance$g($$self, $$props, $$invalidate) {
     	let $view;
 
     	const paths = {
     		cards: Design,
-    		weave: Weave_1,
+    		weave: Weave$1,
     		"/": Intro,
     		credits: Credits
     	};
@@ -7797,16 +8256,18 @@ var app = (function (Tone, uuid, expr, Color) {
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$f, create_fragment$h, safe_not_equal, {});
+    		init(this, options, instance$g, create_fragment$i, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "App",
     			options,
-    			id: create_fragment$h.name
+    			id: create_fragment$i.name
     		});
     	}
     }
+
+    window.Wheel = Wheel$1;
 
     const app = new App({
       target: document.body,

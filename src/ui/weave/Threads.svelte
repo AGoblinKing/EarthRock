@@ -19,14 +19,17 @@ const get_color = (id) => {
 
 $: threads = $Tick ? weave.threads : weave.threads
 $: rects = Object.entries($threads)
+  .filter(([x, y]) => 
+    document.getElementById(`${x}|read`) && 
+    document.getElementById(`${y}|write`)
+  )
   .map(
-    ([x, y]) =>
-      [
-        document.getElementById(x).getBoundingClientRect(),
-        document.getElementById(y).getBoundingClientRect(),
-        x,
-        y
-      ]
+    ([x, y]) => [
+      document.getElementById(`${x}|read`).getBoundingClientRect(),
+      document.getElementById(`${y}|write`).getBoundingClientRect(),
+      x,
+      y
+    ]
   )
 
 $: first_rec = $first ? get_pos($first) : [0, 0]
@@ -56,24 +59,13 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
   {/if}
 
   {#each rects as [x, y, x_id, y_id]}
-
-    {#if x_id.split(`|`).length === 1 || y_id.split(`|`) === 1} 
-    <line 
-      stroke="gray" 
-      x1={x.x + x.width / 2} 
-      y1={x.y + x.height / 2} 
-      x2={y.x + y.width / 2} 
-      y2={y.y + y.height / 2} 
-      class="line"> </line> 
-    {:else if x_id.slice(-1) === `e` }
       <line 
-        stroke="url(#{x.x < y.x ? 'linear' : 'linear-other'})" 
+        stroke="url(#{x.x > y.x ? 'linear' : 'linear-other'})" 
         x1={x.x + x.width / 2} 
         y1={x.y + x.height / 2} 
         x2={y.x + y.width / 2} 
         y2={y.y + y.height / 2} 
         class="line"> </line> 
-      {/if}
   {/each}
 </svg>
 

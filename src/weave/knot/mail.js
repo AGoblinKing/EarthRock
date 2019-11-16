@@ -1,21 +1,33 @@
-import { transformer, write, get, read } from "/util/store.js"
+import { transformer, write, read } from "/util/store.js"
 
 // instead use the weave messaging channel
 export default ({
-  whom = ``
+  whom = `/sys/mouse/position`,
+  weave,
+  id
 }) => {
+  const value = write()
+  const { set } = value
+
+  // use the mail channel
+  value.set = (value_new) => Wheel.get(`/sys/mail/send`).set({
+    whom: m.whom.get(),
+    value: value_new
+  })
+
   // Subscribe to remote
   const m = ({
     knot: read(`mail`),
-    whom: write(whom),
-    remote: write(),
-    value: transformer((value) => {
-      // Got a write onto value
-      m.remote(value)
+    whom: transformer((whom_new) => {
+      weave.mails.update(($mails) => ({
+        ...$mails,
+        [id]: whom_new
+      }))
 
-      // Send off to remote and rely results
-      return get(m.remote)
-    })
+      return whom_new
+    }).set(whom),
+    value,
+    set
   })
 
   return m

@@ -20,9 +20,12 @@ Attempting to move from my offline documentation to some MD, per oldschool Iseka
 ## 11/10/2019
  - [X] Renamed hole.type to hole.kind
     - like ferret/snake/etc hole. classifies something
- - [ ] [2] Math views 
+
+## 11/14/2019
+ - [X] [3?] Math views 
     - uses mathjs to transform data
- - [ ] [2] Wheel Machine
+ - [X] Fixed all the stuff.
+ - [ ] [many] Wheel Machine
     - Runs weaves in real time
- - [ ] [2] Restricted Stitches
+ - [ ] [many] Restricted Stitches
     - This is for cards and other well defined Stitches

@@ -1,5 +1,5 @@
 import { math as math_js } from "/util/math.js"
-import { write, get, read, derived } from "/util/store.js"
+import { write, read } from "/util/store.js"
 
 const math_run = (expression, arg) => {
   try {
@@ -25,14 +25,16 @@ export default ({
   set(math_run(math, val_in))
 
   m.value.set = (val) => {
-    val_in = val
-    set(math_run(math, val))
+    val_in = typeof val === `object` && !Array.isArray(val)
+      ? val
+      : { v: val }
+
+    set(math_run(math, val_in))
   }
 
-  m.math.subscribe((expression) => {
-    console.log(expression)
+  m.math.subscribe((expression) =>
     set(math_run(expression, val_in))
-  })
+  )
 
   return m
 }

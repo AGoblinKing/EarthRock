@@ -1,17 +1,12 @@
 import { writable, readable, derived as d, get as val } from "svelte/store"
 
 const json = (store) => {
-  store.toJSON = () => get(store)
-  store.poke = () => store.set(get(store))
-
+  store.get = () => val(store)
+  store.toJSON = () => val(store)
+  store.poke = () => store.set(val(store))
+  store.set = store.set || (() => {})
   return store
 }
-
-export const get = (thing) => is(thing)
-  ? val(thing)
-  : thing
-
-export const is = (thing) => typeof thing.subscribe === `function`
 
 export const write = (thing) => json(writable(thing))
 export const read = (thing, handler) => json(readable(thing, handler))
@@ -34,4 +29,4 @@ export const transformer = (transform) => {
   return store
 }
 
-export const derived = d
+export const derived = (...args) => json(d(...args))

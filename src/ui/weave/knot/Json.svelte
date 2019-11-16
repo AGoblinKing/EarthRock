@@ -14,7 +14,7 @@ $: id = knot.id
   <Port writable address={`${$id}|write`} />
   <div class="JSON" use:color={$value}>
     <div class="value_add">
-      <div class="flex">{$value}</div>
+      <pre class="flex">{JSON.stringify($value, null, 2)}</pre>
       {#if $value === null} 
         <div class="doit" in:fly={animation}>\/\/</div>
         <div class="doit" in:fly={animation}>
@@ -27,11 +27,10 @@ JSON IT!
   <Port address={`${$id}|read`} />
 </div>
 
-
-
 <style>
 .flex { 
   flex: 1;
+  text-align: left;
 }
 
 .JSON {
@@ -46,6 +45,10 @@ JSON IT!
   justify-content: center;
   border-bottom: none;
   flex: 1;
+  width: 20rem;
+  flex-wrap: wrap;
+  display: flex;
+  transition: all 150ms linear;
 }  
 
 .box {

@@ -1,7 +1,6 @@
 <script>
 import { onDestroy } from "svelte"
 
-import { get } from "/util/store.js"
 import * as knots from "/weave/knots.js"
 import { scale as Scaling} from "/channel/screen.js"
 import { match } from "/channel/port-connection.js"
@@ -29,10 +28,11 @@ const nopick = () => {
 const create = (kind) => 
   weave.knots.update((nodes) => {
     const h = Knot_Factory({
-      knot: kind
+      knot: kind,
+      weave
     })
 
-    nodes[get(h.id)] = h
+    nodes[h.id.get()] = h
 
     return nodes
   })

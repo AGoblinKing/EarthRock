@@ -1,4 +1,4 @@
-import { write, get, read, derived } from "/util/store.js"
+import { write, read, derived, transformer } from "/util/store.js"
 
 import { random } from "/util/text.js"
 
@@ -13,11 +13,29 @@ export default ({
   // just some default nodes for start
   knots = {
     mail: {
-      knot: `math`
+      knot: `mail`
+    },
+    json: {
+      knot: `json`
+    },
+    math: {
+      knot: `math`,
+      math: `[v[0]/10, v[1]/10]`
+    },
+    stitch: {
+      name: `player`,
+      knot: `stitch`,
+      value: {
+        position: [0, 0]
+      }
     }
   },
 
-  threads = {}
+  threads = {
+    mail: `json`,
+    json: `math`,
+    math: `stitch/position`
+  }
 } = false) => {
   let threads_set
 
@@ -31,17 +49,19 @@ export default ({
       threads_set = set
     }),
 
-    // index by name, uniqueness not guaranteed
-    names: derived(knots, ($knots) => Object.fromEntries(
-      Object.values($knots)
-        .map(
-          (knot) => [get(knot.name), knot]
-        )
-    )),
-
-    // okay this important so you can clean up bad wires
+    // mail knot id to address
+    mails: write({}),
     give_thread: write(),
-    take_thread: write()
+    give_knot: transformer((knot) => {
+      const k = Knot(knot)
+
+      w.knots.update((knots) => ({
+        ...knots,
+        [k.id]: k
+      }))
+
+      return k
+    })
   }
 
   w.knots = write(Object
@@ -49,7 +69,6 @@ export default ({
     .reduce((res, [knot_id, val]) => {
       if (val.id !== knot_id) {
         val.id = knot_id
-        console.warn(`Mismatch on IDs ${val.id} vs ${knot_id}`)
       }
 
       res[knot_id] = Knot({
@@ -61,32 +80,41 @@ export default ({
     }, {})
   )
 
+  // index by name, uniqueness not guaranteed
+  // Stitches only right now
+  w.names = derived(w.knots, ($knots) => Object.fromEntries(
+    Object.values($knots)
+      .filter(({ knot }) => knot.get() === `stitch`)
+      .map(
+        (knot) => [
+          knot.name.get(),
+          knot
+        ]
+      )
+  ))
+
   w.give_thread.subscribe((match) => {
     if (!match) return
 
-    const [x, y] = match
+    const [[
+      x_id,
+      x_dir
+    ], [
+      y_id,
+      y_dir
+    ]] = match.map((address) => address.split(`|`))
 
-    const [x_name, y_name] = [x.split(`|`).length === 1, y.split(`|`).length === 1]
-
-    const is_name = x_name || y_name
-
-    // red to blue not samies
-    if (!is_name && x.slice(-1) === y.slice(-1)) return
-    if (is_name && x[0] === `/` && y[0] === `/`) return
-    const threads = get(w.threads)
-
-    // clean up
-    if (threads[x]) {
-      delete threads[threads[x]]
+    if (x_dir === y_dir) {
+      console.warn(`Tried to match same direction`)
+      return
     }
 
-    if (threads[y]) {
-      delete threads[threads[y]]
-    }
+    const target = [x_id, y_id]
+    x_dir === `write` && target.reverse()
 
-    threads[x] = y
-    threads[y] = x
+    const threads = w.threads.get()
 
+    threads[target[0]] = target[1]
     threads_set(threads)
   })
 

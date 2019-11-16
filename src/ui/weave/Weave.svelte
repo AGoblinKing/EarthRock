@@ -1,16 +1,18 @@
 <script>
-import Weave from "/weave/weave.js"
+import * as Wheel from "/weave/wheel.js"
+
+import Controls from "./Controls.svelte"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Knot from "./Knot.svelte"
-import { get } from "/util/store.js"
+import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
-const weave = Weave()
+const weave = Wheel.get(random(2))
 const knots = weave.knots
 
 const get_ui = (knot) => {
-  const ui = knot_kinds[get(knot.knot)]
+  const ui = knot_kinds[knot.knot.get()]
 
   return ui === undefined 
     ? knot_kinds.unknown 
@@ -18,10 +20,11 @@ const get_ui = (knot) => {
 }
 </script>
 
+<Controls {weave} />
 <Picker {weave} />
 <Threads {weave} />
 
-{#each Object.values($knots) as knot} 
+{#each Object.values($knots) as knot (knot.id.get())} 
   <Knot 
     {knot}
     position={[window.innerWidth / 2, window.innerHeight / 2]}

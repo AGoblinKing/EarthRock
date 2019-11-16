@@ -29,7 +29,7 @@ export default ({
       ? val
       : { v: val }
 
-    set(math_run(math, val_in))
+    set(math_run(m.math.get(), val_in))
   }
 
   m.math.subscribe((expression) =>

@@ -38,11 +38,11 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
 <svg width={$size[0]} height={$size[1]} class="threads">
     <defs>
       <linearGradient id="linear" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="30%"   stop-color="#F00"/>
+        <stop offset="30%" stop-color="#F00"/>
         <stop offset="70%" stop-color="#00F"/>
       </linearGradient>
       <linearGradient id="linear-other" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="30%"   stop-color="#00F"/>
+          <stop offset="30%" stop-color="#00F"/>
           <stop offset="70%" stop-color="#F00"/>
         </linearGradient>
     </defs>

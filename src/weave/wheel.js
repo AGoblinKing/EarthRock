@@ -2,6 +2,11 @@ import Weave from "./weave.js"
 import { write, read } from "/util/store.js"
 import system from "./system.js"
 
+let feed_set
+export const feed = read(undefined, (set) => {
+  feed_set = set
+})
+
 const SYSTEM = `sys`
 
 let weaves_set
@@ -181,7 +186,17 @@ export const start = (weave_name) => {
         const r = by_id(reader)
         const w = by_id(writer)
 
-        return r.subscribe(($val) => w.set($val))
+        return r.subscribe(($val) => {
+          // costly debug thingy,
+          // TODO: better way?
+          feed_set({
+            reader,
+            writer,
+            value: $val
+          })
+
+          w.set($val)
+        })
       }),
     // ramp to/from the bifrost
     ...Object.entries(w.mails.get())

@@ -4243,7 +4243,7 @@ var app = (function (Tone, uuid, expr, Color) {
           ? val
           : { v: val };
 
-        set(math_run(math, val_in));
+        set(math_run(m.math.get(), val_in));
       };
 
       m.math.subscribe((expression) =>
@@ -4440,6 +4440,11 @@ var app = (function (Tone, uuid, expr, Color) {
       }
     });
 
+    let feed_set;
+    const feed = read(undefined, (set) => {
+      feed_set = set;
+    });
+
     const SYSTEM = `sys`;
 
     let weaves_set;
@@ -4619,7 +4624,17 @@ var app = (function (Tone, uuid, expr, Color) {
             const r = by_id(reader);
             const w = by_id(writer);
 
-            return r.subscribe(($val) => w.set($val))
+            return r.subscribe(($val) => {
+              // costly debug thingy,
+              // TODO: better way?
+              feed_set({
+                reader,
+                writer,
+                value: $val
+              });
+
+              w.set($val);
+            })
           }),
         // ramp to/from the bifrost
         ...Object.entries(w.mails.get())
@@ -4662,6 +4677,7 @@ var app = (function (Tone, uuid, expr, Color) {
 
     var Wheel$1 = /*#__PURE__*/Object.freeze({
         __proto__: null,
+        feed: feed,
         weaves: weaves,
         running: running$1,
         trash: trash,
@@ -5006,7 +5022,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			attr_dev(line, "x2", line_x__value_1 = ctx.$position[0]);
     			attr_dev(line, "y2", line_y__value_1 = ctx.$position[1]);
     			attr_dev(line, "class", "line svelte-1amtju9");
-    			add_location(line, file$6, 50, 4, 1532);
+    			add_location(line, file$6, 50, 4, 1528);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -5066,7 +5082,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
     			attr_dev(line, "class", "line svelte-1amtju9");
-    			add_location(line, file$6, 61, 6, 1814);
+    			add_location(line, file$6, 61, 6, 1810);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -5150,7 +5166,7 @@ var app = (function (Tone, uuid, expr, Color) {
     			add_location(stop0, file$6, 40, 8, 1186);
     			attr_dev(stop1, "offset", "70%");
     			attr_dev(stop1, "stop-color", "#00F");
-    			add_location(stop1, file$6, 41, 8, 1235);
+    			add_location(stop1, file$6, 41, 8, 1233);
     			attr_dev(linearGradient0, "id", "linear");
     			attr_dev(linearGradient0, "x1", "0%");
     			attr_dev(linearGradient0, "y1", "0%");
@@ -5159,16 +5175,16 @@ var app = (function (Tone, uuid, expr, Color) {
     			add_location(linearGradient0, file$6, 39, 6, 1115);
     			attr_dev(stop2, "offset", "30%");
     			attr_dev(stop2, "stop-color", "#00F");
-    			add_location(stop2, file$6, 44, 10, 1383);
+    			add_location(stop2, file$6, 44, 10, 1381);
     			attr_dev(stop3, "offset", "70%");
     			attr_dev(stop3, "stop-color", "#F00");
-    			add_location(stop3, file$6, 45, 10, 1434);
+    			add_location(stop3, file$6, 45, 10, 1430);
     			attr_dev(linearGradient1, "id", "linear-other");
     			attr_dev(linearGradient1, "x1", "0%");
     			attr_dev(linearGradient1, "y1", "0%");
     			attr_dev(linearGradient1, "x2", "100%");
     			attr_dev(linearGradient1, "y2", "0%");
-    			add_location(linearGradient1, file$6, 43, 6, 1304);
+    			add_location(linearGradient1, file$6, 43, 6, 1302);
     			add_location(defs, file$6, 38, 4, 1102);
     			attr_dev(svg, "width", svg_width_value = ctx.$size[0]);
     			attr_dev(svg, "height", svg_height_value = ctx.$size[1]);

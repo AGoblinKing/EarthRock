@@ -1,6 +1,6 @@
 <script>
 import Spatial from "../Spatial.svelte"
-import { running, stop, start } from "/channel/wheel.js"
+import { running, stop, start } from "/sys/wheel.js"
 
 export let weave
 

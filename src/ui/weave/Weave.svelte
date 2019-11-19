@@ -1,6 +1,8 @@
 <script>
 import * as Wheel from "/weave/wheel.js"
+import { woven } from "/sys/weave.js"
 
+import MainScreen from "./MainScreen.svelte"
 import Controls from "./Controls.svelte"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
@@ -8,8 +10,24 @@ import Knot from "./Knot.svelte"
 import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
-const weave = Wheel.get(random(2))
+const id = random(2)
+const weave = Wheel.get(id)
+woven.set(id)
+
 const knots = weave.knots
+
+const titles = {
+  "math": "mAtH",
+  stream: "sTrEaM",
+  screen: "sCrEeN",
+  mail: "mAiL",
+  stitch: ""
+}
+
+const get_title = (knot) => {
+  const type = knot.knot.get()
+  return titles[type]
+}
 
 const get_ui = (knot) => {
   const ui = knot_kinds[knot.knot.get()]
@@ -20,6 +38,7 @@ const get_ui = (knot) => {
 }
 </script>
 
+<MainScreen />
 <Controls {weave} />
 <Picker {weave} />
 <Threads {weave} />
@@ -28,6 +47,7 @@ const get_ui = (knot) => {
   <Knot 
     {knot}
     position={[window.innerWidth / 2, window.innerHeight / 2]}
+    title={get_title(knot)} 
   >
     <svelte:component this={get_ui(knot)} {knot} /> 
   </Knot>

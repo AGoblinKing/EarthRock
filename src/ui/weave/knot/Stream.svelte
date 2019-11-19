@@ -1,5 +1,5 @@
 <script>
-import { animation } from "/channel/flag.js"
+import { animation } from "/sys/flag.js"
 import color from '/ui/action/color.js'
 import Port from "/ui/weave/Port.svelte"
 import { fly } from 'svelte/transition'

@@ -1,5 +1,6 @@
 <script>
 import Channel from "./stitch/Channel.svelte"
+import color from "/ui/action/color.js"
 import { random } from "/util/text.js"
 import { write } from "/util/store.js"
 
@@ -8,7 +9,7 @@ export let knot
 let weave_add = ``
 
 $: value = knot.value
-
+$: name = knot.name
 const check_add = ({ which }) => {
   if (which !== 13) return
   const val = $value
@@ -24,6 +25,11 @@ const check_add = ({ which }) => {
 }
 </script>
 
+<div class="nameit">
+  <div use:color={$name}>
+    <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
+  </div>
+</div>
 <div class="board">
     {#each Object.entries($value) as [chan_name, chan] (chan_name)}
       <Channel {chan} {knot} name={chan_name}/>
@@ -72,6 +78,22 @@ const check_add = ({ which }) => {
   flex-direction: column;
   width: 30rem;
   align-items: center;
+}
+
+.nameit {
+  background-color: #222;
+  width: 100%;
+  border-bottom: 0.25rem dashed #333;
+}
+
+.edit {
+  text-align: center;
+  padding: 1rem;
+  width: 100%;
+}
+
+.edit:hover {
+  background-color: green;
 }
 
 </style>

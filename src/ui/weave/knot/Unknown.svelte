@@ -5,4 +5,4 @@ $: type = knot.knot
 
 </script>
 
-<h1>Unknown Knot {$type}</h1>
+<h1>Unknown Knot - {$type}</h1>

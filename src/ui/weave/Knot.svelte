@@ -4,24 +4,24 @@ import Spatial from "/ui/Spatial.svelte"
 import { add } from "/util/vector.js"
 import { read } from "/util/store.js"
 
-import { position as Mouse } from "/channel/mouse.js"
-import { scale as Scaling, zoom} from "/channel/screen.js"
+import { position as Mouse } from "/sys/mouse.js"
+import { scale as Scaling, zoom} from "/sys/screen.js"
 
 export let position = [0, 0]
 export let knot
+export let title = false
 
 $: type = knot.knot
-$: name = has_name 
-  ? knot.name
-  : read()
-
-// if knot is not a stitch 
-$: has_name = $type === `stitch`
 
 let dragging = false
 
 const drag = (e) => {
-  if (dragging || e.target.classList.contains(`port`) || e.target.tagName === `INPUT`) {
+  if (  
+    dragging 
+    || e.target.classList.contains(`port`) 
+    || e.target.tagName === `INPUT`
+    || e.target.tagName === `TEXTAREA`
+  ) {
     return
   }
 
@@ -46,15 +46,10 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
   scale = {tru_scale}
 >
   <div class="adjust">
-    {#if has_name}
-      <div class="nameit" on:mousedown={drag}>
-        <div use:color={$name}>
-          <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
-        </div>
-      </div>
-    {/if}
-
     <div class="knot" on:mousedown={drag}>
+      {#if title}
+      <div class="title">{title}</div>
+      {/if}
       <slot />
     </div>
   </div>
@@ -63,6 +58,17 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
 <style>
 .adjust {
   transform: translate(-50%, -50%);
+}
+
+.title {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  text-shadow: 1px 1px 0 #222, -1px 1px 0 #222,1px -1px 0 #222,-1px -1px 0 #222;
+  color: white;
+  margin-top: -2rem;
+  margin-bottom: -1rem;
+  font-size: 3rem;
 }
 
 .knot {
@@ -74,30 +80,5 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
   
   border-radius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
-}
-
-.nameit {
-  z-index: 2;
-  align-self: center;
-  background-color: #222;
-  border: 0.5rem solid black;
-  border-bottom: 0.25rem dashed #333;
-  
-  margin: 0 2rem;
-  margin-bottom: -0.5rem;
-
-  border-radius: 1rem 1rem 0 0;
-  overflow: hidden;
-  filter: drop-shadow(1rem 0rem 0 rgba(0,0,0,0.25));
-}
-
-.edit {
-  text-align: center;
-  padding: 1rem;
-  width: 100%;
-}
-
-.edit:hover {
-  background-color: green;
 }
 </style>

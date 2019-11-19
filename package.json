@@ -25,7 +25,8 @@
     "rollup-plugin-svelte": "^5.1.1",
     "rollup-plugin-terser": "^4.0.4",
     "rollup-plugin-visualizer": "^2.7.2",
-    "svelte": "^3.14.1"
+    "svelte": "^3.14.1",
+    "twgl.js": "^4.13.1"
   },
   "scripts": {
     "build": "rollup -c",

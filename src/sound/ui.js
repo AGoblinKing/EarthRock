@@ -1,6 +1,6 @@
 import Tone from "tone"
 
-import { position } from "../channel/mouse.js"
+import { position } from "../sys/mouse.js"
 
 const player = ({
   instrument,

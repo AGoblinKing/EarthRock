@@ -2,8 +2,8 @@
 import { onDestroy } from "svelte"
 
 import * as knots from "/weave/knots.js"
-import { scale as Scaling} from "/channel/screen.js"
-import { match } from "/channel/port-connection.js"
+import { scale as Scaling} from "/sys/screen.js"
+import { match } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
 
 import Knot_Factory from "/weave/knot.js"
@@ -25,25 +25,16 @@ const nopick = () => {
   picking = false
 }
 
-const create = (kind) => 
-  weave.knots.update((nodes) => {
-    const h = Knot_Factory({
-      knot: kind,
-      weave
-    })
-
-    nodes[h.id.get()] = h
-
-    return nodes
+const create = (k) => 
+  weave.add({
+    knot: k
   })
-
 
 const cancel = match.subscribe((new_match) => {
   if (!new_match) return
   
   weave.give_thread.set(new_match)
 })
-
 
 let position = [0, 0]
 
@@ -93,19 +84,20 @@ $: arr_knots = Object.entries(knots)
 }
 .title {
   padding: 1rem;
+  color: white;
 }
 
 .kind {
+  color: white;
   margin: 0;
   text-transform: uppercase;
   text-align: center;
   padding: 0.5rem;
-  filter:drop-shadow(1px 1px 0 black);
-  transition: all 250ms cubic-bezier(0.075, 0.82, 0.165, 1);
+  /* transition: all 250ms cubic-bezier(0.075, 0.82, 0.165, 1); */
 }
 
 .kind:hover {
-  filter: brightness(1.5);
+  filter: invert(1);
 }
 
 </style>

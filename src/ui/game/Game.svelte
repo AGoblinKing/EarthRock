@@ -4,7 +4,7 @@ import { fade, fly } from 'svelte/transition'
 import scaling from "../scaling.js"
 import tick from "../tick.js"
 import Spatial from "./Spatial.svelte"
-import game from "../../channel/game.js"
+import game from "../../sys/game.js"
 import Hand from "./Hand.svelte"
 import Gem from "./Gem.svelte"
 import Heart from "./Heart.svelte"

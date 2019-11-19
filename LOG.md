@@ -29,3 +29,5 @@ Attempting to move from my offline documentation to some MD, per oldschool Iseka
     - Runs weaves in real time
  - [ ] [many] Restricted Stitches
     - This is for cards and other well defined Stitches
+
+- A flock of stitches?

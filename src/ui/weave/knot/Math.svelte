@@ -11,7 +11,6 @@ $: id = knot.id
 </script>
 
 <div class="mail" use:color={$value}>
-  <div class="math">mAtH</div>
   <div class="center" >
     <div class="port left">
       <Port writable address={`${$id}|write`} />
@@ -27,15 +26,6 @@ $: id = knot.id
 </div>
 
 <style>
-.math {
-  text-align: center;
-  font-size: 1.5rem;
-  text-shadow: 1px 1px 0 #222, -1px 1px 0 #222,1px -1px 0 #222,-1px -1px 0 #222;
-  color: white;
-      margin-top: -5rem;
-    margin-bottom: 1rem;
-    font-size: 3rem;
-}
 
 .mail {
   display: flex;

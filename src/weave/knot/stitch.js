@@ -1,6 +1,21 @@
 import { write, read, transformer } from "/util/store.js"
 import { random } from "/util/text.js"
 
+const report = (key, store) => {
+  if (store._reporter) return store
+
+  const sub = store.subscribe
+
+  store._reporter = true
+  store.subscribe = (fn) => {
+    return sub((val) => {
+      fn(val, key)
+    })
+  }
+
+  return store
+}
+
 export default ({
   value = {},
   name = random(2),
@@ -12,8 +27,8 @@ export default ({
     .entries(value)
     .reduce((res, [key, val]) => {
       res[key] = (val && typeof val.subscribe === `function`)
-        ? val
-        : write(val)
+        ? report(key, val)
+        : report(key, write(val))
       return res
     }, {})),
 

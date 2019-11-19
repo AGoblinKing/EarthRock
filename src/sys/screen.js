@@ -1,5 +1,5 @@
 import { read, write, derived } from "/util/store.js"
-import { scroll } from "/channel/mouse.js"
+import { scroll } from "/sys/mouse.js"
 
 export const size = read([window.innerWidth, window.innerHeight], (set) => {
   window.addEventListener(`resize`, () => {
@@ -23,3 +23,10 @@ export const zoom = derived(
   scroll,
   ($scroll) => Math.min(3, Math.max(-0.5, $scroll * 0.01))
 )
+
+// main canvas
+export const main = write((() => {
+  const canvas = document.createElement(`canvas`)
+  canvas.width = canvas.height = 100
+  return canvas
+})())

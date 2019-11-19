@@ -2,8 +2,8 @@
 import { fade, fly } from 'svelte/transition'
 import { linear } from 'svelte/easing'
 import { button, button_press } from "/sound/ui.js"
-import { IS_DEV } from "/channel/flag.js"
-import { path } from "/channel/path.js"
+import { IS_DEV } from "/sys/flag.js"
+import { path } from "/sys/path.js"
 
 const dispatch = (target) => 
   path.set(target)

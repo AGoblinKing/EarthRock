@@ -15,7 +15,7 @@ export default () => {
   value.set(`null`)
 
   return ({
-    knot: read(`json`),
+    knot: read(`stream`),
     value
   })
 }

@@ -1,9 +1,12 @@
 import Weave from "./weave.js"
+import { frame } from "/sys/time.js"
 import { write, read } from "/util/store.js"
 import system from "./system.js"
 
 let feed_set
-export const feed = read(undefined, (set) => {
+export const feed = read({
+  reader: ``
+}, (set) => {
   feed_set = set
 })
 
@@ -187,26 +190,34 @@ export const start = (weave_name) => {
         const w = by_id(writer)
 
         return r.subscribe(($val) => {
+          w.set($val)
+
           // costly debug thingy,
           // TODO: better way?
           feed_set({
-            reader,
-            writer,
+            reader: `${weave_name}/${reader}`,
+            writer: `${weave_name}/${writer}`,
             value: $val
           })
-
-          w.set($val)
         })
       }),
+    // frames
+    ...w.lives.get().map((cb) => cb()),
+
     // ramp to/from the bifrost
     ...Object.entries(w.mails.get())
       .map(
         ([
           mail_id,
           address
-        ]) => get(address).subscribe((value_new) =>
+        ]) => get(address).subscribe((value_new) => {
           knots[mail_id].set(value_new)
-        )
+          feed_set({
+            reader: address,
+            writer: `${weave_name}/${mail_id}`,
+            value: value_new
+          })
+        })
       )
   ])
 

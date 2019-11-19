@@ -1,5 +1,5 @@
 <script>
-import {scale as scaling} from "../channel/screen.js";
+import {scale as scaling} from "../sys/screen.js";
 
 export let position = [0, 0];
 export let anchor = [50, 50];

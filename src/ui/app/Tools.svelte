@@ -1,6 +1,6 @@
 <script>
 import { button_press, button } from "/sound/ui.js"
-import {path} from "/channel/path.js"
+import {path} from "/sys/path.js"
 
 const audio = new Audio(`/music/earthrock-final-theme.mp3`)
 audio.loop = true

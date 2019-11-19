@@ -9,11 +9,17 @@ export default ({
   const value = write()
   const { set } = value
 
-  // use the mail channel
-  value.set = (value_new) => Wheel.get(`/sys/mail/send`).set({
-    whom: m.whom.get(),
-    value: value_new
-  })
+  // when set hit up the remote
+  value.set = (value_new) => {
+    const v = Wheel.get(m.whom.get())
+
+    if (!v.set) {
+      console.warn(`tried to mail a readable`, m.whom.get())
+      return
+    }
+
+    v.set(value_new)
+  }
 
   // Subscribe to remote
   const m = ({

@@ -1,5 +1,5 @@
 <script>
-import { first, second } from "/channel/port-connection.js"
+import { first, second } from "/sys/port-connection.js"
 
 // In/out ports
 export let writable = false
@@ -17,7 +17,14 @@ const mouseup = () => {
 </script>
 
 
-<div class="port" id={address} class:writable class:name on:mousedown={mousedown} on:mouseup={mouseup}>
+<div
+  class="port"
+  id={address}
+  class:writable
+  class:name
+  on:mousedown={mousedown}
+  on:mouseup={mouseup}
+>
 
 </div>
 

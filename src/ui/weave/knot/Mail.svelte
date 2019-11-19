@@ -19,7 +19,6 @@ $: id = knot.id
       <Port writable address={`${$id}|write`} />
     </div>
     <div class="address">
-      Mail:
       <input type="text" bind:value={$whom} placeholder="AdDrEsS hErE"/>
     </div>
     <div class="port right">
@@ -79,8 +78,6 @@ $: id = knot.id
 
 }
 .address input {
-  border-top: 0.25rem dashed #222;
-  margin-top: 0.25rem;
   font-size: 1rem;
   background-color: #333;
   flex: 1;

@@ -15,8 +15,8 @@ export default ({
     mail: {
       knot: `mail`
     },
-    json: {
-      knot: `json`
+    stream: {
+      knot: `stream`
     },
     math: {
       knot: `math`,
@@ -28,13 +28,21 @@ export default ({
       value: {
         position: [0, 0]
       }
+    },
+    screen: {
+      knot: `screen`
+    },
+    main: {
+      knot: `mail`,
+      whom: `/sys/screen/main`
     }
   },
 
   threads = {
-    mail: `json`,
-    json: `math`,
-    math: `stitch/position`
+    mail: `stream`,
+    stream: `math`,
+    math: `stitch/position`,
+    screen: `main`
   }
 } = false) => {
   let threads_set
@@ -49,7 +57,7 @@ export default ({
       threads_set = set
     }),
 
-    // mail knot id to address
+    lives: write([]),
     mails: write({}),
     give_thread: write(),
     give_knot: transformer((knot) => {
@@ -64,6 +72,27 @@ export default ({
     })
   }
 
+  const life_set = w.lives.set
+
+  w.lives.set = undefined
+  const life_add = (life) => life_set([
+    ...w.lives.get(),
+    life
+  ])
+
+  w.add = (properties) => {
+    const k = Knot({
+      ...properties,
+      weave: w,
+      life: life_add
+    })
+
+    w.knots.update(($knots) => ({
+      ...$knots,
+      [k.id.get()]: k
+    }))
+  }
+
   w.knots = write(Object
     .entries(knots)
     .reduce((res, [knot_id, val]) => {
@@ -73,7 +102,8 @@ export default ({
 
       res[knot_id] = Knot({
         ...val,
-        weave: w
+        weave: w,
+        life: life_add
       })
 
       return res

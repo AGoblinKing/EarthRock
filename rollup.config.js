@@ -16,7 +16,8 @@ export default {
     `cuid`,
     `expr-eval`,
     `color`,
-    `tone`
+    `tone`,
+    `twgl`
   ],
   output: {
     sourcemap: !production,
@@ -27,7 +28,8 @@ export default {
       cuid: `cuid`,
       color: `Color`,
       tone: `Tone`,
-      "expr-eval": `exprEval`
+      "expr-eval": `exprEval`,
+      twgl: `twgl`
     }
   },
 

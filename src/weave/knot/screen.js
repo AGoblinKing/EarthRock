@@ -50,11 +50,10 @@ export default ({
     position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
   }
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays)
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
   // lifecycle on knot
   life(() => frame.subscribe(([, t]) => {
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-
     const uniforms = {
       time: t * 0.001,
       resolution: [gl.canvas.width, gl.canvas.height]

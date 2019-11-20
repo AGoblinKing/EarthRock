@@ -36,6 +36,10 @@ const develop = () => {
   dispatch(`weave`)
   click()
 }
+const credits = () => {
+  dispatch(`credits`)
+  click()
+}
 </script>
 
 <div class="intro" out:fly={{ delay: 100, duration: 1000, x: 0, y: 4000, opacity: 0, easing: linear }}>
@@ -48,26 +52,42 @@ const develop = () => {
         on:click="{start}"
     >PLAY</button>
      -->
-    <button  
+    <!-- <button  
         on:mouseenter={mouseOver} 
         on:click="{design}"
-    >CARDS</button>
-
-    <button 
-        on:mouseenter={mouseOver} 
-        on:click="{discord}"
-    >CHAT</button>
+    >CARDS</button> -->
 
     <button  
         on:mouseenter={mouseOver} 
         on:click="{develop}"
     >WEAVE</button>
+
+    <button 
+        on:mouseenter={mouseOver} 
+        on:click="{discord}"
+    >SOCIAL</button>
+
+    <button 
+        on:mouseenter={mouseOver} 
+        on:click="{credits}"
+    >CREDITS</button>
  
 </div>
-<div class="notice">We don't use cookies or store anything about you server side.</div>
+<div class="notice">
+  We don't use cookies or store anything about you server side.
+  <br/>
+  <a class="link" target="_new" href="https://github.com/AGoblinKing/EarthRock">
+    [ GPL3 - //github.com/agoblinking/EarthRock]
+  </a>
+</div>
+
 </div>
 
 <style>
+.link {
+  color: white;
+
+}
 .notice {
     position: absolute;
     bottom: 0;

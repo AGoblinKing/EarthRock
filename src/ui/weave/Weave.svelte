@@ -1,6 +1,6 @@
 <script>
 import * as Wheel from "/weave/wheel.js"
-import { woven } from "/sys/weave.js"
+import { woven, spread} from "/sys/weave.js"
 
 import MainScreen from "./MainScreen.svelte"
 import Controls from "./Controls.svelte"
@@ -36,6 +36,7 @@ const get_ui = (knot) => {
     ? knot_kinds.unknown 
     : ui
 }
+
 </script>
 
 <MainScreen />
@@ -46,7 +47,9 @@ const get_ui = (knot) => {
 {#each Object.values($knots) as knot (knot.id.get())} 
   <Knot 
     {knot}
-    position={[window.innerWidth / 2, window.innerHeight / 2]}
+    position={
+      $spread[knot.id.get()] || [0, -500]
+    }
     title={get_title(knot)} 
   >
     <svelte:component this={get_ui(knot)} {knot} /> 

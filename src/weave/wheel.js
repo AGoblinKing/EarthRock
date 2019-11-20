@@ -169,6 +169,7 @@ export const start = (weave_name) => {
 
     if (knot === undefined) {
       debugger
+      return
     }
 
     if (knot_chan === undefined) {

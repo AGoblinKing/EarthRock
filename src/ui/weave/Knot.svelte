@@ -77,8 +77,10 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
   background-color: #222;
   border: 0.5rem solid black;
   z-index: 1;
-  
   border-radius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
+}
+.knot:hover {
+  filter: drop-shadow(1rem 1rem 1rem rgba(0, 255, 0, 0.5)) drop-shadow(1rem 1rem 0 rgba(0, 0, 0, 0.5));
 }
 </style>

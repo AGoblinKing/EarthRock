@@ -14,14 +14,12 @@ size.subscribe(([width, height]) => {
     ? height
     : width
 
-  // try to peg 10 cards always\
-  // ^ well that is a lie. magic numbers below
-  scale.set(target / (500 * 2))
+  scale.set(target / 1618)
 })
 
 export const zoom = derived(
   scroll,
-  ($scroll) => Math.min(3, Math.max(-0.5, $scroll * 0.01))
+  ({ deltaY }) => Math.min(3, Math.max(-0.5, deltaY * 0.01))
 )
 
 // main canvas
@@ -30,3 +28,12 @@ export const main = write((() => {
   canvas.width = canvas.height = 100
   return canvas
 })())
+
+const scroll_val = [0, 0]
+export const translate = derived(
+  scroll,
+  ({ deltaY, deltaX }) => ([
+    scroll_val[0] += deltaX,
+    scroll_val[1] += deltaY
+  ])
+)

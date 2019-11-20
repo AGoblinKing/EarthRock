@@ -1,85 +1,119 @@
-import { derived, transformer } from "/util/store.js"
+import { transformer, write } from "/util/store.js"
 import { get } from "/sys/wheel.js"
+import { tick } from "/sys/time.js"
+import { add, minus, divide_scalar, multiply_scalar, distance, negate } from "/util/vector.js"
+import { scale } from "/sys/screen.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
   get(weave_id)
 ).set(`sys`)
 
+export const draggee = write(``)
+
 // 50rem between points
-const SPACING = 500
+const STRENGTH = 0.3
+const FRICTION = 50
+const MIN_MOVE = 5
+const MIN_DISTANCE = 180
 
-// codify this pattern?
-// How to turn off the derived nature?
-// Think this is same as $: knots = $woven.knots in svelte
+export const bodies = write({})
+// keeps all the postions for woven
+export const positions = write({})
+let velocities = {}
 
-const cancels = new Set()
-const cancel = () => {
-  cancels.forEach((fn) => fn())
-  cancels.clear()
-}
+// reset positions
+woven.listen(() => {
+  positions.set({})
+  velocities = {}
+})
 
-// Keep a positional spread of the active edited weave
-// layout the names vertically
-// then pile the threads left/right
-// put unassigned knots up top in their own tracks
-export const spread = derived(
-  woven,
-  ({
-    names,
-    threads
-  }) => {
-    const $names = names.get()
-    const $threads = threads.get()
-    const positions = {}
+const vel = (id) => velocities[id] || [0, 0, 0]
 
-    // any previous cancelables
-    cancel()
+const pull_right = [350, 100, 0]
 
-    let max_y = 0
-    // these are all the weaves
-    Object.values($names).forEach((knot, i) => {
-      const $id = knot.id.get()
-      positions[$id] = [0, i * SPACING]
+tick.listen(() => {
+  const { threads, knots } = woven.get()
+  const $knots = knots.get()
+  const $threads = threads.get()
+  const $positions = positions.get()
 
-      // rip through the channels to give them positions
-      // update these in real time?
-      cancels.add(knot.value.subscribe(($chans) => {
-        Object.keys($chans).forEach((name, chan_i) => {
-          positions[`${$id}/${name}`] = [0, i * SPACING + chan_i * SPACING / 10]
-        })
-      }))
+  let dirty = false
+  const pos = (id) => $positions[id] || [0, 0, 0]
 
-      max_y++
+  // attempt to pull threads together
+  Object.entries($threads).forEach(([
+    puller,
+    pullee
+  ]) => {
+    pullee = pullee.split(`/`)[0]
+    puller = puller.split(`/`)[0]
+    const pos_er = pos(puller)
+    const pos_ee = pos([pullee])
+
+    const pull = multiply_scalar(pull_right, scale.get())
+
+    velocities[pullee] = add(
+      divide_scalar(vel(pullee), FRICTION),
+
+      // difference of distance
+      multiply_scalar(
+        add(minus(pos_er, pos_ee), pull),
+        STRENGTH
+      )
+    )
+
+    velocities[puller] = add(
+      divide_scalar(vel(puller), FRICTION),
+
+      // difference of distance
+      multiply_scalar(
+        minus(minus(pos_ee, pos_er), pull),
+        STRENGTH
+      )
+    )
+  })
+
+  // Repulse collisions
+  const $bodies = bodies.get()
+
+  // Quad tree eventually
+  Object.entries($bodies).forEach(([
+    id, [w, h]
+  ]) => {
+    id = id.split(`/`)[0]
+    if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
+
+    const p = pos(id)
+
+    Object.keys($bodies).forEach((o_id) => {
+      if (o_id === id) return
+
+      const dist = distance(p, pos(o_id))
+      if (dist > MIN_DISTANCE) return
+
+      // move it
+      const v = vel(id)
+      velocities[id] = add(
+        v,
+        multiply_scalar(
+          minus(p, pos(o_id)),
+          (MIN_DISTANCE - dist) * 0.01
+        )
+      )
     })
 
-    const follow = (id) => {
-      if (positions[id]) return positions[id]
+    // simple length tests to modify velocity
+    const [v_x, v_y] = vel(id)
+    if (Math.abs(v_x) + Math.abs(v_y) < MIN_MOVE) return
+    if (id === draggee.get()) return
 
-      const pos = (() => {
-        if ($threads[id]) {
-          const [f_x, f_y] = follow($threads[id])
-          return [
-            f_x - SPACING,
-            f_y
-          ]
-        }
-
-        // welp you must be a leaf
-        max_y++
-        return [
-          0,
-          max_y * SPACING
-        ]
-      })()
-
-      positions[id] = pos
-
-      return pos
-    }
-
-    // follow all threads
-    Object.keys($threads).forEach(follow)
-    console.log(positions)
-    return positions
+    dirty = true
+    $positions[id] = add(
+      pos(id),
+      vel(id)
+    )
   })
+
+  if (dirty) positions.set($positions)
+})

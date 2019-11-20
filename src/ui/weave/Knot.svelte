@@ -1,20 +1,31 @@
 <script>
 import color from "/ui/action/color.js"
+import physics from "/ui/action/physics.js"
+
 import Spatial from "/ui/Spatial.svelte"
 import { add } from "/util/vector.js"
 import { read } from "/util/store.js"
 
+import { positions, draggee} from "/sys/weave.js"
 import { position as Mouse } from "/sys/mouse.js"
-import { scale as Scaling, zoom} from "/sys/screen.js"
+import { scale as Scaling, translate, size} from "/sys/screen.js"
 
-export let position = [0, 0]
+export let position = [0, 0, 0]
 export let knot
 export let title = false
 
 $: type = knot.knot
+$: id = knot.id
+
+const update = () => 
+  positions.set({
+    ...positions.get(),
+    [knot.id.get()]: position
+  })
+
+update()
 
 let dragging = false
-
 const drag = (e) => {
   if (  
     dragging 
@@ -26,27 +37,45 @@ const drag = (e) => {
   }
 
   dragging = true
+  draggee.set(knot.id.get())
+
   const handler = () => {
     dragging = false
-    position = $Mouse
+    position = [
+      $Mouse[0] - $size[0]/2,
+      $Mouse[1] - $size[1]/2,
+      0
+    ]
+    update()
+    draggee.set('')
     window.removeEventListener(`mouseup`, handler)
   }
 
   window.addEventListener(`mouseup`, handler)
 }
 
-$: tru_position = add([-50 * $Scaling, -25 * $Scaling], dragging ? $Mouse : position)
-$: tru_scale = (dragging ? 1.168 : 1) + $zoom
+
+$: tru_position = add(
+  [-50 * $Scaling, -25 * $Scaling], 
+  dragging ? $Mouse : $positions[knot.id.get()],
+  dragging ? [-$size[0]/2, -$size[1]/2] : [0, 0 ]
+)
+$: tru_scale = (dragging ? 1.168 : 1)
+
 </script>
 
 <Spatial
-  anchor = {[0, 0]}
+  anchor = {[50, 50]}
   position = {tru_position}
   transition = {!dragging}
   scale = {tru_scale}
 >
   <div class="adjust">
-    <div class="knot" on:mousedown={drag}>
+    <div 
+      class="knot" 
+      on:mousedown={drag}
+      use:physics={$id}
+    >
       {#if title}
       <div class="title">{title}</div>
       {/if}
@@ -61,7 +90,6 @@ $: tru_scale = (dragging ? 1.168 : 1) + $zoom
 }
 
 .title {
-  text-align: center;
   position: relative;
   z-index: 2;
   text-shadow: 1px 1px 0 #222, -1px 1px 0 #222,1px -1px 0 #222,-1px -1px 0 #222;

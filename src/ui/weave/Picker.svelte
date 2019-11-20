@@ -2,7 +2,7 @@
 import { onDestroy } from "svelte"
 
 import * as knots from "/weave/knots.js"
-import { scale as Scaling} from "/sys/screen.js"
+import { scale as Scaling, size} from "/sys/screen.js"
 import { match } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
 
@@ -17,7 +17,7 @@ const knot = Knot_Factory()
 let picking = false
 
 const pick = (e) => {
-  position = [e.x, e.y + 40 * $Scaling]
+  position = [e.x - $size[0]/2, e.y + 40 * $Scaling - $size[1]/2, 0 ]
   picking = true
 }
 
@@ -36,7 +36,7 @@ const cancel = match.subscribe((new_match) => {
   weave.give_thread.set(new_match)
 })
 
-let position = [0, 0]
+let position = [0, 0, 0]
 
 $: arr_knots = Object.entries(knots)
 </script>

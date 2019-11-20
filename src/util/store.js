@@ -4,6 +4,7 @@ const json = (store) => {
   store.get = () => val(store)
   store.toJSON = () => val(store)
   store.poke = () => store.set(val(store))
+  store.listen = store.subscribe
   store.set = store.set || (() => {})
   return store
 }
@@ -30,3 +31,11 @@ export const transformer = (transform) => {
 }
 
 export const derived = (...args) => json(d(...args))
+
+export const listen = (subs, fn) => {
+  const call = () =>
+    fn(subs.map((s) => s.get()))
+
+  const cancels = subs.map((store) => store.subscribe(call))
+  return () => cancels.forEach(fn => fn())
+}

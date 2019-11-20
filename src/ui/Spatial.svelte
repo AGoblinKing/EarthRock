@@ -1,7 +1,7 @@
 <script>
 import {scale as scaling} from "../sys/screen.js";
 
-export let position = [0, 0];
+export let position = [0, 0, 0];
 export let anchor = [50, 50];
 export let bias = [50, 50];
 export let area = [1, 1];
@@ -46,6 +46,6 @@ $: style = [tru_zIndex, anchor, transform].join(` `);
 }
 
 .spatial.transition {
-  transition: transform 0.1s linear;
+  transition: transform 250ms linear;
 }
 </style>

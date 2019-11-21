@@ -4164,13 +4164,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       `groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
       `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
       `luna`, `ember`, `embear`, `lunatic`, `boring`, `killa`, `notice`, `thank`, `tank`,
-      `under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`
+      `under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`,
+      `tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
+      `rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
     ];
 
     const random = (count) => Array
       .from(new Array(count))
-      .map(() => Math.floor(Math.random() * words.length))
-      .map((i) => words[i])
+      .map(() => words[Math.floor(Math.random() * words.length)])
       .join(` `);
 
     const toJSON = (obj) => Object.fromEntries(
@@ -10990,7 +10991,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div, "class", "knots svelte-spq6gp");
+    			attr_dev(div, "class", "knots svelte-sokzvx");
     			add_location(div, file$i, 49, 0, 948);
     		},
     		l: function claim(nodes) {

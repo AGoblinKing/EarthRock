@@ -19,11 +19,12 @@ const words = [
   `groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
   `goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
   `luna`, `ember`, `embear`, `lunatic`, `boring`, `killa`, `notice`, `thank`, `tank`,
-  `under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`
+  `under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`,
+  `tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
+  `rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
 ]
 
 export const random = (count) => Array
   .from(new Array(count))
-  .map(() => Math.floor(Math.random() * words.length))
-  .map((i) => words[i])
+  .map(() => words[Math.floor(Math.random() * words.length)])
   .join(` `)

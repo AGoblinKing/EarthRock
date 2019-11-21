@@ -61,12 +61,12 @@ const get_ui = (knot) => {
 </div>
 
 <style>
-:global(input:hover::placeholder, input:focus::placeholder) {
+:global(input:hover::placeholder, input:focus::placeholder, textarea:hover::placeholder, textarea:focus::placeholder) {
   color: black;
 }
 
-:global(input:hover), :global(input:focus) {
-background-color: green !important;
+:global(input:hover, input:focus, textarea:hover, textarea:focus){
+  background-color: green !important;
 }
 
 .knots {

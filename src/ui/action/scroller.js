@@ -26,8 +26,8 @@ export default (node, {
       if (clutch) return
       update(-5)
     }),
-    scroll.subscribe(({ deltaY }) => {
-      update(deltaY)
+    scroll.subscribe(([,deltaY ]) => {
+      update(deltaY/2)
       if (clutch) clearTimeout(clutch)
       node.style.transition = `none`
       clutch = setTimeout(() => {

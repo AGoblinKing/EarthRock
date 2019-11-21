@@ -1,8 +1,9 @@
-import { transformer, write } from "/util/store.js"
+import { transformer, write, read } from "/util/store.js"
 import { get } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
-import { add, minus, divide_scalar, multiply_scalar, distance, negate } from "/util/vector.js"
+import { add, minus, divide_scalar, multiply_scalar, distance } from "/util/vector.js"
 import { scale } from "/sys/screen.js"
+import { scroll } from "/sys/mouse.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
@@ -10,12 +11,14 @@ export const woven = transformer((weave_id) =>
 ).set(`sys`)
 
 export const draggee = write(``)
+export const drag_count = write(0)
+draggee.listen(() => drag_count.update($d => $d + 1))
 
 // 50rem between points
-const STRENGTH = 0.3
+const STRENGTH = 0.25
 const FRICTION = 50
 const MIN_MOVE = 5
-const MIN_DISTANCE = 180
+const MIN_DISTANCE = 150
 
 export const bodies = write({})
 // keeps all the postions for woven
@@ -26,6 +29,7 @@ let velocities = {}
 woven.listen(() => {
   positions.set({})
   velocities = {}
+  drag_count.set(0)
 })
 
 const vel = (id) => velocities[id] || [0, 0, 0]
@@ -117,3 +121,23 @@ tick.listen(() => {
 
   if (dirty) positions.set($positions)
 })
+
+// TODO: These will hang around reactive statement?
+const translate_velocity = write([0, 0, 0])
+export const translate = read(translate_velocity.get(), (set) =>
+  tick.listen(() => {
+    const t = translate_velocity.get()
+    const p = translate.get()
+
+    set([
+      t[0] + p[0],
+      t[1] + p[1],
+      0
+    ])
+    translate_velocity.set([0, 0, 0])
+  })
+)
+
+scroll.listen(([x, y]) =>
+  translate_velocity.update(([t_x, t_y]) => [t_x + x, t_y + y, 0])
+)

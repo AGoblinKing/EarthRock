@@ -25,6 +25,7 @@
     "svelte": "^3.14.1"
   },
   "scripts": {
+    "ff": "/Applications/Firefox.app/Contents/MacOS/firefox -start-debugger-server",
     "build": "rollup -c",
     "autobuild": "rollup -c -w",
     "dev": "run-p start:dev autobuild",

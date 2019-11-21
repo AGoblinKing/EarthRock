@@ -40,7 +40,6 @@ $: style = [tru_zIndex, anchor, transform].join(` `);
   display: flex;
   flex-direction: column;
   position: absolute;
-  perspective: 1000px;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }

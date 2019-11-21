@@ -28,12 +28,3 @@ export const main = write((() => {
   canvas.width = canvas.height = 100
   return canvas
 })())
-
-const scroll_val = [0, 0]
-export const translate = derived(
-  scroll,
-  ({ deltaY, deltaX }) => ([
-    scroll_val[0] += deltaX,
-    scroll_val[1] += deltaY
-  ])
-)

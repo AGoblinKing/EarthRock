@@ -3,12 +3,12 @@ import color from "/ui/action/color.js"
 import physics from "/ui/action/physics.js"
 
 import Spatial from "/ui/Spatial.svelte"
-import { add } from "/util/vector.js"
+import { add , minus } from "/util/vector.js"
 import { read } from "/util/store.js"
 
-import { positions, draggee} from "/sys/weave.js"
+import { positions, draggee, drag_count, translate} from "/sys/weave.js"
 import { position as Mouse } from "/sys/mouse.js"
-import { scale as Scaling, translate, size} from "/sys/screen.js"
+import { scale as Scaling, size} from "/sys/screen.js"
 
 export let position = [0, 0, 0]
 export let knot
@@ -26,6 +26,8 @@ const update = () =>
 update()
 
 let dragging = false
+let zIndex = 2
+
 const drag = (e) => {
   if (  
     dragging 
@@ -42,23 +44,23 @@ const drag = (e) => {
   const handler = () => {
     dragging = false
     position = [
-      $Mouse[0] - $size[0]/2,
-      $Mouse[1] - $size[1]/2,
+      $Mouse[0] - $size[0]/2 - $translate[0],
+      $Mouse[1] - $size[1]/2 - $translate[1],
       0
     ]
     update()
     draggee.set('')
+    zIndex = drag_count.get() 
     window.removeEventListener(`mouseup`, handler)
   }
 
   window.addEventListener(`mouseup`, handler)
 }
 
-
 $: tru_position = add(
   [-50 * $Scaling, -25 * $Scaling], 
   dragging ? $Mouse : $positions[knot.id.get()],
-  dragging ? [-$size[0]/2, -$size[1]/2] : [0, 0 ]
+  dragging ? [-$size[0]/2, -$size[1]/2] : $translate
 )
 $: tru_scale = (dragging ? 1.168 : 1)
 
@@ -69,6 +71,7 @@ $: tru_scale = (dragging ? 1.168 : 1)
   position = {tru_position}
   transition = {!dragging}
   scale = {tru_scale}
+  {zIndex}
 >
   <div class="adjust">
     <div 

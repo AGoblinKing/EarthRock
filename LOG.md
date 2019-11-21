@@ -1,5 +1,6 @@
 # EarthRock Log
-Attempting to move from my offline documentation to some MD, per oldschool Isekai v1
+Attempting to move from my offline documentation to some MD, per oldschool Isekai v1.
+Capturing daily logs physically but trying to keep this digital log up to date weekly.
 
 ## 11/6/2019
  - [X] Log Start
@@ -25,9 +26,18 @@ Attempting to move from my offline documentation to some MD, per oldschool Iseka
  - [X] [3?] Math views 
     - uses mathjs to transform data
  - [X] Fixed all the stuff.
- - [ ] [many] Wheel Machine
+
+## 11/21/2019
+This was a pretty good milestone. Got the wheel turning and discovering so much about Weaves.
+
+ - [X] [many] Wheel Machine
     - Runs weaves in real time
+ - [X] Basic physical formating for weaves
+ - [X] Sys Weave + Stitches eg: /sys/screen/main and /sys/mouse/position
+ - [X] Threads vibrate when the weave is running and that thread is tugged.
+ - [X] Credits Scene
  - [ ] [many] Restricted Stitches
     - This is for cards and other well defined Stitches
-
-- A flock of stitches?
+ - [ ] [many] Flocking
+ - [ ] [many] Demo Scene 
+ - [ ] [many] Main Menu

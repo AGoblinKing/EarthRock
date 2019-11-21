@@ -1,12 +1,15 @@
 <script>
-import * as Wheel from "/weave/wheel.js"
+import * as Wheel from "/sys/wheel.js"
 import { woven } from "/sys/weave.js"
+import { scroll } from "/sys/mouse.js"
+import { tick } from "/sys/time.js"
 
 import MainScreen from "./MainScreen.svelte"
 import Controls from "./Controls.svelte"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Knot from "./Knot.svelte"
+
 import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
@@ -44,6 +47,9 @@ const get_ui = (knot) => {
 <Picker {weave} />
 <Threads {weave} />
 
+<div 
+  class="knots"
+>
 {#each Object.values($knots) as knot (knot.id.get())} 
   <Knot 
     {knot}
@@ -52,6 +58,7 @@ const get_ui = (knot) => {
     <svelte:component this={get_ui(knot)} {knot} /> 
   </Knot>
 {/each}
+</div>
 
 <style>
 :global(input:hover::placeholder, input:focus::placeholder) {
@@ -61,4 +68,12 @@ const get_ui = (knot) => {
 :global(input:hover), :global(input:focus) {
 background-color: green !important;
 }
+
+.knots {
+  z-index: 5;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
 </style>

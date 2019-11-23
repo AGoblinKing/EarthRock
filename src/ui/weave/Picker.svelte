@@ -3,7 +3,7 @@ import { onDestroy } from "svelte"
 
 import * as knots from "/weave/knots.js"
 import { scale as Scaling, size} from "/sys/screen.js"
-import { match } from "/sys/port-connection.js"
+import { match, del } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
 
 import Knot_Factory from "/weave/knot.js"
@@ -30,11 +30,23 @@ const create = (k) =>
     knot: k
   })
 
-const cancel = match.subscribe((new_match) => {
-  if (!new_match) return
+const cancel = () => cancels.forEach(fn => fn())
+
+const cancels = [
+  match.subscribe((new_match) => {
+    if (!new_match) return
+    
+    weave.give_thread.set(new_match)
+  }),
   
-  weave.give_thread.set(new_match)
-})
+  del.subscribe((port) => {
+    if(!port) return
+    const [id, type] = port.split("|")
+    if(type === "write") return
+    
+    weave.take_thread.set(id)
+  })
+]
 
 let position = [0, 0, 0]
 

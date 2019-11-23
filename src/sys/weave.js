@@ -1,9 +1,9 @@
 import { transformer, write, read } from "/util/store.js"
 import { get } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
-import { add, minus, divide_scalar, multiply_scalar, distance } from "/util/vector.js"
-import { scale } from "/sys/screen.js"
+import { add, minus, divide_scalar, multiply_scalar } from "/util/vector.js"
 import { scroll } from "/sys/mouse.js"
+import { scale } from "/sys/screen.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
@@ -15,10 +15,10 @@ export const drag_count = write(0)
 draggee.listen(() => drag_count.update($d => $d + 1))
 
 // 50rem between points
-const STRENGTH = 0.25
-const FRICTION = 50
+const FORCE_PULL = 1.5
+const FORCE_FRICTION = 5
 const MIN_MOVE = 5
-const MIN_DISTANCE = 150
+const FORCE_STRONG = 1.25
 
 export const bodies = write({})
 // keeps all the postions for woven
@@ -34,13 +34,13 @@ woven.listen(() => {
 
 const vel = (id) => velocities[id] || [0, 0, 0]
 
-const pull_right = [350, 100, 0]
-
-tick.listen(() => {
+tick.listen((t) => {
   const { threads, knots } = woven.get()
   const $knots = knots.get()
   const $threads = threads.get()
   const $positions = positions.get()
+  const $bodies = bodies.get()
+  const $scale = scale.get()
 
   let dirty = false
   const pos = (id) => $positions[id] || [0, 0, 0]
@@ -52,34 +52,49 @@ tick.listen(() => {
   ]) => {
     pullee = pullee.split(`/`)[0]
     puller = puller.split(`/`)[0]
-    const pos_er = pos(puller)
-    const pos_ee = pos([pullee])
 
-    const pull = multiply_scalar(pull_right, scale.get())
+    if (!$bodies[puller] || !$bodies[pullee]) return
 
-    velocities[pullee] = add(
-      divide_scalar(vel(pullee), FRICTION),
+    const [w, h] = $bodies[puller]
 
+    // factor in size
+    const pos_er = add(
+      pos(puller),
+      [w + 10 , h + 10, 0]
+    )
+
+    
+    const pos_ee = pos(pullee)
+    
+    // moving to top left, don't need to worry about our own dims
+    velocities[puller] = add(
+      vel(puller),
       // difference of distance
       multiply_scalar(
-        add(minus(pos_er, pos_ee), pull),
-        STRENGTH
+        add(
+          minus(
+            pos_ee,
+            pos_er
+          )
+        ),
+        FORCE_PULL
       )
     )
 
-    velocities[puller] = add(
-      divide_scalar(vel(puller), FRICTION),
-
+    velocities[pullee] = add(
+      vel(pullee),
       // difference of distance
       multiply_scalar(
-        minus(minus(pos_ee, pos_er), pull),
-        STRENGTH
+        add(
+          minus(
+            pos_er,
+            pos_ee
+          )
+        ),
+        FORCE_PULL
       )
     )
   })
-
-  // Repulse collisions
-  const $bodies = bodies.get()
 
   // Quad tree eventually
   Object.entries($bodies).forEach(([
@@ -88,24 +103,44 @@ tick.listen(() => {
     id = id.split(`/`)[0]
     if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
 
-    const p = pos(id)
-
+    // n^2 sucks until quad tree
     Object.keys($bodies).forEach((o_id) => {
       if (o_id === id) return
 
-      const dist = distance(p, pos(o_id))
-      if (dist > MIN_DISTANCE) return
+      const [[x, y], [o_x, o_y]] = [
+        $positions[id],
+        $positions[o_id]
+      ]
 
-      // move it
-      const v = vel(id)
-      velocities[id] = add(
-        v,
-        multiply_scalar(
-          minus(p, pos(o_id)),
-          (MIN_DISTANCE - dist) * 0.01
+      const [[w, h], [o_w, o_h]] = [
+        $bodies[id],
+        $bodies[o_id]
+      ]
+
+      // AABB
+      if (
+        x < o_x + o_w &&
+        x + w > o_x &&
+        y < o_y + o_h &&
+        y + h > o_y
+      ) {
+        // move it
+        const v = vel(id)
+
+        // push directly away but
+        // keep velocity so it can maybe go through
+        velocities[id] = add(
+          v,
+          multiply_scalar(
+            [x - o_x, y - o_y, 0],
+            FORCE_STRONG
+          )
         )
-      )
+      }
     })
+
+    // Decay the velocity
+    velocities[id] = divide_scalar(vel(id), FORCE_FRICTION)
 
     // simple length tests to modify velocity
     const [v_x, v_y] = vel(id)

@@ -37,6 +37,7 @@ $: id = knot.id
   height: 10rem;
   transition: all 250ms linear;
 }
+
 .postage {
   margin-bottom: 1rem;
   align-self: flex-end;
@@ -60,6 +61,7 @@ $: id = knot.id
   justify-content: center;
   align-items: center;
 }
+
 .port {
   display: flex;
   margin: 0.25rem;
@@ -82,9 +84,11 @@ $: id = knot.id
   background-color: #333;
   flex: 1;
 }
+
 .left {
   border-right: 0.25rem dashed #222;
 }
+
 .right {
   border-left: 0.25rem dashed #222;
 }

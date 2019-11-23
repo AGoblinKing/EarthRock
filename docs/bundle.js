@@ -6609,6 +6609,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
         lives: write([]),
         mails: write({}),
+        take_thread: write(),
         give_thread: write(),
         give_knot: transformer((knot) => {
           const k = Knot_Factory(knot);
@@ -6672,6 +6673,16 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
             ]
           )
       ));
+
+      w.take_thread.subscribe((id) => {
+        if (!id) return
+        const $threads = w.threads.get();
+
+        if (!$threads[id]) return
+        delete $threads[id];
+
+        threads_set($threads);
+      });
 
       w.give_thread.subscribe((match) => {
         if (!match) return
@@ -6989,10 +7000,10 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     draggee.listen(() => drag_count.update($d => $d + 1));
 
     // 50rem between points
-    const STRENGTH = 0.25;
-    const FRICTION = 50;
+    const FORCE_PULL = 1.5;
+    const FORCE_FRICTION = 5;
     const MIN_MOVE = 5;
-    const MIN_DISTANCE = 150;
+    const FORCE_STRONG = 1.25;
 
     const bodies = write({});
     // keeps all the postions for woven
@@ -7008,13 +7019,13 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     const vel = (id) => velocities[id] || [0, 0, 0];
 
-    const pull_right = [350, 100, 0];
-
-    tick.listen(() => {
+    tick.listen((t) => {
       const { threads, knots } = woven.get();
       const $knots = knots.get();
       const $threads = threads.get();
       const $positions = positions.get();
+      const $bodies = bodies.get();
+      const $scale = scale.get();
 
       let dirty = false;
       const pos = (id) => $positions[id] || [0, 0, 0];
@@ -7026,34 +7037,49 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
       ]) => {
         pullee = pullee.split(`/`)[0];
         puller = puller.split(`/`)[0];
-        const pos_er = pos(puller);
-        const pos_ee = pos([pullee]);
 
-        const pull = multiply_scalar(pull_right, scale.get());
+        if (!$bodies[puller] || !$bodies[pullee]) return
 
-        velocities[pullee] = add(
-          divide_scalar(vel(pullee), FRICTION),
+        const [w, h] = $bodies[puller];
 
+        // factor in size
+        const pos_er = add(
+          pos(puller),
+          [w + 10 , h + 10, 0]
+        );
+
+        
+        const pos_ee = pos(pullee);
+        
+        // moving to top left, don't need to worry about our own dims
+        velocities[puller] = add(
+          vel(puller),
           // difference of distance
           multiply_scalar(
-            add(minus(pos_er, pos_ee), pull),
-            STRENGTH
+            add(
+              minus(
+                pos_ee,
+                pos_er
+              )
+            ),
+            FORCE_PULL
           )
         );
 
-        velocities[puller] = add(
-          divide_scalar(vel(puller), FRICTION),
-
+        velocities[pullee] = add(
+          vel(pullee),
           // difference of distance
           multiply_scalar(
-            minus(minus(pos_ee, pos_er), pull),
-            STRENGTH
+            add(
+              minus(
+                pos_er,
+                pos_ee
+              )
+            ),
+            FORCE_PULL
           )
         );
       });
-
-      // Repulse collisions
-      const $bodies = bodies.get();
 
       // Quad tree eventually
       Object.entries($bodies).forEach(([
@@ -7062,24 +7088,44 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
         id = id.split(`/`)[0];
         if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
 
-        const p = pos(id);
-
+        // n^2 sucks until quad tree
         Object.keys($bodies).forEach((o_id) => {
           if (o_id === id) return
 
-          const dist = distance(p, pos(o_id));
-          if (dist > MIN_DISTANCE) return
+          const [[x, y], [o_x, o_y]] = [
+            $positions[id],
+            $positions[o_id]
+          ];
 
-          // move it
-          const v = vel(id);
-          velocities[id] = add(
-            v,
-            multiply_scalar(
-              minus(p, pos(o_id)),
-              (MIN_DISTANCE - dist) * 0.01
-            )
-          );
+          const [[w, h], [o_w, o_h]] = [
+            $bodies[id],
+            $bodies[o_id]
+          ];
+
+          // AABB
+          if (
+            x < o_x + o_w &&
+            x + w > o_x &&
+            y < o_y + o_h &&
+            y + h > o_y
+          ) {
+            // move it
+            const v = vel(id);
+
+            // push directly away but
+            // keep velocity so it can maybe go through
+            velocities[id] = add(
+              v,
+              multiply_scalar(
+                [x - o_x, y - o_y, 0],
+                FORCE_STRONG
+              )
+            );
+          }
         });
+
+        // Decay the velocity
+        velocities[id] = divide_scalar(vel(id), FORCE_FRICTION);
 
         // simple length tests to modify velocity
         const [v_x, v_y] = vel(id);
@@ -7494,21 +7540,24 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	}
     }
 
+    // TODO: This needs refactored
+
     // editor specific
     // like a real time query
     const first = writable(false);
     const second = writable(false);
     const match = writable(false);
+    const del$1 = writable(false);
 
     second.subscribe((value) => {
       const $first = internal_73(first);
       const $second = internal_73(second);
 
-      if ($first && $second) {
-        match.set([
-          $first, $second
-        ]);
-      }
+      if (!$first || !$second) return
+
+      match.set([
+        $first, $second
+      ]);
     });
 
     // clean up
@@ -7517,8 +7566,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
         const $first = internal_73(first);
         const $second = internal_73(second);
 
-        if ($first !== false) first.set(false);
-        if ($second !== false) second.set(false);
+        if ($first && !$second) del$1.set($first);
+        if ($first) first.set(false);
+        if ($second) second.set(false);
       });
     });
 
@@ -8163,22 +8213,22 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
       update();
 
-      // const cancel = tick.listen(() => {
-      //   const [w, h] = bodies.get()[id]
+      const cancel = tick.listen(() => {
+        const [w, h] = bodies.get()[id];
 
-      //   if (
-      //     w === node.offsetWidth &&
-      //     h === node.offsetHeight
-      //   ) {
-      //     return
-      //   }
+        if (
+          w === node.offsetWidth &&
+          h === node.offsetHeight
+        ) {
+          return
+        }
 
-      //   update()
-      // })
+        update();
+      });
 
       return {
         destroy: () => {
-          // cancel()
+          cancel();
 
           bodies.update(($b) => {
             delete $b[id];
@@ -8192,7 +8242,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
     const file$8 = "src/ui/weave/Knot.svelte";
 
-    // (82:6) {#if title}
+    // (84:6) {#if title}
     function create_if_block$3(ctx) {
     	let div;
     	let t;
@@ -8201,8 +8251,8 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		c: function create() {
     			div = element("div");
     			t = text(ctx.title);
-    			attr_dev(div, "class", "title svelte-1b5sjjy");
-    			add_location(div, file$8, 82, 6, 1698);
+    			attr_dev(div, "class", "title svelte-1goysp7");
+    			add_location(div, file$8, 84, 6, 1656);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -8220,14 +8270,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_if_block$3.name,
     		type: "if",
-    		source: "(82:6) {#if title}",
+    		source: "(84:6) {#if title}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (69:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+    // (71:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
     function create_default_slot$2(ctx) {
     	let div1;
     	let div0;
@@ -8246,10 +8296,10 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			if (if_block) if_block.c();
     			t = space();
     			if (default_slot) default_slot.c();
-    			attr_dev(div0, "class", "knot svelte-1b5sjjy");
-    			add_location(div0, file$8, 76, 4, 1592);
-    			attr_dev(div1, "class", "adjust svelte-1b5sjjy");
-    			add_location(div1, file$8, 75, 2, 1567);
+    			attr_dev(div0, "class", "knot svelte-1goysp7");
+    			add_location(div0, file$8, 78, 4, 1550);
+    			attr_dev(div1, "class", "adjust");
+    			add_location(div1, file$8, 77, 2, 1525);
     			dispose = listen_dev(div0, "mousedown", ctx.drag, false, false, false);
     		},
     		m: function mount(target, anchor) {
@@ -8307,7 +8357,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(69:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+    		source: "(71:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
     		ctx
     	});
 
@@ -8383,7 +8433,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	let $Mouse;
     	let $size;
     	let $translate;
-    	let $Scaling;
     	let $positions;
 
     	let $id,
@@ -8396,8 +8445,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
     	validate_store(translate, "translate");
     	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
-    	validate_store(scale, "Scaling");
-    	component_subscribe($$self, scale, $$value => $$invalidate("$Scaling", $Scaling = $$value));
     	validate_store(positions, "positions");
     	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
@@ -8468,7 +8515,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			$size,
     			$translate,
     			tru_position,
-    			$Scaling,
     			$positions,
     			tru_scale,
     			$id
@@ -8487,7 +8533,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		if ("$size" in $$props) size.set($size = $$props.$size);
     		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
     		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
-    		if ("$Scaling" in $$props) scale.set($Scaling = $$props.$Scaling);
     		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
     		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
     		if ("$id" in $$props) id.set($id = $$props.$id);
@@ -8498,7 +8543,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, $Scaling: 1, dragging: 1, $Mouse: 1, $positions: 1, $size: 1, $translate: 1 }) => {
+    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $positions: 1, $size: 1, $translate: 1 }) => {
     		if (changed.knot) {
     			 type = knot.knot;
     		}
@@ -8507,8 +8552,8 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			 $$subscribe_id($$invalidate("id", id = knot.id));
     		}
 
-    		if (changed.$Scaling || changed.dragging || changed.$Mouse || changed.$positions || changed.knot || changed.$size || changed.$translate) {
-    			 $$invalidate("tru_position", tru_position = add([-50 * $Scaling, -25 * $Scaling], dragging ? $Mouse : $positions[knot.id.get()], dragging ? [-$size[0] / 2, -$size[1] / 2] : $translate));
+    		if (changed.dragging || changed.$Mouse || changed.$positions || changed.knot || changed.$size || changed.$translate) {
+    			 $$invalidate("tru_position", tru_position = add(dragging ? $Mouse : $positions[knot.id.get()], dragging ? [-$size[0] / 2, -$size[1] / 2] : $translate));
     		}
 
     		if (changed.dragging) {
@@ -8589,7 +8634,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	return child_ctx;
     }
 
-    // (48:0) {#if picking}
+    // (60:0) {#if picking}
     function create_if_block$4(ctx) {
     	let current;
 
@@ -8639,14 +8684,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_if_block$4.name,
     		type: "if",
-    		source: "(48:0) {#if picking}",
+    		source: "(60:0) {#if picking}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (54:6) {#each arr_knots as [kind, fn] (kind)}
+    // (66:6) {#each arr_knots as [kind, fn] (kind)}
     function create_each_block$1(key_1, ctx) {
     	let div;
     	let t0_value = ctx.kind + "";
@@ -8667,7 +8712,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			t0 = text(t0_value);
     			t1 = space();
     			attr_dev(div, "class", "kind svelte-zd3nts");
-    			add_location(div, file$9, 54, 8, 1015);
+    			add_location(div, file$9, 66, 8, 1249);
     			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
     			this.first = div;
     		},
@@ -8693,14 +8738,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(54:6) {#each arr_knots as [kind, fn] (kind)}",
+    		source: "(66:6) {#each arr_knots as [kind, fn] (kind)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (49:2) <Knot {position} {knot}>
+    // (61:2) <Knot {position} {knot}>
     function create_default_slot$3(ctx) {
     	let div1;
     	let div0;
@@ -8728,9 +8773,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			}
 
     			attr_dev(div0, "class", "title svelte-zd3nts");
-    			add_location(div0, file$9, 50, 6, 911);
+    			add_location(div0, file$9, 62, 6, 1145);
     			attr_dev(div1, "class", "prompt");
-    			add_location(div1, file$9, 49, 4, 884);
+    			add_location(div1, file$9, 61, 4, 1118);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -8758,7 +8803,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_default_slot$3.name,
     		type: "slot",
-    		source: "(49:2) <Knot {position} {knot}>",
+    		source: "(61:2) <Knot {position} {knot}>",
     		ctx
     	});
 
@@ -8777,7 +8822,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "picker svelte-zd3nts");
     			toggle_class(div, "picking", ctx.picking);
-    			add_location(div, file$9, 42, 0, 774);
+    			add_location(div, file$9, 54, 0, 1008);
 
     			dispose = [
     				listen_dev(window, "mouseup", ctx.nopick, false, false, false),
@@ -8866,10 +8911,18 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     	const create = k => weave.add({ knot: k });
 
-    	const cancel = match.subscribe(new_match => {
-    		if (!new_match) return;
-    		weave.give_thread.set(new_match);
-    	});
+    	const cancels = [
+    		match.subscribe(new_match => {
+    			if (!new_match) return;
+    			weave.give_thread.set(new_match);
+    		}),
+    		del$1.subscribe(port => {
+    			if (!port) return;
+    			const [id, type] = port.split("|");
+    			if (type === "write") return;
+    			weave.take_thread.set(id);
+    		})
+    	];
 
     	let position = [0, 0, 0];
     	const writable_props = ["weave"];
@@ -9141,21 +9194,21 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			t2 = space();
     			div3 = element("div");
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "postage svelte-h17axw");
+    			attr_dev(div0, "class", "postage svelte-170580o");
     			add_location(div0, file$b, 13, 2, 247);
-    			attr_dev(div1, "class", "port left svelte-h17axw");
+    			attr_dev(div1, "class", "port left svelte-170580o");
     			add_location(div1, file$b, 17, 4, 348);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "AdDrEsS hErE");
-    			attr_dev(input, "class", "svelte-h17axw");
+    			attr_dev(input, "class", "svelte-170580o");
     			add_location(input, file$b, 21, 6, 464);
-    			attr_dev(div2, "class", "address svelte-h17axw");
+    			attr_dev(div2, "class", "address svelte-170580o");
     			add_location(div2, file$b, 20, 4, 436);
-    			attr_dev(div3, "class", "port right svelte-h17axw");
+    			attr_dev(div3, "class", "port right svelte-170580o");
     			add_location(div3, file$b, 23, 4, 546);
-    			attr_dev(div4, "class", "center svelte-h17axw");
+    			attr_dev(div4, "class", "center svelte-170580o");
     			add_location(div4, file$b, 16, 2, 321);
-    			attr_dev(div5, "class", "mail svelte-h17axw");
+    			attr_dev(div5, "class", "mail svelte-170580o");
     			add_location(div5, file$b, 12, 0, 197);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},

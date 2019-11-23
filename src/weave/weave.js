@@ -59,6 +59,7 @@ export default ({
 
     lives: write([]),
     mails: write({}),
+    take_thread: write(),
     give_thread: write(),
     give_knot: transformer((knot) => {
       const k = Knot(knot)
@@ -122,6 +123,16 @@ export default ({
         ]
       )
   ))
+
+  w.take_thread.subscribe((id) => {
+    if (!id) return
+    const $threads = w.threads.get()
+
+    if (!$threads[id]) return
+    delete $threads[id]
+
+    threads_set($threads)
+  })
 
   w.give_thread.subscribe((match) => {
     if (!match) return

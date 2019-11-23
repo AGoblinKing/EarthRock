@@ -8,7 +8,7 @@ import { read } from "/util/store.js"
 
 import { positions, draggee, drag_count, translate} from "/sys/weave.js"
 import { position as Mouse } from "/sys/mouse.js"
-import { scale as Scaling, size} from "/sys/screen.js"
+import { size } from "/sys/screen.js"
 
 export let position = [0, 0, 0]
 export let knot
@@ -58,9 +58,11 @@ const drag = (e) => {
 }
 
 $: tru_position = add(
-  [-50 * $Scaling, -25 * $Scaling], 
   dragging ? $Mouse : $positions[knot.id.get()],
-  dragging ? [-$size[0]/2, -$size[1]/2] : $translate
+  dragging ? [
+    -$size[0]/2,
+    -$size[1]/2
+  ] : $translate
 )
 $: tru_scale = (dragging ? 1.168 : 1)
 
@@ -88,9 +90,7 @@ $: tru_scale = (dragging ? 1.168 : 1)
 </Spatial>
 
 <style>
-.adjust {
-  transform: translate(-50%, -50%);
-}
+
 
 .title {
   position: relative;

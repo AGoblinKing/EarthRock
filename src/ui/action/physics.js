@@ -13,22 +13,22 @@ export default (node, id) => {
 
   update()
 
-  // const cancel = tick.listen(() => {
-  //   const [w, h] = bodies.get()[id]
+  const cancel = tick.listen(() => {
+    const [w, h] = bodies.get()[id]
 
-  //   if (
-  //     w === node.offsetWidth &&
-  //     h === node.offsetHeight
-  //   ) {
-  //     return
-  //   }
+    if (
+      w === node.offsetWidth &&
+      h === node.offsetHeight
+    ) {
+      return
+    }
 
-  //   update()
-  // })
+    update()
+  })
 
   return {
     destroy: () => {
-      // cancel()
+      cancel()
 
       bodies.update(($b) => {
         delete $b[id]

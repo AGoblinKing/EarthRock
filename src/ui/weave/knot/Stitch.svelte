@@ -3,13 +3,16 @@ import Channel from "./stitch/Channel.svelte"
 import color from "/ui/action/color.js"
 import { random } from "/util/text.js"
 import { write } from "/util/store.js"
+import Port from "../Port.svelte"
 
 export let knot
 
 let weave_add = ``
 
+$: id = knot.id
 $: value = knot.value
 $: name = knot.name
+
 const check_add = ({ which }) => {
   if (which !== 13) return
   const val = $value
@@ -25,6 +28,10 @@ const check_add = ({ which }) => {
 }
 </script>
 
+<div class="port">
+  <Port address={`${$id}|read`} />
+</div>
+
 <div class="nameit">
   <div use:color={$name}>
     <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
@@ -37,13 +44,13 @@ const check_add = ({ which }) => {
       <div class="no-stitches">/\/\</div>
     {/each}
    
-    <input 
+    <input
       type="text" 
       class="add_channel" 
       bind:value={weave_add} 
       on:keypress={check_add} 
       on:blur={() => { weave_add = `` }}
-      placeholder="STITCH IT!"
+      placeholder={`-${Object.keys($value)[0]} to remove!`}
     />
  
 </div>
@@ -68,6 +75,14 @@ const check_add = ({ which }) => {
   text-align: center;
   width: 30rem;
 
+}
+.port {
+  align-self: center;
+  position: absolute;
+  margin-top: -4rem;
+  background-color: #222;
+  border: 0.25rem solid black;
+  border-radius: 1rem 1rem 0 0;
 }
 
 .board {

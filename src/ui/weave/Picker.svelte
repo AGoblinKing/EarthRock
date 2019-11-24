@@ -5,6 +5,7 @@ import * as knots from "/weave/knots.js"
 import { scale as Scaling, size} from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
+import { translate} from "/sys/weave.js"
 
 import Knot_Factory from "/weave/knot.js"
 
@@ -17,7 +18,11 @@ const knot = Knot_Factory()
 let picking = false
 
 const pick = (e) => {
-  position = [e.x - $size[0]/2, e.y + 40 * $Scaling - $size[1]/2, 0 ]
+  position = [
+    e.x - 50 * $Scaling - $size[0]/2 - translate.get()[0], 
+    e.y + 10 * $Scaling - $size[1]/2 - translate.get()[1], 
+    0 
+  ]
   picking = true
 }
 
@@ -80,7 +85,7 @@ $: arr_knots = Object.entries(knots)
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 1;
+  z-index: 6;
   width: 100%;
   height: 100%;
   transition: all 250ms cubic-bezier(0.075, 0.82, 0.165, 1);

@@ -136,7 +136,6 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
         x2={y.x + y.width / 2} 
         y2={y.y + y.height / 2} 
         class="active"
-        style={`animation-delay: ${x.x}ms;`}
       >
       </line> 
       {/if}
@@ -146,15 +145,13 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
 <style>
 
 .active {
-  opacity: 0;
+  /* opacity: 1; */
   stroke-width:10;
-  animation: 500ms linear moveit infinite alternate;
+  /* animation: 500ms linear moveit infinite alternate; */
 }
 
 .line {
-  stroke-width: 4;
-  opacity: 0.75;
-  transition: all 250ms linear;
+  stroke-width: 3;
 }
 
 @keyframes moveit {

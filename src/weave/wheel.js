@@ -1,5 +1,4 @@
 import Weave from "./weave.js"
-import { frame } from "/sys/time.js"
 import { write, read } from "/util/store.js"
 import system from "./system.js"
 
@@ -100,6 +99,18 @@ export const exists = (path) => {
   const c = k.value.get()[chan]
 
   return c !== undefined
+}
+
+// create a weave
+export const create = (weave) => {
+  const w = Weave(weave)
+
+  weaves_set({
+    ...weaves.get(),
+    [w.name.get()]: w
+  })
+
+  return w
 }
 
 // always assume they're right

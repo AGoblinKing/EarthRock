@@ -14,7 +14,7 @@ $: id = knot.id
   <div class="postage">
     <Tile width={1} height={1} random />
   </div>
-  <div class="center"  >
+  <div class="center">
     <div class="port left">
       <Port writable address={`${$id}|write`} />
     </div>
@@ -33,17 +33,16 @@ $: id = knot.id
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 15rem;
-  height: 10rem;
   transition: all 250ms linear;
 }
 
 .postage {
+  position: absolute;
   margin-bottom: 1rem;
   align-self: flex-end;
-  width: 2rem;
-  height: 2rem;
-  margin-top: -1.5rem;
+  width: 5rem;
+  height: 5rem;
+  margin-top: -10.5rem;
   margin-right: -0.20rem;
   display: flex;
   background-color: #111;
@@ -54,15 +53,15 @@ $: id = knot.id
 }
 
 .center {
-  background-color: #333;
   border-radius: 1rem;
-  border: 0.5rem solid black;
+  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .port {
+  border: 0.25rem solid black;
   display: flex;
   margin: 0.25rem;
   border-radius: 0.25rem;
@@ -81,16 +80,7 @@ $: id = knot.id
 }
 .address input {
   font-size: 1rem;
-  background-color: #333;
-  flex: 1;
-}
-
-.left {
-  border-right: 0.25rem dashed #222;
-}
-
-.right {
-  border-left: 0.25rem dashed #222;
+  height: 15rem;
 }
 
 </style>

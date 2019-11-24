@@ -1,23 +1,23 @@
 import { transformer, write, read } from "/util/store.js"
 import { get } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
-import { add, minus, divide_scalar, multiply_scalar } from "/util/vector.js"
+import { add, minus, divide_scalar, multiply_scalar, multiply } from "/util/vector.js"
 import { scroll } from "/sys/mouse.js"
-import { scale } from "/sys/screen.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
   get(weave_id)
 ).set(`sys`)
 
+export const hoveree = write(``)
 export const draggee = write(``)
 export const drag_count = write(0)
 draggee.listen(() => drag_count.update($d => $d + 1))
 
 // 50rem between points
-const FORCE_PULL = 1.5
-const FORCE_FRICTION = 5
-const MIN_MOVE = 5
+const FORCE_PULL = 2
+const FORCE_DECAY = 5
+const MIN_MOVE = 32
 const FORCE_STRONG = 1.25
 
 export const bodies = write({})
@@ -40,55 +40,103 @@ tick.listen((t) => {
   const $threads = threads.get()
   const $positions = positions.get()
   const $bodies = bodies.get()
-  const $scale = scale.get()
+
+  const $hoveree = hoveree.get()
 
   let dirty = false
+  const stitch = (id) => $knots[id].knot.get() === `stitch`
+
   const pos = (id) => $positions[id] || [0, 0, 0]
+  const dest_count = {}
+  const chan_depth = (id, chan) => {
+    const $v = $knots[id].value.get()
+
+    if (!$v) return [0, 0, 0]
+    const idx = Object.keys($v).indexOf(chan)
+
+    return [
+      25 + (idx % 2) * 161.8,
+      -125 * idx,
+      0
+    ]
+  }
 
   // attempt to pull threads together
   Object.entries($threads).forEach(([
-    puller,
-    pullee
+    address,
+    address_o
   ]) => {
-    pullee = pullee.split(`/`)[0]
-    puller = puller.split(`/`)[0]
+    const [id_o, chan_o] = address_o.split(`/`)
+    const [id, chan] = address.split(`/`)
 
-    if (!$bodies[puller] || !$bodies[pullee]) return
+    // keep track of destinations
+    dest_count[id_o] = dest_count[id_o]
+      ? dest_count[id_o] + 1
+      : 1
 
-    const [w, h] = $bodies[puller]
+    if (!$bodies[id] || !$bodies[id_o]) return
+
+    const [w, h] = $bodies[id]
+    const [w_o, h_o] = $bodies[id_o]
+    // woho my friend
 
     // factor in size
-    const pos_er = add(
-      pos(puller),
-      [w + 10 , h + 10, 0]
+    const pos_me = add(
+      pos(id),
+      [w + 16.18, h + 10, 0],
+      chan_o === undefined
+        ? multiply_scalar([
+          0,
+          h + 10,
+          0
+        ], dest_count[id_o] - 1)
+        : chan_depth(id_o, chan_o)
     )
 
-    
-    const pos_ee = pos(pullee)
-    
+    let pos_other = add(
+      pos(id_o),
+      chan === undefined
+        ? [0, 0, 0]
+        : add(
+          multiply(
+            chan_depth(id, chan),
+            [-1, 1, 0]
+          ),
+          [0, h / 1.5, 0]
+        )
+    )
+
+    // stitch nipple
+    if (stitch(id) && chan === undefined) {
+      pos_other = add(
+        pos_other,
+        [w_o, h + h_o, 0]
+      )
+    }
+
     // moving to top left, don't need to worry about our own dims
-    velocities[puller] = add(
-      vel(puller),
+    velocities[id] = add(
+      vel(id),
       // difference of distance
       multiply_scalar(
         add(
           minus(
-            pos_ee,
-            pos_er
+            pos_other,
+            pos_me
           )
         ),
         FORCE_PULL
       )
     )
 
-    velocities[pullee] = add(
-      vel(pullee),
+    velocities[id_o] = add(
+      vel(id_o),
       // difference of distance
       multiply_scalar(
         add(
           minus(
-            pos_er,
-            pos_ee
+            pos_me,
+            pos_other
           )
         ),
         FORCE_PULL
@@ -102,6 +150,10 @@ tick.listen((t) => {
   ]) => {
     id = id.split(`/`)[0]
     if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
+    if ($hoveree === id) {
+      velocities[id] = [0, 0, 0]
+      return
+    }
 
     // n^2 sucks until quad tree
     Object.keys($bodies).forEach((o_id) => {
@@ -140,7 +192,7 @@ tick.listen((t) => {
     })
 
     // Decay the velocity
-    velocities[id] = divide_scalar(vel(id), FORCE_FRICTION)
+    velocities[id] = divide_scalar(vel(id), FORCE_DECAY)
 
     // simple length tests to modify velocity
     const [v_x, v_y] = vel(id)

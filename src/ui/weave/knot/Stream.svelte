@@ -48,7 +48,6 @@ JSON IT!
   width: 20rem;
   flex-wrap: wrap;
   display: flex;
-  transition: all 150ms linear;
 }  
 
 .box {

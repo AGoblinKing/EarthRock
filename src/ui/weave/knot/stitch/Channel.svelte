@@ -27,8 +27,13 @@ const cancel = edit.subscribe((txt) => {
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>
   <div class="vbox" use:color={JSON.stringify($chan)}>
-    <div class="name" >{name}</div>
-    <input type="text" class="edit" bind:value={$chan} placeholder="JSON plz"/>
+    <div class="name">{name}</div>
+    <input 
+      class="edit" 
+      type="text" 
+      bind:value={$chan} 
+      placeholder="JSON plz"
+    />
   </div>
   <Port address={`${address(name)}|read`} />
 </div>
@@ -45,7 +50,6 @@ const cancel = edit.subscribe((txt) => {
   margin: 0;
   padding: 1rem;
   flex: 1;
-
   text-align: center;
 }
 
@@ -53,7 +57,6 @@ const cancel = edit.subscribe((txt) => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  transition: all 150ms linear;
 }
 .edit:hover {
   background-color: green !important;

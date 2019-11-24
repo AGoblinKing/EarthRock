@@ -39,3 +39,13 @@ export const listen = (subs, fn) => {
   const cancels = subs.map((store) => store.subscribe(call))
   return () => cancels.forEach(fn => fn())
 }
+
+export const aggregate = (amount = 10) => {
+  const a = write([])
+  const { set } = a
+  a.set = (new_value) => {
+    const a_new = [new_value, ...a.get()]
+  }
+
+  return json(a)
+}

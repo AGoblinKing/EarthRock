@@ -3,34 +3,45 @@ import { read, transformer } from "/util/store.js"
 import { frame } from "/sys/time.js"
 import { trippy } from "/sys/shader.js"
 
+const VALUE = () => ({
+  position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+})
 export default ({
-  value = {
-    position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
-  },
+  value = VALUE(),
   id,
-  life
+  life,
+  weave
 }) => {
   const canvas = document.createElement(`canvas`)
   canvas.width = 100
   canvas.height = 100
   const gl = canvas.getContext(`webgl`)
 
-  const program_info = twgl.createProgramInfo(gl, trippy.get())
-
   let arrays_last
 
-  let buffer
+  const buffer = transformer((arrays) => {
+    let b = buffer.get()
+    try {
+      b = twgl.createAttribsFromArrays(gl, arrays)
+      arrays_last = arrays
+    } catch (ex) {
+      console.error(`${id} SCREEN: Unable to create gpu attributes`)
+    }
+
+    return b
+  })
+
+  buffer.set(VALUE())
 
   const gpu = ({
     knot: read(`screen`),
 
-    value: transformer((arrays) => {
-      arrays_last = arrays
-      try {
-        buffer = twgl.createAttribsFromArrays(gl, arrays)
-      } catch (ex) {
-        console.error(ex)
-      }
+    value: transformer(({
+      flock = VALUE(),
+      ...rest
+    }) => {
+      buffer.set(flock)
+
       // lets return the canvas right now
       // can be serialized into a data array but GPU nodes
       // shouldn't serialize their value result
@@ -46,11 +57,11 @@ export default ({
     })
   })
 
-  const arrays = {
-    position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
-  }
-  const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays)
+  const program_info = twgl.createProgramInfo(gl, trippy.get())
+
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+
+  const $buffer = twgl.createAttribsFromArrays(gl, VALUE())
 
   // lifecycle on knot
   life(() => frame.subscribe(([, t]) => {
@@ -64,9 +75,9 @@ export default ({
     }
 
     gl.useProgram(program_info.program)
-    twgl.setBuffersAndAttributes(gl, program_info, bufferInfo)
+    twgl.setBuffersAndAttributes(gl, program_info, $buffer)
     twgl.setUniforms(program_info, uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
+    twgl.drawBufferInfo(gl, $buffer)
   }))
 
   return gpu

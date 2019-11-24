@@ -9,41 +9,8 @@ import uuid from "cuid"
 export default ({
   name = random(2),
   id = uuid(),
-
-  // just some default nodes for start
-  knots = {
-    mail: {
-      knot: `mail`
-    },
-    stream: {
-      knot: `stream`
-    },
-    math: {
-      knot: `math`,
-      math: `[v[0]/10, v[1]/10]`
-    },
-    stitch: {
-      name: `player`,
-      knot: `stitch`,
-      value: {
-        position: [0, 0]
-      }
-    },
-    screen: {
-      knot: `screen`
-    },
-    main: {
-      knot: `mail`,
-      whom: `/sys/screen/main`
-    }
-  },
-
-  threads = {
-    mail: `stream`,
-    stream: `math`,
-    math: `stitch/position`,
-    screen: `main`
-  }
+  knots = {},
+  threads = {}
 } = false) => {
   let threads_set
 

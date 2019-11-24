@@ -6,7 +6,7 @@ import Spatial from "/ui/Spatial.svelte"
 import { add , minus } from "/util/vector.js"
 import { read } from "/util/store.js"
 
-import { positions, draggee, drag_count, translate} from "/sys/weave.js"
+import { positions, draggee, hoveree, drag_count, translate} from "/sys/weave.js"
 import { position as Mouse } from "/sys/mouse.js"
 import { size } from "/sys/screen.js"
 
@@ -26,7 +26,7 @@ const update = () =>
 update()
 
 let dragging = false
-let zIndex = 2
+let zIndex = 7
 
 const drag = (e) => {
   if (  
@@ -75,7 +75,11 @@ $: tru_scale = (dragging ? 1.168 : 1)
   scale = {tru_scale}
   {zIndex}
 >
-  <div class="adjust">
+  <div 
+    class="adjust" 
+    on:mouseover={() => hoveree.set($id)} 
+    on:mouseout={() => hoveree.set(``)}
+  >
     <div 
       class="knot" 
       on:mousedown={drag}

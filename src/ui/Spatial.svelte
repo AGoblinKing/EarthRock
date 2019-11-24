@@ -1,13 +1,10 @@
 <script>
-import {scale as scaling} from "../sys/screen.js";
-
 export let position = [0, 0, 0];
 export let anchor = [50, 50];
 export let bias = [50, 50];
 export let area = [1, 1];
 export let scale = 1;
 export let rotate = 0;
-export let autoscale = true;
 export let zIndex = 0;
 export let transition = true;
 
@@ -16,10 +13,8 @@ $: offset = [
   ((bias[1] * 0.01 * area[1]) / 2) * (anchor[1] <= 50 ? -1 : 1)
 ];
 
-$: tru_scale = autoscale ? scale * $scaling : scale;
-$: transform = `transform: translate(${position[0] +
-  offset[0]}px, ${position[1] +
-  offset[1]}px) rotate(${rotate}deg) scale(${tru_scale});`;
+$: tru_scale = Math.round(100 * scale)/100;
+$: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(position[1])}px) rotate(${rotate}deg) scale(${tru_scale});`;
 
 $: anchor = [
   anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`,

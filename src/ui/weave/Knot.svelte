@@ -51,8 +51,8 @@ const drag = (e) => {
   const handler = () => {
     dragging = false
     position = [
-      $Mouse[0] - $size[0]/2 - $translate[0],
-      $Mouse[1] - $size[1]/2 - $translate[1],
+      $Mouse[0] - $size[0]/2/$scale - $translate[0],
+      $Mouse[1] - $size[1]/2/$scale - $translate[1],
       0
     ]
     update()
@@ -105,7 +105,6 @@ $: tru_scale = (dragging ? 1.168 : 1)
   background-color: #222;
   border: 0.5rem solid black;
   z-index: 1;
-  border-nadius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
 }
 .knot:hover {

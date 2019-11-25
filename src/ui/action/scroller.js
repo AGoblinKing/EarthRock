@@ -23,6 +23,7 @@ export default (node, {
       if (clutch) return
       update(-1)
     }),
+
     scroll.subscribe(([, deltaY]) => {
       update(deltaY / 2)
       if (clutch) clearTimeout(clutch)

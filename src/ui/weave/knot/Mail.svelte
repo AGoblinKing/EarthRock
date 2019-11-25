@@ -43,14 +43,12 @@ $: id = knot.id
   margin-right: -0.20rem;
   display: flex;
   background-color: #111;
-  border-nadius: 0.25rem;
   filter: sepia(1) hue-rotate(90deg) drop-shadow(-0.25rem 0.25rem 0 black);
   padding: 0.25rem;
   border: 0.25rem solid  #333;
 }
 
 .center {
-  border-nadius: 1rem;
   flex: 1;
   display: flex;
   justify-content: center;
@@ -61,7 +59,6 @@ $: id = knot.id
   border: 0.25rem solid black;
   display: flex;
   margin: 0.25rem;
-  border-nadius: 0.25rem;
   background-color: #333;
 }
 

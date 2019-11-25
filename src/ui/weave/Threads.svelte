@@ -143,26 +143,14 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
 </svg>
 
 <style>
-
 .active {
-  /* opacity: 1; */
   stroke-width:10;
-  /* animation: 500ms linear moveit infinite alternate; */
 }
 
 .line {
   stroke-width: 3;
 }
 
-@keyframes moveit {
-  0% {
-    opacity: 0.25;
-  }
-
-  100% {
-    opacity: 0.5;
-  }
-}
 .threads {
   pointer-events: none;
   z-index: 200;

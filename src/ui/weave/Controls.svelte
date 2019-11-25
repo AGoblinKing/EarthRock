@@ -48,7 +48,6 @@ const toggle = () => {
   background-color: #222;
   transition: all 250ms linear;
   border: 0.25rem solid black;
-  border-nadius: 1rem;
   padding: 2rem;
 }
 

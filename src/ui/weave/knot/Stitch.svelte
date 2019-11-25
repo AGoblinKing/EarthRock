@@ -82,7 +82,6 @@ const check_add = ({ which }) => {
   margin-top: -4rem;
   background-color: #222;
   border: 0.25rem solid black;
-  border-nadius: 1rem 1rem 0 0;
 }
 
 .board {

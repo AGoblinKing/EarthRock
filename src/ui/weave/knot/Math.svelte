@@ -11,7 +11,10 @@ $: id = knot.id
 </script>
 
 <div class="mail">
-  <div class="center" use:color={JSON.stringify($value)}>
+  <div 
+    class="center" 
+    use:color={JSON.stringify($value)}
+  >
     <div class="port">
       <Port writable address={`${$id}|write`} />
     </div>

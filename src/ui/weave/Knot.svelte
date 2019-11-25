@@ -1,13 +1,21 @@
 <script>
 import color from "/ui/action/color.js"
 import physics from "/ui/action/physics.js"
+import { scale } from "/sys/screen.js"
 
 import Spatial from "/ui/Spatial.svelte"
 import { add , minus } from "/util/vector.js"
 import { read } from "/util/store.js"
 
-import { positions, draggee, hoveree, drag_count, translate} from "/sys/weave.js"
-import { position as Mouse } from "/sys/mouse.js"
+import { 
+  positions, 
+  draggee, 
+  hoveree, 
+  drag_count, 
+  translate,
+  position_scale as Mouse 
+} from "/sys/weave.js"
+
 import { size } from "/sys/screen.js"
 
 export let position = [0, 0, 0]
@@ -60,8 +68,8 @@ const drag = (e) => {
 $: tru_position = add(
   dragging ? $Mouse : $positions[knot.id.get()],
   dragging ? [
-    -$size[0]/2,
-    -$size[1]/2
+    -$size[0]/2/$scale,
+    -$size[1]/2/$scale
   ] : $translate
 )
 $: tru_scale = (dragging ? 1.168 : 1)

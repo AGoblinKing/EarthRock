@@ -1,8 +1,9 @@
-import { transformer, write, read } from "/util/store.js"
+import { transformer, write, read, derived } from "/util/store.js"
 import { get } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
 import { add, minus, divide_scalar, multiply_scalar, multiply } from "/util/vector.js"
-import { scroll } from "/sys/mouse.js"
+import { scroll, position } from "/sys/mouse.js"
+import { scale } from "/sys/screen.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
@@ -228,3 +229,12 @@ export const translate = read(translate_velocity.get(), (set) =>
 scroll.listen(([x, y]) =>
   translate_velocity.update(([t_x, t_y]) => [t_x + x, t_y + y, 0])
 )
+
+export const position_scale = derived([
+  position,
+  scale
+], ([$position, $scale]) => [
+  $position[0] / $scale,
+  $position[1] / $scale,
+  0
+])

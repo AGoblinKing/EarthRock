@@ -28,7 +28,7 @@ const onMouseOver = () => {
 
 <style>
 .heart {
-    border-radius: 0.5rem;
+    border-nadius: 0.5rem;
     display: flex;
     width: 2rem;
     height: 2rem;

@@ -41,12 +41,12 @@ const cancel = edit.subscribe((txt) => {
 <style>
 
 .name {
-  border-bottom: 0.25rem dashed #222;
+  border-bottom: 0.25rem solid  #222;
 }
 
 .name, .edit {
-  border-right: 0.25rem dashed #222;
-  border-left: 0.25rem dashed #222;
+  border-right: 0.25rem solid  #222;
+  border-left: 0.25rem solid  #222;
   margin: 0;
   padding: 1rem;
   flex: 1;
@@ -69,7 +69,7 @@ const cancel = edit.subscribe((txt) => {
   padding: 0rem 1rem;
   justify-content: center;
   align-items: center;
-  border-radius: 1rem;
+  border-nadius: 1rem;
   border:solid 0.25rem #111;
   width: 35rem;
 }

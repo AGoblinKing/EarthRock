@@ -40,6 +40,6 @@ $: style = [tru_zIndex, anchor, transform].join(` `);
 }
 
 .spatial.transition {
-  transition: transform 250ms linear;
+  transition: transform 100ms linear;
 }
 </style>

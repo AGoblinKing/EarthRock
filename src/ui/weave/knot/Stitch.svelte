@@ -68,7 +68,7 @@ const check_add = ({ which }) => {
 }
 
 .add_channel {
-  border-top: 0.25rem dashed #111;
+  border-top: 0.25rem solid  #111;
   background-color: #333;
   flex: 1;
   color: white;
@@ -82,7 +82,7 @@ const check_add = ({ which }) => {
   margin-top: -4rem;
   background-color: #222;
   border: 0.25rem solid black;
-  border-radius: 1rem 1rem 0 0;
+  border-nadius: 1rem 1rem 0 0;
 }
 
 .board {
@@ -98,7 +98,7 @@ const check_add = ({ which }) => {
 .nameit {
   background-color: #222;
   width: 100%;
-  border-bottom: 0.25rem dashed #333;
+  border-bottom: 0.25rem solid  #333;
 }
 
 .edit {

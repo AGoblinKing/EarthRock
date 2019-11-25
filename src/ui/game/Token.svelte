@@ -75,13 +75,13 @@ $: stats_arr = Object.entries(stats)
     filter: sepia(1) contrast(0.5) hue-rotate(-45deg) brightness(0.4);
     border: 0.1rem solid black;
     overflow: hidden;
-    border-radius: 0.5rem;
+    border-nadius: 0.5rem;
 }
 .token.king {
     width: 2rem; 
     height: 3rem;
     margin-left: 0.25rem;
-    border-radius: 0.5rem 0.5rem 0 0;
+    border-nadius: 0.5rem 0.5rem 0 0;
     filter: sepia(1) contrast(1.5) hue-rotate(-45deg) !important;
 }
 
@@ -94,7 +94,7 @@ $: stats_arr = Object.entries(stats)
     border: 0.1rem solid black;
     height: 2.5rem;
     width: 3rem;
-    border-radius: 0.25rem;
+    border-nadius: 0.25rem;
     margin-left: -0.25rem;
     background-color: black;
     overflow: hidden;

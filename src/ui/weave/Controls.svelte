@@ -48,7 +48,7 @@ const toggle = () => {
   background-color: #222;
   transition: all 250ms linear;
   border: 0.25rem solid black;
-  border-radius: 1rem;
+  border-nadius: 1rem;
   padding: 2rem;
 }
 
@@ -58,7 +58,7 @@ const toggle = () => {
 
 .runs {
   color: #282;
-  border: 0.25rem dashed black;
+  border: 0.25rem solid  black;
 }
 
 

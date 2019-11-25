@@ -1,9 +1,10 @@
 import { transformer, write, read, derived } from "/util/store.js"
 import { get } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
-import { add, minus, divide_scalar, multiply_scalar, multiply } from "/util/vector.js"
+import { add, minus, divide_scalar, multiply_scalar, multiply, length } from "/util/vector.js"
 import { scroll, position } from "/sys/mouse.js"
 import { scale } from "/sys/screen.js"
+import { down } from "/sys/keyboard.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
@@ -216,6 +217,7 @@ export const translate = read(translate_velocity.get(), (set) =>
   tick.listen(() => {
     const t = translate_velocity.get()
     const p = translate.get()
+    if (length(t) === 0) return
 
     set([
       t[0] + p[0],
@@ -226,9 +228,10 @@ export const translate = read(translate_velocity.get(), (set) =>
   })
 )
 
-scroll.listen(([x, y]) =>
+scroll.listen(([x, y]) => {
+  if (down.get().shift) return
   translate_velocity.update(([t_x, t_y]) => [t_x + x, t_y + y, 0])
-)
+})
 
 export const position_scale = derived([
   position,
@@ -238,3 +241,21 @@ export const position_scale = derived([
   $position[1] / $scale,
   0
 ])
+
+let zoom_val = 1
+// take into account scale? No
+export const zoom = derived([
+  scroll,
+  scale
+], ([
+  $scroll,
+  $scale
+]) => {
+  if (down.get().shift) {
+    zoom_val = Math.max(0.25, zoom_val + $scroll[1] / 100)
+  }
+
+  return zoom_val * $scale
+})
+
+export const zoom_dam = derived(tick, zoom.get)

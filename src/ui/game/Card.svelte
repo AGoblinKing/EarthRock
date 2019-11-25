@@ -222,7 +222,7 @@ $: style = [
 
 .line, .image {
     border: 1rem solid #300;
-    border-radius: 1rem;
+    border-nadius: 1rem;
 }
 
 .line {
@@ -299,7 +299,7 @@ $: style = [
     margin: 2rem 4rem;
     height: 30rem;
     width: 40rem;
-    border-radius: 1rem;
+    border-nadius: 1rem;
 }
 
 .header {

@@ -123,7 +123,7 @@ const credits = () => {
 button {
 
     border: 0.5rem solid #333;
-    border-radius: 1rem;
+    border-nadius: 1rem;
     background-color: #666;
     color: white;
     text-align: center;

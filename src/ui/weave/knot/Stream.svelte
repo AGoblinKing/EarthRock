@@ -40,7 +40,7 @@ JSON IT!
   margin: 0;
   height: 10rem;
   text-align:center;
-  border: 0.25rem dashed #222;
+  border: 0.25rem solid  #222;
   border-top: none;
   justify-content: center;
   border-bottom: none;

@@ -1,9 +1,8 @@
 <script>
 import * as Wheel from "/sys/wheel.js"
-import { woven } from "/sys/weave.js"
+import { woven, zoom_dam as zoom} from "/sys/weave.js"
 import { scroll } from "/sys/mouse.js"
 import { tick } from "/sys/time.js"
-import { scale } from "/sys/screen.js";
 
 import { Basic } from "/prefab/weaves.js"
 
@@ -22,19 +21,6 @@ woven.set(weave.name.get())
 
 const knots = weave.knots
 
-const titles = {
-  "math": "mAtH",
-  stream: "sTrEaM",
-  screen: "sCrEeN",
-  mail: "mAiL",
-  stitch: ""
-}
-
-const get_title = (knot) => {
-  const type = knot.knot.get()
-  return titles[type]
-}
-
 const get_ui = (knot) => {
   const ui = knot_kinds[knot.knot.get()]
 
@@ -47,17 +33,18 @@ const get_ui = (knot) => {
 
 <MainScreen />
 <Controls {weave} />
-<Picker {weave} />
+
 <Threads {weave} />
+<Picker {weave} />
 
 <div 
   class="knots"
-  style={`transform: scale(${Math.round($scale * 100)/100}`}
+  style={`transform: scale(${Math.round($zoom * 100)/100}`}
 >
+
 {#each Object.values($knots) as knot (knot.id.get())} 
   <Knot 
     {knot}
-    title={get_title(knot)} 
   >
     <svelte:component this={get_ui(knot)} {knot} /> 
   </Knot>
@@ -78,6 +65,7 @@ const get_ui = (knot) => {
   width: 100%;
   height: 100%;
   z-index: 6;
+  transition: transform 100ms linear;
 }
 
 </style>

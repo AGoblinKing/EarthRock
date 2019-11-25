@@ -20,7 +20,6 @@ import { size } from "/sys/screen.js"
 
 export let position = [0, 0, 0]
 export let knot
-export let title = false
 
 $: type = knot.knot
 $: id = knot.id
@@ -93,9 +92,6 @@ $: tru_scale = (dragging ? 1.168 : 1)
       on:mousedown={drag}
       use:physics={$id}
     >
-      {#if title}
-      <div class="title">{title}</div>
-      {/if}
       <slot />
     </div>
   </div>
@@ -103,24 +99,13 @@ $: tru_scale = (dragging ? 1.168 : 1)
 
 <style>
 
-
-.title {
-  position: relative;
-  z-index: 2;
-  text-shadow: 1px 1px 0 #222, -1px 1px 0 #222,1px -1px 0 #222,-1px -1px 0 #222;
-  color: white;
-  margin-top: -2rem;
-  margin-bottom: -1rem;
-  font-size: 3rem;
-}
-
 .knot {
   display: flex;
   flex-direction: column;
   background-color: #222;
   border: 0.5rem solid black;
   z-index: 1;
-  border-radius: 1rem;
+  border-nadius: 1rem;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
 }
 .knot:hover {

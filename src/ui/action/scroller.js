@@ -1,13 +1,10 @@
 
-import { tick } from "/sys/time.js"
+import { frame } from "/sys/time.js"
 import { scroll } from "/sys/mouse.js"
 
 export default (node, {
   rate = 100
 } = false) => {
-  if (!node.style.transition) {
-    node.style.transition = `transform 250ms linear`
-  }
   let clutch = false
   let offset = 0
   const update = (amount = 0) => {
@@ -22,17 +19,16 @@ export default (node, {
   }
 
   const cancels = [
-    tick.subscribe(() => {
+    frame.subscribe(() => {
       if (clutch) return
-      update(-5)
+      update(-1)
     }),
-    scroll.subscribe(([,deltaY ]) => {
-      update(deltaY/2)
+    scroll.subscribe(([, deltaY]) => {
+      update(deltaY / 2)
       if (clutch) clearTimeout(clutch)
-      node.style.transition = `none`
+
       clutch = setTimeout(() => {
         clutch = false
-        node.style.transition = `transform 250ms linear`
       }, 1000)
     })
   ]

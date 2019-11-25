@@ -38,7 +38,7 @@ const mouseOver = () => {
 
 <style>
 .gem {
-    border-radius: 2rem;
+    border-nadius: 2rem;
     display: flex;
     width: 2.5rem;
     border: 0.1rem inset black;

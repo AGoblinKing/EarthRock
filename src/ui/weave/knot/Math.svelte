@@ -40,13 +40,10 @@ $: id = knot.id
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 250ms linear;
 }
 
 .center {
   background-color: #333;
-  border-radius: 1rem;
-
   display: flex;
   justify-content: center;
   align-items: center;
@@ -55,7 +52,6 @@ $: id = knot.id
 .port {
   display: flex;
   margin: 0.25rem;
-  border-radius: 0.25rem;
   border: 0.25rem solid black;
   background-color: #333;
 }
@@ -73,7 +69,7 @@ $: id = knot.id
 }
 
 .text {
-  border: 0.25rem dashed #111;
+  border: 0.25rem solid  #111;
   margin-bottom: 0.25rem;
   font-size: 1rem;
   background-color: #333;

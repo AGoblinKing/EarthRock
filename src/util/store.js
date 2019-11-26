@@ -49,3 +49,22 @@ export const aggregate = (amount = 10) => {
 
   return json(a)
 }
+
+export const map = (init = {}) => {
+  const m = write()
+  const set_m = m.set
+
+  m.set = (data) => set_m(Object.fromEntries(
+    Object.entries(data)
+      .map(([key, val]) => [
+        key,
+        (val && typeof val.subscribe === `function`)
+          ? val
+          : write(val)
+      ])
+  ))
+
+  m.set(init)
+
+  return m
+}

@@ -72,6 +72,8 @@ const get_ui = (knot) => {
   position: absolute;
   width: 100%;
   height: 100%;
+  left: -50%;
+  top: -50%;
   z-index: 6;
   transition: transform 100ms linear;
 }

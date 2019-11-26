@@ -1,10 +1,9 @@
 <script>
 import color from "/ui/action/color.js"
 import physics from "/ui/action/physics.js"
-import { scale } from "/sys/screen.js"
 
 import Spatial from "/ui/Spatial.svelte"
-import { add , minus } from "/util/vector.js"
+import { add , minus, multiply_scalar } from "/util/vector.js"
 import { read } from "/util/store.js"
 
 import { 
@@ -15,8 +14,6 @@ import {
   translate,
   position_scale as Mouse 
 } from "/sys/weave.js"
-
-import { size } from "/sys/screen.js"
 
 export let position = [0, 0, 0]
 export let knot
@@ -51,12 +48,13 @@ const drag = (e) => {
   const handler = () => {
     dragging = false
     position = [
-      $Mouse[0] - $size[0]/2,
-      $Mouse[1] - $size[1]/2,
+      $Mouse[0] - $translate[0],
+      $Mouse[1] - $translate[1],
       0
     ]
     update()
     draggee.set('')
+  
     zIndex = drag_count.get() 
     window.removeEventListener(`mouseup`, handler)
   }
@@ -65,12 +63,13 @@ const drag = (e) => {
 }
 
 $: tru_position = add(
-  dragging ? $Mouse : $positions[knot.id.get()],
-  [
-    -$size[0]/2,
-    -$size[1]/2,
-    0
-  ]
+  dragging 
+    ? minus(
+        $Mouse,
+        $translate
+      )
+    : $positions[knot.id.get()],
+  
 )
 
 $: tru_scale = (dragging ? 1.168 : 1)
@@ -109,6 +108,7 @@ $: tru_scale = (dragging ? 1.168 : 1)
   z-index: 1;
   filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
 }
+
 .knot:hover {
   filter: drop-shadow(1rem 1rem 1rem rgba(0, 255, 0, 0.5)) drop-shadow(1rem 1rem 0 rgba(0, 0, 0, 0.5));
 }

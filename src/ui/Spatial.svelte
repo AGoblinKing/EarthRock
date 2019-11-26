@@ -1,17 +1,17 @@
 <script>
-export let position = [0, 0, 0];
-export let anchor = [50, 50];
-export let bias = [50, 50];
-export let area = [1, 1];
-export let scale = 1;
-export let rotate = 0;
-export let zIndex = 0;
-export let transition = true;
+export let position = [0, 0, 0]
+export let anchor = [50, 50]
+export let bias = [50, 50]
+export let area = [1, 1]
+export let scale = 1
+export let rotate = 0
+export let zIndex = 0
+export let transition = true
 
 $: offset = [
   ((bias[0] * 0.01 * area[0]) / 2) * (anchor[0] <= 50 ? -1 : 1),
   ((bias[1] * 0.01 * area[1]) / 2) * (anchor[1] <= 50 ? -1 : 1)
-];
+]
 
 $: tru_scale = Math.round(100 * scale)/100;
 $: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(position[1])}px) rotate(${rotate}deg) scale(${tru_scale});`;
@@ -19,11 +19,11 @@ $: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(
 $: anchor = [
   anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`,
   anchor[1] <= 50 ? `top: ${anchor[1]}%;` : `bottom: ${100 - anchor[1]}%;`
-].join(` `);
+].join(` `)
 
-$: tru_zIndex = `z-index: ${Math.max(1, Math.round(scale * 100 + zIndex))};`;
+$: tru_zIndex = `z-index: ${Math.max(1, Math.round(scale * 100 + zIndex))};`
 
-$: style = [tru_zIndex, anchor, transform].join(` `);
+$: style = [tru_zIndex, anchor, transform].join(` `)
 </script>
 
 <div class="spatial" class:transition {style}>

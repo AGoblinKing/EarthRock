@@ -2937,6 +2937,25 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     const derived$1 = (...args) => json(derived(...args));
 
+    const map = (init = {}) => {
+      const m = write();
+      const set_m = m.set;
+
+      m.set = (data) => set_m(Object.fromEntries(
+        Object.entries(data)
+          .map(([key, val]) => [
+            key,
+            (val && typeof val.subscribe === `function`)
+              ? val
+              : write(val)
+          ])
+      ));
+
+      m.set(init);
+
+      return m
+    };
+
     const position = read([0, 0], set => window
       .addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))
     );
@@ -3704,7 +3723,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			attr_dev(div, "class", "spatial svelte-1v8z3iz");
     			attr_dev(div, "style", ctx.style);
     			toggle_class(div, "transition", ctx.transition);
-    			add_location(div, file$3, 28, 0, 881);
+    			add_location(div, file$3, 28, 0, 869);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -4155,21 +4174,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     const distance = twgl.v3.distance;
     const negate = twgl.v3.negate;
 
-    const report = (key, store) => {
-      if (store._reporter) return store
-
-      const sub = store.subscribe;
-
-      store._reporter = true;
-      store.subscribe = (fn) => {
-        return sub((val) => {
-          fn(val, key);
-        })
-      };
-
-      return store
-    };
-
     var stitch = ({
       value = {},
       name = random(2),
@@ -4177,14 +4181,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }) => ({
       knot: read(`stitch`),
 
-      value: write(Object
-        .entries(value)
-        .reduce((res, [key, val]) => {
-          res[key] = (val && typeof val.subscribe === `function`)
-            ? report(key, val)
-            : report(key, write(val));
-          return res
-        }, {})),
+      value: map(value),
 
       name: transformer((name_new) => {
         // tell weave it update its knots
@@ -4269,10 +4266,11 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
       // when set hit up the remote
       value.set = (value_new) => {
-        const v = Wheel.get(m.whom.get());
+        const $whom = m.whom.get().replace(`~`, `/${weave.id.get()}`);
+        const v = Wheel.get($whom);
 
         if (!v || !v.set) {
-          console.warn(`tried to mail a readable`, m.whom.get());
+          console.warn(`tried to mail a readable or unknown`, m.whom.get());
           return
         }
 
@@ -4285,7 +4283,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         whom: transformer((whom_new) => {
           weave.mails.update(($mails) => ({
             ...$mails,
-            [id]: whom_new
+            [id]: whom_new.replace(`~`, `/${weave.id.get()}`)
           }));
 
           return whom_new
@@ -4344,20 +4342,20 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     ]));
 
     const VALUE = () => ({
-      position: [
-        -1, -1, 0,
-        1, -1, 0,
-        -1, 1, 0,
-        -1, 1, 0,
-        1, -1, 0,
-        1, 1, 0
-      ]
+      square: read({
+        position: read([
+          -1, -1, 0,
+          1, -1, 0,
+          -1, 1, 0,
+          -1, 1, 0,
+          1, -1, 0,
+          1, 1, 0
+        ])
+      })
     });
 
     var screen = ({
-      value = {
-        flock: VALUE()
-      },
+      value = VALUE(),
       id,
       life,
       weave
@@ -4367,44 +4365,22 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       canvas.height = 100;
       const gl = canvas.getContext(`webgl`);
 
-      let arrays_last;
+      let buffer_data = {};
 
-      const buffer = write();
-      const buffer_set = buffer.set;
-
-      buffer.set = (arrays) => {
-        try {
-          const b = twgl.createBufferInfoFromArrays(gl, arrays);
-          arrays_last = arrays;
-          buffer_set(b);
-        } catch (ex) {
-          console.error(`${id} SCREEN: Unable to create gpu attributes`);
-        }
+      const buffer_defaults = {
+        position: read([0, 0, 0])
       };
 
       const gpu = ({
         knot: read(`screen`),
-
-        value: transformer(({
-          flock,
-          ...rest
-        }) => {
-          if (flock) {
-            buffer.set(flock);
-            console.log(buffer.get());
-          }
-
-          // lets return the canvas right now
-          // can be serialized into a data array but GPU nodes
-          // shouldn't serialize their value result
-          // but their value input
+        value: transformer((data) => {
+          buffer_data = data;
           return canvas
         }).set(value),
 
         toJSON: () => ({
           id,
-          knot: gpu.knot.get(),
-          value: arrays_last
+          knot: gpu.knot.get()
         })
       });
 
@@ -4415,24 +4391,76 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
+      const snapshot = () => {
+        const $value = buffer_data;
+        const buffer = {
+          position: []
+        };
+        const uniforms = {};
+
+        Object.entries($value).forEach(([
+          key,
+          chan
+        ]) => {
+          const $chan = chan.get();
+
+          // tell us about the objects
+          if (
+            typeof $chan !== `object` ||
+            Array.isArray($chan) ||
+            $chan === null ||
+            $chan === undefined
+          ) {
+            uniforms[key] = $chan;
+            return
+          }
+
+          // okay they're an object lets add buffer data for them
+          Object.keys(buffer).forEach((key_buffer) => {
+            const chan_buffer = $chan[key_buffer];
+
+            // doesn't have the channel
+            if (!chan_buffer || !chan_buffer.get) {
+              buffer[key_buffer].push(
+                ...buffer_defaults[key_buffer].get()
+              );
+              return
+            }
+
+            buffer[key_buffer].push(...chan_buffer.get());
+          });
+        });
+
+        return {
+          buffer,
+          uniforms
+        }
+      };
       // lifecycle on knot
       life(() => frame.subscribe(([, t]) => {
-        const $buffer = buffer.get();
+        if (program_info === null) return
+        const { buffer } = snapshot();
 
-        if (!$buffer || program_info === null) return
-
-        const uniforms = {
+        const u = {
           time: t * 0.001,
           resolution: [
             gl.canvas.width,
             gl.canvas.height
           ]
         };
+        try {
+          const buffer_info = twgl.createBufferInfoFromArrays(
+            gl,
+            buffer
+          );
 
-        gl.useProgram(program_info.program);
-        twgl.setBuffersAndAttributes(gl, program_info, $buffer);
-        twgl.setUniforms(program_info, uniforms);
-        twgl.drawBufferInfo(gl, $buffer);
+          gl.useProgram(program_info.program);
+          twgl.setBuffersAndAttributes(gl, program_info, buffer_info);
+          twgl.setUniforms(program_info, u);
+          twgl.drawBufferInfo(gl, buffer_info);
+        } catch (ex) {
+          console.warn(`GPU ERROR ${ex}`);
+        }
       }));
 
       return gpu
@@ -6265,9 +6293,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     };
 
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
+
     const file$8 = "src/ui/weave/Knot.svelte";
 
-    // (80:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+    // (79:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
     function create_default_slot$2(ctx) {
     	let div1;
     	let div0;
@@ -6282,10 +6311,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div1 = element("div");
     			div0 = element("div");
     			if (default_slot) default_slot.c();
-    			attr_dev(div0, "class", "knot svelte-dtzax4");
-    			add_location(div0, file$8, 91, 4, 1612);
+    			attr_dev(div0, "class", "knot svelte-1mdjxg");
+    			add_location(div0, file$8, 90, 4, 1567);
     			attr_dev(div1, "class", "adjust");
-    			add_location(div1, file$8, 86, 2, 1495);
+    			add_location(div1, file$8, 85, 2, 1450);
 
     			dispose = [
     				listen_dev(div0, "mousedown", ctx.drag, false, false, false),
@@ -6332,7 +6361,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(80:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+    		source: "(79:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
     		ctx
     	});
 
@@ -6406,7 +6435,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     function instance$7($$self, $$props, $$invalidate) {
     	let $Mouse;
-    	let $size;
+    	let $translate;
     	let $positions;
 
     	let $id,
@@ -6415,8 +6444,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	validate_store(position_scale, "Mouse");
     	component_subscribe($$self, position_scale, $$value => $$invalidate("$Mouse", $Mouse = $$value));
-    	validate_store(size, "size");
-    	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
+    	validate_store(translate, "translate");
+    	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
     	validate_store(positions, "positions");
     	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
@@ -6442,7 +6471,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     		const handler = () => {
     			$$invalidate("dragging", dragging = false);
-    			$$invalidate("position", position = [$Mouse[0] - $size[0] / 2, $Mouse[1] - $size[1] / 2, 0]);
+    			$$invalidate("position", position = [$Mouse[0] - $translate[0], $Mouse[1] - $translate[1], 0]);
     			update();
     			draggee.set("");
     			$$invalidate("zIndex", zIndex = drag_count.get());
@@ -6477,7 +6506,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			type,
     			id,
     			$Mouse,
-    			$size,
+    			$translate,
     			tru_position,
     			$positions,
     			tru_scale,
@@ -6493,7 +6522,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if ("type" in $$props) type = $$props.type;
     		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$Mouse" in $$props) position_scale.set($Mouse = $$props.$Mouse);
-    		if ("$size" in $$props) size.set($size = $$props.$size);
+    		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
     		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
     		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
     		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
@@ -6505,7 +6534,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $positions: 1, $size: 1 }) => {
+    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $translate: 1, $positions: 1 }) => {
     		if (changed.knot) {
     			 type = knot.knot;
     		}
@@ -6514,8 +6543,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			 $$subscribe_id($$invalidate("id", id = knot.id));
     		}
 
-    		if (changed.dragging || changed.$Mouse || changed.$positions || changed.knot || changed.$size) {
-    			 $$invalidate("tru_position", tru_position = add(dragging ? $Mouse : $positions[knot.id.get()], [-$size[0] / 2, -$size[1] / 2, 0]));
+    		if (changed.dragging || changed.$Mouse || changed.$translate || changed.$positions || changed.knot) {
+    			 $$invalidate("tru_position", tru_position = add(dragging
+    			? minus($Mouse, $translate)
+    			: $positions[knot.id.get()]));
     		}
 
     		if (changed.dragging) {
@@ -9050,7 +9081,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div, "class", "knots svelte-ykkafa");
+    			attr_dev(div, "class", "knots svelte-t8mevq");
 
     			attr_dev(div, "style", div_style_value = [
     				`transform:`,

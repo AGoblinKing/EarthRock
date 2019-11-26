@@ -51,8 +51,8 @@ const drag = (e) => {
   const handler = () => {
     dragging = false
     position = [
-      $Mouse[0] - $size[0]/2/$scale - $translate[0],
-      $Mouse[1] - $size[1]/2/$scale - $translate[1],
+      $Mouse[0] - $size[0]/2,
+      $Mouse[1] - $size[1]/2,
       0
     ]
     update()
@@ -66,11 +66,13 @@ const drag = (e) => {
 
 $: tru_position = add(
   dragging ? $Mouse : $positions[knot.id.get()],
-  dragging ? [
-    -$size[0]/2/$scale,
-    -$size[1]/2/$scale
-  ] : $translate
+  [
+    -$size[0]/2,
+    -$size[1]/2,
+    0
+  ]
 )
+
 $: tru_scale = (dragging ? 1.168 : 1)
 
 </script>

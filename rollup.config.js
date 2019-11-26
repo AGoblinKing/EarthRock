@@ -4,6 +4,7 @@ import { terser } from 'rollup-plugin-terser'
 import replaceHtmlVars from 'rollup-plugin-replace-html-vars'
 import rootImport from 'rollup-plugin-root-import'
 import resolve from 'rollup-plugin-node-resolve'
+import glsl from 'rollup-plugin-glsl'
 
 const production = false && !process.env.ROLLUP_WATCH
 
@@ -48,6 +49,10 @@ export default {
       css: css => {
         css.write(`${output}/bundle.css`)
       }
+    }),
+
+    glsl({
+      include: `src/sys/shader/**/*`
     }),
 
     replaceHtmlVars({

@@ -1,11 +1,16 @@
 <script>
 import Spatial from "../Spatial.svelte"
 import { running, stop, start } from "/sys/wheel.js"
+import { down } from "/sys/keyboard.js"
 
 export let weave
 
 $: name = weave.name
 let runs = $running[$name]
+
+$: {
+  if($down[" "]) toggle()
+}
 
 const toggle = () => {
   if(runs) {
@@ -58,7 +63,7 @@ const toggle = () => {
 .runs {
   color: #282;
   border: 0.25rem solid  black;
+  background-color: #111;
 }
-
 
 </style>

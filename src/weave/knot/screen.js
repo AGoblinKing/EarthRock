@@ -1,14 +1,23 @@
-import * as twgl from "twgl.js"
-import { read, transformer } from "/util/store.js"
+import * as twgl from "twgl"
+import { read, transformer, write } from "/util/store.js"
 import { frame } from "/sys/time.js"
-import { trippy } from "/sys/shader.js"
+import { test } from "/sys/shader.js"
 
 const VALUE = () => ({
-  position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+  position: [
+    -1, -1, 0,
+    1, -1, 0,
+    -1, 1, 0,
+    -1, 1, 0,
+    1, -1, 0,
+    1, 1, 0
+  ]
 })
 
 export default ({
-  value = VALUE(),
+  value = {
+    flock: VALUE()
+  },
   id,
   life,
   weave
@@ -20,28 +29,30 @@ export default ({
 
   let arrays_last
 
-  const buffer = transformer((arrays) => {
-    let b = buffer.get()
+  const buffer = write()
+  const buffer_set = buffer.set
+
+  buffer.set = (arrays) => {
     try {
-      b = twgl.createAttribsFromArrays(gl, arrays)
+      const b = twgl.createBufferInfoFromArrays(gl, arrays)
       arrays_last = arrays
+      buffer_set(b)
     } catch (ex) {
       console.error(`${id} SCREEN: Unable to create gpu attributes`)
     }
-
-    return b
-  })
-
-  buffer.set(VALUE())
+  }
 
   const gpu = ({
     knot: read(`screen`),
 
     value: transformer(({
-      flock = VALUE(),
+      flock,
       ...rest
     }) => {
-      buffer.set(flock)
+      if (flock) {
+        buffer.set(flock)
+        console.log(buffer.get())
+      }
 
       // lets return the canvas right now
       // can be serialized into a data array but GPU nodes
@@ -53,26 +64,29 @@ export default ({
     toJSON: () => ({
       id,
       knot: gpu.knot.get(),
-      value: arrays_last,
-      shader: gpu.shader.get()
+      value: arrays_last
     })
   })
 
-  const program_info = twgl.createProgramInfo(gl, trippy.get())
+  const program_info = twgl.createProgramInfo(
+    gl,
+    test.get()
+  )
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
-  const $buffer = twgl.createAttribsFromArrays(gl, VALUE())
-
   // lifecycle on knot
   life(() => frame.subscribe(([, t]) => {
+    const $buffer = buffer.get()
+
+    if (!$buffer || program_info === null) return
+
     const uniforms = {
       time: t * 0.001,
-      resolution: [gl.canvas.width, gl.canvas.height]
-    }
-
-    if (program_info === null) {
-      return
+      resolution: [
+        gl.canvas.width,
+        gl.canvas.height
+      ]
     }
 
     gl.useProgram(program_info.program)

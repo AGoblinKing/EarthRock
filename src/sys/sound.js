@@ -1,7 +1,7 @@
 import Tone from "tone"
-import { SOUND_ON } from "./flag.js/index.js.js"
+import { SOUND_ON } from "./flag.js"
 
-import * as sound_import from "./sound/ui.js.js"
+import * as sound_import from "./sound/ui.js"
 
 if (!SOUND_ON) {
   Tone.Master.mute = true

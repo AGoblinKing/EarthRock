@@ -1,6 +1,6 @@
 <script>
 import * as Wheel from "/sys/wheel.js"
-import { woven, zoom_dam as zoom} from "/sys/weave.js"
+import { woven, zoom_dam as zoom, translate } from "/sys/weave.js"
 import { scroll } from "/sys/mouse.js"
 import { tick } from "/sys/time.js"
 
@@ -15,7 +15,9 @@ import Knot from "./Knot.svelte"
 import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
-const weave = Wheel.create(Basic())
+const { basic:weave } = Wheel.spawn({
+  basic: Basic()
+})
 
 woven.set(weave.name.get())
 
@@ -39,7 +41,14 @@ const get_ui = (knot) => {
 
 <div 
   class="knots"
-  style={`transform: scale(${Math.round($zoom * 100)/100}`}
+  style={
+    [
+      `transform:`,
+      `scale(${Math.round($zoom * 100)/100})`,
+      `translate(${$translate[0]}px, ${$translate[1]}px)`,
+      `;`
+    ].join(` `)
+  }
 >
 
 {#each Object.values($knots) as knot (knot.id.get())} 
@@ -58,7 +67,6 @@ const get_ui = (knot) => {
 :global(input:hover, input:focus, textarea:hover, textarea:focus){
   background-color: green !important;
 }
-
 
 .knots {
   position: absolute;

@@ -2947,9 +2947,17 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     const scroll = read([0, 0, 0], set => window
       .addEventListener(`wheel`, (e) => {
+        try {
+          e.preventDefault();
+        } catch (ex) {
+          // shh
+        }
         set([-e.deltaX, -e.deltaY, 0]);
       })
     );
+
+    window.addEventListener(`touchmove`, (e) => e.preventDefault());
+    window.addEventListener(`pointermove`, (e) => e.preventDefault());
 
     var mouse = /*#__PURE__*/Object.freeze({
         __proto__: null,
@@ -4263,7 +4271,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       value.set = (value_new) => {
         const v = Wheel.get(m.whom.get());
 
-        if (!v.set) {
+        if (!v || !v.set) {
           console.warn(`tried to mail a readable`, m.whom.get());
           return
         }
@@ -4288,1896 +4296,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
       return m
     };
-
-    /* @license twgl.js 4.13.0 Copyright (c) 2015, Gregg Tavares All Rights Reserved.
-    Available via the MIT license.
-    see: http://github.com/greggman/twgl.js for details */
-
-    /*
-     * Copyright 2019 Gregg Tavares
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a
-     * copy of this software and associated documentation files (the "Software"),
-     * to deal in the Software without restriction, including without limitation
-     * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-     * and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in
-     * all copies or substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-     * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     * DEALINGS IN THE SOFTWARE.
-     */
-
-    /* DataType */
-    const BYTE                           = 0x1400;
-    const UNSIGNED_BYTE                  = 0x1401;
-    const SHORT                          = 0x1402;
-    const UNSIGNED_SHORT                 = 0x1403;
-    const INT                            = 0x1404;
-    const UNSIGNED_INT                   = 0x1405;
-    const FLOAT                          = 0x1406;
-
-    /**
-     * Get the GL type for a typedArray
-     * @param {ArrayBufferView} typedArray a typedArray
-     * @return {number} the GL type for array. For example pass in an `Int8Array` and `gl.BYTE` will
-     *   be returned. Pass in a `Uint32Array` and `gl.UNSIGNED_INT` will be returned
-     * @memberOf module:twgl/typedArray
-     */
-    function getGLTypeForTypedArray(typedArray) {
-      if (typedArray instanceof Int8Array)         { return BYTE; }           // eslint-disable-line
-      if (typedArray instanceof Uint8Array)        { return UNSIGNED_BYTE; }  // eslint-disable-line
-      if (typedArray instanceof Uint8ClampedArray) { return UNSIGNED_BYTE; }  // eslint-disable-line
-      if (typedArray instanceof Int16Array)        { return SHORT; }          // eslint-disable-line
-      if (typedArray instanceof Uint16Array)       { return UNSIGNED_SHORT; } // eslint-disable-line
-      if (typedArray instanceof Int32Array)        { return INT; }            // eslint-disable-line
-      if (typedArray instanceof Uint32Array)       { return UNSIGNED_INT; }   // eslint-disable-line
-      if (typedArray instanceof Float32Array)      { return FLOAT; }          // eslint-disable-line
-      throw new Error('unsupported typed array type');
-    }
-
-    /**
-     * Get the GL type for a typedArray type
-     * @param {ArrayBufferView} typedArrayType a typedArray constructor
-     * @return {number} the GL type for type. For example pass in `Int8Array` and `gl.BYTE` will
-     *   be returned. Pass in `Uint32Array` and `gl.UNSIGNED_INT` will be returned
-     * @memberOf module:twgl/typedArray
-     */
-    function getGLTypeForTypedArrayType(typedArrayType) {
-      if (typedArrayType === Int8Array)         { return BYTE; }           // eslint-disable-line
-      if (typedArrayType === Uint8Array)        { return UNSIGNED_BYTE; }  // eslint-disable-line
-      if (typedArrayType === Uint8ClampedArray) { return UNSIGNED_BYTE; }  // eslint-disable-line
-      if (typedArrayType === Int16Array)        { return SHORT; }          // eslint-disable-line
-      if (typedArrayType === Uint16Array)       { return UNSIGNED_SHORT; } // eslint-disable-line
-      if (typedArrayType === Int32Array)        { return INT; }            // eslint-disable-line
-      if (typedArrayType === Uint32Array)       { return UNSIGNED_INT; }   // eslint-disable-line
-      if (typedArrayType === Float32Array)      { return FLOAT; }          // eslint-disable-line
-      throw new Error('unsupported typed array type');
-    }
-
-    const isArrayBuffer = typeof SharedArrayBuffer !== 'undefined'
-      ? function isArrayBufferOrSharedArrayBuffer(a) {
-        return a && a.buffer && (a.buffer instanceof ArrayBuffer || a.buffer instanceof SharedArrayBuffer);
-      }
-      : function isArrayBuffer(a) {
-        return a && a.buffer && a.buffer instanceof ArrayBuffer;
-      };
-
-    function error(...args) {
-      console.error(...args);
-    }
-
-    function isBuffer(gl, t) {
-      return typeof WebGLBuffer !== 'undefined' && t instanceof WebGLBuffer;
-    }
-
-    function isShader(gl, t) {
-      return typeof WebGLShader !== 'undefined' && t instanceof WebGLShader;
-    }
-
-    function isTexture(gl, t) {
-      return typeof WebGLTexture !== 'undefined' && t instanceof WebGLTexture;
-    }
-
-    /*
-     * Copyright 2019 Gregg Tavares
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a
-     * copy of this software and associated documentation files (the "Software"),
-     * to deal in the Software without restriction, including without limitation
-     * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-     * and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in
-     * all copies or substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-     * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     * DEALINGS IN THE SOFTWARE.
-     */
-    const defaults = {
-      attribPrefix: "",
-    };
-
-    function setBufferFromTypedArray(gl, type, buffer, array, drawType) {
-      gl.bindBuffer(type, buffer);
-      gl.bufferData(type, array, drawType || gl.STATIC_DRAW);
-    }
-
-    /**
-     * Given typed array creates a WebGLBuffer and copies the typed array
-     * into it.
-     *
-     * @param {WebGLRenderingContext} gl A WebGLRenderingContext
-     * @param {ArrayBuffer|SharedArrayBuffer|ArrayBufferView|WebGLBuffer} typedArray the typed array. Note: If a WebGLBuffer is passed in it will just be returned. No action will be taken
-     * @param {number} [type] the GL bind type for the buffer. Default = `gl.ARRAY_BUFFER`.
-     * @param {number} [drawType] the GL draw type for the buffer. Default = 'gl.STATIC_DRAW`.
-     * @return {WebGLBuffer} the created WebGLBuffer
-     * @memberOf module:twgl/attributes
-     */
-    function createBufferFromTypedArray(gl, typedArray, type, drawType) {
-      if (isBuffer(gl, typedArray)) {
-        return typedArray;
-      }
-      type = type || gl.ARRAY_BUFFER;
-      const buffer = gl.createBuffer();
-      setBufferFromTypedArray(gl, type, buffer, typedArray, drawType);
-      return buffer;
-    }
-
-    function isIndices(name) {
-      return name === "indices";
-    }
-
-    // This is really just a guess. Though I can't really imagine using
-    // anything else? Maybe for some compression?
-    function getNormalizationForTypedArray(typedArray) {
-      if (typedArray instanceof Int8Array)    { return true; }  // eslint-disable-line
-      if (typedArray instanceof Uint8Array)   { return true; }  // eslint-disable-line
-      return false;
-    }
-
-    // This is really just a guess. Though I can't really imagine using
-    // anything else? Maybe for some compression?
-    function getNormalizationForTypedArrayType(typedArrayType) {
-      if (typedArrayType === Int8Array)    { return true; }  // eslint-disable-line
-      if (typedArrayType === Uint8Array)   { return true; }  // eslint-disable-line
-      return false;
-    }
-
-    function getArray(array) {
-      return array.length ? array : array.data;
-    }
-
-    const texcoordRE = /coord|texture/i;
-    const colorRE = /color|colour/i;
-
-    function guessNumComponentsFromName(name, length) {
-      let numComponents;
-      if (texcoordRE.test(name)) {
-        numComponents = 2;
-      } else if (colorRE.test(name)) {
-        numComponents = 4;
-      } else {
-        numComponents = 3;  // position, normals, indices ...
-      }
-
-      if (length % numComponents > 0) {
-        throw new Error(`Can not guess numComponents for attribute '${name}'. Tried ${numComponents} but ${length} values is not evenly divisible by ${numComponents}. You should specify it.`);
-      }
-
-      return numComponents;
-    }
-
-    function getNumComponents(array, arrayName) {
-      return array.numComponents || array.size || guessNumComponentsFromName(arrayName, getArray(array).length);
-    }
-
-    function makeTypedArray(array, name) {
-      if (isArrayBuffer(array)) {
-        return array;
-      }
-
-      if (isArrayBuffer(array.data)) {
-        return array.data;
-      }
-
-      if (Array.isArray(array)) {
-        array = {
-          data: array,
-        };
-      }
-
-      let Type = array.type;
-      if (!Type) {
-        if (isIndices(name)) {
-          Type = Uint16Array;
-        } else {
-          Type = Float32Array;
-        }
-      }
-      return new Type(array.data);
-    }
-
-    /**
-     * The info for an attribute. This is effectively just the arguments to `gl.vertexAttribPointer` plus the WebGLBuffer
-     * for the attribute.
-     *
-     * @typedef {Object} AttribInfo
-     * @property {number[]|ArrayBufferView} [value] a constant value for the attribute. Note: if this is set the attribute will be
-     *    disabled and set to this constant value and all other values will be ignored.
-     * @property {number} [numComponents] the number of components for this attribute.
-     * @property {number} [size] synonym for `numComponents`.
-     * @property {number} [type] the type of the attribute (eg. `gl.FLOAT`, `gl.UNSIGNED_BYTE`, etc...) Default = `gl.FLOAT`
-     * @property {boolean} [normalize] whether or not to normalize the data. Default = false
-     * @property {number} [offset] offset into buffer in bytes. Default = 0
-     * @property {number} [stride] the stride in bytes per element. Default = 0
-     * @property {number} [divisor] the divisor in instances. Default = undefined. Note: undefined = don't call gl.vertexAttribDivisor
-     *    where as anything else = do call it with this value
-     * @property {WebGLBuffer} buffer the buffer that contains the data for this attribute
-     * @property {number} [drawType] the draw type passed to gl.bufferData. Default = gl.STATIC_DRAW
-     * @memberOf module:twgl
-     */
-
-    /**
-     * Use this type of array spec when TWGL can't guess the type or number of components of an array
-     * @typedef {Object} FullArraySpec
-     * @property {number[]|ArrayBufferView} [value] a constant value for the attribute. Note: if this is set the attribute will be
-     *    disabled and set to this constant value and all other values will be ignored.
-     * @property {(number|number[]|ArrayBufferView)} data The data of the array. A number alone becomes the number of elements of type.
-     * @property {number} [numComponents] number of components for `vertexAttribPointer`. Default is based on the name of the array.
-     *    If `coord` is in the name assumes `numComponents = 2`.
-     *    If `color` is in the name assumes `numComponents = 4`.
-     *    otherwise assumes `numComponents = 3`
-     * @property {constructor} [type] type. This is only used if `data` is a JavaScript array. It is the constructor for the typedarray. (eg. `Uint8Array`).
-     * For example if you want colors in a `Uint8Array` you might have a `FullArraySpec` like `{ type: Uint8Array, data: [255,0,255,255, ...], }`.
-     * @property {number} [size] synonym for `numComponents`.
-     * @property {boolean} [normalize] normalize for `vertexAttribPointer`. Default is true if type is `Int8Array` or `Uint8Array` otherwise false.
-     * @property {number} [stride] stride for `vertexAttribPointer`. Default = 0
-     * @property {number} [offset] offset for `vertexAttribPointer`. Default = 0
-     * @property {number} [divisor] divisor for `vertexAttribDivisor`. Default = undefined. Note: undefined = don't call gl.vertexAttribDivisor
-     *    where as anything else = do call it with this value
-     * @property {string} [attrib] name of attribute this array maps to. Defaults to same name as array prefixed by the default attribPrefix.
-     * @property {string} [name] synonym for `attrib`.
-     * @property {string} [attribName] synonym for `attrib`.
-     * @property {WebGLBuffer} [buffer] Buffer to use for this attribute. This lets you use your own buffer
-     *    but you will need to supply `numComponents` and `type`. You can effectively pass an `AttribInfo`
-     *    to provide this. Example:
-     *
-     *         const bufferInfo1 = twgl.createBufferInfoFromArrays(gl, {
-     *           position: [1, 2, 3, ... ],
-     *         });
-     *         const bufferInfo2 = twgl.createBufferInfoFromArrays(gl, {
-     *           position: bufferInfo1.attribs.position,  // use the same buffer from bufferInfo1
-     *         });
-     *
-     * @memberOf module:twgl
-     */
-
-    /**
-     * An individual array in {@link module:twgl.Arrays}
-     *
-     * When passed to {@link module:twgl.createBufferInfoFromArrays} if an ArraySpec is `number[]` or `ArrayBufferView`
-     * the types will be guessed based on the name. `indices` will be `Uint16Array`, everything else will
-     * be `Float32Array`. If an ArraySpec is a number it's the number of floats for an empty (zeroed) buffer.
-     *
-     * @typedef {(number|number[]|ArrayBufferView|module:twgl.FullArraySpec)} ArraySpec
-     * @memberOf module:twgl
-     */
-
-    /**
-     * This is a JavaScript object of arrays by name. The names should match your shader's attributes. If your
-     * attributes have a common prefix you can specify it by calling {@link module:twgl.setAttributePrefix}.
-     *
-     *     Bare JavaScript Arrays
-     *
-     *         var arrays = {
-     *            position: [-1, 1, 0],
-     *            normal: [0, 1, 0],
-     *            ...
-     *         }
-     *
-     *     Bare TypedArrays
-     *
-     *         var arrays = {
-     *            position: new Float32Array([-1, 1, 0]),
-     *            color: new Uint8Array([255, 128, 64, 255]),
-     *            ...
-     *         }
-     *
-     * *   Will guess at `numComponents` if not specified based on name.
-     *
-     *     If `coord` is in the name assumes `numComponents = 2`
-     *
-     *     If `color` is in the name assumes `numComponents = 4`
-     *
-     *     otherwise assumes `numComponents = 3`
-     *
-     * Objects with various fields. See {@link module:twgl.FullArraySpec}.
-     *
-     *     var arrays = {
-     *       position: { numComponents: 3, data: [0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 10, 0], },
-     *       texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1],                 },
-     *       normal:   { numComponents: 3, data: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],     },
-     *       indices:  { numComponents: 3, data: [0, 1, 2, 1, 2, 3],                       },
-     *     };
-     *
-     * @typedef {Object.<string, module:twgl.ArraySpec>} Arrays
-     * @memberOf module:twgl
-     */
-
-
-    /**
-     * Creates a set of attribute data and WebGLBuffers from set of arrays
-     *
-     * Given
-     *
-     *      var arrays = {
-     *        position: { numComponents: 3, data: [0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 10, 0], },
-     *        texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1],                 },
-     *        normal:   { numComponents: 3, data: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],     },
-     *        color:    { numComponents: 4, data: [255, 255, 255, 255, 255, 0, 0, 255, 0, 0, 255, 255], type: Uint8Array, },
-     *        indices:  { numComponents: 3, data: [0, 1, 2, 1, 2, 3],                       },
-     *      };
-     *
-     * returns something like
-     *
-     *      var attribs = {
-     *        position: { numComponents: 3, type: gl.FLOAT,         normalize: false, buffer: WebGLBuffer, },
-     *        texcoord: { numComponents: 2, type: gl.FLOAT,         normalize: false, buffer: WebGLBuffer, },
-     *        normal:   { numComponents: 3, type: gl.FLOAT,         normalize: false, buffer: WebGLBuffer, },
-     *        color:    { numComponents: 4, type: gl.UNSIGNED_BYTE, normalize: true,  buffer: WebGLBuffer, },
-     *      };
-     *
-     * notes:
-     *
-     * *   Arrays can take various forms
-     *
-     *     Bare JavaScript Arrays
-     *
-     *         var arrays = {
-     *            position: [-1, 1, 0],
-     *            normal: [0, 1, 0],
-     *            ...
-     *         }
-     *
-     *     Bare TypedArrays
-     *
-     *         var arrays = {
-     *            position: new Float32Array([-1, 1, 0]),
-     *            color: new Uint8Array([255, 128, 64, 255]),
-     *            ...
-     *         }
-     *
-     * *   Will guess at `numComponents` if not specified based on name.
-     *
-     *     If `coord` is in the name assumes `numComponents = 2`
-     *
-     *     If `color` is in the name assumes `numComponents = 4`
-     *
-     *     otherwise assumes `numComponents = 3`
-     *
-     * @param {WebGLRenderingContext} gl The webgl rendering context.
-     * @param {module:twgl.Arrays} arrays The arrays
-     * @param {module:twgl.BufferInfo} [srcBufferInfo] a BufferInfo to copy from
-     *   This lets you share buffers. Any arrays you supply will override
-     *   the buffers from srcBufferInfo.
-     * @return {Object.<string, module:twgl.AttribInfo>} the attribs
-     * @memberOf module:twgl/attributes
-     */
-    function createAttribsFromArrays(gl, arrays) {
-      const attribs = {};
-      Object.keys(arrays).forEach(function(arrayName) {
-        if (!isIndices(arrayName)) {
-          const array = arrays[arrayName];
-          const attribName = array.attrib || array.name || array.attribName || (defaults.attribPrefix + arrayName);
-          if (array.value) {
-            if (!Array.isArray(array.value) && !isArrayBuffer(array.value)) {
-              throw new Error('array.value is not array or typedarray');
-            }
-            attribs[attribName] = {
-              value: array.value,
-            };
-          } else {
-            let buffer;
-            let type;
-            let normalization;
-            let numComponents;
-            if (array.buffer && array.buffer instanceof WebGLBuffer) {
-              buffer = array.buffer;
-              numComponents = array.numComponents || array.size;
-              type = array.type;
-              normalization = array.normalize;
-            } else if (typeof array === "number" || typeof array.data === "number") {
-              const numValues = array.data || array;
-              const arrayType = array.type || Float32Array;
-              const numBytes = numValues * arrayType.BYTES_PER_ELEMENT;
-              type = getGLTypeForTypedArrayType(arrayType);
-              normalization = array.normalize !== undefined ? array.normalize : getNormalizationForTypedArrayType(arrayType);
-              numComponents = array.numComponents || array.size || guessNumComponentsFromName(arrayName, numValues);
-              buffer = gl.createBuffer();
-              gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-              gl.bufferData(gl.ARRAY_BUFFER, numBytes, array.drawType || gl.STATIC_DRAW);
-            } else {
-              const typedArray = makeTypedArray(array, arrayName);
-              buffer = createBufferFromTypedArray(gl, typedArray, undefined, array.drawType);
-              type = getGLTypeForTypedArray(typedArray);
-              normalization = array.normalize !== undefined ? array.normalize : getNormalizationForTypedArray(typedArray);
-              numComponents = getNumComponents(array, arrayName);
-            }
-            attribs[attribName] = {
-              buffer:        buffer,
-              numComponents: numComponents,
-              type:          type,
-              normalize:     normalization,
-              stride:        array.stride || 0,
-              offset:        array.offset || 0,
-              divisor:       array.divisor === undefined ? undefined : array.divisor,
-              drawType:      array.drawType,
-            };
-          }
-        }
-      });
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-      return attribs;
-    }
-
-    /*
-     * Copyright 2019 Gregg Tavares
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a
-     * copy of this software and associated documentation files (the "Software"),
-     * to deal in the Software without restriction, including without limitation
-     * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-     * and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in
-     * all copies or substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-     * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     * DEALINGS IN THE SOFTWARE.
-     */
-
-    /**
-     * Gets the gl version as a number
-     * @param {WebGLRenderingContext} gl A WebGLRenderingContext
-     * @return {number} version of gl
-     * @private
-     */
-    //function getVersionAsNumber(gl) {
-    //  return parseFloat(gl.getParameter(gl.VERSION).substr(6));
-    //}
-
-    /**
-     * Check if context is WebGL 2.0
-     * @param {WebGLRenderingContext} gl A WebGLRenderingContext
-     * @return {bool} true if it's WebGL 2.0
-     * @memberOf module:twgl
-     */
-    function isWebGL2(gl) {
-      // This is the correct check but it's slow
-      //  return gl.getParameter(gl.VERSION).indexOf("WebGL 2.0") === 0;
-      // This might also be the correct check but I'm assuming it's slow-ish
-      // return gl instanceof WebGL2RenderingContext;
-      return !!gl.texStorage2D;
-    }
-
-    /*
-     * Copyright 2019 Gregg Tavares
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a
-     * copy of this software and associated documentation files (the "Software"),
-     * to deal in the Software without restriction, including without limitation
-     * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-     * and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in
-     * all copies or substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-     * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     * DEALINGS IN THE SOFTWARE.
-     */
-
-    /**
-     * Low level shader program related functions
-     *
-     * You should generally not need to use these functions. They are provided
-     * for those cases where you're doing something out of the ordinary
-     * and you need lower level access.
-     *
-     * For backward compatibility they are available at both `twgl.programs` and `twgl`
-     * itself
-     *
-     * See {@link module:twgl} for core functions
-     *
-     * @module twgl/programs
-     */
-
-    const error$1 = error;
-    function getElementById(id) {
-      return (typeof document !== 'undefined' && document.getElementById)
-          ? document.getElementById(id)
-          : null;
-    }
-
-    const FLOAT$2                         = 0x1406;
-    const FLOAT_VEC2                    = 0x8B50;
-    const FLOAT_VEC3                    = 0x8B51;
-    const FLOAT_VEC4                    = 0x8B52;
-    const INT$2                           = 0x1404;
-    const INT_VEC2                      = 0x8B53;
-    const INT_VEC3                      = 0x8B54;
-    const INT_VEC4                      = 0x8B55;
-    const BOOL                          = 0x8B56;
-    const BOOL_VEC2                     = 0x8B57;
-    const BOOL_VEC3                     = 0x8B58;
-    const BOOL_VEC4                     = 0x8B59;
-    const FLOAT_MAT2                    = 0x8B5A;
-    const FLOAT_MAT3                    = 0x8B5B;
-    const FLOAT_MAT4                    = 0x8B5C;
-    const SAMPLER_2D                    = 0x8B5E;
-    const SAMPLER_CUBE                  = 0x8B60;
-    const SAMPLER_3D                    = 0x8B5F;
-    const SAMPLER_2D_SHADOW             = 0x8B62;
-    const FLOAT_MAT2x3                  = 0x8B65;
-    const FLOAT_MAT2x4                  = 0x8B66;
-    const FLOAT_MAT3x2                  = 0x8B67;
-    const FLOAT_MAT3x4                  = 0x8B68;
-    const FLOAT_MAT4x2                  = 0x8B69;
-    const FLOAT_MAT4x3                  = 0x8B6A;
-    const SAMPLER_2D_ARRAY              = 0x8DC1;
-    const SAMPLER_2D_ARRAY_SHADOW       = 0x8DC4;
-    const SAMPLER_CUBE_SHADOW           = 0x8DC5;
-    const UNSIGNED_INT$2                  = 0x1405;
-    const UNSIGNED_INT_VEC2             = 0x8DC6;
-    const UNSIGNED_INT_VEC3             = 0x8DC7;
-    const UNSIGNED_INT_VEC4             = 0x8DC8;
-    const INT_SAMPLER_2D                = 0x8DCA;
-    const INT_SAMPLER_3D                = 0x8DCB;
-    const INT_SAMPLER_CUBE              = 0x8DCC;
-    const INT_SAMPLER_2D_ARRAY          = 0x8DCF;
-    const UNSIGNED_INT_SAMPLER_2D       = 0x8DD2;
-    const UNSIGNED_INT_SAMPLER_3D       = 0x8DD3;
-    const UNSIGNED_INT_SAMPLER_CUBE     = 0x8DD4;
-    const UNSIGNED_INT_SAMPLER_2D_ARRAY = 0x8DD7;
-
-    const TEXTURE_2D                    = 0x0DE1;
-    const TEXTURE_CUBE_MAP              = 0x8513;
-    const TEXTURE_3D                    = 0x806F;
-    const TEXTURE_2D_ARRAY              = 0x8C1A;
-
-    const typeMap = {};
-
-    /**
-     * Returns the corresponding bind point for a given sampler type
-     */
-    function getBindPointForSamplerType(gl, type) {
-      return typeMap[type].bindPoint;
-    }
-
-    // This kind of sucks! If you could compose functions as in `var fn = gl[name];`
-    // this code could be a lot smaller but that is sadly really slow (T_T)
-
-    function floatSetter(gl, location) {
-      return function(v) {
-        gl.uniform1f(location, v);
-      };
-    }
-
-    function floatArraySetter(gl, location) {
-      return function(v) {
-        gl.uniform1fv(location, v);
-      };
-    }
-
-    function floatVec2Setter(gl, location) {
-      return function(v) {
-        gl.uniform2fv(location, v);
-      };
-    }
-
-    function floatVec3Setter(gl, location) {
-      return function(v) {
-        gl.uniform3fv(location, v);
-      };
-    }
-
-    function floatVec4Setter(gl, location) {
-      return function(v) {
-        gl.uniform4fv(location, v);
-      };
-    }
-
-    function intSetter(gl, location) {
-      return function(v) {
-        gl.uniform1i(location, v);
-      };
-    }
-
-    function intArraySetter(gl, location) {
-      return function(v) {
-        gl.uniform1iv(location, v);
-      };
-    }
-
-    function intVec2Setter(gl, location) {
-      return function(v) {
-        gl.uniform2iv(location, v);
-      };
-    }
-
-    function intVec3Setter(gl, location) {
-      return function(v) {
-        gl.uniform3iv(location, v);
-      };
-    }
-
-    function intVec4Setter(gl, location) {
-      return function(v) {
-        gl.uniform4iv(location, v);
-      };
-    }
-
-    function uintSetter(gl, location) {
-      return function(v) {
-        gl.uniform1ui(location, v);
-      };
-    }
-
-    function uintArraySetter(gl, location) {
-      return function(v) {
-        gl.uniform1uiv(location, v);
-      };
-    }
-
-    function uintVec2Setter(gl, location) {
-      return function(v) {
-        gl.uniform2uiv(location, v);
-      };
-    }
-
-    function uintVec3Setter(gl, location) {
-      return function(v) {
-        gl.uniform3uiv(location, v);
-      };
-    }
-
-    function uintVec4Setter(gl, location) {
-      return function(v) {
-        gl.uniform4uiv(location, v);
-      };
-    }
-
-    function floatMat2Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix2fv(location, false, v);
-      };
-    }
-
-    function floatMat3Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix3fv(location, false, v);
-      };
-    }
-
-    function floatMat4Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix4fv(location, false, v);
-      };
-    }
-
-    function floatMat23Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix2x3fv(location, false, v);
-      };
-    }
-
-    function floatMat32Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix3x2fv(location, false, v);
-      };
-    }
-
-    function floatMat24Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix2x4fv(location, false, v);
-      };
-    }
-
-    function floatMat42Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix4x2fv(location, false, v);
-      };
-    }
-
-    function floatMat34Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix3x4fv(location, false, v);
-      };
-    }
-
-    function floatMat43Setter(gl, location) {
-      return function(v) {
-        gl.uniformMatrix4x3fv(location, false, v);
-      };
-    }
-
-    function samplerSetter(gl, type, unit, location) {
-      const bindPoint = getBindPointForSamplerType(gl, type);
-      return isWebGL2(gl) ? function(textureOrPair) {
-        let texture;
-        let sampler;
-        if (isTexture(gl, textureOrPair)) {
-          texture = textureOrPair;
-          sampler = null;
-        } else {
-          texture = textureOrPair.texture;
-          sampler = textureOrPair.sampler;
-        }
-        gl.uniform1i(location, unit);
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(bindPoint, texture);
-        gl.bindSampler(unit, sampler);
-      } : function(texture) {
-        gl.uniform1i(location, unit);
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(bindPoint, texture);
-      };
-    }
-
-    function samplerArraySetter(gl, type, unit, location, size) {
-      const bindPoint = getBindPointForSamplerType(gl, type);
-      const units = new Int32Array(size);
-      for (let ii = 0; ii < size; ++ii) {
-        units[ii] = unit + ii;
-      }
-
-      return isWebGL2(gl) ? function(textures) {
-        gl.uniform1iv(location, units);
-        textures.forEach(function(textureOrPair, index) {
-          gl.activeTexture(gl.TEXTURE0 + units[index]);
-          let texture;
-          let sampler;
-          if (isTexture(gl, textureOrPair)) {
-            texture = textureOrPair;
-            sampler = null;
-          } else {
-            texture = textureOrPair.texture;
-            sampler = textureOrPair.sampler;
-          }
-          gl.bindSampler(unit, sampler);
-          gl.bindTexture(bindPoint, texture);
-        });
-      } : function(textures) {
-        gl.uniform1iv(location, units);
-        textures.forEach(function(texture, index) {
-          gl.activeTexture(gl.TEXTURE0 + units[index]);
-          gl.bindTexture(bindPoint, texture);
-        });
-      };
-    }
-
-    typeMap[FLOAT$2]                         = { Type: Float32Array, size:  4, setter: floatSetter,      arraySetter: floatArraySetter, };
-    typeMap[FLOAT_VEC2]                    = { Type: Float32Array, size:  8, setter: floatVec2Setter,  };
-    typeMap[FLOAT_VEC3]                    = { Type: Float32Array, size: 12, setter: floatVec3Setter,  };
-    typeMap[FLOAT_VEC4]                    = { Type: Float32Array, size: 16, setter: floatVec4Setter,  };
-    typeMap[INT$2]                           = { Type: Int32Array,   size:  4, setter: intSetter,        arraySetter: intArraySetter, };
-    typeMap[INT_VEC2]                      = { Type: Int32Array,   size:  8, setter: intVec2Setter,    };
-    typeMap[INT_VEC3]                      = { Type: Int32Array,   size: 12, setter: intVec3Setter,    };
-    typeMap[INT_VEC4]                      = { Type: Int32Array,   size: 16, setter: intVec4Setter,    };
-    typeMap[UNSIGNED_INT$2]                  = { Type: Uint32Array,  size:  4, setter: uintSetter,       arraySetter: uintArraySetter, };
-    typeMap[UNSIGNED_INT_VEC2]             = { Type: Uint32Array,  size:  8, setter: uintVec2Setter,   };
-    typeMap[UNSIGNED_INT_VEC3]             = { Type: Uint32Array,  size: 12, setter: uintVec3Setter,   };
-    typeMap[UNSIGNED_INT_VEC4]             = { Type: Uint32Array,  size: 16, setter: uintVec4Setter,   };
-    typeMap[BOOL]                          = { Type: Uint32Array,  size:  4, setter: intSetter,        arraySetter: intArraySetter, };
-    typeMap[BOOL_VEC2]                     = { Type: Uint32Array,  size:  8, setter: intVec2Setter,    };
-    typeMap[BOOL_VEC3]                     = { Type: Uint32Array,  size: 12, setter: intVec3Setter,    };
-    typeMap[BOOL_VEC4]                     = { Type: Uint32Array,  size: 16, setter: intVec4Setter,    };
-    typeMap[FLOAT_MAT2]                    = { Type: Float32Array, size: 16, setter: floatMat2Setter,  };
-    typeMap[FLOAT_MAT3]                    = { Type: Float32Array, size: 36, setter: floatMat3Setter,  };
-    typeMap[FLOAT_MAT4]                    = { Type: Float32Array, size: 64, setter: floatMat4Setter,  };
-    typeMap[FLOAT_MAT2x3]                  = { Type: Float32Array, size: 24, setter: floatMat23Setter, };
-    typeMap[FLOAT_MAT2x4]                  = { Type: Float32Array, size: 32, setter: floatMat24Setter, };
-    typeMap[FLOAT_MAT3x2]                  = { Type: Float32Array, size: 24, setter: floatMat32Setter, };
-    typeMap[FLOAT_MAT3x4]                  = { Type: Float32Array, size: 48, setter: floatMat34Setter, };
-    typeMap[FLOAT_MAT4x2]                  = { Type: Float32Array, size: 32, setter: floatMat42Setter, };
-    typeMap[FLOAT_MAT4x3]                  = { Type: Float32Array, size: 48, setter: floatMat43Setter, };
-    typeMap[SAMPLER_2D]                    = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D,       };
-    typeMap[SAMPLER_CUBE]                  = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_CUBE_MAP, };
-    typeMap[SAMPLER_3D]                    = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_3D,       };
-    typeMap[SAMPLER_2D_SHADOW]             = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D,       };
-    typeMap[SAMPLER_2D_ARRAY]              = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D_ARRAY, };
-    typeMap[SAMPLER_2D_ARRAY_SHADOW]       = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D_ARRAY, };
-    typeMap[SAMPLER_CUBE_SHADOW]           = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_CUBE_MAP, };
-    typeMap[INT_SAMPLER_2D]                = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D,       };
-    typeMap[INT_SAMPLER_3D]                = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_3D,       };
-    typeMap[INT_SAMPLER_CUBE]              = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_CUBE_MAP, };
-    typeMap[INT_SAMPLER_2D_ARRAY]          = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D_ARRAY, };
-    typeMap[UNSIGNED_INT_SAMPLER_2D]       = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D,       };
-    typeMap[UNSIGNED_INT_SAMPLER_3D]       = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_3D,       };
-    typeMap[UNSIGNED_INT_SAMPLER_CUBE]     = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_CUBE_MAP, };
-    typeMap[UNSIGNED_INT_SAMPLER_2D_ARRAY] = { Type: null,         size:  0, setter: samplerSetter,    arraySetter: samplerArraySetter, bindPoint: TEXTURE_2D_ARRAY, };
-
-    function floatAttribSetter(gl, index) {
-      return function(b) {
-        if (b.value) {
-          gl.disableVertexAttribArray(index);
-          switch (b.value.length) {
-            case 4:
-              gl.vertexAttrib4fv(index, b.value);
-              break;
-            case 3:
-              gl.vertexAttrib3fv(index, b.value);
-              break;
-            case 2:
-              gl.vertexAttrib2fv(index, b.value);
-              break;
-            case 1:
-              gl.vertexAttrib1fv(index, b.value);
-              break;
-            default:
-              throw new Error('the length of a float constant value must be between 1 and 4!');
-          }
-        } else {
-          gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer);
-          gl.enableVertexAttribArray(index);
-          gl.vertexAttribPointer(
-              index, b.numComponents || b.size, b.type || gl.FLOAT, b.normalize || false, b.stride || 0, b.offset || 0);
-          if (b.divisor !== undefined) {
-            gl.vertexAttribDivisor(index, b.divisor);
-          }
-        }
-      };
-    }
-
-    function intAttribSetter(gl, index) {
-      return function(b) {
-        if (b.value) {
-          gl.disableVertexAttribArray(index);
-          if (b.value.length === 4) {
-            gl.vertexAttrib4iv(index, b.value);
-          } else {
-            throw new Error('The length of an integer constant value must be 4!');
-          }
-        } else {
-          gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer);
-          gl.enableVertexAttribArray(index);
-          gl.vertexAttribIPointer(
-              index, b.numComponents || b.size, b.type || gl.INT, b.stride || 0, b.offset || 0);
-          if (b.divisor !== undefined) {
-            gl.vertexAttribDivisor(index, b.divisor);
-          }
-        }
-      };
-    }
-
-    function uintAttribSetter(gl, index) {
-      return function(b) {
-        if (b.value) {
-          gl.disableVertexAttribArray(index);
-          if (b.value.length === 4) {
-            gl.vertexAttrib4uiv(index, b.value);
-          } else {
-            throw new Error('The length of an unsigned integer constant value must be 4!');
-          }
-        } else {
-          gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer);
-          gl.enableVertexAttribArray(index);
-          gl.vertexAttribIPointer(
-              index, b.numComponents || b.size, b.type || gl.UNSIGNED_INT, b.stride || 0, b.offset || 0);
-          if (b.divisor !== undefined) {
-            gl.vertexAttribDivisor(index, b.divisor);
-          }
-        }
-      };
-    }
-
-    function matAttribSetter(gl, index, typeInfo) {
-      const defaultSize = typeInfo.size;
-      const count = typeInfo.count;
-
-      return function(b) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer);
-        const numComponents = b.size || b.numComponents || defaultSize;
-        const size = numComponents / count;
-        const type = b.type || gl.FLOAT;
-        const typeInfo = typeMap[type];
-        const stride = typeInfo.size * numComponents;
-        const normalize = b.normalize || false;
-        const offset = b.offset || 0;
-        const rowOffset = stride / count;
-        for (let i = 0; i < count; ++i) {
-          gl.enableVertexAttribArray(index + i);
-          gl.vertexAttribPointer(
-              index + i, size, type, normalize, stride, offset + rowOffset * i);
-          if (b.divisor !== undefined) {
-            gl.vertexAttribDivisor(index + i, b.divisor);
-          }
-        }
-      };
-    }
-
-
-
-    const attrTypeMap = {};
-    attrTypeMap[FLOAT$2]             = { size:  4, setter: floatAttribSetter, };
-    attrTypeMap[FLOAT_VEC2]        = { size:  8, setter: floatAttribSetter, };
-    attrTypeMap[FLOAT_VEC3]        = { size: 12, setter: floatAttribSetter, };
-    attrTypeMap[FLOAT_VEC4]        = { size: 16, setter: floatAttribSetter, };
-    attrTypeMap[INT$2]               = { size:  4, setter: intAttribSetter,   };
-    attrTypeMap[INT_VEC2]          = { size:  8, setter: intAttribSetter,   };
-    attrTypeMap[INT_VEC3]          = { size: 12, setter: intAttribSetter,   };
-    attrTypeMap[INT_VEC4]          = { size: 16, setter: intAttribSetter,   };
-    attrTypeMap[UNSIGNED_INT$2]      = { size:  4, setter: uintAttribSetter,  };
-    attrTypeMap[UNSIGNED_INT_VEC2] = { size:  8, setter: uintAttribSetter,  };
-    attrTypeMap[UNSIGNED_INT_VEC3] = { size: 12, setter: uintAttribSetter,  };
-    attrTypeMap[UNSIGNED_INT_VEC4] = { size: 16, setter: uintAttribSetter,  };
-    attrTypeMap[BOOL]              = { size:  4, setter: intAttribSetter,   };
-    attrTypeMap[BOOL_VEC2]         = { size:  8, setter: intAttribSetter,   };
-    attrTypeMap[BOOL_VEC3]         = { size: 12, setter: intAttribSetter,   };
-    attrTypeMap[BOOL_VEC4]         = { size: 16, setter: intAttribSetter,   };
-    attrTypeMap[FLOAT_MAT2]        = { size:  4, setter: matAttribSetter,   count: 2, };
-    attrTypeMap[FLOAT_MAT3]        = { size:  9, setter: matAttribSetter,   count: 3, };
-    attrTypeMap[FLOAT_MAT4]        = { size: 16, setter: matAttribSetter,   count: 4, };
-
-    /**
-     * Error Callback
-     * @callback ErrorCallback
-     * @param {string} msg error message.
-     * @param {number} [lineOffset] amount to add to line number
-     * @memberOf module:twgl
-     */
-
-    function addLineNumbers(src, lineOffset) {
-      lineOffset = lineOffset || 0;
-      ++lineOffset;
-
-      return src.split("\n").map(function(line, ndx) {
-        return (ndx + lineOffset) + ": " + line;
-      }).join("\n");
-    }
-
-    const spaceRE = /^[ \t]*\n/;
-
-    /**
-     * Loads a shader.
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
-     * @param {string} shaderSource The shader source.
-     * @param {number} shaderType The type of shader.
-     * @param {module:twgl.ErrorCallback} opt_errorCallback callback for errors.
-     * @return {WebGLShader} The created shader.
-     * @private
-     */
-    function loadShader(gl, shaderSource, shaderType, opt_errorCallback) {
-      const errFn = opt_errorCallback || error$1;
-      // Create the shader object
-      const shader = gl.createShader(shaderType);
-
-      // Remove the first end of line because WebGL 2.0 requires
-      // #version 300 es
-      // as the first line. No whitespace allowed before that line
-      // so
-      //
-      // <script>
-      // #version 300 es
-      // </script>
-      //
-      // Has one line before it which is invalid according to GLSL ES 3.00
-      //
-      let lineOffset = 0;
-      if (spaceRE.test(shaderSource)) {
-        lineOffset = 1;
-        shaderSource = shaderSource.replace(spaceRE, '');
-      }
-
-      // Load the shader source
-      gl.shaderSource(shader, shaderSource);
-
-      // Compile the shader
-      gl.compileShader(shader);
-
-      // Check the compile status
-      const compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-      if (!compiled) {
-        // Something went wrong during compilation; get the error
-        const lastError = gl.getShaderInfoLog(shader);
-        errFn(addLineNumbers(shaderSource, lineOffset) + "\n*** Error compiling shader: " + lastError);
-        gl.deleteShader(shader);
-        return null;
-      }
-
-      return shader;
-    }
-
-    /**
-     * @typedef {Object} ProgramOptions
-     * @property {function(string)} [errorCallback] callback for errors
-     * @property {Object.<string,number>} [attribLocations] a attribute name to location map
-     * @property {(module:twgl.BufferInfo|Object.<string,module:twgl.AttribInfo>|string[])} [transformFeedbackVaryings] If passed
-     *   a BufferInfo will use the attribs names inside. If passed an object of AttribInfos will use the names from that object. Otherwise
-     *   you can pass an array of names.
-     * @property {number} [transformFeedbackMode] the mode to pass `gl.transformFeedbackVaryings`. Defaults to `SEPARATE_ATTRIBS`.
-     * @memberOf module:twgl
-     */
-
-    /**
-     * Gets the program options based on all these optional arguments
-     * @param {module:twgl.ProgramOptions|string[]} [opt_attribs] Options for the program or an array of attribs names. Locations will be assigned by index if not passed in
-     * @param {number[]} [opt_locations] The locations for the. A parallel array to opt_attribs letting you assign locations.
-     * @param {module:twgl.ErrorCallback} [opt_errorCallback] callback for errors. By default it just prints an error to the console
-     *        on error. If you want something else pass an callback. It's passed an error message.
-     * @return {module:twgl.ProgramOptions} an instance of ProgramOptions based on the arguments passed in
-     * @private
-     */
-    function getProgramOptions(opt_attribs, opt_locations, opt_errorCallback) {
-      let transformFeedbackVaryings;
-      let transformFeedbackMode;
-      if (typeof opt_locations === 'function') {
-        opt_errorCallback = opt_locations;
-        opt_locations = undefined;
-      }
-      if (typeof opt_attribs === 'function') {
-        opt_errorCallback = opt_attribs;
-        opt_attribs = undefined;
-      } else if (opt_attribs && !Array.isArray(opt_attribs)) {
-        // If we have an errorCallback we can just return this object
-        // Otherwise we need to construct one with default errorCallback
-        if (opt_attribs.errorCallback) {
-          return opt_attribs;
-        }
-        const opt = opt_attribs;
-        opt_errorCallback = opt.errorCallback;
-        opt_attribs = opt.attribLocations;
-        transformFeedbackVaryings = opt.transformFeedbackVaryings;
-        transformFeedbackMode = opt.transformFeedbackMode;
-      }
-
-      const options = {
-        errorCallback: opt_errorCallback || error$1,
-        transformFeedbackVaryings: transformFeedbackVaryings,
-        transformFeedbackMode: transformFeedbackMode,
-      };
-
-      if (opt_attribs) {
-        let attribLocations = {};
-        if (Array.isArray(opt_attribs)) {
-          opt_attribs.forEach(function(attrib,  ndx) {
-            attribLocations[attrib] = opt_locations ? opt_locations[ndx] : ndx;
-          });
-        } else {
-          attribLocations = opt_attribs;
-        }
-        options.attribLocations = attribLocations;
-      }
-
-      return options;
-    }
-
-    const defaultShaderType = [
-      "VERTEX_SHADER",
-      "FRAGMENT_SHADER",
-    ];
-
-    function getShaderTypeFromScriptType(gl, scriptType) {
-      if (scriptType.indexOf("frag") >= 0) {
-        return gl.FRAGMENT_SHADER;
-      } else if (scriptType.indexOf("vert") >= 0) {
-        return gl.VERTEX_SHADER;
-      }
-      return undefined;
-    }
-
-    function deleteShaders(gl, shaders) {
-      shaders.forEach(function(shader) {
-        gl.deleteShader(shader);
-      });
-    }
-
-    /**
-     * Creates a program, attaches (and/or compiles) shaders, binds attrib locations, links the
-     * program and calls useProgram.
-     *
-     * NOTE: There are 4 signatures for this function
-     *
-     *     twgl.createProgram(gl, [vs, fs], options);
-     *     twgl.createProgram(gl, [vs, fs], opt_errFunc);
-     *     twgl.createProgram(gl, [vs, fs], opt_attribs, opt_errFunc);
-     *     twgl.createProgram(gl, [vs, fs], opt_attribs, opt_locations, opt_errFunc);
-     *
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
-     * @param {WebGLShader[]|string[]} shaders The shaders to attach, or element ids for their source, or strings that contain their source
-     * @param {module:twgl.ProgramOptions|string[]|module:twgl.ErrorCallback} [opt_attribs] Options for the program or an array of attribs names or an error callback. Locations will be assigned by index if not passed in
-     * @param {number[]} [opt_locations|module:twgl.ErrorCallback] The locations for the. A parallel array to opt_attribs letting you assign locations or an error callback.
-     * @param {module:twgl.ErrorCallback} [opt_errorCallback] callback for errors. By default it just prints an error to the console
-     *        on error. If you want something else pass an callback. It's passed an error message.
-     * @return {WebGLProgram?} the created program or null if error.
-     * @memberOf module:twgl/programs
-     */
-    function createProgram(
-        gl, shaders, opt_attribs, opt_locations, opt_errorCallback) {
-      const progOptions = getProgramOptions(opt_attribs, opt_locations, opt_errorCallback);
-      const realShaders = [];
-      const newShaders = [];
-      for (let ndx = 0; ndx < shaders.length; ++ndx) {
-        let shader = shaders[ndx];
-        if (typeof (shader) === 'string') {
-          const elem = getElementById(shader);
-          const src = elem ? elem.text : shader;
-          let type = gl[defaultShaderType[ndx]];
-          if (elem && elem.type) {
-            type = getShaderTypeFromScriptType(gl, elem.type) || type;
-          }
-          shader = loadShader(gl, src, type, progOptions.errorCallback);
-          newShaders.push(shader);
-        }
-        if (isShader(gl, shader)) {
-          realShaders.push(shader);
-        }
-      }
-
-      if (realShaders.length !== shaders.length) {
-        progOptions.errorCallback("not enough shaders for program");
-        deleteShaders(gl, newShaders);
-        return null;
-      }
-
-      const program = gl.createProgram();
-      realShaders.forEach(function(shader) {
-        gl.attachShader(program, shader);
-      });
-      if (progOptions.attribLocations) {
-        Object.keys(progOptions.attribLocations).forEach(function(attrib) {
-          gl.bindAttribLocation(program, progOptions.attribLocations[attrib], attrib);
-        });
-      }
-      let varyings = progOptions.transformFeedbackVaryings;
-      if (varyings) {
-        if (varyings.attribs) {
-          varyings = varyings.attribs;
-        }
-        if (!Array.isArray(varyings)) {
-          varyings = Object.keys(varyings);
-        }
-        gl.transformFeedbackVaryings(program, varyings, progOptions.transformFeedbackMode || gl.SEPARATE_ATTRIBS);
-      }
-      gl.linkProgram(program);
-
-      // Check the link status
-      const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-      if (!linked) {
-        // something went wrong with the link
-        const lastError = gl.getProgramInfoLog(program);
-        progOptions.errorCallback("Error in program linking:" + lastError);
-
-        gl.deleteProgram(program);
-        deleteShaders(gl, newShaders);
-        return null;
-      }
-      return program;
-    }
-
-    /**
-     * Creates a program from 2 sources.
-     *
-     * NOTE: There are 4 signatures for this function
-     *
-     *     twgl.createProgramFromSource(gl, [vs, fs], opt_options);
-     *     twgl.createProgramFromSource(gl, [vs, fs], opt_errFunc);
-     *     twgl.createProgramFromSource(gl, [vs, fs], opt_attribs, opt_errFunc);
-     *     twgl.createProgramFromSource(gl, [vs, fs], opt_attribs, opt_locations, opt_errFunc);
-     *
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext
-     *        to use.
-     * @param {string[]} shaderSources Array of sources for the
-     *        shaders. The first is assumed to be the vertex shader,
-     *        the second the fragment shader.
-     * @param {module:twgl.ProgramOptions|string[]|module:twgl.ErrorCallback} [opt_attribs] Options for the program or an array of attribs names or an error callback. Locations will be assigned by index if not passed in
-     * @param {number[]} [opt_locations|module:twgl.ErrorCallback] The locations for the. A parallel array to opt_attribs letting you assign locations or an error callback.
-     * @param {module:twgl.ErrorCallback} [opt_errorCallback] callback for errors. By default it just prints an error to the console
-     *        on error. If you want something else pass an callback. It's passed an error message.
-     * @return {WebGLProgram?} the created program or null if error.
-     * @memberOf module:twgl/programs
-     */
-    function createProgramFromSources(
-        gl, shaderSources, opt_attribs, opt_locations, opt_errorCallback) {
-      const progOptions = getProgramOptions(opt_attribs, opt_locations, opt_errorCallback);
-      const shaders = [];
-      for (let ii = 0; ii < shaderSources.length; ++ii) {
-        const shader = loadShader(
-            gl, shaderSources[ii], gl[defaultShaderType[ii]], progOptions.errorCallback);
-        if (!shader) {
-          return null;
-        }
-        shaders.push(shader);
-      }
-      return createProgram(gl, shaders, progOptions);
-    }
-
-    /**
-     * Returns true if attribute/uniform is a reserved/built in
-     *
-     * It makes no sense to me why GL returns these because it's
-     * illegal to call `gl.getUniformLocation` and `gl.getAttribLocation`
-     * with names that start with `gl_` (and `webgl_` in WebGL)
-     *
-     * I can only assume they are there because they might count
-     * when computing the number of uniforms/attributes used when you want to
-     * know if you are near the limit. That doesn't really make sense
-     * to me but the fact that these get returned are in the spec.
-     *
-     * @param {WebGLActiveInfo} info As returned from `gl.getActiveUniform` or
-     *    `gl.getActiveAttrib`.
-     * @return {bool} true if it's reserved
-     * @private
-     */
-    function isBuiltIn(info) {
-      const name = info.name;
-      return name.startsWith("gl_") || name.startsWith("webgl_");
-    }
-
-    /**
-     * Creates setter functions for all uniforms of a shader
-     * program.
-     *
-     * @see {@link module:twgl.setUniforms}
-     *
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
-     * @param {WebGLProgram} program the program to create setters for.
-     * @returns {Object.<string, function>} an object with a setter by name for each uniform
-     * @memberOf module:twgl/programs
-     */
-    function createUniformSetters(gl, program) {
-      let textureUnit = 0;
-
-      /**
-       * Creates a setter for a uniform of the given program with it's
-       * location embedded in the setter.
-       * @param {WebGLProgram} program
-       * @param {WebGLUniformInfo} uniformInfo
-       * @returns {function} the created setter.
-       */
-      function createUniformSetter(program, uniformInfo) {
-        const location = gl.getUniformLocation(program, uniformInfo.name);
-        const isArray = (uniformInfo.size > 1 && uniformInfo.name.substr(-3) === "[0]");
-        const type = uniformInfo.type;
-        const typeInfo = typeMap[type];
-        if (!typeInfo) {
-          throw new Error(`unknown type: 0x${type.toString(16)}`); // we should never get here.
-        }
-        let setter;
-        if (typeInfo.bindPoint) {
-          // it's a sampler
-          const unit = textureUnit;
-          textureUnit += uniformInfo.size;
-          if (isArray) {
-            setter = typeInfo.arraySetter(gl, type, unit, location, uniformInfo.size);
-          } else {
-            setter = typeInfo.setter(gl, type, unit, location, uniformInfo.size);
-          }
-        } else {
-          if (typeInfo.arraySetter && isArray) {
-            setter = typeInfo.arraySetter(gl, location);
-          } else {
-            setter = typeInfo.setter(gl, location);
-          }
-        }
-        setter.location = location;
-        return setter;
-      }
-
-      const uniformSetters = { };
-      const numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-
-      for (let ii = 0; ii < numUniforms; ++ii) {
-        const uniformInfo = gl.getActiveUniform(program, ii);
-        if (isBuiltIn(uniformInfo)) {
-            continue;
-        }
-        let name = uniformInfo.name;
-        // remove the array suffix.
-        if (name.substr(-3) === "[0]") {
-          name = name.substr(0, name.length - 3);
-        }
-        const setter = createUniformSetter(program, uniformInfo);
-        uniformSetters[name] = setter;
-      }
-      return uniformSetters;
-    }
-
-    /**
-     * @typedef {Object} TransformFeedbackInfo
-     * @property {number} index index of transform feedback
-     * @property {number} type GL type
-     * @property {number} size 1 - 4
-     * @memberOf module:twgl
-     */
-
-    /**
-     * Create TransformFeedbackInfo for passing to bindTransformFeedbackInfo.
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
-     * @param {WebGLProgram} program an existing WebGLProgram.
-     * @return {Object<string, module:twgl.TransformFeedbackInfo>}
-     * @memberOf module:twgl
-     */
-    function createTransformFeedbackInfo(gl, program) {
-      const info = {};
-      const numVaryings = gl.getProgramParameter(program, gl.TRANSFORM_FEEDBACK_VARYINGS);
-      for (let ii = 0; ii < numVaryings; ++ii) {
-        const varying = gl.getTransformFeedbackVarying(program, ii);
-        info[varying.name] = {
-          index: ii,
-          type: varying.type,
-          size: varying.size,
-        };
-      }
-      return info;
-    }
-
-    /**
-     * @typedef {Object} UniformData
-     * @property {number} type The WebGL type enum for this uniform
-     * @property {number} size The number of elements for this uniform
-     * @property {number} blockNdx The block index this uniform appears in
-     * @property {number} offset The byte offset in the block for this uniform's value
-     * @memberOf module:twgl
-     */
-
-    /**
-     * The specification for one UniformBlockObject
-     *
-     * @typedef {Object} BlockSpec
-     * @property {number} index The index of the block.
-     * @property {number} size The size in bytes needed for the block
-     * @property {number[]} uniformIndices The indices of the uniforms used by the block. These indices
-     *    correspond to entries in a UniformData array in the {@link module:twgl.UniformBlockSpec}.
-     * @property {bool} usedByVertexShader Self explanatory
-     * @property {bool} usedByFragmentShader Self explanatory
-     * @property {bool} used Self explanatory
-     * @memberOf module:twgl
-     */
-
-    /**
-     * A `UniformBlockSpec` represents the data needed to create and bind
-     * UniformBlockObjects for a given program
-     *
-     * @typedef {Object} UniformBlockSpec
-     * @property {Object.<string, module:twgl.BlockSpec> blockSpecs The BlockSpec for each block by block name
-     * @property {UniformData[]} uniformData An array of data for each uniform by uniform index.
-     * @memberOf module:twgl
-     */
-
-    /**
-     * Creates a UniformBlockSpec for the given program.
-     *
-     * A UniformBlockSpec represents the data needed to create and bind
-     * UniformBlockObjects
-     *
-     * @param {WebGL2RenderingContext} gl A WebGL2 Rendering Context
-     * @param {WebGLProgram} program A WebGLProgram for a successfully linked program
-     * @return {module:twgl.UniformBlockSpec} The created UniformBlockSpec
-     * @memberOf module:twgl/programs
-     */
-    function createUniformBlockSpecFromProgram(gl, program) {
-      const numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-      const uniformData = [];
-      const uniformIndices = [];
-
-      for (let ii = 0; ii < numUniforms; ++ii) {
-        uniformIndices.push(ii);
-        uniformData.push({});
-        const uniformInfo = gl.getActiveUniform(program, ii);
-        if (isBuiltIn(uniformInfo)) {
-          break;
-        }
-        // REMOVE [0]?
-        uniformData[ii].name = uniformInfo.name;
-      }
-
-      [
-        [ "UNIFORM_TYPE", "type" ],
-        [ "UNIFORM_SIZE", "size" ],  // num elements
-        [ "UNIFORM_BLOCK_INDEX", "blockNdx" ],
-        [ "UNIFORM_OFFSET", "offset", ],
-      ].forEach(function(pair) {
-        const pname = pair[0];
-        const key = pair[1];
-        gl.getActiveUniforms(program, uniformIndices, gl[pname]).forEach(function(value, ndx) {
-          uniformData[ndx][key] = value;
-        });
-      });
-
-      const blockSpecs = {};
-
-      const numUniformBlocks = gl.getProgramParameter(program, gl.ACTIVE_UNIFORM_BLOCKS);
-      for (let ii = 0; ii < numUniformBlocks; ++ii) {
-        const name = gl.getActiveUniformBlockName(program, ii);
-        const blockSpec = {
-          index: ii,
-          usedByVertexShader: gl.getActiveUniformBlockParameter(program, ii, gl.UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER),
-          usedByFragmentShader: gl.getActiveUniformBlockParameter(program, ii, gl.UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER),
-          size: gl.getActiveUniformBlockParameter(program, ii, gl.UNIFORM_BLOCK_DATA_SIZE),
-          uniformIndices: gl.getActiveUniformBlockParameter(program, ii, gl.UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES),
-        };
-        blockSpec.used = blockSpec.usedByVertexShader || blockSpec.usedByFragmentShader;
-        blockSpecs[name] = blockSpec;
-      }
-
-      return {
-        blockSpecs: blockSpecs,
-        uniformData: uniformData,
-      };
-    }
-
-    /**
-     * Set uniforms and binds related textures.
-     *
-     * example:
-     *
-     *     const programInfo = createProgramInfo(
-     *         gl, ["some-vs", "some-fs"]);
-     *
-     *     const tex1 = gl.createTexture();
-     *     const tex2 = gl.createTexture();
-     *
-     *     ... assume we setup the textures with data ...
-     *
-     *     const uniforms = {
-     *       u_someSampler: tex1,
-     *       u_someOtherSampler: tex2,
-     *       u_someColor: [1,0,0,1],
-     *       u_somePosition: [0,1,1],
-     *       u_someMatrix: [
-     *         1,0,0,0,
-     *         0,1,0,0,
-     *         0,0,1,0,
-     *         0,0,0,0,
-     *       ],
-     *     };
-     *
-     *     gl.useProgram(program);
-     *
-     * This will automatically bind the textures AND set the
-     * uniforms.
-     *
-     *     twgl.setUniforms(programInfo, uniforms);
-     *
-     * For the example above it is equivalent to
-     *
-     *     var texUnit = 0;
-     *     gl.activeTexture(gl.TEXTURE0 + texUnit);
-     *     gl.bindTexture(gl.TEXTURE_2D, tex1);
-     *     gl.uniform1i(u_someSamplerLocation, texUnit++);
-     *     gl.activeTexture(gl.TEXTURE0 + texUnit);
-     *     gl.bindTexture(gl.TEXTURE_2D, tex2);
-     *     gl.uniform1i(u_someSamplerLocation, texUnit++);
-     *     gl.uniform4fv(u_someColorLocation, [1, 0, 0, 1]);
-     *     gl.uniform3fv(u_somePositionLocation, [0, 1, 1]);
-     *     gl.uniformMatrix4fv(u_someMatrix, false, [
-     *         1,0,0,0,
-     *         0,1,0,0,
-     *         0,0,1,0,
-     *         0,0,0,0,
-     *       ]);
-     *
-     * Note it is perfectly reasonable to call `setUniforms` multiple times. For example
-     *
-     *     const uniforms = {
-     *       u_someSampler: tex1,
-     *       u_someOtherSampler: tex2,
-     *     };
-     *
-     *     const moreUniforms {
-     *       u_someColor: [1,0,0,1],
-     *       u_somePosition: [0,1,1],
-     *       u_someMatrix: [
-     *         1,0,0,0,
-     *         0,1,0,0,
-     *         0,0,1,0,
-     *         0,0,0,0,
-     *       ],
-     *     };
-     *
-     *     twgl.setUniforms(programInfo, uniforms);
-     *     twgl.setUniforms(programInfo, moreUniforms);
-     *
-     * You can also add WebGLSamplers to uniform samplers as in
-     *
-     *     const uniforms = {
-     *       u_someSampler: {
-     *         texture: someWebGLTexture,
-     *         sampler: someWebGLSampler,
-     *       },
-     *     };
-     *
-     * In which case both the sampler and texture will be bound to the
-     * same unit.
-     *
-     * @param {(module:twgl.ProgramInfo|Object.<string, function>)} setters a `ProgramInfo` as returned from `createProgramInfo` or the setters returned from
-     *        `createUniformSetters`.
-     * @param {Object.<string, ?>} values an object with values for the
-     *        uniforms.
-     *   You can pass multiple objects by putting them in an array or by calling with more arguments.For example
-     *
-     *     const sharedUniforms = {
-     *       u_fogNear: 10,
-     *       u_projection: ...
-     *       ...
-     *     };
-     *
-     *     const localUniforms = {
-     *       u_world: ...
-     *       u_diffuseColor: ...
-     *     };
-     *
-     *     twgl.setUniforms(programInfo, sharedUniforms, localUniforms);
-     *
-     *     // is the same as
-     *
-     *     twgl.setUniforms(programInfo, [sharedUniforms, localUniforms]);
-     *
-     *     // is the same as
-     *
-     *     twgl.setUniforms(programInfo, sharedUniforms);
-     *     twgl.setUniforms(programInfo, localUniforms};
-     *
-     * @memberOf module:twgl/programs
-     */
-    function setUniforms(setters, values) {  // eslint-disable-line
-      const actualSetters = setters.uniformSetters || setters;
-      const numArgs = arguments.length;
-      for (let aNdx = 1; aNdx < numArgs; ++aNdx) {
-        const values = arguments[aNdx];
-        if (Array.isArray(values)) {
-          const numValues = values.length;
-          for (let ii = 0; ii < numValues; ++ii) {
-            setUniforms(actualSetters, values[ii]);
-          }
-        } else {
-          for (const name in values) {
-            const setter = actualSetters[name];
-            if (setter) {
-              setter(values[name]);
-            }
-          }
-        }
-      }
-    }
-
-    /**
-     * Creates setter functions for all attributes of a shader
-     * program. You can pass this to {@link module:twgl.setBuffersAndAttributes} to set all your buffers and attributes.
-     *
-     * @see {@link module:twgl.setAttributes} for example
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext to use.
-     * @param {WebGLProgram} program the program to create setters for.
-     * @return {Object.<string, function>} an object with a setter for each attribute by name.
-     * @memberOf module:twgl/programs
-     */
-    function createAttributeSetters(gl, program) {
-      const attribSetters = {
-      };
-
-      const numAttribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-      for (let ii = 0; ii < numAttribs; ++ii) {
-        const attribInfo = gl.getActiveAttrib(program, ii);
-        if (isBuiltIn(attribInfo)) {
-            continue;
-        }
-        const index = gl.getAttribLocation(program, attribInfo.name);
-        const typeInfo = attrTypeMap[attribInfo.type];
-        const setter = typeInfo.setter(gl, index, typeInfo);
-        setter.location = index;
-        attribSetters[attribInfo.name] = setter;
-      }
-
-      return attribSetters;
-    }
-
-    /**
-     * Sets attributes and binds buffers (deprecated... use {@link module:twgl.setBuffersAndAttributes})
-     *
-     * Example:
-     *
-     *     const program = createProgramFromScripts(
-     *         gl, ["some-vs", "some-fs");
-     *
-     *     const attribSetters = createAttributeSetters(program);
-     *
-     *     const positionBuffer = gl.createBuffer();
-     *     const texcoordBuffer = gl.createBuffer();
-     *
-     *     const attribs = {
-     *       a_position: {buffer: positionBuffer, numComponents: 3},
-     *       a_texcoord: {buffer: texcoordBuffer, numComponents: 2},
-     *     };
-     *
-     *     gl.useProgram(program);
-     *
-     * This will automatically bind the buffers AND set the
-     * attributes.
-     *
-     *     setAttributes(attribSetters, attribs);
-     *
-     * Properties of attribs. For each attrib you can add
-     * properties:
-     *
-     * *   type: the type of data in the buffer. Default = gl.FLOAT
-     * *   normalize: whether or not to normalize the data. Default = false
-     * *   stride: the stride. Default = 0
-     * *   offset: offset into the buffer. Default = 0
-     * *   divisor: the divisor for instances. Default = undefined
-     *
-     * For example if you had 3 value float positions, 2 value
-     * float texcoord and 4 value uint8 colors you'd setup your
-     * attribs like this
-     *
-     *     const attribs = {
-     *       a_position: {buffer: positionBuffer, numComponents: 3},
-     *       a_texcoord: {buffer: texcoordBuffer, numComponents: 2},
-     *       a_color: {
-     *         buffer: colorBuffer,
-     *         numComponents: 4,
-     *         type: gl.UNSIGNED_BYTE,
-     *         normalize: true,
-     *       },
-     *     };
-     *
-     * @param {Object.<string, function>} setters Attribute setters as returned from createAttributeSetters
-     * @param {Object.<string, module:twgl.AttribInfo>} buffers AttribInfos mapped by attribute name.
-     * @memberOf module:twgl/programs
-     * @deprecated use {@link module:twgl.setBuffersAndAttributes}
-     */
-    function setAttributes(setters, buffers) {
-      for (const name in buffers) {
-        const setter = setters[name];
-        if (setter) {
-          setter(buffers[name]);
-        }
-      }
-    }
-
-    /**
-     * Sets attributes and buffers including the `ELEMENT_ARRAY_BUFFER` if appropriate
-     *
-     * Example:
-     *
-     *     const programInfo = createProgramInfo(
-     *         gl, ["some-vs", "some-fs");
-     *
-     *     const arrays = {
-     *       position: { numComponents: 3, data: [0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 10, 0], },
-     *       texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1],                 },
-     *     };
-     *
-     *     const bufferInfo = createBufferInfoFromArrays(gl, arrays);
-     *
-     *     gl.useProgram(programInfo.program);
-     *
-     * This will automatically bind the buffers AND set the
-     * attributes.
-     *
-     *     setBuffersAndAttributes(gl, programInfo, bufferInfo);
-     *
-     * For the example above it is equivalent to
-     *
-     *     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-     *     gl.enableVertexAttribArray(a_positionLocation);
-     *     gl.vertexAttribPointer(a_positionLocation, 3, gl.FLOAT, false, 0, 0);
-     *     gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-     *     gl.enableVertexAttribArray(a_texcoordLocation);
-     *     gl.vertexAttribPointer(a_texcoordLocation, 4, gl.FLOAT, false, 0, 0);
-     *
-     * @param {WebGLRenderingContext} gl A WebGLRenderingContext.
-     * @param {(module:twgl.ProgramInfo|Object.<string, function>)} setters A `ProgramInfo` as returned from {@link module:twgl.createProgramInfo} or Attribute setters as returned from {@link module:twgl.createAttributeSetters}
-     * @param {(module:twgl.BufferInfo|module:twgl.VertexArrayInfo)} buffers a `BufferInfo` as returned from {@link module:twgl.createBufferInfoFromArrays}.
-     *   or a `VertexArrayInfo` as returned from {@link module:twgl.createVertexArrayInfo}
-     * @memberOf module:twgl/programs
-     */
-    function setBuffersAndAttributes(gl, programInfo, buffers) {
-      if (buffers.vertexArrayObject) {
-        gl.bindVertexArray(buffers.vertexArrayObject);
-      } else {
-        setAttributes(programInfo.attribSetters || programInfo, buffers.attribs);
-        if (buffers.indices) {
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-        }
-      }
-    }
-
-    /**
-     * @typedef {Object} ProgramInfo
-     * @property {WebGLProgram} program A shader program
-     * @property {Object<string, function>} uniformSetters object of setters as returned from createUniformSetters,
-     * @property {Object<string, function>} attribSetters object of setters as returned from createAttribSetters,
-     * @property {module:twgl.UniformBlockSpec} [uniformBlockSpace] a uniform block spec for making UniformBlockInfos with createUniformBlockInfo etc..
-     * @property {Object<string, module:twgl.TransformFeedbackInfo>} [transformFeedbackInfo] info for transform feedbacks
-     * @memberOf module:twgl
-     */
-
-    /**
-     * Creates a ProgramInfo from an existing program.
-     *
-     * A ProgramInfo contains
-     *
-     *     programInfo = {
-     *        program: WebGLProgram,
-     *        uniformSetters: object of setters as returned from createUniformSetters,
-     *        attribSetters: object of setters as returned from createAttribSetters,
-     *     }
-     *
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext
-     *        to use.
-     * @param {WebGLProgram} program an existing WebGLProgram.
-     * @return {module:twgl.ProgramInfo} The created ProgramInfo.
-     * @memberOf module:twgl/programs
-     */
-    function createProgramInfoFromProgram(gl, program) {
-      const uniformSetters = createUniformSetters(gl, program);
-      const attribSetters = createAttributeSetters(gl, program);
-      const programInfo = {
-        program: program,
-        uniformSetters: uniformSetters,
-        attribSetters: attribSetters,
-      };
-
-      if (isWebGL2(gl)) {
-        programInfo.uniformBlockSpec = createUniformBlockSpecFromProgram(gl, program);
-        programInfo.transformFeedbackInfo = createTransformFeedbackInfo(gl, program);
-      }
-
-      return programInfo;
-    }
-
-    /**
-     * Creates a ProgramInfo from 2 sources.
-     *
-     * A ProgramInfo contains
-     *
-     *     programInfo = {
-     *        program: WebGLProgram,
-     *        uniformSetters: object of setters as returned from createUniformSetters,
-     *        attribSetters: object of setters as returned from createAttribSetters,
-     *     }
-     *
-     * NOTE: There are 4 signatures for this function
-     *
-     *     twgl.createProgramInfo(gl, [vs, fs], options);
-     *     twgl.createProgramInfo(gl, [vs, fs], opt_errFunc);
-     *     twgl.createProgramInfo(gl, [vs, fs], opt_attribs, opt_errFunc);
-     *     twgl.createProgramInfo(gl, [vs, fs], opt_attribs, opt_locations, opt_errFunc);
-     *
-     * @param {WebGLRenderingContext} gl The WebGLRenderingContext
-     *        to use.
-     * @param {string[]} shaderSources Array of sources for the
-     *        shaders or ids. The first is assumed to be the vertex shader,
-     *        the second the fragment shader.
-     * @param {module:twgl.ProgramOptions|string[]|module:twgl.ErrorCallback} [opt_attribs] Options for the program or an array of attribs names or an error callback. Locations will be assigned by index if not passed in
-     * @param {number[]} [opt_locations|module:twgl.ErrorCallback] The locations for the. A parallel array to opt_attribs letting you assign locations or an error callback.
-     * @param {module:twgl.ErrorCallback} [opt_errorCallback] callback for errors. By default it just prints an error to the console
-     *        on error. If you want something else pass an callback. It's passed an error message.
-     * @return {module:twgl.ProgramInfo?} The created ProgramInfo or null if it failed to link or compile
-     * @memberOf module:twgl/programs
-     */
-    function createProgramInfo(
-        gl, shaderSources, opt_attribs, opt_locations, opt_errorCallback) {
-      const progOptions = getProgramOptions(opt_attribs, opt_locations, opt_errorCallback);
-      let good = true;
-      shaderSources = shaderSources.map(function(source) {
-        // Lets assume if there is no \n it's an id
-        if (source.indexOf("\n") < 0) {
-          const script = getElementById(source);
-          if (!script) {
-            progOptions.errorCallback("no element with id: " + source);
-            good = false;
-          } else {
-            source = script.text;
-          }
-        }
-        return source;
-      });
-      if (!good) {
-        return null;
-      }
-      const program = createProgramFromSources(gl, shaderSources, progOptions);
-      if (!program) {
-        return null;
-      }
-      return createProgramInfoFromProgram(gl, program);
-    }
-
-    /*
-     * Copyright 2019 Gregg Tavares
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a
-     * copy of this software and associated documentation files (the "Software"),
-     * to deal in the Software without restriction, including without limitation
-     * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-     * and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in
-     * all copies or substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-     * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-     * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-     * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     * DEALINGS IN THE SOFTWARE.
-     */
-
-    /**
-     * Drawing related functions
-     *
-     * For backward compatibility they are available at both `twgl.draw` and `twgl`
-     * itself
-     *
-     * See {@link module:twgl} for core functions
-     *
-     * @module twgl/draw
-     */
-
-    /**
-     * Calls `gl.drawElements` or `gl.drawArrays`, whichever is appropriate
-     *
-     * normally you'd call `gl.drawElements` or `gl.drawArrays` yourself
-     * but calling this means if you switch from indexed data to non-indexed
-     * data you don't have to remember to update your draw call.
-     *
-     * @param {WebGLRenderingContext} gl A WebGLRenderingContext
-     * @param {(module:twgl.BufferInfo|module:twgl.VertexArrayInfo)} bufferInfo A BufferInfo as returned from {@link module:twgl.createBufferInfoFromArrays} or
-     *   a VertexArrayInfo as returned from {@link module:twgl.createVertexArrayInfo}
-     * @param {number} [type] eg (gl.TRIANGLES, gl.LINES, gl.POINTS, gl.TRIANGLE_STRIP, ...). Defaults to `gl.TRIANGLES`
-     * @param {number} [count] An optional count. Defaults to bufferInfo.numElements
-     * @param {number} [offset] An optional offset. Defaults to 0.
-     * @param {number} [instanceCount] An optional instanceCount. if set then `drawArraysInstanced` or `drawElementsInstanced` will be called
-     * @memberOf module:twgl/draw
-     */
-    function drawBufferInfo(gl, bufferInfo, type, count, offset, instanceCount) {
-      type = type === undefined ? gl.TRIANGLES : type;
-      const indices = bufferInfo.indices;
-      const elementType = bufferInfo.elementType;
-      const numElements = count === undefined ? bufferInfo.numElements : count;
-      offset = offset === undefined ? 0 : offset;
-      if (elementType || indices) {
-        if (instanceCount !== undefined) {
-          gl.drawElementsInstanced(type, numElements, elementType === undefined ? gl.UNSIGNED_SHORT : bufferInfo.elementType, offset, instanceCount);
-        } else {
-          gl.drawElements(type, numElements, elementType === undefined ? gl.UNSIGNED_SHORT : bufferInfo.elementType, offset);
-        }
-      } else {
-        if (instanceCount !== undefined) {
-          gl.drawArraysInstanced(type, offset, numElements, instanceCount);
-        } else {
-          gl.drawArrays(type, offset, numElements);
-        }
-      }
-    }
 
     const tick = read(0, (set) => {
       setInterval(() => {
@@ -6205,40 +4323,41 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         frame: frame
     });
 
-    // can import these from their files
-    const trippy = read([
-`attribute vec4 position;
+    var test_frag = "precision mediump float;uniform vec2 resolution;uniform float time;void main(){vec2 uv=gl_FragCoord.xy/resolution;float color=0.0;color+=sin(uv.x*cos(time/3.0)*60.0)+cos(uv.y*cos(time/2.80)*10.0);color+=sin(uv.y*sin(time/2.0)*40.0)+cos(uv.x*sin(time/1.70)*40.0);color+=sin(uv.x*sin(time/1.0)*10.0)+sin(uv.y*sin(time/3.50)*80.0);color*=sin(time/10.0)*0.5;gl_FragColor=vec4(vec3(color*0.5,sin(color+time/2.5)*0.75,color),1.0);}";
 
-void main() {
-  gl_Position = position;
-}
-`    ,
-`
-precision mediump float;
+    var test_vert = "attribute vec4 position;void main(){gl_Position=position;}";
 
-uniform vec2 resolution;
-uniform float time;
+    var sprite_frag = "";
 
-void main() {
-vec2 uv = gl_FragCoord.xy / resolution;
-float color = 0.0;
+    var sprite_vert = "";
 
-color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
-color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
-color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
-color *= sin( time / 10.0 ) * 0.5;
+    const breaker = (a) => a.map(i => `\r\n${i}`);
 
-gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color ), 1.0 );
-}
-`
-    ]);
+    const test$1 = read(breaker([
+      test_vert,
+      test_frag
+    ]));
+
+    const sprite = read(breaker([
+      sprite_vert,
+      sprite_frag
+    ]));
 
     const VALUE = () => ({
-      position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+      position: [
+        -1, -1, 0,
+        1, -1, 0,
+        -1, 1, 0,
+        -1, 1, 0,
+        1, -1, 0,
+        1, 1, 0
+      ]
     });
 
     var screen = ({
-      value = VALUE(),
+      value = {
+        flock: VALUE()
+      },
       id,
       life,
       weave
@@ -6250,28 +4369,30 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
       let arrays_last;
 
-      const buffer = transformer((arrays) => {
-        let b = buffer.get();
+      const buffer = write();
+      const buffer_set = buffer.set;
+
+      buffer.set = (arrays) => {
         try {
-          b = createAttribsFromArrays(gl, arrays);
+          const b = twgl.createBufferInfoFromArrays(gl, arrays);
           arrays_last = arrays;
+          buffer_set(b);
         } catch (ex) {
           console.error(`${id} SCREEN: Unable to create gpu attributes`);
         }
-
-        return b
-      });
-
-      buffer.set(VALUE());
+      };
 
       const gpu = ({
         knot: read(`screen`),
 
         value: transformer(({
-          flock = VALUE(),
+          flock,
           ...rest
         }) => {
-          buffer.set(flock);
+          if (flock) {
+            buffer.set(flock);
+            console.log(buffer.get());
+          }
 
           // lets return the canvas right now
           // can be serialized into a data array but GPU nodes
@@ -6283,32 +4404,35 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
         toJSON: () => ({
           id,
           knot: gpu.knot.get(),
-          value: arrays_last,
-          shader: gpu.shader.get()
+          value: arrays_last
         })
       });
 
-      const program_info = createProgramInfo(gl, trippy.get());
+      const program_info = twgl.createProgramInfo(
+        gl,
+        test$1.get()
+      );
 
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-      const $buffer = createAttribsFromArrays(gl, VALUE());
-
       // lifecycle on knot
       life(() => frame.subscribe(([, t]) => {
+        const $buffer = buffer.get();
+
+        if (!$buffer || program_info === null) return
+
         const uniforms = {
           time: t * 0.001,
-          resolution: [gl.canvas.width, gl.canvas.height]
+          resolution: [
+            gl.canvas.width,
+            gl.canvas.height
+          ]
         };
 
-        if (program_info === null) {
-          return
-        }
-
         gl.useProgram(program_info.program);
-        setBuffersAndAttributes(gl, program_info, $buffer);
-        setUniforms(program_info, uniforms);
-        drawBufferInfo(gl, $buffer);
+        twgl.setBuffersAndAttributes(gl, program_info, $buffer);
+        twgl.setUniforms(program_info, uniforms);
+        twgl.drawBufferInfo(gl, $buffer);
       }));
 
       return gpu
@@ -6549,143 +4673,63 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     const trash = write([]);
 
+    const addr = (address) => {
+      let path = address.split(`/`);
+      if (path[0] === ``) path = path.slice(1);
+      return path
+    };
     // put into trash bin
     const del = (path) => {
-      if (path[0] === `/`) {
-        path.unshift();
-      }
 
-      const [weave_name, knot_name, chan] = path.split(`/`);
-      if (weave_name === SYSTEM) {
-        throw new Error(`attempted to delete ${SYSTEM}`)
-      }
-
-      const ws = weaves.get();
-
-      if (knot_name === undefined) {
-        const garbo = ws[weave_name];
-        delete ws[weave_name];
-        weaves.set(ws);
-
-        if (garbo) {
-          trash.update(($trash) => [...$trash, garbo]);
-        }
-
-        return
-      }
-      const { names, knots } = ws[weave_name];
-      const k = names.get()[knot_name];
-
-      if (!k) {
-        throw new Error(`tried to delete non-existant path ${path}`)
-      }
-
-      if (chan === undefined) {
-        const ks = knots.get();
-        delete ks[k.id];
-
-        if (k) {
-          trash.update(($trash) => [...$trash, k]);
-        }
-        knots.set(ks);
-        return
-      }
-
-      const chans = k.value.get();
-      const garbo = chans[chan];
-      delete chans[chan];
-
-      garbo && trash.update(($trash) => [...$trash, garbo]);
-      k.value.set(chans);
     };
 
-    // return back whether this thing exists
-    const exists = (path) => {
-      if (path[0] === `/`) {
-        path.unshift();
-      }
+    const get = (address) => {
+      const [
+        weave_name,
+        knot_name,
+        chan
+      ] = addr(address);
 
-      const [weave_name, knot_name, chan] = path.split(`/`);
       const w = weaves.get()[weave_name];
-      if (w === undefined || knot_name === undefined) {
-        return w !== undefined
-      }
+      if (w === undefined) return
+      if (knot_name === undefined) return w
 
       const k = w.names.get()[knot_name];
-      if (k === undefined || chan === undefined) {
-        return k !== undefined
-      }
+      if (k === undefined) return
+      if (chan === undefined) return k
 
       const c = k.value.get()[chan];
-
-      return c !== undefined
-    };
-
-    // create a weave
-    const create = (weave) => {
-      const w = Weave(weave);
-
-      weaves_set({
-        ...weaves.get(),
-        [w.name.get()]: w
-      });
-
-      return w
-    };
-
-    // always assume they're right
-    const get = (path) => {
-      if (path[0] === `/`) {
-        path = path.slice(1);
-      }
-
-      const [weave_name, knot_name, chan] = path.split(`/`);
-
-      let w = weaves.get()[weave_name];
-      if (w === undefined) {
-        w = Weave({
-          name: weave_name
-        });
-
-        weaves_set({
-          ...weaves.get(),
-          [weave_name]: w
-        });
-      }
-
-      if (knot_name === undefined) {
-        return w
-      }
-
-      const names = w.names;
-
-      let s = names.get()[knot_name];
-
-      if (!s) {
-        w.give_knot.set({
-          knot: `stitch`,
-          name: knot_name
-        });
-
-        s = names.get()[knot_name];
-      }
-
-      if (chan === undefined) {
-        return s
-      }
-
-      let c = s.value.get()[chan];
-      if (!c) {
-        s.value.set({
-          ...s.value.get(),
-          [chan]: write(`heLLo default value`)
-        });
-
-        c = s.value.get()[chan];
-      }
+      if (c === undefined) return
 
       return c
     };
+
+    const exists = (address) => get(address) !== undefined;
+
+    // create the whole path if you gotta
+    const spawn = (pattern = {}) => Object.fromEntries(
+      Object.entries(pattern).map(([
+        weave_id,
+        weave_data
+      ]) => {
+        const weave = get(weave_id);
+
+        if (weave === undefined) {
+          const ws = weaves.get();
+          const w = Weave({
+            ...weave_data,
+            name: weave_id
+          });
+
+          ws[weave_id] = w;
+
+          weaves_set(ws);
+          return [weave_id, w]
+        }
+
+        return [weave_id, weave]
+      })
+    );
 
     const start = (weave_name) => {
       if (weave_name === SYSTEM) {
@@ -6699,7 +4743,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
         const knot = knots[knot_id];
 
         if (knot === undefined) {
-          debugger
+          console.warn(`knot undefined`);
           return
         }
 
@@ -6787,9 +4831,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
         running: running$1,
         trash: trash,
         del: del,
-        exists: exists,
-        create: create,
         get: get,
+        exists: exists,
+        spawn: spawn,
         start: start,
         stop: stop
     });
@@ -7143,9 +5187,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	const block = {
     		c: function create() {
     			div = element("div");
-    			attr_dev(div, "class", "main svelte-15uodzd");
+    			attr_dev(div, "class", "main svelte-1ux67z7");
     			toggle_class(div, "full", ctx.full);
-    			add_location(div, file$5, 23, 0, 379);
+    			add_location(div, file$5, 23, 0, 383);
     			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
     		},
     		l: function claim(nodes) {
@@ -7245,7 +5289,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     /* src/ui/weave/Controls.svelte generated by Svelte v3.14.1 */
     const file$6 = "src/ui/weave/Controls.svelte";
 
-    // (29:4) {:else}
+    // (34:4) {:else}
     function create_else_block(ctx) {
     	let t;
 
@@ -7265,14 +5309,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(29:4) {:else}",
+    		source: "(34:4) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (27:4) {#if runs}
+    // (32:4) {#if runs}
     function create_if_block$1(ctx) {
     	let t;
 
@@ -7292,14 +5336,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_if_block$1.name,
     		type: "if",
-    		source: "(27:4) {#if runs}",
+    		source: "(32:4) {#if runs}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (23:0) <Spatial   anchor={[50, 100]} >
+    // (28:0) <Spatial   anchor={[50, 100]} >
     function create_default_slot$1(ctx) {
     	let div;
     	let dispose;
@@ -7316,9 +5360,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		c: function create() {
     			div = element("div");
     			if_block.c();
-    			attr_dev(div, "class", "play svelte-c8gho1");
+    			attr_dev(div, "class", "play svelte-xysojq");
     			toggle_class(div, "runs", ctx.runs);
-    			add_location(div, file$6, 25, 2, 342);
+    			add_location(div, file$6, 30, 2, 416);
     			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
     		},
     		m: function mount(target, anchor) {
@@ -7351,7 +5395,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_default_slot$1.name,
     		type: "slot",
-    		source: "(23:0) <Spatial   anchor={[50, 100]} >",
+    		source: "(28:0) <Spatial   anchor={[50, 100]} >",
     		ctx
     	});
 
@@ -7377,8 +5421,8 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			div = element("div");
     			t = space();
     			create_component(spatial.$$.fragment);
-    			attr_dev(div, "class", "bar svelte-c8gho1");
-    			add_location(div, file$6, 20, 0, 283);
+    			attr_dev(div, "class", "bar svelte-xysojq");
+    			add_location(div, file$6, 25, 0, 357);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -7432,8 +5476,11 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		$$unsubscribe_name = noop,
     		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
+    	let $down;
     	validate_store(running$1, "running");
     	component_subscribe($$self, running$1, $$value => $$invalidate("$running", $running = $$value));
+    	validate_store(down, "down");
+    	component_subscribe($$self, down, $$value => $$invalidate("$down", $down = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
     	let { weave } = $$props;
     	let runs = $running[$name];
@@ -7459,7 +5506,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	};
 
     	$$self.$capture_state = () => {
-    		return { weave, runs, name, $running, $name };
+    		return {
+    			weave,
+    			runs,
+    			name,
+    			$running,
+    			$name,
+    			$down
+    		};
     	};
 
     	$$self.$inject_state = $$props => {
@@ -7468,13 +5522,20 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
     		if ("$running" in $$props) running$1.set($running = $$props.$running);
     		if ("$name" in $$props) name.set($name = $$props.$name);
+    		if ("$down" in $$props) down.set($down = $$props.$down);
     	};
 
     	let name;
 
-    	$$self.$$.update = (changed = { weave: 1 }) => {
+    	$$self.$$.update = (changed = { weave: 1, $down: 1 }) => {
     		if (changed.weave) {
     			 $$subscribe_name($$invalidate("name", name = weave.name));
+    		}
+
+    		if (changed.$down) {
+    			 {
+    				if ($down[" "]) toggle();
+    			}
     		}
     	};
 
@@ -8206,7 +6267,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
     const file$8 = "src/ui/weave/Knot.svelte";
 
-    // (78:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+    // (80:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
     function create_default_slot$2(ctx) {
     	let div1;
     	let div0;
@@ -8222,9 +6283,9 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			div0 = element("div");
     			if (default_slot) default_slot.c();
     			attr_dev(div0, "class", "knot svelte-dtzax4");
-    			add_location(div0, file$8, 89, 4, 1688);
+    			add_location(div0, file$8, 91, 4, 1612);
     			attr_dev(div1, "class", "adjust");
-    			add_location(div1, file$8, 84, 2, 1571);
+    			add_location(div1, file$8, 86, 2, 1495);
 
     			dispose = [
     				listen_dev(div0, "mousedown", ctx.drag, false, false, false),
@@ -8271,7 +6332,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(78:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+    		source: "(80:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
     		ctx
     	});
 
@@ -8346,8 +6407,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     function instance$7($$self, $$props, $$invalidate) {
     	let $Mouse;
     	let $size;
-    	let $scale;
-    	let $translate;
     	let $positions;
 
     	let $id,
@@ -8358,10 +6417,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	component_subscribe($$self, position_scale, $$value => $$invalidate("$Mouse", $Mouse = $$value));
     	validate_store(size, "size");
     	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
-    	validate_store(scale, "scale");
-    	component_subscribe($$self, scale, $$value => $$invalidate("$scale", $scale = $$value));
-    	validate_store(translate, "translate");
-    	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
     	validate_store(positions, "positions");
     	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
@@ -8387,13 +6442,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     		const handler = () => {
     			$$invalidate("dragging", dragging = false);
-
-    			$$invalidate("position", position = [
-    				$Mouse[0] - $size[0] / 2 / $scale - $translate[0],
-    				$Mouse[1] - $size[1] / 2 / $scale - $translate[1],
-    				0
-    			]);
-
+    			$$invalidate("position", position = [$Mouse[0] - $size[0] / 2, $Mouse[1] - $size[1] / 2, 0]);
     			update();
     			draggee.set("");
     			$$invalidate("zIndex", zIndex = drag_count.get());
@@ -8429,8 +6478,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			id,
     			$Mouse,
     			$size,
-    			$scale,
-    			$translate,
     			tru_position,
     			$positions,
     			tru_scale,
@@ -8447,8 +6494,6 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$Mouse" in $$props) position_scale.set($Mouse = $$props.$Mouse);
     		if ("$size" in $$props) size.set($size = $$props.$size);
-    		if ("$scale" in $$props) scale.set($scale = $$props.$scale);
-    		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
     		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
     		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
     		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
@@ -8460,7 +6505,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $positions: 1, $size: 1, $scale: 1, $translate: 1 }) => {
+    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $positions: 1, $size: 1 }) => {
     		if (changed.knot) {
     			 type = knot.knot;
     		}
@@ -8469,10 +6514,8 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			 $$subscribe_id($$invalidate("id", id = knot.id));
     		}
 
-    		if (changed.dragging || changed.$Mouse || changed.$positions || changed.knot || changed.$size || changed.$scale || changed.$translate) {
-    			 $$invalidate("tru_position", tru_position = add(dragging ? $Mouse : $positions[knot.id.get()], dragging
-    			? [-$size[0] / 2 / $scale, -$size[1] / 2 / $scale]
-    			: $translate));
+    		if (changed.dragging || changed.$Mouse || changed.$positions || changed.knot || changed.$size) {
+    			 $$invalidate("tru_position", tru_position = add(dragging ? $Mouse : $positions[knot.id.get()], [-$size[0] / 2, -$size[1] / 2, 0]));
     		}
 
     		if (changed.dragging) {
@@ -10808,7 +8851,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     	return child_ctx;
     }
 
-    // (46:2) <Knot      {knot}   >
+    // (55:2) <Knot      {knot}   >
     function create_default_slot$4(ctx) {
     	let t;
     	let current;
@@ -10885,14 +8928,14 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_default_slot$4.name,
     		type: "slot",
-    		source: "(46:2) <Knot      {knot}   >",
+    		source: "(55:2) <Knot      {knot}   >",
     		ctx
     	});
 
     	return block;
     }
 
-    // (45:0) {#each Object.values($knots) as knot (knot.id.get())}
+    // (54:0) {#each Object.values($knots) as knot (knot.id.get())}
     function create_each_block$3(key_1, ctx) {
     	let first;
     	let current;
@@ -10948,7 +8991,7 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     		block,
     		id: create_each_block$3.name,
     		type: "each",
-    		source: "(45:0) {#each Object.values($knots) as knot (knot.id.get())}",
+    		source: "(54:0) {#each Object.values($knots) as knot (knot.id.get())}",
     		ctx
     	});
 
@@ -11007,9 +9050,16 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div, "class", "knots svelte-1ight0k");
-    			attr_dev(div, "style", div_style_value = `transform: scale(${Math.round(ctx.$zoom * 100) / 100}`);
-    			add_location(div, file$i, 39, 0, 818);
+    			attr_dev(div, "class", "knots svelte-ykkafa");
+
+    			attr_dev(div, "style", div_style_value = [
+    				`transform:`,
+    				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
+    				`translate(${ctx.$translate[0]}px, ${ctx.$translate[1]}px)`,
+    				`;`
+    			].join(` `));
+
+    			add_location(div, file$i, 41, 0, 852);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -11037,7 +9087,12 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
     			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$3, null, get_each_context$3);
     			check_outros();
 
-    			if (!current || changed.$zoom && div_style_value !== (div_style_value = `transform: scale(${Math.round(ctx.$zoom * 100) / 100}`)) {
+    			if (!current || (changed.$zoom || changed.$translate) && div_style_value !== (div_style_value = [
+    				`transform:`,
+    				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
+    				`translate(${ctx.$translate[0]}px, ${ctx.$translate[1]}px)`,
+    				`;`
+    			].join(` `))) {
     				attr_dev(div, "style", div_style_value);
     			}
     		},
@@ -11096,10 +9151,13 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     function instance$h($$self, $$props, $$invalidate) {
     	let $zoom;
+    	let $translate;
     	let $knots;
     	validate_store(zoom_dam, "zoom");
     	component_subscribe($$self, zoom_dam, $$value => $$invalidate("$zoom", $zoom = $$value));
-    	const weave = create(Basic());
+    	validate_store(translate, "translate");
+    	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
+    	const { basic: weave } = spawn({ basic: Basic() });
     	woven.set(weave.name.get());
     	const knots = weave.knots;
     	validate_store(knots, "knots");
@@ -11116,10 +9174,18 @@ gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color 
 
     	$$self.$inject_state = $$props => {
     		if ("$zoom" in $$props) zoom_dam.set($zoom = $$props.$zoom);
+    		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
     		if ("$knots" in $$props) knots.set($knots = $$props.$knots);
     	};
 
-    	return { weave, knots, get_ui, $zoom, $knots };
+    	return {
+    		weave,
+    		knots,
+    		get_ui,
+    		$zoom,
+    		$translate,
+    		$knots
+    	};
     }
 
     class Weave$1 extends SvelteComponentDev {

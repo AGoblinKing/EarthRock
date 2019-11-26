@@ -29,143 +29,63 @@ export const running = read({
 
 export const trash = write([])
 
+const addr = (address) => {
+  let path = address.split(`/`)
+  if (path[0] === ``) path = path.slice(1)
+  return path
+}
 // put into trash bin
 export const del = (path) => {
-  if (path[0] === `/`) {
-    path.unshift()
-  }
 
-  const [weave_name, knot_name, chan] = path.split(`/`)
-  if (weave_name === SYSTEM) {
-    throw new Error(`attempted to delete ${SYSTEM}`)
-  }
-
-  const ws = weaves.get()
-
-  if (knot_name === undefined) {
-    const garbo = ws[weave_name]
-    delete ws[weave_name]
-    weaves.set(ws)
-
-    if (garbo) {
-      trash.update(($trash) => [...$trash, garbo])
-    }
-
-    return
-  }
-  const { names, knots } = ws[weave_name]
-  const k = names.get()[knot_name]
-
-  if (!k) {
-    throw new Error(`tried to delete non-existant path ${path}`)
-  }
-
-  if (chan === undefined) {
-    const ks = knots.get()
-    delete ks[k.id]
-
-    if (k) {
-      trash.update(($trash) => [...$trash, k])
-    }
-    knots.set(ks)
-    return
-  }
-
-  const chans = k.value.get()
-  const garbo = chans[chan]
-  delete chans[chan]
-
-  garbo && trash.update(($trash) => [...$trash, garbo])
-  k.value.set(chans)
 }
 
-// return back whether this thing exists
-export const exists = (path) => {
-  if (path[0] === `/`) {
-    path.unshift()
-  }
+export const get = (address) => {
+  const [
+    weave_name,
+    knot_name,
+    chan
+  ] = addr(address)
 
-  const [weave_name, knot_name, chan] = path.split(`/`)
   const w = weaves.get()[weave_name]
-  if (w === undefined || knot_name === undefined) {
-    return w !== undefined
-  }
+  if (w === undefined) return
+  if (knot_name === undefined) return w
 
   const k = w.names.get()[knot_name]
-  if (k === undefined || chan === undefined) {
-    return k !== undefined
-  }
+  if (k === undefined) return
+  if (chan === undefined) return k
 
   const c = k.value.get()[chan]
-
-  return c !== undefined
-}
-
-// create a weave
-export const create = (weave) => {
-  const w = Weave(weave)
-
-  weaves_set({
-    ...weaves.get(),
-    [w.name.get()]: w
-  })
-
-  return w
-}
-
-// always assume they're right
-export const get = (path) => {
-  if (path[0] === `/`) {
-    path = path.slice(1)
-  }
-
-  const [weave_name, knot_name, chan] = path.split(`/`)
-
-  let w = weaves.get()[weave_name]
-  if (w === undefined) {
-    w = Weave({
-      name: weave_name
-    })
-
-    weaves_set({
-      ...weaves.get(),
-      [weave_name]: w
-    })
-  }
-
-  if (knot_name === undefined) {
-    return w
-  }
-
-  const names = w.names
-
-  let s = names.get()[knot_name]
-
-  if (!s) {
-    w.give_knot.set({
-      knot: `stitch`,
-      name: knot_name
-    })
-
-    s = names.get()[knot_name]
-  }
-
-  if (chan === undefined) {
-    return s
-  }
-
-  let c = s.value.get()[chan]
-  if (!c) {
-    s.value.set({
-      ...s.value.get(),
-      [chan]: write(`heLLo default value`)
-    })
-
-    c = s.value.get()[chan]
-  }
+  if (c === undefined) return
 
   return c
 }
+
+export const exists = (address) => get(address) !== undefined
+
+// create the whole path if you gotta
+export const spawn = (pattern = {}) => Object.fromEntries(
+  Object.entries(pattern).map(([
+    weave_id,
+    weave_data
+  ]) => {
+    const weave = get(weave_id)
+
+    if (weave === undefined) {
+      const ws = weaves.get()
+      const w = Weave({
+        ...weave_data,
+        name: weave_id
+      })
+
+      ws[weave_id] = w
+
+      weaves_set(ws)
+      return [weave_id, w]
+    }
+
+    return [weave_id, weave]
+  })
+)
 
 export const start = (weave_name) => {
   if (weave_name === SYSTEM) {
@@ -179,7 +99,7 @@ export const start = (weave_name) => {
     const knot = knots[knot_id]
 
     if (knot === undefined) {
-      debugger
+      console.warn(`knot undefined`)
       return
     }
 

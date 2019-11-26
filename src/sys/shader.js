@@ -1,29 +1,18 @@
 import { read } from "/util/store.js"
 
-// can import these from their files
-export const trippy = read([
-`attribute vec4 position;
+import test_frag from "./shader/test.frag"
+import test_vert from "./shader/test.vert"
+import sprite_frag from "./shader/sprite.frag"
+import sprite_vert from "./shader/sprite.vert"
 
-void main() {
-  gl_Position = position;
-}
-`,
-`
-precision mediump float;
+const breaker = (a) => a.map(i => `\r\n${i}`)
 
-uniform vec2 resolution;
-uniform float time;
+export const test = read(breaker([
+  test_vert,
+  test_frag
+]))
 
-void main() {
-vec2 uv = gl_FragCoord.xy / resolution;
-float color = 0.0;
-
-color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
-color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
-color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
-color *= sin( time / 10.0 ) * 0.5;
-
-gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color ), 1.0 );
-}
-`
-])
+export const sprite = read(breaker([
+  sprite_vert,
+  sprite_frag
+]))

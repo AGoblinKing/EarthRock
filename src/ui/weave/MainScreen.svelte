@@ -15,15 +15,18 @@ const insert = (node) => ({
     while (node.firstChild) {
       node.removeChild(node.firstChild)
     }
+    
     node.appendChild(canvas)
   })
 })
 </script>
 
-
-<div use:insert class="main" class:full on:click={toggle}>
-
-</div>
+<div 
+  use:insert 
+  class="main" 
+  class:full 
+  on:click={toggle}
+/>
 
 <style>
 .main {
@@ -37,7 +40,6 @@ const insert = (node) => ({
   border: 0.25rem solid black;
   background-color: rgba(0, 0, 0, 0.5);
   filter: drop-shadow(1rem 1rem 0 rgba(0, 0, 0, 0.5));
-  transition: all 150ms linear;
 }
 
 .main.full {

@@ -13,7 +13,7 @@ export default ({
   value.set = (value_new) => {
     const v = Wheel.get(m.whom.get())
 
-    if (!v.set) {
+    if (!v || !v.set) {
       console.warn(`tried to mail a readable`, m.whom.get())
       return
     }

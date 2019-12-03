@@ -98,6 +98,7 @@ export default ({
       uniforms
     }
   }
+
   // lifecycle on knot
   life(() => frame.subscribe(([, t]) => {
     if (program_info === null) return
@@ -110,6 +111,7 @@ export default ({
         gl.canvas.height
       ]
     }
+
     try {
       const buffer_info = twgl.createBufferInfoFromArrays(
         gl,

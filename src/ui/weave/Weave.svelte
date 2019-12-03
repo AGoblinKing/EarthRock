@@ -11,11 +11,12 @@ import Controls from "./Controls.svelte"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Knot from "./Knot.svelte"
+import Explor from "./Explore.svelte"
 
 import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
-const { basic:weave } = Wheel.spawn({
+const { basic: weave } = Wheel.spawn({
   basic: Basic()
 })
 
@@ -38,6 +39,7 @@ const get_ui = (knot) => {
 
 <Threads {weave} />
 <Picker {weave} />
+<Explor {weave} />
 
 <div 
   class="knots"

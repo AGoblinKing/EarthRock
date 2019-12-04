@@ -1,7 +1,7 @@
 <script>
 import Spatial from "../Spatial.svelte"
 import { running, stop, start } from "/sys/wheel.js"
-import { down } from "/sys/keyboard.js"
+import { down } from "/sys/key.js"
 
 export let weave
 
@@ -9,7 +9,7 @@ $: name = weave.name
 let runs = $running[$name]
 
 $: {
-  if($down[" "]) toggle()
+  if($down === " ") toggle()
 }
 
 const toggle = () => {

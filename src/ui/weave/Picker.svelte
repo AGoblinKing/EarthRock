@@ -1,11 +1,12 @@
 <script>
 import { onDestroy } from "svelte"
 
+import { add } from "/util/vector.js"
 import * as knots from "/weave/knots.js"
 import { scale as Scaling, size} from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
-import { translate} from "/sys/weave.js"
+import { scroll } from "/sys/input.js"
 
 import Knot_Factory from "/weave/knot.js"
 
@@ -18,11 +19,14 @@ const knot = Knot_Factory()
 let picking = false
 
 const pick = (e) => {
-  position = [
-    e.x - 50 * $Scaling - $size[0]/2 - translate.get()[0], 
-    e.y + 10 * $Scaling - $size[1]/2 - translate.get()[1], 
-    0 
-  ]
+  position = add([
+      e.x - 50 * $Scaling - $size[0]/2, 
+      e.y + 10 * $Scaling - $size[1]/2, 
+      0 
+    ], 
+    $scroll
+  )
+
   picking = true
 }
 

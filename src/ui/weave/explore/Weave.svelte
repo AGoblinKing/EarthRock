@@ -1,11 +1,11 @@
 <script>
-import { explore_open } from "/sys/flag.js"
+import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
 
 import color from "/ui/action/color.js"
 import Stitch from "./Stitch.svelte"
 
 export let weave
-export let open = $explore_open
+export let open = $WEAVE_EXPLORE_OPEN
 
 $: name = weave.name
 $: names = weave.names

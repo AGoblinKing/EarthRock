@@ -1,10 +1,10 @@
 <script>
-import { explore_open } from "/sys/flag.js"
+import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 import Channel from "./Channel.svelte"
 
 export let stitch
-export let open = $explore_open
+export let open = $WEAVE_EXPLORE_OPEN
 
 $: name = stitch.name
 $: value = stitch.value
@@ -36,6 +36,6 @@ $: chans = Object.entries($value)
   font-size: 0.9rem;
 }
 .stitch:hover {
-  background-color: green;
+  background-color: green !important;
 }
 </style>

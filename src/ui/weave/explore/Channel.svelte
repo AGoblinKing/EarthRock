@@ -37,4 +37,7 @@ $: [key, value] = channel
   flex: 1;
 }
 
+.channel:hover {
+  background-color: #111 !important;
+}
 </style>

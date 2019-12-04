@@ -10,10 +10,13 @@ import {
   positions, 
   draggee, 
   hoveree, 
-  drag_count, 
-  translate,
+  drag_count,
   position_scale as Mouse 
 } from "/sys/weave.js"
+
+import {
+  scroll 
+} from "/sys/input.js"
 
 export let position = [0, 0, 0]
 export let knot
@@ -48,8 +51,8 @@ const drag = (e) => {
   const handler = () => {
     dragging = false
     position = [
-      $Mouse[0] - $translate[0],
-      $Mouse[1] - $translate[1],
+      $Mouse[0] - $scroll[0],
+      $Mouse[1] - $scroll[1],
       0
     ]
     update()
@@ -66,7 +69,7 @@ $: tru_position = add(
   dragging 
     ? minus(
         $Mouse,
-        $translate
+        $scroll
       )
     : $positions[knot.id.get()],
   

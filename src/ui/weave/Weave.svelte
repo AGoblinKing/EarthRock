@@ -1,7 +1,8 @@
 <script>
 import * as Wheel from "/sys/wheel.js"
-import { woven, zoom_dam as zoom, translate } from "/sys/weave.js"
-import { scroll } from "/sys/mouse.js"
+import { size } from "/sys/screen.js"
+import { woven, zoom_dam as zoom } from "/sys/weave.js"
+import { scroll, scroll_set} from "/sys/input.js"
 import { tick } from "/sys/time.js"
 
 import { Basic } from "/prefab/weaves.js"
@@ -11,7 +12,7 @@ import Controls from "./Controls.svelte"
 import Threads from "./Threads.svelte"
 import Picker from "./Picker.svelte"
 import Knot from "./Knot.svelte"
-import Explor from "./Explore.svelte"
+import Explore from "./Explore.svelte"
 
 import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
@@ -19,6 +20,11 @@ import * as knot_kinds from "./spawnable.js"
 const { basic: weave } = Wheel.spawn({
   basic: Basic()
 })
+
+// Reset Scroll
+scroll_set.set([
+  $size[0]/2, $size[1]/2, 0
+])
 
 woven.set(weave.name.get())
 
@@ -39,7 +45,7 @@ const get_ui = (knot) => {
 
 <Threads {weave} />
 <Picker {weave} />
-<Explor {weave} />
+<Explore {weave} />
 
 <div 
   class="knots"
@@ -47,7 +53,7 @@ const get_ui = (knot) => {
     [
       `transform:`,
       `scale(${Math.round($zoom * 100)/100})`,
-      `translate(${$translate[0]}px, ${$translate[1]}px)`,
+      `translate(${$scroll[0]}px, ${$scroll[1]}px)`,
       `;`
     ].join(` `)
   }

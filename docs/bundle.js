@@ -3045,9 +3045,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     });
 
     const animation = { delay: 100, duration: 300 };
-    const tick_rate = 100;
+    const TIME_TICK_RATE = write(100);
 
-    const explore_open = write(true);
+    const WEAVE_EXPLORE_OPEN = write(true);
+    const INPUT_SCROLL_STRENGTH = write(20);
 
     const path = writable(window.location.pathname.slice(1));
 
@@ -4298,9 +4299,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     };
 
     const tick = read(0, (set) => {
-      setInterval(() => {
-        set(tick.get() + 1);
-      }, tick_rate);
+      let intv = false;
+
+      TIME_TICK_RATE.listen(($rate) => {
+        if (intv) clearInterval(intv);
+        intv = setInterval(() => {
+          set(tick.get() + 1);
+        }, $rate);
+      });
     });
 
     const frame = read([0, 0], (set) => {
@@ -4659,6 +4665,121 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         main: main
     });
 
+    const up = read(``, (set) =>
+      window.addEventListener(`keyup`, (e) => {
+        if (
+          e.target.tagName === `INPUT` ||
+          e.target.tagName === `TEXTAREA`
+        ) {
+          return
+        }
+
+        e.preventDefault();
+        set(``);
+        set(e.key);
+      })
+    );
+
+    const down = read(``, (set) =>
+      window.addEventListener(`keydown`, (e) => {
+        if (
+          e.target.tagName === `INPUT` ||
+          e.target.tagName === `TEXTAREA`
+        ) {
+          return
+        }
+
+        e.preventDefault();
+        set(``);
+        set(e.key);
+      })
+    );
+
+    const keys = read({}, (set) => {
+      down.listen((char) =>
+        set({
+          ...keys.get(),
+          [char]: true
+        })
+      );
+      up.listen((char) => set({
+        ...keys.get(),
+        [char]: false
+      }));
+    });
+
+    var key = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        up: up,
+        down: down,
+        keys: keys
+    });
+
+    // Collection of meta controllers
+
+    const translate = read([0, 0, 0], (set) => {
+      let buffer = [0, 0, 0];
+
+      frame.listen(() => {
+        const { w, a, s, d } = keys.get();
+
+        let b_key = [0, 0, 0];
+        if (w) b_key = add(b_key, [0, -1, 0]);
+        if (s) b_key = add(b_key, [0, 1, 0]);
+        if (a) b_key = add(b_key, [-1, 0, 0]);
+        if (d) b_key = add(b_key, [1, 0, 0]);
+
+        buffer = add(b_key, buffer);
+        if (length(buffer) === 0) return
+
+        set([...buffer]);
+        buffer = [0, 0, 0];
+      });
+
+      // Mouse.scroll.listen((value_new) => {
+      //   buffer = add(buffer, value_new)
+      // })
+    });
+
+    const scroll_set = write([0, 0, 0]);
+
+    let scroll_velocity = [0, 0, 0];
+
+    const scroll$1 = read([0, 0, 0], (set) => {
+      scroll_set.listen((v) => set(v));
+
+      tick.listen(() => {
+        if (Math.abs(length(scroll_velocity)) < 1) return
+
+        set(add(
+          scroll$1.get(),
+          scroll_velocity
+        ));
+
+        scroll_velocity = multiply_scalar(
+          scroll_velocity,
+          0.5
+        );
+      });
+
+      translate.listen((t) => {
+        scroll_velocity = add(
+          scroll_velocity,
+          multiply_scalar(
+            t,
+            INPUT_SCROLL_STRENGTH.get()
+          )
+        );
+      });
+    });
+
+    var input = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        translate: translate,
+        scroll_set: scroll_set,
+        scroll: scroll$1
+    });
+
     const tie = (items) =>
       Object.entries(items)
         .reduce((result, [key, value]) => ({
@@ -4671,10 +4792,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         }), {});
 
     var system = Weave({
+      name: `sys`,
+      id: `sys`,
       knots: tie({
         mouse,
         time,
-        screen: screen$1
+        screen: screen$1,
+        input,
+        key
       })
     });
 
@@ -4868,40 +4993,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         spawn: spawn,
         start: start,
         stop: stop
-    });
-
-    const down = read({}, (set) => {
-      window.addEventListener(`keydown`, (e) => {
-        if (
-          e.target.tagName === `INPUT` ||
-          e.target.tagName === `TEXTAREA`
-        ) {
-          return
-        }
-
-        e.preventDefault();
-
-        set({
-          ...down.get(),
-          [e.key.toLowerCase()]: true
-        });
-      });
-
-      window.addEventListener(`keyup`, (e) => {
-        if (
-          e.target.tagName === `INPUT` ||
-          e.target.tagName === `TEXTAREA`
-        ) {
-          return
-        }
-
-        e.preventDefault();
-
-        set({
-          ...down.get(),
-          [e.key.toLowerCase()]: false
-        });
-      });
     });
 
     // Which weave is being woven
@@ -5107,28 +5198,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       });
 
       if (dirty) positions.set($positions);
-    });
-
-    // TODO: These will hang around reactive statement?
-    const translate_velocity = write([0, 0, 0]);
-    const translate = read(translate_velocity.get(), (set) =>
-      tick.listen(() => {
-        const t = translate_velocity.get();
-        const p = translate.get();
-        if (length(t) === 0) return
-
-        set([
-          t[0] + p[0],
-          t[1] + p[1],
-          0
-        ]);
-        translate_velocity.set([0, 0, 0]);
-      })
-    );
-
-    scroll.listen(([x, y]) => {
-      if (down.get().shift) return
-      translate_velocity.update(([t_x, t_y]) => [t_x + x, t_y + y, 0]);
     });
 
     const position_scale = derived$1([
@@ -5394,7 +5463,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if_block.c();
     			attr_dev(div, "class", "play svelte-xysojq");
     			toggle_class(div, "runs", ctx.runs);
-    			add_location(div, file$6, 30, 2, 416);
+    			add_location(div, file$6, 30, 2, 414);
     			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
     		},
     		m: function mount(target, anchor) {
@@ -5454,7 +5523,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t = space();
     			create_component(spatial.$$.fragment);
     			attr_dev(div, "class", "bar svelte-xysojq");
-    			add_location(div, file$6, 25, 0, 357);
+    			add_location(div, file$6, 25, 0, 355);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5566,7 +5635,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     		if (changed.$down) {
     			 {
-    				if ($down[" "]) toggle();
+    				if ($down === " ") toggle();
     			}
     		}
     	};
@@ -6297,10 +6366,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     };
 
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
-
     const file$8 = "src/ui/weave/Knot.svelte";
 
-    // (79:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+    // (82:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
     function create_default_slot$2(ctx) {
     	let div1;
     	let div0;
@@ -6316,9 +6384,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div0 = element("div");
     			if (default_slot) default_slot.c();
     			attr_dev(div0, "class", "knot svelte-1mdjxg");
-    			add_location(div0, file$8, 90, 4, 1567);
+    			add_location(div0, file$8, 93, 4, 1587);
     			attr_dev(div1, "class", "adjust");
-    			add_location(div1, file$8, 85, 2, 1450);
+    			add_location(div1, file$8, 88, 2, 1470);
 
     			dispose = [
     				listen_dev(div0, "mousedown", ctx.drag, false, false, false),
@@ -6365,7 +6433,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(79:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+    		source: "(82:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
     		ctx
     	});
 
@@ -6439,7 +6507,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     function instance$7($$self, $$props, $$invalidate) {
     	let $Mouse;
-    	let $translate;
+    	let $scroll;
     	let $positions;
 
     	let $id,
@@ -6448,8 +6516,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	validate_store(position_scale, "Mouse");
     	component_subscribe($$self, position_scale, $$value => $$invalidate("$Mouse", $Mouse = $$value));
-    	validate_store(translate, "translate");
-    	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
+    	validate_store(scroll$1, "scroll");
+    	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
     	validate_store(positions, "positions");
     	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
@@ -6475,7 +6543,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     		const handler = () => {
     			$$invalidate("dragging", dragging = false);
-    			$$invalidate("position", position = [$Mouse[0] - $translate[0], $Mouse[1] - $translate[1], 0]);
+    			$$invalidate("position", position = [$Mouse[0] - $scroll[0], $Mouse[1] - $scroll[1], 0]);
     			update();
     			draggee.set("");
     			$$invalidate("zIndex", zIndex = drag_count.get());
@@ -6510,7 +6578,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			type,
     			id,
     			$Mouse,
-    			$translate,
+    			$scroll,
     			tru_position,
     			$positions,
     			tru_scale,
@@ -6526,7 +6594,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if ("type" in $$props) type = $$props.type;
     		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
     		if ("$Mouse" in $$props) position_scale.set($Mouse = $$props.$Mouse);
-    		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
+    		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
     		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
     		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
     		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
@@ -6538,7 +6606,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $translate: 1, $positions: 1 }) => {
+    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $scroll: 1, $positions: 1 }) => {
     		if (changed.knot) {
     			 type = knot.knot;
     		}
@@ -6547,9 +6615,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			 $$subscribe_id($$invalidate("id", id = knot.id));
     		}
 
-    		if (changed.dragging || changed.$Mouse || changed.$translate || changed.$positions || changed.knot) {
+    		if (changed.dragging || changed.$Mouse || changed.$scroll || changed.$positions || changed.knot) {
     			 $$invalidate("tru_position", tru_position = add(dragging
-    			? minus($Mouse, $translate)
+    			? minus($Mouse, $scroll)
     			: $positions[knot.id.get()]));
     		}
 
@@ -6624,7 +6692,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (65:0) {#if picking}
+    // (69:0) {#if picking}
     function create_if_block$3(ctx) {
     	let current;
 
@@ -6674,14 +6742,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_if_block$3.name,
     		type: "if",
-    		source: "(65:0) {#if picking}",
+    		source: "(69:0) {#if picking}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (71:6) {#each arr_knots as [kind, fn] (kind)}
+    // (75:6) {#each arr_knots as [kind, fn] (kind)}
     function create_each_block$1(key_1, ctx) {
     	let div;
     	let t0_value = ctx.kind + "";
@@ -6702,7 +6770,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t0 = text(t0_value);
     			t1 = space();
     			attr_dev(div, "class", "kind svelte-1yi8mbp");
-    			add_location(div, file$9, 71, 8, 1366);
+    			add_location(div, file$9, 75, 8, 1391);
     			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
     			this.first = div;
     		},
@@ -6728,14 +6796,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(71:6) {#each arr_knots as [kind, fn] (kind)}",
+    		source: "(75:6) {#each arr_knots as [kind, fn] (kind)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (66:2) <Knot {position} {knot}>
+    // (70:2) <Knot {position} {knot}>
     function create_default_slot$3(ctx) {
     	let div1;
     	let div0;
@@ -6763,9 +6831,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div0, "class", "title svelte-1yi8mbp");
-    			add_location(div0, file$9, 67, 6, 1262);
+    			add_location(div0, file$9, 71, 6, 1287);
     			attr_dev(div1, "class", "prompt");
-    			add_location(div1, file$9, 66, 4, 1235);
+    			add_location(div1, file$9, 70, 4, 1260);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -6793,7 +6861,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$3.name,
     		type: "slot",
-    		source: "(66:2) <Knot {position} {knot}>",
+    		source: "(70:2) <Knot {position} {knot}>",
     		ctx
     	});
 
@@ -6812,7 +6880,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "picker svelte-1yi8mbp");
     			toggle_class(div, "picking", ctx.picking);
-    			add_location(div, file$9, 59, 0, 1125);
+    			add_location(div, file$9, 63, 0, 1150);
 
     			dispose = [
     				listen_dev(window, "mouseup", ctx.nopick, false, false, false),
@@ -6882,21 +6950,19 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     function instance$8($$self, $$props, $$invalidate) {
     	let $Scaling;
     	let $size;
+    	let $scroll;
     	validate_store(scale, "Scaling");
     	component_subscribe($$self, scale, $$value => $$invalidate("$Scaling", $Scaling = $$value));
     	validate_store(size, "size");
     	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
+    	validate_store(scroll$1, "scroll");
+    	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
     	let { weave } = $$props;
     	const knot = Knot_Factory();
     	let picking = false;
 
     	const pick = e => {
-    		$$invalidate("position", position = [
-    			e.x - 50 * $Scaling - $size[0] / 2 - translate.get()[0],
-    			e.y + 10 * $Scaling - $size[1] / 2 - translate.get()[1],
-    			0
-    		]);
-
+    		$$invalidate("position", position = add([e.x - 50 * $Scaling - $size[0] / 2, e.y + 10 * $Scaling - $size[1] / 2, 0], $scroll));
     		$$invalidate("picking", picking = true);
     	};
 
@@ -6939,6 +7005,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			position,
     			$Scaling,
     			$size,
+    			$scroll,
     			arr_knots
     		};
     	};
@@ -6949,6 +7016,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if ("position" in $$props) $$invalidate("position", position = $$props.position);
     		if ("$Scaling" in $$props) scale.set($Scaling = $$props.$Scaling);
     		if ("$size" in $$props) size.set($size = $$props.$size);
+    		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
     		if ("arr_knots" in $$props) $$invalidate("arr_knots", arr_knots = $$props.arr_knots);
     	};
 
@@ -7018,11 +7086,11 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t1 = space();
     			div1 = element("div");
     			t2 = text(t2_value);
-    			attr_dev(div0, "class", "key svelte-1l7n89a");
+    			attr_dev(div0, "class", "key svelte-xcnast");
     			add_location(div0, file$a, 13, 2, 154);
-    			attr_dev(div1, "class", "value svelte-1l7n89a");
+    			attr_dev(div1, "class", "value svelte-xcnast");
     			add_location(div1, file$a, 16, 2, 193);
-    			attr_dev(div2, "class", "channel svelte-1l7n89a");
+    			attr_dev(div2, "class", "channel svelte-xcnast");
     			add_location(div2, file$a, 9, 0, 108);
     		},
     		l: function claim(nodes) {
@@ -7165,7 +7233,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div, "class", "chans");
-    			add_location(div, file$b, 24, 0, 395);
+    			add_location(div, file$b, 24, 0, 407);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7303,9 +7371,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t1 = space();
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
-    			attr_dev(div, "class", "stitch svelte-1u5uei9");
+    			attr_dev(div, "class", "stitch svelte-7jsjmw");
     			toggle_class(div, "open", ctx.open);
-    			add_location(div, file$b, 14, 0, 276);
+    			add_location(div, file$b, 14, 0, 288);
     			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
     		},
     		l: function claim(nodes) {
@@ -7379,7 +7447,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     function instance$a($$self, $$props, $$invalidate) {
-    	let $explore_open;
+    	let $WEAVE_EXPLORE_OPEN;
 
     	let $value,
     		$$unsubscribe_value = noop,
@@ -7389,12 +7457,12 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		$$unsubscribe_name = noop,
     		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
-    	validate_store(explore_open, "explore_open");
-    	component_subscribe($$self, explore_open, $$value => $$invalidate("$explore_open", $explore_open = $$value));
+    	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
+    	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
     	let { stitch } = $$props;
-    	let { open = $explore_open } = $$props;
+    	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
     	const writable_props = ["stitch", "open"];
 
     	Object_1$2.keys($$props).forEach(key => {
@@ -7412,7 +7480,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		return {
     			stitch,
     			open,
-    			$explore_open,
+    			$WEAVE_EXPLORE_OPEN,
     			name,
     			value,
     			chans,
@@ -7424,7 +7492,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	$$self.$inject_state = $$props => {
     		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
-    		if ("$explore_open" in $$props) explore_open.set($explore_open = $$props.$explore_open);
+    		if ("$WEAVE_EXPLORE_OPEN" in $$props) WEAVE_EXPLORE_OPEN.set($WEAVE_EXPLORE_OPEN = $$props.$WEAVE_EXPLORE_OPEN);
     		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
     		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
     		if ("chans" in $$props) $$invalidate("chans", chans = $$props.chans);
@@ -7533,7 +7601,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div, "class", "stitches");
-    			add_location(div, file$c, 24, 2, 394);
+    			add_location(div, file$c, 24, 2, 406);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7673,7 +7741,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if_block_anchor = empty();
     			attr_dev(div, "class", "weave svelte-7inicu");
     			toggle_class(div, "open", ctx.open);
-    			add_location(div, file$c, 14, 0, 274);
+    			add_location(div, file$c, 14, 0, 286);
     			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
     		},
     		l: function claim(nodes) {
@@ -7747,7 +7815,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     function instance$b($$self, $$props, $$invalidate) {
-    	let $explore_open;
+    	let $WEAVE_EXPLORE_OPEN;
 
     	let $names,
     		$$unsubscribe_names = noop,
@@ -7757,12 +7825,12 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		$$unsubscribe_name = noop,
     		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
-    	validate_store(explore_open, "explore_open");
-    	component_subscribe($$self, explore_open, $$value => $$invalidate("$explore_open", $explore_open = $$value));
+    	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
+    	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_names());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
     	let { weave } = $$props;
-    	let { open = $explore_open } = $$props;
+    	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
     	const writable_props = ["weave", "open"];
 
     	Object_1$3.keys($$props).forEach(key => {
@@ -7780,7 +7848,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		return {
     			weave,
     			open,
-    			$explore_open,
+    			$WEAVE_EXPLORE_OPEN,
     			name,
     			names,
     			stitches,
@@ -7792,7 +7860,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	$$self.$inject_state = $$props => {
     		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
-    		if ("$explore_open" in $$props) explore_open.set($explore_open = $$props.$explore_open);
+    		if ("$WEAVE_EXPLORE_OPEN" in $$props) WEAVE_EXPLORE_OPEN.set($WEAVE_EXPLORE_OPEN = $$props.$WEAVE_EXPLORE_OPEN);
     		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
     		if ("names" in $$props) $$subscribe_names($$invalidate("names", names = $$props.names));
     		if ("stitches" in $$props) $$invalidate("stitches", stitches = $$props.stitches);
@@ -10007,7 +10075,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (57:2) <Knot      {knot}   >
+    // (63:2) <Knot      {knot}   >
     function create_default_slot$4(ctx) {
     	let t;
     	let current;
@@ -10084,14 +10152,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$4.name,
     		type: "slot",
-    		source: "(57:2) <Knot      {knot}   >",
+    		source: "(63:2) <Knot      {knot}   >",
     		ctx
     	});
 
     	return block;
     }
 
-    // (56:0) {#each Object.values($knots) as knot (knot.id.get())}
+    // (62:0) {#each Object.values($knots) as knot (knot.id.get())}
     function create_each_block$6(key_1, ctx) {
     	let first;
     	let current;
@@ -10147,7 +10215,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block$6.name,
     		type: "each",
-    		source: "(56:0) {#each Object.values($knots) as knot (knot.id.get())}",
+    		source: "(62:0) {#each Object.values($knots) as knot (knot.id.get())}",
     		ctx
     	});
 
@@ -10182,7 +10250,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			$$inline: true
     		});
 
-    	const explor = new Explore({
+    	const explore = new Explore({
     			props: { weave: ctx.weave },
     			$$inline: true
     		});
@@ -10206,7 +10274,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t2 = space();
     			create_component(picker.$$.fragment);
     			t3 = space();
-    			create_component(explor.$$.fragment);
+    			create_component(explore.$$.fragment);
     			t4 = space();
     			div = element("div");
 
@@ -10219,11 +10287,11 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			attr_dev(div, "style", div_style_value = [
     				`transform:`,
     				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
-    				`translate(${ctx.$translate[0]}px, ${ctx.$translate[1]}px)`,
+    				`translate(${ctx.$scroll[0]}px, ${ctx.$scroll[1]}px)`,
     				`;`
     			].join(` `));
 
-    			add_location(div, file$m, 43, 0, 910);
+    			add_location(div, file$m, 49, 0, 1015);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10237,7 +10305,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			insert_dev(target, t2, anchor);
     			mount_component(picker, target, anchor);
     			insert_dev(target, t3, anchor);
-    			mount_component(explor, target, anchor);
+    			mount_component(explore, target, anchor);
     			insert_dev(target, t4, anchor);
     			insert_dev(target, div, anchor);
 
@@ -10253,10 +10321,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$6, null, get_each_context$6);
     			check_outros();
 
-    			if (!current || (changed.$zoom || changed.$translate) && div_style_value !== (div_style_value = [
+    			if (!current || (changed.$zoom || changed.$scroll) && div_style_value !== (div_style_value = [
     				`transform:`,
     				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
-    				`translate(${ctx.$translate[0]}px, ${ctx.$translate[1]}px)`,
+    				`translate(${ctx.$scroll[0]}px, ${ctx.$scroll[1]}px)`,
     				`;`
     			].join(` `))) {
     				attr_dev(div, "style", div_style_value);
@@ -10268,7 +10336,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			transition_in(controls.$$.fragment, local);
     			transition_in(threads.$$.fragment, local);
     			transition_in(picker.$$.fragment, local);
-    			transition_in(explor.$$.fragment, local);
+    			transition_in(explore.$$.fragment, local);
 
     			for (let i = 0; i < each_value.length; i += 1) {
     				transition_in(each_blocks[i]);
@@ -10281,7 +10349,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			transition_out(controls.$$.fragment, local);
     			transition_out(threads.$$.fragment, local);
     			transition_out(picker.$$.fragment, local);
-    			transition_out(explor.$$.fragment, local);
+    			transition_out(explore.$$.fragment, local);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				transition_out(each_blocks[i]);
@@ -10298,7 +10366,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if (detaching) detach_dev(t2);
     			destroy_component(picker, detaching);
     			if (detaching) detach_dev(t3);
-    			destroy_component(explor, detaching);
+    			destroy_component(explore, detaching);
     			if (detaching) detach_dev(t4);
     			if (detaching) detach_dev(div);
 
@@ -10320,14 +10388,18 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     function instance$l($$self, $$props, $$invalidate) {
+    	let $size;
     	let $zoom;
-    	let $translate;
+    	let $scroll;
     	let $knots;
+    	validate_store(size, "size");
+    	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
     	validate_store(zoom_dam, "zoom");
     	component_subscribe($$self, zoom_dam, $$value => $$invalidate("$zoom", $zoom = $$value));
-    	validate_store(translate, "translate");
-    	component_subscribe($$self, translate, $$value => $$invalidate("$translate", $translate = $$value));
+    	validate_store(scroll$1, "scroll");
+    	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
     	const { basic: weave } = spawn({ basic: Basic() });
+    	scroll_set.set([$size[0] / 2, $size[1] / 2, 0]);
     	woven.set(weave.name.get());
     	const knots = weave.knots;
     	validate_store(knots, "knots");
@@ -10343,8 +10415,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	$$self.$inject_state = $$props => {
+    		if ("$size" in $$props) size.set($size = $$props.$size);
     		if ("$zoom" in $$props) zoom_dam.set($zoom = $$props.$zoom);
-    		if ("$translate" in $$props) translate.set($translate = $$props.$translate);
+    		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
     		if ("$knots" in $$props) knots.set($knots = $$props.$knots);
     	};
 
@@ -10353,7 +10426,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		knots,
     		get_ui,
     		$zoom,
-    		$translate,
+    		$scroll,
     		$knots
     	};
     }

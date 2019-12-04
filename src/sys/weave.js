@@ -4,7 +4,7 @@ import { tick } from "/sys/time.js"
 import { add, minus, divide_scalar, multiply_scalar, multiply, length } from "/util/vector.js"
 import { scroll, position } from "/sys/mouse.js"
 import { scale } from "/sys/screen.js"
-import { down } from "/sys/keyboard.js"
+import { down } from "/sys/key.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
@@ -209,28 +209,6 @@ tick.listen((t) => {
   })
 
   if (dirty) positions.set($positions)
-})
-
-// TODO: These will hang around reactive statement?
-const translate_velocity = write([0, 0, 0])
-export const translate = read(translate_velocity.get(), (set) =>
-  tick.listen(() => {
-    const t = translate_velocity.get()
-    const p = translate.get()
-    if (length(t) === 0) return
-
-    set([
-      t[0] + p[0],
-      t[1] + p[1],
-      0
-    ])
-    translate_velocity.set([0, 0, 0])
-  })
-)
-
-scroll.listen(([x, y]) => {
-  if (down.get().shift) return
-  translate_velocity.update(([t_x, t_y]) => [t_x + x, t_y + y, 0])
 })
 
 export const position_scale = derived([

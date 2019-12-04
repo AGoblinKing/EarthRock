@@ -4,6 +4,8 @@ import Weave from "./weave.js"
 import * as mouse from "/sys/mouse.js"
 import * as time from "/sys/time.js"
 import * as screen from "/sys/screen.js"
+import * as input from "/sys/input.js"
+import * as key from "/sys/key.js"
 
 const tie = (items) =>
   Object.entries(items)
@@ -17,9 +19,13 @@ const tie = (items) =>
     }), {})
 
 export default Weave({
+  name: `sys`,
+  id: `sys`,
   knots: tie({
     mouse,
     time,
-    screen
+    screen,
+    input,
+    key
   })
 })

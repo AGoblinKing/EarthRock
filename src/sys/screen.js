@@ -14,13 +14,9 @@ size.subscribe(([width, height]) => {
     ? height
     : width
 
-  scale.set(target / 1618)
+  scale.set(target / 100)
+  window.document.documentElement.style.fontSize = `${Math.round(scale.get())}px`
 })
-
-export const zoom = derived(
-  scroll,
-  ({ deltaY }) => Math.min(3, Math.max(-0.5, deltaY * 0.01))
-)
 
 // main canvas
 export const main = write((() => {

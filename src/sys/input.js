@@ -3,7 +3,9 @@ import * as Mouse from "/sys/mouse.js"
 import * as Key from "/sys/key.js"
 import * as Time from "/sys/time.js"
 import {
-  INPUT_SCROLL_STRENGTH
+  INPUT_SCROLL_STRENGTH,
+  INPUT_ZOOM_STRENGTH,
+  INPUT_ZOOM_MIN
 } from "/sys/flag.js"
 
 import { read, write } from "/util/store.js"
@@ -46,7 +48,7 @@ export const scroll = read([0, 0, 0], (set) => {
     set(add(
       scroll.get(),
       scroll_velocity
-    ))
+    ).map((n) => Math.round(n)))
 
     scroll_velocity = multiply_scalar(
       scroll_velocity,
@@ -63,4 +65,24 @@ export const scroll = read([0, 0, 0], (set) => {
       )
     )
   })
+})
+
+export const zoom = write(1)
+
+let zoom_velocity = 0
+
+Mouse.scroll.listen(([, t]) => {
+  zoom_velocity += t
+})
+
+Time.tick.listen(() => {
+  if (Math.abs(zoom_velocity) < 0.01) return
+  zoom.set(
+    Math.max(
+      Math.round(
+        (zoom.get() + zoom_velocity * INPUT_ZOOM_STRENGTH.get()) * 100
+      ) / 100
+      , INPUT_ZOOM_MIN.get())
+  )
+  zoom_velocity *= 0.5
 })

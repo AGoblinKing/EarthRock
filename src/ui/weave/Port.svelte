@@ -18,7 +18,7 @@ const mouseup = () => {
 
 
 <div
-  class="port"
+  class="port no-drag"
   id={address}
   class:writable
   class:name

@@ -71,11 +71,11 @@ $: id = knot.id
 .text {
   border: 0.25rem solid  #111;
   margin-bottom: 0.25rem;
-  font-size: 1rem;
   background-color: #333;
   width: 12rem;
   margin-top: 1rem;
-  vertical-align:middle;
+  font-size: 0.75rem;
+  vertical-align: middle;
   display: table-cell;
   height: 10rem;
 }

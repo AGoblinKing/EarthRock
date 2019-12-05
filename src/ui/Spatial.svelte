@@ -13,8 +13,8 @@ $: offset = [
   ((bias[1] * 0.01 * area[1]) / 2) * (anchor[1] <= 50 ? -1 : 1)
 ]
 
-$: tru_scale = Math.round(100 * scale)/100;
-$: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(position[1])}px) rotate(${rotate}deg) scale(${tru_scale});`;
+$: tru_scale = Math.round(100 * scale) / 100
+$: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(position[1])}px) rotate(${rotate}deg) scale(${tru_scale});`
 
 $: anchor = [
   anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`,

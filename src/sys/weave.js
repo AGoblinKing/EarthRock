@@ -1,15 +1,26 @@
-import { transformer, write, read, derived } from "/util/store.js"
-import { get } from "/sys/wheel.js"
+import { transformer, write } from "/util/store.js"
+import { get, trash } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
-import { add, minus, divide_scalar, multiply_scalar, multiply, length } from "/util/vector.js"
-import { scroll, position } from "/sys/mouse.js"
-import { scale } from "/sys/screen.js"
-import { down } from "/sys/key.js"
+import {
+  add,
+  minus,
+  divide_scalar,
+  multiply_scalar,
+  multiply
+} from "/util/vector.js"
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
   get(weave_id)
 ).set(`sys`)
+
+trash.listen((trashee) => {
+  if (!trashee) return
+
+  if (woven.get().name.get() === trashee.name.get()) {
+    woven.set(`sys`)
+  }
+})
 
 export const hoveree = write(``)
 export const draggee = write(``)
@@ -210,30 +221,3 @@ tick.listen((t) => {
 
   if (dirty) positions.set($positions)
 })
-
-export const position_scale = derived([
-  position,
-  scale
-], ([$position, $scale]) => [
-  $position[0] / $scale,
-  $position[1] / $scale,
-  0
-])
-
-let zoom_val = 1
-// take into account scale? No
-export const zoom = derived([
-  scroll,
-  scale
-], ([
-  $scroll,
-  $scale
-]) => {
-  if (down.get().shift) {
-    zoom_val = Math.max(0.25, zoom_val + $scroll[1] / 100)
-  }
-
-  return zoom_val * $scale
-})
-
-export const zoom_dam = derived(tick, zoom.get)

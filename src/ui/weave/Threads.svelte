@@ -1,7 +1,7 @@
 <script>
 import { size } from "/sys/screen.js"
 import { feed } from "/sys/wheel.js"
-import { frame, tick} from "/sys/time.js"
+import { frame, tick } from "/sys/time.js"
 import { first } from "/sys/port-connection.js"
 import { position } from "/sys/mouse.js"
 import { derived, read } from "/util/store.js"
@@ -17,35 +17,35 @@ const recent = read(new Set(), (set) => {
   tick.subscribe(() => {
     t += 250
     const dels = Object.entries(deletes)
-    if(dels.length === 0) return
- 
+    if (dels.length === 0) return
+
     const r = recent.get()
 
     let change = false
     dels.forEach(([key, del_t]) => {
-      if(del_t < t) {
+      if (del_t < t) {
         r.delete(key)
         delete deletes[key]
         change = true
       }
     })
 
-    if(change) set(r)
+    if (change) set(r)
   })
 
   feed.subscribe(({ writer, reader }) => {
-    if(!writer || !reader) return
+    if (!writer || !reader) return
 
-    const [weave_write, ...local_write] = writer.split("/")
-    const [weave_read, ...local_read] = reader.split("/")
+    const [weave_write, ...local_write] = writer.split(`/`)
+    const [weave_read, ...local_read] = reader.split(`/`)
     const weave_id = weave.name.get()
 
     // takes place in this weave!
-    if(weave_id !== weave_write && weave_id !== weave_read) return
-    const id = `${local_read.join("/")}-${local_write.join("/")}`
+    if (weave_id !== weave_write && weave_id !== weave_read) return
+    const id = `${local_read.join(`/`)}-${local_write.join(`/`)}`
 
     const s_recent = recent.get()
-    if(!s_recent.has(id)) {
+    if (!s_recent.has(id)) {
       s_recent.add(id)
       set(s_recent)
     }
@@ -66,10 +66,13 @@ const get_color = (id) => {
 }
 
 // tick to recculate position
-$: threads = $frame ? weave.threads : weave.threads
+$: threads = $frame
+  ? weave.threads
+  : weave.threads
+
 $: rects = Object.entries($threads)
-  .filter(([x, y]) => 
-    document.getElementById(`${x}|read`) && 
+  .filter(([x, y]) =>
+    document.getElementById(`${x}|read`) &&
     document.getElementById(`${y}|write`)
   )
   .map(
@@ -81,7 +84,9 @@ $: rects = Object.entries($threads)
     ]
   )
 
-$: first_rec = $first ? get_pos($first) : [0, 0]
+$: first_rec = $first
+  ? get_pos($first)
+  : [0, 0]
 </script>
 
 <svg width={$size[0]} height={$size[1]} class="threads">
@@ -144,11 +149,11 @@ $: first_rec = $first ? get_pos($first) : [0, 0]
 
 <style>
 .active {
-  stroke-width:10;
+  stroke-width:2rem;
 }
 
 .line {
-  stroke-width: 3;
+  stroke-width: 0.5rem;
 }
 
 .threads {

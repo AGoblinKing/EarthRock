@@ -9,35 +9,68 @@
   [New]
 -->
 <script>
-import { weaves } from "/sys/wheel.js"
+import { weaves, del, spawn } from "/sys/wheel.js"
 import Weave from "./explore/Weave.svelte"
 
-export let weave
+$: ws = Object.values($weaves)
+let filter = ``
 
-$: ws = Object.values($weaves) 
+$: parts = filter.split(`/`)
 
+let adder = ``
+const do_add = () => {
+  if (adder[0] === `-`) {
+    del({
+      [adder.slice(1)]: true
+    })
+    adder = ``
+
+    return
+  }
+
+  spawn({
+    [adder]: {
+
+    }
+  })
+
+  adder = ``
+}
 </script>
 
 <div class="explore">
   <input 
     type="text" 
     class="filter" 
-    placeholder
+    placeholder="Filter eg: sys/"
+    bind:value={filter}
   />
 
   <div class="weaves">
   {#each ws as weave}
-    <Weave {weave} />
+    {#if 
+      filter === `` ||
+      weave.name.get().indexOf(parts[0]) !== -1
+    }
+      <Weave {weave} filter={parts.slice(1)} />
+    {/if}
   {/each}
   </div>
 
   <input 
     type="text"
+    class="adder"
+    bind:value={adder}
+    on:keydown={({ which }) => which === 13 && do_add()}
     placeholder={`-${ws[ws.length - 1].name.get()} to delete`}
   />
 </div>
 
 <style>
+.adder {
+  border-top: 0.25rem solid #333;
+  padding: 1rem;
+}
 .explore {
   color: white;
   font-size: 1rem;
@@ -51,6 +84,10 @@ $: ws = Object.values($weaves)
   display: flex;
   flex-direction: column;
   z-index: 1001;
+}
+.filter {
+  border-bottom: 0.25rem solid #333;
+  padding: 1rem;
 }
 
 .weaves {

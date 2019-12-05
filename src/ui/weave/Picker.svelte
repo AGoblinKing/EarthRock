@@ -23,8 +23,7 @@ const pick = (e) => {
       e.x - 50 * $Scaling - $size[0]/2, 
       e.y + 10 * $Scaling - $size[1]/2, 
       0 
-    ], 
-    $scroll
+    ]
   )
 
   picking = true

@@ -22,7 +22,6 @@ const cancel = edit.subscribe((txt) => {
   }
   chan.set(v)
 })
-
 </script>
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>
@@ -69,9 +68,8 @@ const cancel = edit.subscribe((txt) => {
   padding: 0rem 1rem;
   justify-content: center;
   align-items: center;
-  border-nadius: 1rem;
   border:solid 0.25rem #111;
-  width: 35rem;
+  width: 30rem;
 }
 
 .channel:hover {

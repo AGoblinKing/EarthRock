@@ -73,7 +73,7 @@ const check_add = ({ which }) => {
   flex: 1;
   color: white;
   text-align: center;
-  width: 30rem;
+  width: 25rem;
 
 }
 .port {
@@ -90,7 +90,7 @@ const check_add = ({ which }) => {
   color: white;
   display: flex;
   flex-direction: column;
-  width: 30rem;
+  width: 25rem;
   align-items: center;
 }
 

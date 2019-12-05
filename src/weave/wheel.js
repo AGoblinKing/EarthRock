@@ -27,16 +27,40 @@ export const running = read({
   [SYSTEM]: true
 }, (set) => { running_set = set })
 
-export const trash = write([])
+export const trash = write()
 
 const addr = (address) => {
   let path = address.split(`/`)
   if (path[0] === ``) path = path.slice(1)
   return path
 }
-// put into trash bin
-export const del = (path) => {
 
+// put into trash bin
+export const del = (keys) => {
+  const $running = running.get()
+  const $weaves = weaves.get()
+
+  let dirty = false
+
+  Object.keys(keys).forEach((key) => {
+    if (key === SYSTEM) return
+
+    if ($running[key]) {
+      stop(key)
+    }
+
+    if ($weaves[key]) {
+      dirty = true
+
+      trash.set(
+        $weaves[key]
+      )
+
+      delete $weaves[key]
+    }
+  })
+
+  if (dirty) weaves_set($weaves)
 }
 
 export const get = (address) => {
@@ -99,7 +123,7 @@ export const start = (weave_name) => {
     const knot = knots[knot_id]
 
     if (knot === undefined) {
-      console.warn(`knot undefined`)
+      console.warn(`knot  undefined`)
       return
     }
 

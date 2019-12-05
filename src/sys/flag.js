@@ -8,3 +8,5 @@ export const TIME_TICK_RATE = write(100)
 
 export const WEAVE_EXPLORE_OPEN = write(true)
 export const INPUT_SCROLL_STRENGTH = write(20)
+export const INPUT_ZOOM_STRENGTH = write(0.01)
+export const INPUT_ZOOM_MIN = write(0.1)

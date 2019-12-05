@@ -1,5 +1,5 @@
 <script>
-import Tile from "/ui/image/Tile.svelte"
+import Postage from "/ui/weave/Postage.svelte"
 import Port from "/ui/weave/Port.svelte"
 import color from "/ui/action/color.js"
 
@@ -7,12 +7,11 @@ export let knot
 
 $: whom = knot.whom
 $: id = knot.id
-
 </script>
 
-<div class="mail" use:color={$whom || "/???/"}>
+<div class="mail" use:color={$whom || `/???/`}>
   <div class="postage">
-    <Tile width={1} height={1} random />
+    <Postage address={$whom} />
   </div>
   <div class="center">
     <div class="port left">
@@ -28,24 +27,18 @@ $: id = knot.id
 </div>
 
 <style>
-.mail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 250ms linear;
-}
 
 .postage {
   position: absolute;
   align-self: flex-end;
   width: 4rem;
-  height: 4rem;
-  margin-right: -0.20rem;
   display: flex;
-  background-color: #111;
-  filter: sepia(1) hue-rotate(90deg) drop-shadow(-0.25rem 0.25rem 0 black);
-  padding: 0.25rem;
-  border: 0.25rem solid  #333;
+  height: 4rem;
+}
+.mail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .center {

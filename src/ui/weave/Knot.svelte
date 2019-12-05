@@ -1,22 +1,22 @@
 <script>
-import color from "/ui/action/color.js"
 import physics from "/ui/action/physics.js"
 
 import Spatial from "/ui/Spatial.svelte"
-import { add , minus, multiply_scalar } from "/util/vector.js"
-import { read } from "/util/store.js"
-
-import { 
-  positions, 
-  draggee, 
-  hoveree, 
-  drag_count,
-  position_scale as Mouse 
-} from "/sys/weave.js"
+import { add, minus, multiply_scalar } from "/util/vector.js"
 
 import {
-  scroll 
+  zoom,
+  scroll
 } from "/sys/input.js"
+
+import {
+  positions,
+  draggee,
+  hoveree,
+  drag_count
+} from "/sys/weave.js"
+
+import { position as Mouse } from "/sys/mouse.js"
 
 export let position = [0, 0, 0]
 export let knot
@@ -24,7 +24,7 @@ export let knot
 $: type = knot.knot
 $: id = knot.id
 
-const update = () => 
+const update = () =>
   positions.set({
     ...positions.get(),
     [knot.id.get()]: position
@@ -36,11 +36,11 @@ let dragging = false
 let zIndex = 7
 
 const drag = (e) => {
-  if (  
-    dragging 
-    || e.target.classList.contains(`port`) 
-    || e.target.tagName === `INPUT`
-    || e.target.tagName === `TEXTAREA`
+  if (
+    dragging ||
+    e.target.classList.contains(`no-drag`) ||
+    e.target.tagName === `INPUT` ||
+    e.target.tagName === `TEXTAREA`
   ) {
     return
   }
@@ -56,9 +56,9 @@ const drag = (e) => {
       0
     ]
     update()
-    draggee.set('')
-  
-    zIndex = drag_count.get() 
+    draggee.set(``)
+
+    zIndex = drag_count.get()
     window.removeEventListener(`mouseup`, handler)
   }
 
@@ -66,17 +66,18 @@ const drag = (e) => {
 }
 
 $: tru_position = add(
-  dragging 
-    ? minus(
-        $Mouse,
-        $scroll
-      )
-    : $positions[knot.id.get()],
-  
+  dragging
+    ? multiply_scalar(minus(
+      $Mouse,
+      $scroll
+    ), 1 / $zoom)
+    : $positions[knot.id.get()]
+
 )
 
-$: tru_scale = (dragging ? 1.168 : 1)
-
+$: tru_scale = dragging
+  ? 1.168
+  : 1
 </script>
 
 <Spatial
@@ -109,10 +110,10 @@ $: tru_scale = (dragging ? 1.168 : 1)
   background-color: #222;
   border: 0.5rem solid black;
   z-index: 1;
-  filter: drop-shadow(1rem 1rem 0 rgba(0,0,0,0.25));
+  font-size: 0.75rem;
 }
 
 .knot:hover {
-  filter: drop-shadow(1rem 1rem 1rem rgba(0, 255, 0, 0.5)) drop-shadow(1rem 1rem 0 rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0rem 0rem 1rem rgba(0, 255, 0, 0.5));
 }
 </style>

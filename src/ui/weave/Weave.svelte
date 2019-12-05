@@ -1,9 +1,8 @@
 <script>
 import * as Wheel from "/sys/wheel.js"
 import { size } from "/sys/screen.js"
-import { woven, zoom_dam as zoom } from "/sys/weave.js"
-import { scroll, scroll_set} from "/sys/input.js"
-import { tick } from "/sys/time.js"
+import { woven } from "/sys/weave.js"
+import { scroll, scroll_set, zoom } from "/sys/input.js"
 
 import { Basic } from "/prefab/weaves.js"
 
@@ -14,7 +13,6 @@ import Picker from "./Picker.svelte"
 import Knot from "./Knot.svelte"
 import Explore from "./Explore.svelte"
 
-import { random } from "/util/text.js"
 import * as knot_kinds from "./spawnable.js"
 
 const { basic: weave } = Wheel.spawn({
@@ -23,7 +21,7 @@ const { basic: weave } = Wheel.spawn({
 
 // Reset Scroll
 scroll_set.set([
-  $size[0]/2, $size[1]/2, 0
+  $size[0] / 2, $size[1] / 2, 0
 ])
 
 woven.set(weave.name.get())
@@ -33,11 +31,10 @@ const knots = weave.knots
 const get_ui = (knot) => {
   const ui = knot_kinds[knot.knot.get()]
 
-  return ui === undefined 
-    ? knot_kinds.unknown 
+  return ui === undefined
+    ? knot_kinds.unknown
     : ui
 }
-
 </script>
 
 <MainScreen />
@@ -45,15 +42,15 @@ const get_ui = (knot) => {
 
 <Threads {weave} />
 <Picker {weave} />
-<Explore {weave} />
+<Explore />
 
 <div 
   class="knots"
   style={
     [
       `transform:`,
-      `scale(${Math.round($zoom * 100)/100})`,
       `translate(${$scroll[0]}px, ${$scroll[1]}px)`,
+      `scale(${$zoom})`,
       `;`
     ].join(` `)
   }

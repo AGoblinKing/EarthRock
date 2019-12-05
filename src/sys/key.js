@@ -11,7 +11,7 @@ export const up = read(``, (set) =>
 
     e.preventDefault()
     set(``)
-    set(e.key)
+    set(e.key.toLowerCase())
   })
 )
 
@@ -26,7 +26,7 @@ export const down = read(``, (set) =>
 
     e.preventDefault()
     set(``)
-    set(e.key)
+    set(e.key.toLowerCase())
   })
 )
 

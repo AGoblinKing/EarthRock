@@ -5,6 +5,7 @@ import mirror from "/ui/action/mirror.js"
 export let knot
 
 $: id = knot.id
+
 $: vertex = knot.vertex
 $: fragment = knot.fragment
 $: value = knot.value

@@ -3049,8 +3049,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     const WEAVE_EXPLORE_OPEN = write(true);
     const INPUT_SCROLL_STRENGTH = write(20);
+    const INPUT_ZOOM_STRENGTH = write(0.01);
+    const INPUT_ZOOM_MIN = write(0.1);
 
-    const path = writable(window.location.pathname.slice(1));
+    const path = write(window.location.pathname.slice(1));
 
     path.subscribe((new_path) => {
       if (window.location.pathname === new_path) {
@@ -4642,13 +4644,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         ? height
         : width;
 
-      scale.set(target / 1618);
+      scale.set(target / 100);
+      window.document.documentElement.style.fontSize = `${Math.round(scale.get())}px`;
     });
-
-    const zoom = derived$1(
-      scroll,
-      ({ deltaY }) => Math.min(3, Math.max(-0.5, deltaY * 0.01))
-    );
 
     // main canvas
     const main = write((() => {
@@ -4661,7 +4659,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         __proto__: null,
         size: size,
         scale: scale,
-        zoom: zoom,
         main: main
     });
 
@@ -4676,7 +4673,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
         e.preventDefault();
         set(``);
-        set(e.key);
+        set(e.key.toLowerCase());
       })
     );
 
@@ -4691,7 +4688,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
         e.preventDefault();
         set(``);
-        set(e.key);
+        set(e.key.toLowerCase());
       })
     );
 
@@ -4754,7 +4751,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         set(add(
           scroll$1.get(),
           scroll_velocity
-        ));
+        ).map((n) => Math.round(n)));
 
         scroll_velocity = multiply_scalar(
           scroll_velocity,
@@ -4773,11 +4770,32 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       });
     });
 
+    const zoom = write(1);
+
+    let zoom_velocity = 0;
+
+    scroll.listen(([, t]) => {
+      zoom_velocity += t;
+    });
+
+    tick.listen(() => {
+      if (Math.abs(zoom_velocity) < 0.01) return
+      zoom.set(
+        Math.max(
+          Math.round(
+            (zoom.get() + zoom_velocity * INPUT_ZOOM_STRENGTH.get()) * 100
+          ) / 100
+          , INPUT_ZOOM_MIN.get())
+      );
+      zoom_velocity *= 0.5;
+    });
+
     var input = /*#__PURE__*/Object.freeze({
         __proto__: null,
         translate: translate,
         scroll_set: scroll_set,
-        scroll: scroll$1
+        scroll: scroll$1,
+        zoom: zoom
     });
 
     const tie = (items) =>
@@ -4828,16 +4846,40 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
       [SYSTEM]: true
     }, (set) => { running_set = set; });
 
-    const trash = write([]);
+    const trash = write();
 
     const addr = (address) => {
       let path = address.split(`/`);
       if (path[0] === ``) path = path.slice(1);
       return path
     };
-    // put into trash bin
-    const del = (path) => {
 
+    // put into trash bin
+    const del = (keys) => {
+      const $running = running$1.get();
+      const $weaves = weaves.get();
+
+      let dirty = false;
+
+      Object.keys(keys).forEach((key) => {
+        if (key === SYSTEM) return
+
+        if ($running[key]) {
+          stop(key);
+        }
+
+        if ($weaves[key]) {
+          dirty = true;
+
+          trash.set(
+            $weaves[key]
+          );
+
+          delete $weaves[key];
+        }
+      });
+
+      if (dirty) weaves_set($weaves);
     };
 
     const get = (address) => {
@@ -4900,7 +4942,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
         const knot = knots[knot_id];
 
         if (knot === undefined) {
-          console.warn(`knot undefined`);
+          console.warn(`knot  undefined`);
           return
         }
 
@@ -4999,6 +5041,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     const woven = transformer((weave_id) =>
       get(weave_id)
     ).set(`sys`);
+
+    trash.listen((trashee) => {
+      if (!trashee) return
+
+      if (woven.get().name.get() === trashee.name.get()) {
+        woven.set(`sys`);
+      }
+    });
 
     const hoveree = write(``);
     const draggee = write(``);
@@ -5199,33 +5249,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
       if (dirty) positions.set($positions);
     });
-
-    const position_scale = derived$1([
-      position,
-      scale
-    ], ([$position, $scale]) => [
-      $position[0] / $scale,
-      $position[1] / $scale,
-      0
-    ]);
-
-    let zoom_val = 1;
-    // take into account scale? No
-    const zoom$1 = derived$1([
-      scroll,
-      scale
-    ], ([
-      $scroll,
-      $scale
-    ]) => {
-      if (down.get().shift) {
-        zoom_val = Math.max(0.25, zoom_val + $scroll[1] / 100);
-      }
-
-      return zoom_val * $scale
-    });
-
-    const zoom_dam = derived$1(tick, zoom$1.get);
 
     const Basic = () => ({
       knots: {
@@ -5718,7 +5741,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (109:2) {#if $first}
+    // (114:2) {#if $first}
     function create_if_block_1(ctx) {
     	let line;
     	let line_stroke_value;
@@ -5735,8 +5758,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			attr_dev(line, "y1", line_y__value = ctx.first_rec.y + ctx.first_rec.height / 2);
     			attr_dev(line, "x2", line_x__value_1 = ctx.$position[0]);
     			attr_dev(line, "y2", line_y__value_1 = ctx.$position[1]);
-    			attr_dev(line, "class", "line svelte-d8klnk");
-    			add_location(line, file$7, 109, 4, 3037);
+    			attr_dev(line, "class", "line svelte-1usx6d3");
+    			add_location(line, file$7, 114, 4, 3050);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -5771,14 +5794,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_if_block_1.name,
     		type: "if",
-    		source: "(109:2) {#if $first}",
+    		source: "(114:2) {#if $first}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (131:6) {#if $recent.has(`${x_id}-${y_id}`)}
+    // (136:6) {#if $recent.has(`${x_id}-${y_id}`)}
     function create_if_block$2(ctx) {
     	let line;
     	let line_stroke_value;
@@ -5795,8 +5818,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
     			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-    			attr_dev(line, "class", "active svelte-d8klnk");
-    			add_location(line, file$7, 131, 6, 3628);
+    			attr_dev(line, "class", "active svelte-1usx6d3");
+    			add_location(line, file$7, 136, 6, 3641);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -5831,14 +5854,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_if_block$2.name,
     		type: "if",
-    		source: "(131:6) {#if $recent.has(`${x_id}-${y_id}`)}",
+    		source: "(136:6) {#if $recent.has(`${x_id}-${y_id}`)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (121:2) {#each rects as [x, y, x_id, y_id]}
+    // (126:2) {#each rects as [x, y, x_id, y_id]}
     function create_each_block(ctx) {
     	let line;
     	let line_stroke_value;
@@ -5860,8 +5883,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
     			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
     			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-    			attr_dev(line, "class", "line svelte-d8klnk");
-    			add_location(line, file$7, 121, 6, 3324);
+    			attr_dev(line, "class", "line svelte-1usx6d3");
+    			add_location(line, file$7, 126, 6, 3337);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, line, anchor);
@@ -5915,7 +5938,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(121:2) {#each rects as [x, y, x_id, y_id]}",
+    		source: "(126:2) {#each rects as [x, y, x_id, y_id]}",
     		ctx
     	});
 
@@ -5973,57 +5996,57 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			attr_dev(stop0, "offset", "30%");
     			attr_dev(stop0, "stop-color", "#F00");
-    			add_location(stop0, file$7, 89, 8, 2293);
+    			add_location(stop0, file$7, 94, 8, 2306);
     			attr_dev(stop1, "offset", "70%");
     			attr_dev(stop1, "stop-color", "#00F");
-    			add_location(stop1, file$7, 90, 8, 2340);
+    			add_location(stop1, file$7, 95, 8, 2353);
     			attr_dev(linearGradient0, "id", "linear");
     			attr_dev(linearGradient0, "x1", "0%");
     			attr_dev(linearGradient0, "y1", "0%");
     			attr_dev(linearGradient0, "x2", "100%");
     			attr_dev(linearGradient0, "y2", "0%");
-    			add_location(linearGradient0, file$7, 88, 6, 2222);
+    			add_location(linearGradient0, file$7, 93, 6, 2235);
     			attr_dev(stop2, "offset", "30%");
     			attr_dev(stop2, "stop-color", "#00F");
-    			add_location(stop2, file$7, 93, 10, 2488);
+    			add_location(stop2, file$7, 98, 10, 2501);
     			attr_dev(stop3, "offset", "70%");
     			attr_dev(stop3, "stop-color", "#F00");
-    			add_location(stop3, file$7, 94, 10, 2537);
+    			add_location(stop3, file$7, 99, 10, 2550);
     			attr_dev(linearGradient1, "id", "linear-other");
     			attr_dev(linearGradient1, "x1", "0%");
     			attr_dev(linearGradient1, "y1", "0%");
     			attr_dev(linearGradient1, "x2", "100%");
     			attr_dev(linearGradient1, "y2", "0%");
-    			add_location(linearGradient1, file$7, 92, 6, 2409);
+    			add_location(linearGradient1, file$7, 97, 6, 2422);
     			attr_dev(stop4, "offset", "5%");
     			attr_dev(stop4, "stop-color", "#F00");
-    			add_location(stop4, file$7, 97, 8, 2686);
+    			add_location(stop4, file$7, 102, 8, 2699);
     			attr_dev(stop5, "offset", "95%");
     			attr_dev(stop5, "stop-color", "#00F");
-    			add_location(stop5, file$7, 99, 8, 2735);
+    			add_location(stop5, file$7, 104, 8, 2748);
     			attr_dev(linearGradient2, "id", "linear-dark");
     			attr_dev(linearGradient2, "x1", "0%");
     			attr_dev(linearGradient2, "y1", "0%");
     			attr_dev(linearGradient2, "x2", "100%");
     			attr_dev(linearGradient2, "y2", "0%");
-    			add_location(linearGradient2, file$7, 96, 8, 2610);
+    			add_location(linearGradient2, file$7, 101, 8, 2623);
     			attr_dev(stop6, "offset", "5%");
     			attr_dev(stop6, "stop-color", "#00F");
-    			add_location(stop6, file$7, 102, 10, 2888);
+    			add_location(stop6, file$7, 107, 10, 2901);
     			attr_dev(stop7, "offset", "95%");
     			attr_dev(stop7, "stop-color", "#F00");
-    			add_location(stop7, file$7, 104, 10, 2939);
+    			add_location(stop7, file$7, 109, 10, 2952);
     			attr_dev(linearGradient3, "id", "linear-other-dark");
     			attr_dev(linearGradient3, "x1", "0%");
     			attr_dev(linearGradient3, "y1", "0%");
     			attr_dev(linearGradient3, "x2", "100%");
     			attr_dev(linearGradient3, "y2", "0%");
-    			add_location(linearGradient3, file$7, 101, 6, 2804);
-    			add_location(defs, file$7, 87, 4, 2209);
+    			add_location(linearGradient3, file$7, 106, 6, 2817);
+    			add_location(defs, file$7, 92, 4, 2222);
     			attr_dev(svg, "width", svg_width_value = ctx.$size[0]);
     			attr_dev(svg, "height", svg_height_value = ctx.$size[1]);
-    			attr_dev(svg, "class", "threads svelte-d8klnk");
-    			add_location(svg, file$7, 86, 0, 2148);
+    			attr_dev(svg, "class", "threads svelte-1usx6d3");
+    			add_location(svg, file$7, 91, 0, 2161);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -6161,11 +6184,11 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     		feed.subscribe(({ writer, reader }) => {
     			if (!writer || !reader) return;
-    			const [weave_write, ...local_write] = writer.split("/");
-    			const [weave_read, ...local_read] = reader.split("/");
+    			const [weave_write, ...local_write] = writer.split(`/`);
+    			const [weave_read, ...local_read] = reader.split(`/`);
     			const weave_id = weave.name.get();
     			if (weave_id !== weave_write && weave_id !== weave_read) return;
-    			const id = `${local_read.join("/")}-${local_write.join("/")}`;
+    			const id = `${local_read.join(`/`)}-${local_write.join(`/`)}`;
     			const s_recent = recent.get();
 
     			if (!s_recent.has(id)) {
@@ -6368,7 +6391,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
     const file$8 = "src/ui/weave/Knot.svelte";
 
-    // (82:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+    // (83:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
     function create_default_slot$2(ctx) {
     	let div1;
     	let div0;
@@ -6383,10 +6406,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div1 = element("div");
     			div0 = element("div");
     			if (default_slot) default_slot.c();
-    			attr_dev(div0, "class", "knot svelte-1mdjxg");
-    			add_location(div0, file$8, 93, 4, 1587);
+    			attr_dev(div0, "class", "knot svelte-101hgun");
+    			add_location(div0, file$8, 94, 4, 1548);
     			attr_dev(div1, "class", "adjust");
-    			add_location(div1, file$8, 88, 2, 1470);
+    			add_location(div1, file$8, 89, 2, 1431);
 
     			dispose = [
     				listen_dev(div0, "mousedown", ctx.drag, false, false, false),
@@ -6433,7 +6456,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(82:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+    		source: "(83:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
     		ctx
     	});
 
@@ -6508,25 +6531,28 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     function instance$7($$self, $$props, $$invalidate) {
     	let $Mouse;
     	let $scroll;
+    	let $zoom;
     	let $positions;
 
     	let $id,
     		$$unsubscribe_id = noop,
     		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
 
-    	validate_store(position_scale, "Mouse");
-    	component_subscribe($$self, position_scale, $$value => $$invalidate("$Mouse", $Mouse = $$value));
+    	validate_store(position, "Mouse");
+    	component_subscribe($$self, position, $$value => $$invalidate("$Mouse", $Mouse = $$value));
     	validate_store(scroll$1, "scroll");
     	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
+    	validate_store(zoom, "zoom");
+    	component_subscribe($$self, zoom, $$value => $$invalidate("$zoom", $zoom = $$value));
     	validate_store(positions, "positions");
     	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
-    	let { position = [0, 0, 0] } = $$props;
+    	let { position: position$1 = [0, 0, 0] } = $$props;
     	let { knot } = $$props;
 
     	const update = () => positions.set({
     		...positions.get(),
-    		[knot.id.get()]: position
+    		[knot.id.get()]: position$1
     	});
 
     	update();
@@ -6534,7 +6560,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let zIndex = 7;
 
     	const drag = e => {
-    		if (dragging || e.target.classList.contains(`port`) || e.target.tagName === `INPUT` || e.target.tagName === `TEXTAREA`) {
+    		if (dragging || e.target.classList.contains(`no-drag`) || e.target.tagName === `INPUT` || e.target.tagName === `TEXTAREA`) {
     			return;
     		}
 
@@ -6543,9 +6569,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     		const handler = () => {
     			$$invalidate("dragging", dragging = false);
-    			$$invalidate("position", position = [$Mouse[0] - $scroll[0], $Mouse[1] - $scroll[1], 0]);
+    			$$invalidate("position", position$1 = [$Mouse[0] - $scroll[0], $Mouse[1] - $scroll[1], 0]);
     			update();
-    			draggee.set("");
+    			draggee.set(``);
     			$$invalidate("zIndex", zIndex = drag_count.get());
     			window.removeEventListener(`mouseup`, handler);
     		};
@@ -6564,14 +6590,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	const mouseout_handler = () => hoveree.set(``);
 
     	$$self.$set = $$props => {
-    		if ("position" in $$props) $$invalidate("position", position = $$props.position);
+    		if ("position" in $$props) $$invalidate("position", position$1 = $$props.position);
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("$$scope" in $$props) $$invalidate("$$scope", $$scope = $$props.$$scope);
     	};
 
     	$$self.$capture_state = () => {
     		return {
-    			position,
+    			position: position$1,
     			knot,
     			dragging,
     			zIndex,
@@ -6580,6 +6606,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			$Mouse,
     			$scroll,
     			tru_position,
+    			$zoom,
     			$positions,
     			tru_scale,
     			$id
@@ -6587,15 +6614,16 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	$$self.$inject_state = $$props => {
-    		if ("position" in $$props) $$invalidate("position", position = $$props.position);
+    		if ("position" in $$props) $$invalidate("position", position$1 = $$props.position);
     		if ("knot" in $$props) $$invalidate("knot", knot = $$props.knot);
     		if ("dragging" in $$props) $$invalidate("dragging", dragging = $$props.dragging);
     		if ("zIndex" in $$props) $$invalidate("zIndex", zIndex = $$props.zIndex);
     		if ("type" in $$props) type = $$props.type;
     		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
-    		if ("$Mouse" in $$props) position_scale.set($Mouse = $$props.$Mouse);
+    		if ("$Mouse" in $$props) position.set($Mouse = $$props.$Mouse);
     		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
     		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
+    		if ("$zoom" in $$props) zoom.set($zoom = $$props.$zoom);
     		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
     		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
     		if ("$id" in $$props) id.set($id = $$props.$id);
@@ -6606,7 +6634,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let tru_position;
     	let tru_scale;
 
-    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $scroll: 1, $positions: 1 }) => {
+    	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $scroll: 1, $zoom: 1, $positions: 1 }) => {
     		if (changed.knot) {
     			 type = knot.knot;
     		}
@@ -6615,9 +6643,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			 $$subscribe_id($$invalidate("id", id = knot.id));
     		}
 
-    		if (changed.dragging || changed.$Mouse || changed.$scroll || changed.$positions || changed.knot) {
+    		if (changed.dragging || changed.$Mouse || changed.$scroll || changed.$zoom || changed.$positions || changed.knot) {
     			 $$invalidate("tru_position", tru_position = add(dragging
-    			? minus($Mouse, $scroll)
+    			? multiply_scalar(minus($Mouse, $scroll), 1 / $zoom)
     			: $positions[knot.id.get()]));
     		}
 
@@ -6627,7 +6655,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	return {
-    		position,
+    		position: position$1,
     		knot,
     		dragging,
     		zIndex,
@@ -6692,7 +6720,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (69:0) {#if picking}
+    // (68:0) {#if picking}
     function create_if_block$3(ctx) {
     	let current;
 
@@ -6742,14 +6770,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_if_block$3.name,
     		type: "if",
-    		source: "(69:0) {#if picking}",
+    		source: "(68:0) {#if picking}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (75:6) {#each arr_knots as [kind, fn] (kind)}
+    // (74:6) {#each arr_knots as [kind, fn] (kind)}
     function create_each_block$1(key_1, ctx) {
     	let div;
     	let t0_value = ctx.kind + "";
@@ -6770,7 +6798,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t0 = text(t0_value);
     			t1 = space();
     			attr_dev(div, "class", "kind svelte-1yi8mbp");
-    			add_location(div, file$9, 75, 8, 1391);
+    			add_location(div, file$9, 74, 8, 1377);
     			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
     			this.first = div;
     		},
@@ -6796,14 +6824,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(75:6) {#each arr_knots as [kind, fn] (kind)}",
+    		source: "(74:6) {#each arr_knots as [kind, fn] (kind)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (70:2) <Knot {position} {knot}>
+    // (69:2) <Knot {position} {knot}>
     function create_default_slot$3(ctx) {
     	let div1;
     	let div0;
@@ -6831,9 +6859,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div0, "class", "title svelte-1yi8mbp");
-    			add_location(div0, file$9, 71, 6, 1287);
+    			add_location(div0, file$9, 70, 6, 1273);
     			attr_dev(div1, "class", "prompt");
-    			add_location(div1, file$9, 70, 4, 1260);
+    			add_location(div1, file$9, 69, 4, 1246);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -6861,7 +6889,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$3.name,
     		type: "slot",
-    		source: "(70:2) <Knot {position} {knot}>",
+    		source: "(69:2) <Knot {position} {knot}>",
     		ctx
     	});
 
@@ -6880,7 +6908,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "picker svelte-1yi8mbp");
     			toggle_class(div, "picking", ctx.picking);
-    			add_location(div, file$9, 63, 0, 1150);
+    			add_location(div, file$9, 62, 0, 1136);
 
     			dispose = [
     				listen_dev(window, "mouseup", ctx.nopick, false, false, false),
@@ -6950,19 +6978,16 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     function instance$8($$self, $$props, $$invalidate) {
     	let $Scaling;
     	let $size;
-    	let $scroll;
     	validate_store(scale, "Scaling");
     	component_subscribe($$self, scale, $$value => $$invalidate("$Scaling", $Scaling = $$value));
     	validate_store(size, "size");
     	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
-    	validate_store(scroll$1, "scroll");
-    	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
     	let { weave } = $$props;
     	const knot = Knot_Factory();
     	let picking = false;
 
     	const pick = e => {
-    		$$invalidate("position", position = add([e.x - 50 * $Scaling - $size[0] / 2, e.y + 10 * $Scaling - $size[1] / 2, 0], $scroll));
+    		$$invalidate("position", position = add([e.x - 50 * $Scaling - $size[0] / 2, e.y + 10 * $Scaling - $size[1] / 2, 0]));
     		$$invalidate("picking", picking = true);
     	};
 
@@ -7005,7 +7030,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			position,
     			$Scaling,
     			$size,
-    			$scroll,
     			arr_knots
     		};
     	};
@@ -7016,7 +7040,6 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if ("position" in $$props) $$invalidate("position", position = $$props.position);
     		if ("$Scaling" in $$props) scale.set($Scaling = $$props.$Scaling);
     		if ("$size" in $$props) size.set($size = $$props.$size);
-    		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
     		if ("arr_knots" in $$props) $$invalidate("arr_knots", arr_knots = $$props.arr_knots);
     	};
 
@@ -7086,12 +7109,12 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t1 = space();
     			div1 = element("div");
     			t2 = text(t2_value);
-    			attr_dev(div0, "class", "key svelte-xcnast");
-    			add_location(div0, file$a, 13, 2, 154);
-    			attr_dev(div1, "class", "value svelte-xcnast");
-    			add_location(div1, file$a, 16, 2, 193);
-    			attr_dev(div2, "class", "channel svelte-xcnast");
-    			add_location(div2, file$a, 9, 0, 108);
+    			attr_dev(div0, "class", "key svelte-o1iw3s");
+    			add_location(div0, file$a, 12, 2, 153);
+    			attr_dev(div1, "class", "value svelte-o1iw3s");
+    			add_location(div1, file$a, 15, 2, 192);
+    			attr_dev(div2, "class", "channel svelte-o1iw3s");
+    			add_location(div2, file$a, 8, 0, 107);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -7209,7 +7232,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (24:0) {#if open}
+    // (25:0) {#if open}
     function create_if_block$4(ctx) {
     	let div;
     	let current;
@@ -7233,7 +7256,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div, "class", "chans");
-    			add_location(div, file$b, 24, 0, 407);
+    			add_location(div, file$b, 25, 0, 430);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7245,7 +7268,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			current = true;
     		},
     		p: function update(changed, ctx) {
-    			if (changed.chans) {
+    			if (changed.filter || changed.chans) {
     				each_value = ctx.chans;
     				let i;
 
@@ -7300,15 +7323,15 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_if_block$4.name,
     		type: "if",
-    		source: "(24:0) {#if open}",
+    		source: "(25:0) {#if open}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (26:0) {#each chans as channel}
-    function create_each_block$2(ctx) {
+    // (28:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+    function create_if_block_1$1(ctx) {
     	let current;
 
     	const channel = new Channel({
@@ -7345,9 +7368,75 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
+    		id: create_if_block_1$1.name,
+    		type: "if",
+    		source: "(28:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (27:0) {#each chans as channel}
+    function create_each_block$2(ctx) {
+    	let show_if = ctx.filter.length === 0 || ctx.channel.name.indexOf(ctx.filter[0]) !== -1;
+    	let if_block_anchor;
+    	let current;
+    	let if_block = show_if && create_if_block_1$1(ctx);
+
+    	const block = {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(changed, ctx) {
+    			if (changed.filter || changed.chans) show_if = ctx.filter.length === 0 || ctx.channel.name.indexOf(ctx.filter[0]) !== -1;
+
+    			if (show_if) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    					transition_in(if_block, 1);
+    				} else {
+    					if_block = create_if_block_1$1(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
     		id: create_each_block$2.name,
     		type: "each",
-    		source: "(26:0) {#each chans as channel}",
+    		source: "(27:0) {#each chans as channel}",
     		ctx
     	});
 
@@ -7371,9 +7460,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t1 = space();
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
-    			attr_dev(div, "class", "stitch svelte-7jsjmw");
+    			attr_dev(div, "class", "stitch svelte-18npsr4");
     			toggle_class(div, "open", ctx.open);
-    			add_location(div, file$b, 14, 0, 288);
+    			add_location(div, file$b, 15, 0, 311);
     			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
     		},
     		l: function claim(nodes) {
@@ -7461,9 +7550,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+    	let { filter = [] } = $$props;
     	let { stitch } = $$props;
     	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
-    	const writable_props = ["stitch", "open"];
+    	const writable_props = ["filter", "stitch", "open"];
 
     	Object_1$2.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Stitch> was created with unknown prop '${key}'`);
@@ -7472,12 +7562,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	const click_handler = () => $$invalidate("open", open = !open);
 
     	$$self.$set = $$props => {
+    		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
     		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
     	};
 
     	$$self.$capture_state = () => {
     		return {
+    			filter,
     			stitch,
     			open,
     			$WEAVE_EXPLORE_OPEN,
@@ -7490,6 +7582,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	$$self.$inject_state = $$props => {
+    		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
     		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
     		if ("$WEAVE_EXPLORE_OPEN" in $$props) WEAVE_EXPLORE_OPEN.set($WEAVE_EXPLORE_OPEN = $$props.$WEAVE_EXPLORE_OPEN);
@@ -7519,6 +7612,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	return {
+    		filter,
     		stitch,
     		open,
     		name,
@@ -7532,7 +7626,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Stitch extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$a, create_fragment$b, safe_not_equal, { stitch: 0, open: 0 });
+    		init(this, options, instance$a, create_fragment$b, safe_not_equal, { filter: 0, stitch: 0, open: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -7547,6 +7641,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if (ctx.stitch === undefined && !("stitch" in props)) {
     			console.warn("<Stitch> was created without expected prop 'stitch'");
     		}
+    	}
+
+    	get filter() {
+    		throw new Error("<Stitch>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set filter(value) {
+    		throw new Error("<Stitch>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
     	get stitch() {
@@ -7601,7 +7703,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div, "class", "stitches");
-    			add_location(div, file$c, 24, 2, 406);
+    			add_location(div, file$c, 24, 2, 431);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7613,7 +7715,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			current = true;
     		},
     		p: function update(changed, ctx) {
-    			if (changed.stitches) {
+    			if (changed.filter || changed.stitches) {
     				each_value = ctx.stitches;
     				let i;
 
@@ -7675,12 +7777,15 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    // (26:4) {#each stitches as stitch}
-    function create_each_block$3(ctx) {
+    // (27:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }
+    function create_if_block_1$2(ctx) {
     	let current;
 
     	const stitch = new Stitch({
-    			props: { stitch: ctx.stitch },
+    			props: {
+    				stitch: ctx.stitch,
+    				filter: ctx.filter.slice(1)
+    			},
     			$$inline: true
     		});
 
@@ -7695,6 +7800,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		p: function update(changed, ctx) {
     			const stitch_changes = {};
     			if (changed.stitches) stitch_changes.stitch = ctx.stitch;
+    			if (changed.filter) stitch_changes.filter = ctx.filter.slice(1);
     			stitch.$set(stitch_changes);
     		},
     		i: function intro(local) {
@@ -7708,6 +7814,72 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		},
     		d: function destroy(detaching) {
     			destroy_component(stitch, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1$2.name,
+    		type: "if",
+    		source: "(27:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (26:4) {#each stitches as stitch}
+    function create_each_block$3(ctx) {
+    	let show_if = ctx.filter.length === 0 || ctx.stitch.name.get().indexOf(ctx.filter[0]) !== -1;
+    	let if_block_anchor;
+    	let current;
+    	let if_block = show_if && create_if_block_1$2(ctx);
+
+    	const block = {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(changed, ctx) {
+    			if (changed.filter || changed.stitches) show_if = ctx.filter.length === 0 || ctx.stitch.name.get().indexOf(ctx.filter[0]) !== -1;
+
+    			if (show_if) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    					transition_in(if_block, 1);
+    				} else {
+    					if_block = create_if_block_1$2(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
     		}
     	};
 
@@ -7741,7 +7913,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if_block_anchor = empty();
     			attr_dev(div, "class", "weave svelte-7inicu");
     			toggle_class(div, "open", ctx.open);
-    			add_location(div, file$c, 14, 0, 286);
+    			add_location(div, file$c, 14, 0, 307);
     			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
     		},
     		l: function claim(nodes) {
@@ -7829,23 +8001,28 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_names());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+    	let { filter = [] } = $$props;
     	let { weave } = $$props;
     	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
-    	const writable_props = ["weave", "open"];
+    	const writable_props = ["filter", "weave", "open"];
 
     	Object_1$3.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Weave> was created with unknown prop '${key}'`);
     	});
 
-    	const click_handler = () => $$invalidate("open", open = !open);
+    	const click_handler = () => {
+    		$$invalidate("open", open = !open);
+    	};
 
     	$$self.$set = $$props => {
+    		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
     		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
     	};
 
     	$$self.$capture_state = () => {
     		return {
+    			filter,
     			weave,
     			open,
     			$WEAVE_EXPLORE_OPEN,
@@ -7858,6 +8035,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	$$self.$inject_state = $$props => {
+    		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
     		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
     		if ("open" in $$props) $$invalidate("open", open = $$props.open);
     		if ("$WEAVE_EXPLORE_OPEN" in $$props) WEAVE_EXPLORE_OPEN.set($WEAVE_EXPLORE_OPEN = $$props.$WEAVE_EXPLORE_OPEN);
@@ -7887,6 +8065,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	};
 
     	return {
+    		filter,
     		weave,
     		open,
     		name,
@@ -7900,7 +8079,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Weave$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$b, create_fragment$c, safe_not_equal, { weave: 0, open: 0 });
+    		init(this, options, instance$b, create_fragment$c, safe_not_equal, { filter: 0, weave: 0, open: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -7915,6 +8094,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		if (ctx.weave === undefined && !("weave" in props)) {
     			console.warn("<Weave> was created without expected prop 'weave'");
     		}
+    	}
+
+    	get filter() {
+    		throw new Error("<Weave>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set filter(value) {
+    		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
     	get weave() {
@@ -7945,39 +8132,109 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (29:2) {#each ws as weave}
-    function create_each_block$4(ctx) {
+    // (51:4) {#if        filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }
+    function create_if_block$6(ctx) {
     	let current;
 
-    	const weave_1 = new Weave$1({
-    			props: { weave: ctx.weave },
+    	const weave = new Weave$1({
+    			props: {
+    				weave: ctx.weave,
+    				filter: ctx.parts.slice(1)
+    			},
     			$$inline: true
     		});
 
     	const block = {
     		c: function create() {
-    			create_component(weave_1.$$.fragment);
+    			create_component(weave.$$.fragment);
     		},
     		m: function mount(target, anchor) {
-    			mount_component(weave_1, target, anchor);
+    			mount_component(weave, target, anchor);
     			current = true;
     		},
     		p: function update(changed, ctx) {
-    			const weave_1_changes = {};
-    			if (changed.ws) weave_1_changes.weave = ctx.weave;
-    			weave_1.$set(weave_1_changes);
+    			const weave_changes = {};
+    			if (changed.ws) weave_changes.weave = ctx.weave;
+    			if (changed.parts) weave_changes.filter = ctx.parts.slice(1);
+    			weave.$set(weave_changes);
     		},
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(weave_1.$$.fragment, local);
+    			transition_in(weave.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(weave_1.$$.fragment, local);
+    			transition_out(weave.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(weave_1, detaching);
+    			destroy_component(weave, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$6.name,
+    		type: "if",
+    		source: "(51:4) {#if        filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (50:2) {#each ws as weave}
+    function create_each_block$4(ctx) {
+    	let show_if = ctx.filter === `` || ctx.weave.name.get().indexOf(ctx.parts[0]) !== -1;
+    	let if_block_anchor;
+    	let current;
+    	let if_block = show_if && create_if_block$6(ctx);
+
+    	const block = {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(changed, ctx) {
+    			if (changed.filter || changed.ws || changed.parts) show_if = ctx.filter === `` || ctx.weave.name.get().indexOf(ctx.parts[0]) !== -1;
+
+    			if (show_if) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    					transition_in(if_block, 1);
+    				} else {
+    					if_block = create_if_block$6(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
     		}
     	};
 
@@ -7985,7 +8242,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block$4.name,
     		type: "each",
-    		source: "(29:2) {#each ws as weave}",
+    		source: "(50:2) {#each ws as weave}",
     		ctx
     	});
 
@@ -8001,6 +8258,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let input1;
     	let input1_placeholder_value;
     	let current;
+    	let dispose;
     	let each_value = ctx.ws;
     	let each_blocks = [];
 
@@ -8026,16 +8284,23 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t1 = space();
     			input1 = element("input");
     			attr_dev(input0, "type", "text");
-    			attr_dev(input0, "class", "filter");
-    			attr_dev(input0, "placeholder", "");
-    			add_location(input0, file$d, 21, 2, 296);
-    			attr_dev(div0, "class", "weaves svelte-trtm7u");
-    			add_location(div0, file$d, 27, 2, 365);
+    			attr_dev(input0, "class", "filter svelte-1yxzlhw");
+    			attr_dev(input0, "placeholder", "Filter eg: sys/");
+    			add_location(input0, file$d, 41, 2, 530);
+    			attr_dev(div0, "class", "weaves svelte-1yxzlhw");
+    			add_location(div0, file$d, 48, 2, 641);
     			attr_dev(input1, "type", "text");
+    			attr_dev(input1, "class", "adder svelte-1yxzlhw");
     			attr_dev(input1, "placeholder", input1_placeholder_value = `-${ctx.ws[ctx.ws.length - 1].name.get()} to delete`);
-    			add_location(input1, file$d, 33, 2, 452);
-    			attr_dev(div1, "class", "explore svelte-trtm7u");
-    			add_location(div1, file$d, 20, 0, 272);
+    			add_location(input1, file$d, 59, 2, 851);
+    			attr_dev(div1, "class", "explore svelte-1yxzlhw");
+    			add_location(div1, file$d, 40, 0, 506);
+
+    			dispose = [
+    				listen_dev(input0, "input", ctx.input0_input_handler),
+    				listen_dev(input1, "input", ctx.input1_input_handler),
+    				listen_dev(input1, "keydown", ctx.keydown_handler, false, false, false)
+    			];
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -8043,6 +8308,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
     			append_dev(div1, input0);
+    			set_input_value(input0, ctx.filter);
     			append_dev(div1, t0);
     			append_dev(div1, div0);
 
@@ -8052,10 +8318,15 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			append_dev(div1, t1);
     			append_dev(div1, input1);
+    			set_input_value(input1, ctx.adder);
     			current = true;
     		},
     		p: function update(changed, ctx) {
-    			if (changed.ws) {
+    			if (changed.filter && input0.value !== ctx.filter) {
+    				set_input_value(input0, ctx.filter);
+    			}
+
+    			if (changed.filter || changed.ws || changed.parts) {
     				each_value = ctx.ws;
     				let i;
 
@@ -8085,6 +8356,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			if (!current || changed.ws && input1_placeholder_value !== (input1_placeholder_value = `-${ctx.ws[ctx.ws.length - 1].name.get()} to delete`)) {
     				attr_dev(input1, "placeholder", input1_placeholder_value);
     			}
+
+    			if (changed.adder && input1.value !== ctx.adder) {
+    				set_input_value(input1, ctx.adder);
+    			}
     		},
     		i: function intro(local) {
     			if (current) return;
@@ -8107,6 +8382,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div1);
     			destroy_each(each_blocks, detaching);
+    			run_all(dispose);
     		}
     	};
 
@@ -8125,42 +8401,73 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let $weaves;
     	validate_store(weaves, "weaves");
     	component_subscribe($$self, weaves, $$value => $$invalidate("$weaves", $weaves = $$value));
-    	let { weave } = $$props;
-    	const writable_props = ["weave"];
+    	let filter = ``;
+    	let adder = ``;
 
-    	Object_1$4.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Explore> was created with unknown prop '${key}'`);
-    	});
+    	const do_add = () => {
+    		if (adder[0] === `-`) {
+    			del({ [adder.slice(1)]: true });
+    			$$invalidate("adder", adder = ``);
+    			return;
+    		}
 
-    	$$self.$set = $$props => {
-    		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+    		spawn({ [adder]: {} });
+    		$$invalidate("adder", adder = ``);
     	};
 
+    	function input0_input_handler() {
+    		filter = this.value;
+    		$$invalidate("filter", filter);
+    	}
+
+    	function input1_input_handler() {
+    		adder = this.value;
+    		$$invalidate("adder", adder);
+    	}
+
+    	const keydown_handler = ({ which }) => which === 13 && do_add();
+
     	$$self.$capture_state = () => {
-    		return { weave, ws, $weaves };
+    		return {};
     	};
 
     	$$self.$inject_state = $$props => {
-    		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+    		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
+    		if ("adder" in $$props) $$invalidate("adder", adder = $$props.adder);
     		if ("ws" in $$props) $$invalidate("ws", ws = $$props.ws);
     		if ("$weaves" in $$props) weaves.set($weaves = $$props.$weaves);
+    		if ("parts" in $$props) $$invalidate("parts", parts = $$props.parts);
     	};
 
     	let ws;
+    	let parts;
 
-    	$$self.$$.update = (changed = { $weaves: 1 }) => {
+    	$$self.$$.update = (changed = { $weaves: 1, filter: 1 }) => {
     		if (changed.$weaves) {
     			 $$invalidate("ws", ws = Object.values($weaves));
     		}
+
+    		if (changed.filter) {
+    			 $$invalidate("parts", parts = filter.split(`/`));
+    		}
     	};
 
-    	return { weave, ws };
+    	return {
+    		filter,
+    		adder,
+    		do_add,
+    		ws,
+    		parts,
+    		input0_input_handler,
+    		input1_input_handler,
+    		keydown_handler
+    	};
     }
 
     class Explore extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$c, create_fragment$d, safe_not_equal, { weave: 0 });
+    		init(this, options, instance$c, create_fragment$d, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -8168,39 +8475,128 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			options,
     			id: create_fragment$d.name
     		});
+    	}
+    }
 
-    		const { ctx } = this.$$;
-    		const props = options.props || ({});
+    /* src/ui/weave/Postage.svelte generated by Svelte v3.14.1 */
+    const file$e = "src/ui/weave/Postage.svelte";
 
-    		if (ctx.weave === undefined && !("weave" in props)) {
-    			console.warn("<Explore> was created without expected prop 'weave'");
+    function create_fragment$e(ctx) {
+    	let div;
+    	let current;
+    	let dispose;
+
+    	const tile = new Tile_1({
+    			props: { width: 1, height: 1, random: true },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			create_component(tile.$$.fragment);
+    			attr_dev(div, "class", "postage no-drag svelte-nq6wc6");
+    			add_location(div, file$e, 7, 0, 122);
+    			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			mount_component(tile, div, null);
+    			current = true;
+    		},
+    		p: noop,
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tile.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(tile.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			destroy_component(tile);
+    			dispose();
     		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$e.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$d($$self, $$props, $$invalidate) {
+    	let { address = `` } = $$props;
+    	const writable_props = ["address"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Postage> was created with unknown prop '${key}'`);
+    	});
+
+    	const click_handler = () => path.set(`weave${address}`);
+
+    	$$self.$set = $$props => {
+    		if ("address" in $$props) $$invalidate("address", address = $$props.address);
+    	};
+
+    	$$self.$capture_state = () => {
+    		return { address };
+    	};
+
+    	$$self.$inject_state = $$props => {
+    		if ("address" in $$props) $$invalidate("address", address = $$props.address);
+    	};
+
+    	return { address, click_handler };
+    }
+
+    class Postage extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$d, create_fragment$e, safe_not_equal, { address: 0 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Postage",
+    			options,
+    			id: create_fragment$e.name
+    		});
     	}
 
-    	get weave() {
-    		throw new Error("<Explore>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	get address() {
+    		throw new Error("<Postage>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set weave(value) {
-    		throw new Error("<Explore>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	set address(value) {
+    		throw new Error("<Postage>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
     /* src/ui/weave/Port.svelte generated by Svelte v3.14.1 */
-    const file$e = "src/ui/weave/Port.svelte";
+    const file$f = "src/ui/weave/Port.svelte";
 
-    function create_fragment$e(ctx) {
+    function create_fragment$f(ctx) {
     	let div;
     	let dispose;
 
     	const block = {
     		c: function create() {
     			div = element("div");
-    			attr_dev(div, "class", "port svelte-1erz1ih");
+    			attr_dev(div, "class", "port no-drag svelte-1erz1ih");
     			attr_dev(div, "id", ctx.address);
     			toggle_class(div, "writable", ctx.writable);
     			toggle_class(div, "name", ctx.name);
-    			add_location(div, file$e, 19, 0, 270);
+    			add_location(div, file$f, 19, 0, 270);
 
     			dispose = [
     				listen_dev(div, "mousedown", ctx.mousedown, false, false, false),
@@ -8236,7 +8632,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$e.name,
+    		id: create_fragment$f.name,
     		type: "component",
     		source: "",
     		ctx
@@ -8245,7 +8641,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$d($$self, $$props, $$invalidate) {
+    function instance$e($$self, $$props, $$invalidate) {
     	let { writable = false } = $$props;
     	let { name = false } = $$props;
     	let { address = `` } = $$props;
@@ -8292,13 +8688,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Port extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$d, create_fragment$e, safe_not_equal, { writable: 0, name: 0, address: 0 });
+    		init(this, options, instance$e, create_fragment$f, safe_not_equal, { writable: 0, name: 0, address: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Port",
     			options,
-    			id: create_fragment$e.name
+    			id: create_fragment$f.name
     		});
     	}
 
@@ -8328,9 +8724,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     /* src/ui/weave/knot/Mail.svelte generated by Svelte v3.14.1 */
-    const file$f = "src/ui/weave/knot/Mail.svelte";
+    const file$g = "src/ui/weave/knot/Mail.svelte";
 
-    function create_fragment$f(ctx) {
+    function create_fragment$g(ctx) {
     	let div5;
     	let div0;
     	let t0;
@@ -8345,8 +8741,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	let current;
     	let dispose;
 
-    	const tile = new Tile_1({
-    			props: { width: 1, height: 1, random: true },
+    	const postage = new Postage({
+    			props: { address: ctx.$whom },
     			$$inline: true
     		});
 
@@ -8367,7 +8763,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		c: function create() {
     			div5 = element("div");
     			div0 = element("div");
-    			create_component(tile.$$.fragment);
+    			create_component(postage.$$.fragment);
     			t0 = space();
     			div4 = element("div");
     			div1 = element("div");
@@ -8378,22 +8774,22 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t2 = space();
     			div3 = element("div");
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "postage svelte-oi8u06");
-    			add_location(div0, file$f, 13, 2, 247);
-    			attr_dev(div1, "class", "port left svelte-oi8u06");
-    			add_location(div1, file$f, 17, 4, 346);
+    			attr_dev(div0, "class", "postage svelte-kbpmkf");
+    			add_location(div0, file$g, 12, 2, 252);
+    			attr_dev(div1, "class", "port left svelte-kbpmkf");
+    			add_location(div1, file$g, 16, 4, 342);
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "AdDrEsS hErE");
-    			attr_dev(input, "class", "svelte-oi8u06");
-    			add_location(input, file$f, 21, 6, 462);
-    			attr_dev(div2, "class", "address svelte-oi8u06");
-    			add_location(div2, file$f, 20, 4, 434);
-    			attr_dev(div3, "class", "port right svelte-oi8u06");
-    			add_location(div3, file$f, 23, 4, 544);
-    			attr_dev(div4, "class", "center svelte-oi8u06");
-    			add_location(div4, file$f, 16, 2, 321);
-    			attr_dev(div5, "class", "mail svelte-oi8u06");
-    			add_location(div5, file$f, 12, 0, 197);
+    			attr_dev(input, "class", "svelte-kbpmkf");
+    			add_location(input, file$g, 20, 6, 458);
+    			attr_dev(div2, "class", "address svelte-kbpmkf");
+    			add_location(div2, file$g, 19, 4, 430);
+    			attr_dev(div3, "class", "port right svelte-kbpmkf");
+    			add_location(div3, file$g, 22, 4, 540);
+    			attr_dev(div4, "class", "center svelte-kbpmkf");
+    			add_location(div4, file$g, 15, 2, 317);
+    			attr_dev(div5, "class", "mail svelte-kbpmkf");
+    			add_location(div5, file$g, 11, 0, 202);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -8402,7 +8798,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		m: function mount(target, anchor) {
     			insert_dev(target, div5, anchor);
     			append_dev(div5, div0);
-    			mount_component(tile, div0, null);
+    			mount_component(postage, div0, null);
     			append_dev(div5, t0);
     			append_dev(div5, div4);
     			append_dev(div4, div1);
@@ -8414,10 +8810,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			append_dev(div4, t2);
     			append_dev(div4, div3);
     			mount_component(port1, div3, null);
-    			color_action = color$1.call(null, div5, ctx.$whom || "/???/") || ({});
+    			color_action = color$1.call(null, div5, ctx.$whom || `/???/`) || ({});
     			current = true;
     		},
     		p: function update(changed, ctx) {
+    			const postage_changes = {};
+    			if (changed.$whom) postage_changes.address = ctx.$whom;
+    			postage.$set(postage_changes);
     			const port0_changes = {};
     			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
     			port0.$set(port0_changes);
@@ -8429,24 +8828,24 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			const port1_changes = {};
     			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
     			port1.$set(port1_changes);
-    			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom || "/???/");
+    			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom || `/???/`);
     		},
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(tile.$$.fragment, local);
+    			transition_in(postage.$$.fragment, local);
     			transition_in(port0.$$.fragment, local);
     			transition_in(port1.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(tile.$$.fragment, local);
+    			transition_out(postage.$$.fragment, local);
     			transition_out(port0.$$.fragment, local);
     			transition_out(port1.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div5);
-    			destroy_component(tile);
+    			destroy_component(postage);
     			destroy_component(port0);
     			destroy_component(port1);
     			if (color_action && is_function(color_action.destroy)) color_action.destroy();
@@ -8456,7 +8855,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$f.name,
+    		id: create_fragment$g.name,
     		type: "component",
     		source: "",
     		ctx
@@ -8465,7 +8864,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$e($$self, $$props, $$invalidate) {
+    function instance$f($$self, $$props, $$invalidate) {
     	let $whom,
     		$$unsubscribe_whom = noop,
     		$$subscribe_whom = () => ($$unsubscribe_whom(), $$unsubscribe_whom = subscribe(whom, $$value => $$invalidate("$whom", $whom = $$value)), whom);
@@ -8530,13 +8929,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Mail extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$e, create_fragment$f, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$f, create_fragment$g, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Mail",
     			options,
-    			id: create_fragment$f.name
+    			id: create_fragment$g.name
     		});
 
     		const { ctx } = this.$$;
@@ -8557,9 +8956,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     /* src/ui/weave/knot/Math.svelte generated by Svelte v3.14.1 */
-    const file$g = "src/ui/weave/knot/Math.svelte";
+    const file$h = "src/ui/weave/knot/Math.svelte";
 
-    function create_fragment$g(ctx) {
+    function create_fragment$h(ctx) {
     	let div4;
     	let div3;
     	let div0;
@@ -8601,20 +9000,20 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t3 = space();
     			div2 = element("div");
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "port svelte-v9inzo");
-    			add_location(div0, file$g, 17, 4, 312);
-    			attr_dev(textarea, "class", "text svelte-v9inzo");
+    			attr_dev(div0, "class", "port svelte-nj07gj");
+    			add_location(div0, file$h, 17, 4, 312);
+    			attr_dev(textarea, "class", "text svelte-nj07gj");
     			attr_dev(textarea, "type", "text");
     			attr_dev(textarea, "placeholder", "2 + 2 = ChAiR");
-    			add_location(textarea, file$g, 21, 6, 423);
-    			attr_dev(div1, "class", "address svelte-v9inzo");
-    			add_location(div1, file$g, 20, 4, 395);
-    			attr_dev(div2, "class", "port svelte-v9inzo");
-    			add_location(div2, file$g, 29, 4, 580);
-    			attr_dev(div3, "class", "center svelte-v9inzo");
-    			add_location(div3, file$g, 13, 2, 239);
-    			attr_dev(div4, "class", "mail svelte-v9inzo");
-    			add_location(div4, file$g, 12, 0, 218);
+    			add_location(textarea, file$h, 21, 6, 423);
+    			attr_dev(div1, "class", "address svelte-nj07gj");
+    			add_location(div1, file$h, 20, 4, 395);
+    			attr_dev(div2, "class", "port svelte-nj07gj");
+    			add_location(div2, file$h, 29, 4, 580);
+    			attr_dev(div3, "class", "center svelte-nj07gj");
+    			add_location(div3, file$h, 13, 2, 239);
+    			attr_dev(div4, "class", "mail svelte-nj07gj");
+    			add_location(div4, file$h, 12, 0, 218);
     			dispose = listen_dev(textarea, "input", ctx.textarea_input_handler);
     		},
     		l: function claim(nodes) {
@@ -8674,7 +9073,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$g.name,
+    		id: create_fragment$h.name,
     		type: "component",
     		source: "",
     		ctx
@@ -8683,7 +9082,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$f($$self, $$props, $$invalidate) {
+    function instance$g($$self, $$props, $$invalidate) {
     	let $value,
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
@@ -8770,13 +9169,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Math$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$f, create_fragment$g, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$g, create_fragment$h, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Math",
     			options,
-    			id: create_fragment$g.name
+    			id: create_fragment$h.name
     		});
 
     		const { ctx } = this.$$;
@@ -8797,9 +9196,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     /* src/ui/weave/knot/stitch/Channel.svelte generated by Svelte v3.14.1 */
-    const file$h = "src/ui/weave/knot/stitch/Channel.svelte";
+    const file$i = "src/ui/weave/knot/stitch/Channel.svelte";
 
-    function create_fragment$h(ctx) {
+    function create_fragment$i(ctx) {
     	let div2;
     	let t0;
     	let div1;
@@ -8837,16 +9236,16 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			input = element("input");
     			t3 = space();
     			create_component(port1.$$.fragment);
-    			attr_dev(div0, "class", "name svelte-1h7thcq");
-    			add_location(div0, file$h, 29, 4, 561);
-    			attr_dev(input, "class", "edit svelte-1h7thcq");
+    			attr_dev(div0, "class", "name svelte-18j6qdc");
+    			add_location(div0, file$i, 28, 4, 560);
+    			attr_dev(input, "class", "edit svelte-18j6qdc");
     			attr_dev(input, "type", "text");
     			attr_dev(input, "placeholder", "JSON plz");
-    			add_location(input, file$h, 30, 4, 596);
-    			attr_dev(div1, "class", "vbox svelte-1h7thcq");
-    			add_location(div1, file$h, 28, 2, 504);
-    			attr_dev(div2, "class", "channel svelte-1h7thcq");
-    			add_location(div2, file$h, 26, 0, 426);
+    			add_location(input, file$i, 29, 4, 595);
+    			attr_dev(div1, "class", "vbox svelte-18j6qdc");
+    			add_location(div1, file$i, 27, 2, 503);
+    			attr_dev(div2, "class", "channel svelte-18j6qdc");
+    			add_location(div2, file$i, 25, 0, 425);
     			dispose = listen_dev(input, "input", ctx.input_input_handler);
     		},
     		l: function claim(nodes) {
@@ -8904,7 +9303,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$h.name,
+    		id: create_fragment$i.name,
     		type: "component",
     		source: "",
     		ctx
@@ -8913,7 +9312,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$g($$self, $$props, $$invalidate) {
+    function instance$h($$self, $$props, $$invalidate) {
     	let $chan,
     		$$unsubscribe_chan = noop,
     		$$subscribe_chan = () => ($$unsubscribe_chan(), $$unsubscribe_chan = subscribe(chan, $$value => $$invalidate("$chan", $chan = $$value)), chan);
@@ -8996,13 +9395,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Channel$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$g, create_fragment$h, safe_not_equal, { knot: 0, chan: 0, name: 0 });
+    		init(this, options, instance$h, create_fragment$i, safe_not_equal, { knot: 0, chan: 0, name: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Channel",
     			options,
-    			id: create_fragment$h.name
+    			id: create_fragment$i.name
     		});
 
     		const { ctx } = this.$$;
@@ -9049,7 +9448,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     /* src/ui/weave/knot/Stitch.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1$5 } = globals;
-    const file$i = "src/ui/weave/knot/Stitch.svelte";
+    const file$j = "src/ui/weave/knot/Stitch.svelte";
 
     function get_each_context$5(ctx, list, i) {
     	const child_ctx = Object_1$5.create(ctx);
@@ -9066,8 +9465,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		c: function create() {
     			div = element("div");
     			div.textContent = "/\\/\\";
-    			attr_dev(div, "class", "no-stitches svelte-11fs1hi");
-    			add_location(div, file$i, 43, 6, 915);
+    			attr_dev(div, "class", "no-stitches svelte-1olli22");
+    			add_location(div, file$j, 43, 6, 915);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -9148,7 +9547,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function create_fragment$i(ctx) {
+    function create_fragment$j(ctx) {
     	let div0;
     	let t0;
     	let div2;
@@ -9203,21 +9602,21 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			t2 = space();
     			input1 = element("input");
-    			attr_dev(div0, "class", "port svelte-11fs1hi");
-    			add_location(div0, file$i, 30, 0, 554);
+    			attr_dev(div0, "class", "port svelte-1olli22");
+    			add_location(div0, file$j, 30, 0, 554);
     			attr_dev(input0, "type", "text");
-    			attr_dev(input0, "class", "edit svelte-11fs1hi");
+    			attr_dev(input0, "class", "edit svelte-1olli22");
     			attr_dev(input0, "placeholder", "Name It!");
-    			add_location(input0, file$i, 36, 4, 667);
-    			add_location(div1, file$i, 35, 2, 639);
-    			attr_dev(div2, "class", "nameit svelte-11fs1hi");
-    			add_location(div2, file$i, 34, 0, 616);
+    			add_location(input0, file$j, 36, 4, 667);
+    			add_location(div1, file$j, 35, 2, 639);
+    			attr_dev(div2, "class", "nameit svelte-1olli22");
+    			add_location(div2, file$j, 34, 0, 616);
     			attr_dev(input1, "type", "text");
-    			attr_dev(input1, "class", "add_channel svelte-11fs1hi");
+    			attr_dev(input1, "class", "add_channel svelte-1olli22");
     			attr_dev(input1, "placeholder", input1_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`);
-    			add_location(input1, file$i, 46, 4, 971);
-    			attr_dev(div3, "class", "board svelte-11fs1hi");
-    			add_location(div3, file$i, 39, 0, 761);
+    			add_location(input1, file$j, 46, 4, 971);
+    			attr_dev(div3, "class", "board svelte-1olli22");
+    			add_location(div3, file$j, 39, 0, 761);
 
     			dispose = [
     				listen_dev(input0, "input", ctx.input0_input_handler),
@@ -9327,7 +9726,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$i.name,
+    		id: create_fragment$j.name,
     		type: "component",
     		source: "",
     		ctx
@@ -9336,7 +9735,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$h($$self, $$props, $$invalidate) {
+    function instance$i($$self, $$props, $$invalidate) {
     	let $value,
     		$$unsubscribe_value = noop,
     		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
@@ -9454,13 +9853,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Stitch$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$h, create_fragment$i, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$i, create_fragment$j, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Stitch",
     			options,
-    			id: create_fragment$i.name
+    			id: create_fragment$j.name
     		});
 
     		const { ctx } = this.$$;
@@ -9481,10 +9880,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     }
 
     /* src/ui/weave/knot/Stream.svelte generated by Svelte v3.14.1 */
-    const file$j = "src/ui/weave/knot/Stream.svelte";
+    const file$k = "src/ui/weave/knot/Stream.svelte";
 
     // (18:6) {#if $value === null}
-    function create_if_block$6(ctx) {
+    function create_if_block$7(ctx) {
     	let div0;
     	let div0_intro;
     	let t1;
@@ -9499,9 +9898,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div1 = element("div");
     			div1.textContent = "JSON IT!";
     			attr_dev(div0, "class", "doit svelte-nx5066");
-    			add_location(div0, file$j, 18, 8, 470);
+    			add_location(div0, file$k, 18, 8, 470);
     			attr_dev(div1, "class", "doit svelte-nx5066");
-    			add_location(div1, file$j, 19, 8, 526);
+    			add_location(div1, file$k, 19, 8, 526);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -9533,7 +9932,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$6.name,
+    		id: create_if_block$7.name,
     		type: "if",
     		source: "(18:6) {#if $value === null}",
     		ctx
@@ -9542,7 +9941,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function create_fragment$j(ctx) {
+    function create_fragment$k(ctx) {
     	let div2;
     	let t0;
     	let div1;
@@ -9563,7 +9962,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			$$inline: true
     		});
 
-    	let if_block = ctx.$value === null && create_if_block$6(ctx);
+    	let if_block = ctx.$value === null && create_if_block$7(ctx);
 
     	const port1 = new Port({
     			props: { address: `${ctx.$id}|read` },
@@ -9584,13 +9983,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t3 = space();
     			create_component(port1.$$.fragment);
     			attr_dev(pre, "class", "flex svelte-nx5066");
-    			add_location(pre, file$j, 16, 6, 375);
+    			add_location(pre, file$k, 16, 6, 375);
     			attr_dev(div0, "class", "value_add svelte-nx5066");
-    			add_location(div0, file$j, 15, 4, 345);
+    			add_location(div0, file$k, 15, 4, 345);
     			attr_dev(div1, "class", "JSON svelte-nx5066");
-    			add_location(div1, file$j, 14, 2, 303);
+    			add_location(div1, file$k, 14, 2, 303);
     			attr_dev(div2, "class", "box svelte-nx5066");
-    			add_location(div2, file$j, 12, 0, 238);
+    			add_location(div2, file$k, 12, 0, 238);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9618,7 +10017,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			if (ctx.$value === null) {
     				if (!if_block) {
-    					if_block = create_if_block$6(ctx);
+    					if_block = create_if_block$7(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
     					if_block.m(div0, null);
@@ -9658,7 +10057,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$j.name,
+    		id: create_fragment$k.name,
     		type: "component",
     		source: "",
     		ctx
@@ -9667,7 +10066,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$i($$self, $$props, $$invalidate) {
+    function instance$j($$self, $$props, $$invalidate) {
     	let $id,
     		$$unsubscribe_id = noop,
     		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
@@ -9720,13 +10119,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Stream extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$i, create_fragment$j, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$j, create_fragment$k, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Stream",
     			options,
-    			id: create_fragment$j.name
+    			id: create_fragment$k.name
     		});
 
     		const { ctx } = this.$$;
@@ -9748,9 +10147,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     /* src/ui/weave/knot/Unknown.svelte generated by Svelte v3.14.1 */
 
-    const file$k = "src/ui/weave/knot/Unknown.svelte";
+    const file$l = "src/ui/weave/knot/Unknown.svelte";
 
-    function create_fragment$k(ctx) {
+    function create_fragment$l(ctx) {
     	let h1;
     	let t0;
     	let t1;
@@ -9760,7 +10159,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			h1 = element("h1");
     			t0 = text("Unknown Knot - ");
     			t1 = text(ctx.$type);
-    			add_location(h1, file$k, 7, 0, 58);
+    			add_location(h1, file$l, 7, 0, 58);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9782,7 +10181,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$k.name,
+    		id: create_fragment$l.name,
     		type: "component",
     		source: "",
     		ctx
@@ -9791,7 +10190,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$j($$self, $$props, $$invalidate) {
+    function instance$k($$self, $$props, $$invalidate) {
     	let $type,
     		$$unsubscribe_type = noop,
     		$$subscribe_type = () => ($$unsubscribe_type(), $$unsubscribe_type = subscribe(type, $$value => $$invalidate("$type", $type = $$value)), type);
@@ -9832,13 +10231,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Unknown extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$j, create_fragment$k, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$k, create_fragment$l, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Unknown",
     			options,
-    			id: create_fragment$k.name
+    			id: create_fragment$l.name
     		});
 
     		const { ctx } = this.$$;
@@ -9868,9 +10267,9 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     });
 
     /* src/ui/weave/knot/Screen.svelte generated by Svelte v3.14.1 */
-    const file$l = "src/ui/weave/knot/Screen.svelte";
+    const file$m = "src/ui/weave/knot/Screen.svelte";
 
-    function create_fragment$l(ctx) {
+    function create_fragment$m(ctx) {
     	let div2;
     	let div0;
     	let t0;
@@ -9904,14 +10303,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div1 = element("div");
     			create_component(port1.$$.fragment);
     			attr_dev(div0, "class", "port svelte-17c9bqw");
-    			add_location(div0, file$l, 13, 2, 225);
+    			add_location(div0, file$m, 14, 2, 226);
     			attr_dev(img, "class", "view svelte-17c9bqw");
     			attr_dev(img, "alt", "mirror");
-    			add_location(img, file$l, 17, 2, 303);
+    			add_location(img, file$m, 18, 2, 304);
     			attr_dev(div1, "class", "port svelte-17c9bqw");
-    			add_location(div1, file$l, 19, 2, 364);
+    			add_location(div1, file$m, 20, 2, 365);
     			attr_dev(div2, "class", "main svelte-17c9bqw");
-    			add_location(div2, file$l, 12, 0, 204);
+    			add_location(div2, file$m, 13, 0, 205);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9958,7 +10357,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$l.name,
+    		id: create_fragment$m.name,
     		type: "component",
     		source: "",
     		ctx
@@ -9967,7 +10366,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$k($$self, $$props, $$invalidate) {
+    function instance$l($$self, $$props, $$invalidate) {
     	let $id,
     		$$unsubscribe_id = noop,
     		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
@@ -10026,13 +10425,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Screen extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$k, create_fragment$l, safe_not_equal, { knot: 0 });
+    		init(this, options, instance$l, create_fragment$m, safe_not_equal, { knot: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Screen",
     			options,
-    			id: create_fragment$l.name
+    			id: create_fragment$m.name
     		});
 
     		const { ctx } = this.$$;
@@ -10067,7 +10466,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     /* src/ui/weave/Weave.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1$6 } = globals;
-    const file$m = "src/ui/weave/Weave.svelte";
+    const file$n = "src/ui/weave/Weave.svelte";
 
     function get_each_context$6(ctx, list, i) {
     	const child_ctx = Object_1$6.create(ctx);
@@ -10075,7 +10474,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return child_ctx;
     }
 
-    // (63:2) <Knot      {knot}   >
+    // (60:2) <Knot      {knot}   >
     function create_default_slot$4(ctx) {
     	let t;
     	let current;
@@ -10152,14 +10551,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_default_slot$4.name,
     		type: "slot",
-    		source: "(63:2) <Knot      {knot}   >",
+    		source: "(60:2) <Knot      {knot}   >",
     		ctx
     	});
 
     	return block;
     }
 
-    // (62:0) {#each Object.values($knots) as knot (knot.id.get())}
+    // (59:0) {#each Object.values($knots) as knot (knot.id.get())}
     function create_each_block$6(key_1, ctx) {
     	let first;
     	let current;
@@ -10215,14 +10614,14 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		block,
     		id: create_each_block$6.name,
     		type: "each",
-    		source: "(62:0) {#each Object.values($knots) as knot (knot.id.get())}",
+    		source: "(59:0) {#each Object.values($knots) as knot (knot.id.get())}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$m(ctx) {
+    function create_fragment$n(ctx) {
     	let t0;
     	let t1;
     	let t2;
@@ -10250,11 +10649,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			$$inline: true
     		});
 
-    	const explore = new Explore({
-    			props: { weave: ctx.weave },
-    			$$inline: true
-    		});
-
+    	const explore = new Explore({ $$inline: true });
     	let each_value = Object.values(ctx.$knots);
     	const get_key = ctx => ctx.knot.id.get();
 
@@ -10286,12 +10681,12 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			attr_dev(div, "style", div_style_value = [
     				`transform:`,
-    				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
     				`translate(${ctx.$scroll[0]}px, ${ctx.$scroll[1]}px)`,
+    				`scale(${ctx.$zoom})`,
     				`;`
     			].join(` `));
 
-    			add_location(div, file$m, 49, 0, 1015);
+    			add_location(div, file$n, 46, 0, 922);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10321,10 +10716,10 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$6, null, get_each_context$6);
     			check_outros();
 
-    			if (!current || (changed.$zoom || changed.$scroll) && div_style_value !== (div_style_value = [
+    			if (!current || (changed.$scroll || changed.$zoom) && div_style_value !== (div_style_value = [
     				`transform:`,
-    				`scale(${Math.round(ctx.$zoom * 100) / 100})`,
     				`translate(${ctx.$scroll[0]}px, ${ctx.$scroll[1]}px)`,
+    				`scale(${ctx.$zoom})`,
     				`;`
     			].join(` `))) {
     				attr_dev(div, "style", div_style_value);
@@ -10378,7 +10773,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$m.name,
+    		id: create_fragment$n.name,
     		type: "component",
     		source: "",
     		ctx
@@ -10387,17 +10782,17 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$l($$self, $$props, $$invalidate) {
+    function instance$m($$self, $$props, $$invalidate) {
     	let $size;
-    	let $zoom;
     	let $scroll;
+    	let $zoom;
     	let $knots;
     	validate_store(size, "size");
     	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
-    	validate_store(zoom_dam, "zoom");
-    	component_subscribe($$self, zoom_dam, $$value => $$invalidate("$zoom", $zoom = $$value));
     	validate_store(scroll$1, "scroll");
     	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
+    	validate_store(zoom, "zoom");
+    	component_subscribe($$self, zoom, $$value => $$invalidate("$zoom", $zoom = $$value));
     	const { basic: weave } = spawn({ basic: Basic() });
     	scroll_set.set([$size[0] / 2, $size[1] / 2, 0]);
     	woven.set(weave.name.get());
@@ -10416,8 +10811,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	$$self.$inject_state = $$props => {
     		if ("$size" in $$props) size.set($size = $$props.$size);
-    		if ("$zoom" in $$props) zoom_dam.set($zoom = $$props.$zoom);
     		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
+    		if ("$zoom" in $$props) zoom.set($zoom = $$props.$zoom);
     		if ("$knots" in $$props) knots.set($knots = $$props.$knots);
     	};
 
@@ -10425,8 +10820,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     		weave,
     		knots,
     		get_ui,
-    		$zoom,
     		$scroll,
+    		$zoom,
     		$knots
     	};
     }
@@ -10434,13 +10829,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Weave$2 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$l, create_fragment$m, safe_not_equal, {});
+    		init(this, options, instance$m, create_fragment$n, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Weave",
     			options,
-    			id: create_fragment$m.name
+    			id: create_fragment$n.name
     		});
     	}
     }
@@ -10485,7 +10880,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     /* src/ui/app/Credits.svelte generated by Svelte v3.14.1 */
 
     const { Object: Object_1$7 } = globals;
-    const file$n = "src/ui/app/Credits.svelte";
+    const file$o = "src/ui/app/Credits.svelte";
 
     function get_each_context_2(ctx, list, i) {
     	const child_ctx = Object_1$7.create(ctx);
@@ -10523,8 +10918,8 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			t = text(t_value);
     			attr_dev(a, "href", a_href_value = ctx.link);
     			attr_dev(a, "target", "_new");
-    			add_location(a, file$n, 72, 10, 2073);
-    			add_location(h3, file$n, 72, 6, 2069);
+    			add_location(a, file$o, 72, 10, 2073);
+    			add_location(h3, file$o, 72, 6, 2069);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, h3, anchor);
@@ -10573,7 +10968,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			each_1_anchor = empty();
-    			add_location(h2, file$n, 70, 4, 2002);
+    			add_location(h2, file$o, 70, 4, 2002);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, h2, anchor);
@@ -10655,7 +11050,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     			each_1_anchor = empty();
     			attr_dev(h1, "class", "svelte-106oxtp");
-    			add_location(h1, file$n, 68, 2, 1939);
+    			add_location(h1, file$o, 68, 2, 1939);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, h1, anchor);
@@ -10711,7 +11106,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function create_fragment$n(ctx) {
+    function create_fragment$o(ctx) {
     	let div;
     	let scroller_action;
     	let each_value = Object.entries(ctx.credits);
@@ -10730,7 +11125,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			}
 
     			attr_dev(div, "class", "credits svelte-106oxtp");
-    			add_location(div, file$n, 66, 0, 1856);
+    			add_location(div, file$o, 66, 0, 1856);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10779,7 +11174,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$n.name,
+    		id: create_fragment$o.name,
     		type: "component",
     		source: "",
     		ctx
@@ -10788,7 +11183,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$m($$self) {
+    function instance$n($$self) {
     	const credits = {
     		"EarthRock": {
     			"Open Source": {
@@ -10858,21 +11253,21 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class Credits extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$m, create_fragment$n, safe_not_equal, {});
+    		init(this, options, instance$n, create_fragment$o, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Credits",
     			options,
-    			id: create_fragment$n.name
+    			id: create_fragment$o.name
     		});
     	}
     }
 
     /* src/ui/app/app.svelte generated by Svelte v3.14.1 */
-    const file$o = "src/ui/app/app.svelte";
+    const file$p = "src/ui/app/app.svelte";
 
-    function create_fragment$o(ctx) {
+    function create_fragment$p(ctx) {
     	let t0;
     	let t1;
     	let div;
@@ -10899,7 +11294,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     			div = element("div");
     			create_component(tile.$$.fragment);
     			attr_dev(div, "class", "background svelte-4esgp2");
-    			add_location(div, file$o, 28, 0, 563);
+    			add_location(div, file$p, 28, 0, 563);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10964,7 +11359,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$o.name,
+    		id: create_fragment$p.name,
     		type: "component",
     		source: "",
     		ctx
@@ -10973,7 +11368,7 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     	return block;
     }
 
-    function instance$n($$self, $$props, $$invalidate) {
+    function instance$o($$self, $$props, $$invalidate) {
     	let $view;
 
     	const paths = {
@@ -11002,13 +11397,13 @@ var app = (function (Tone, uuid, twgl, expr, Color) {
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$n, create_fragment$o, safe_not_equal, {});
+    		init(this, options, instance$o, create_fragment$p, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "App",
     			options,
-    			id: create_fragment$o.name
+    			id: create_fragment$p.name
     		});
     	}
     }

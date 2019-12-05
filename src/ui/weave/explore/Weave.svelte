@@ -4,19 +4,19 @@ import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 import Stitch from "./Stitch.svelte"
 
+export let filter = []
 export let weave
 export let open = $WEAVE_EXPLORE_OPEN
 
 $: name = weave.name
 $: names = weave.names
-$: stitches = Object.values($names) 
-
+$: stitches = Object.values($names)
 </script>
 <div 
   class="weave"
   class:open
   use:color={$name}
-  on:click={() => open = !open}
+  on:click={() => { open = !open }}
 >
   {$name}
 </div>
@@ -24,7 +24,12 @@ $: stitches = Object.values($names)
 {#if open}
   <div class="stitches">
     {#each stitches as stitch}
-      <Stitch {stitch} />
+      {#if 
+        filter.length === 0 ||
+        stitch.name.get().indexOf(filter[0]) !== -1
+      }
+        <Stitch {stitch} filter={filter.slice(1)}/>
+      {/if}
     {/each}
   </div>
 {/if}

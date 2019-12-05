@@ -63,7 +63,7 @@ $: id = knot.id
   flex-direction: column;
   text-align: center;
   font-size: 1rem;
-  color: white;
+  color: rgb(224, 168, 83);
   flex: 1;
   padding-bottom: 0.25rem;
 }

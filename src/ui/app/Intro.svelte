@@ -1,13 +1,11 @@
 <script>
-import { fade, fly } from 'svelte/transition'
+import { fly } from 'svelte/transition'
 import { linear } from 'svelte/easing'
 import { button, button_press } from "/sound/ui.js"
-import { IS_DEV } from "/sys/flag.js"
 import { path } from "/sys/path.js"
 
-const dispatch = (target) => 
+const dispatch = (target) =>
   path.set(target)
-
 
 const mouseOver = () => {
   button()
@@ -15,16 +13,6 @@ const mouseOver = () => {
 
 const click = () => {
   button_press()
-}
-
-const start = () => {
-  dispatch(`start`)
-  click()
-}
-
-const design = () => {
-  dispatch(`cards`)
-  click()
 }
 
 const discord = () => {

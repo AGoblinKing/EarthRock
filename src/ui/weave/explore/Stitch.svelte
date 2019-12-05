@@ -10,7 +10,6 @@ export let open = $WEAVE_EXPLORE_OPEN
 $: name = stitch.name
 $: value = stitch.value
 $: chans = Object.entries($value)
-
 </script>
 
 <div 
@@ -37,8 +36,8 @@ $: chans = Object.entries($value)
   padding: 1rem;
   margin-left: 1rem;
   font-size: 0.9rem;
-  border-left: 0.25rem solid #333;
-  border-bottom: 0.25rem solid #333;
+  border: 0.25rem solid #111;
+  border-right: none;
 }
 .stitch:hover {
   background-color: green !important;

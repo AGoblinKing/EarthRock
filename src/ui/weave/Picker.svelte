@@ -104,11 +104,11 @@ $: arr_knots = Object.entries(knots)
 }
 .title {
   padding: 1rem;
-  color: white;
+  color: rgb(224, 168, 83);
 }
 
 .kind {
-  color: white;
+  color: rgb(224, 168, 83);
   margin: 0;
   text-transform: uppercase;
   text-align: center;

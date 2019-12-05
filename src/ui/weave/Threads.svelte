@@ -4,7 +4,7 @@ import { feed } from "/sys/wheel.js"
 import { frame, tick } from "/sys/time.js"
 import { first } from "/sys/port-connection.js"
 import { position } from "/sys/mouse.js"
-import { derived, read } from "/util/store.js"
+import { read } from "/util/store.js"
 
 export let weave
 
@@ -149,11 +149,11 @@ $: first_rec = $first
 
 <style>
 .active {
-  stroke-width:2rem;
+  stroke-width:1rem;
 }
 
 .line {
-  stroke-width: 0.5rem;
+  stroke-width: 0.25rem;
 }
 
 .threads {

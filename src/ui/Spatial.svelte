@@ -14,7 +14,12 @@ $: offset = [
 ]
 
 $: tru_scale = Math.round(100 * scale) / 100
-$: transform = `transform: translate(${Math.round(position[0])}px, ${Math.round(position[1])}px) rotate(${rotate}deg) scale(${tru_scale});`
+$: transform = [
+  `transform:`,
+  `translate(${Math.round(position[0])}px, ${Math.round(position[1])}px)`,
+  rotate === 0 ? `` : `rotate(${rotate}deg)`,
+  scale === 1 ? `` : `scale(${tru_scale});`
+].join(` `)
 
 $: anchor = [
   anchor[0] <= 50 ? `left: ${anchor[0]}%;` : `right: ${100 - anchor[0]}%;`,

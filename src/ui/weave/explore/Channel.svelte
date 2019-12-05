@@ -25,11 +25,10 @@ $: [key, value] = channel
   overflow: hidden;
   margin-left: 2rem;
   padding: 0.5rem;
-  border-left: 0.25rem solid #333;
-  border-bottom: 0.25rem solid #333;
+  border: 0.25rem solid #111;
 }
 .key {
-  border-right: 0.25rem solid white;
+  border-right: 0.25rem solid rgb(224, 168, 83);
   padding-right: 0.25rem;
   margin-right: 0.2rem;
 }

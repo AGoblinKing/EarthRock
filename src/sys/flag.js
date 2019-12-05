@@ -1,9 +1,9 @@
-import { write } from "/util/store.js"
+import { write, read } from "/util/store.js"
 
-export const IS_DEV = window.location.host === `localhost:5000`
-export const SOUND_ON = false
+export const IS_DEV = read(window.location.host === `localhost:5000`)
+export const SOUND_ON = write(false)
 
-export const animation = { delay: 100, duration: 300 }
+export const SVELTE_ANIMATION = write({ delay: 100, duration: 300 })
 export const TIME_TICK_RATE = write(100)
 
 export const WEAVE_EXPLORE_OPEN = write(true)

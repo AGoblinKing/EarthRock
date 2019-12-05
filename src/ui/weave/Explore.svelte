@@ -72,7 +72,7 @@ const do_add = () => {
   padding: 1rem;
 }
 .explore {
-  color: white;
+  color: rgb(224, 168, 83);
   font-size: 1rem;
   position: absolute;
   left: 0;
@@ -80,10 +80,11 @@ const do_add = () => {
   width: 20%;
   height: 100%;
   border-right: 0.25rem solid black;
-  background-color: #222;
+  background-color: #111;
   display: flex;
   flex-direction: column;
   z-index: 1001;
+  overflow: auto;
 }
 .filter {
   border-bottom: 0.25rem solid #333;

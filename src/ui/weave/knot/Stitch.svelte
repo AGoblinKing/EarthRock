@@ -71,7 +71,6 @@ const check_add = ({ which }) => {
   border-top: 0.25rem solid  #111;
   background-color: #333;
   flex: 1;
-  color: white;
   text-align: center;
   width: 25rem;
 
@@ -87,7 +86,7 @@ const check_add = ({ which }) => {
 .board {
   padding-top: 0.5rem;
   text-align: center;
-  color: white;
+  color: rgb(224, 168, 83);
   display: flex;
   flex-direction: column;
   width: 25rem;

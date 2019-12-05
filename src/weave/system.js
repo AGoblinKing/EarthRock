@@ -6,6 +6,7 @@ import * as time from "/sys/time.js"
 import * as screen from "/sys/screen.js"
 import * as input from "/sys/input.js"
 import * as key from "/sys/key.js"
+import * as flag from "/sys/flag.js"
 
 const tie = (items) =>
   Object.entries(items)
@@ -26,6 +27,7 @@ export default Weave({
     time,
     screen,
     input,
-    key
+    key,
+    flag
   })
 })

@@ -67,7 +67,7 @@ export const scroll = read([0, 0, 0], (set) => {
   })
 })
 
-export const zoom = write(1)
+export const zoom = write(0.75)
 
 let zoom_velocity = 0
 

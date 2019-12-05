@@ -1,6 +1,7 @@
 import { transformer, write } from "/util/store.js"
 import { get, trash } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
+
 import {
   add,
   minus,
@@ -30,7 +31,7 @@ draggee.listen(() => drag_count.update($d => $d + 1))
 // 50rem between points
 const FORCE_PULL = 2
 const FORCE_DECAY = 5
-const MIN_MOVE = 32
+const MIN_MOVE = 40
 const FORCE_STRONG = 1.25
 
 export const bodies = write({})

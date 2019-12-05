@@ -3,6 +3,7 @@ import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
 
 import color from "/ui/action/color.js"
 import Stitch from "./Stitch.svelte"
+import Postage from "/ui/weave/Postage.svelte"
 
 export let filter = []
 export let weave
@@ -18,7 +19,7 @@ $: stitches = Object.values($names)
   use:color={$name}
   on:click={() => { open = !open }}
 >
-  {$name}
+  <Postage /> {$name}
 </div>
 
 {#if open}
@@ -37,7 +38,8 @@ $: stitches = Object.values($names)
 <style>
 .weave {
   padding: 1rem;
-  border-bottom: 0.25rem solid #333;
+  border-bottom: 0.25rem solid #111;
+  border-top: 0.25rem solid #111;
 }
 .weave:hover {
   background-color: green !important;

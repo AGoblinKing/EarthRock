@@ -3,62 +3,62 @@ import scroller from "/ui/action/scroller.js"
 
 // autorespond with EarthRock facts
 const credits = {
-  "EarthRock": {
+  EarthRock: {
     "Open Source": {
-      "github.com/agoblinking/earthrock": "http://github.com/agoblinking/earthrock"
+      "github.com/agoblinking/earthrock": `http://github.com/agoblinking/earthrock`
     },
-    "Producer": {
-      "A Goblin King": "mailto:agolbinking@earthrock.run"
+    Producer: {
+      "A Goblin King": `mailto:agolbinking@earthrock.run`
     },
-    "Designer": {
-      "J. Goblin": "mailto:j.goblin@earthrock.run",
+    Designer: {
+      "J. Goblin": `mailto:j.goblin@earthrock.run`
     },
-    "Artist": {
-      "Jorsch Goblin": "mailto:jorsch_goblin@earthrock.run",
+    Artist: {
+      "Jorsch Goblin": `mailto:jorsch_goblin@earthrock.run`
     },
     "Original Sound Track": {
       "DayStar Collective": `https://music.apple.com/us/artist/daystar-collective/1484557546`
     },
-    "Programmer": {
-      "Glaive": "mailto:glaive@earthrock.run"
+    Programmer: {
+      Glaive: `mailto:glaive@earthrock.run`
     },
-    "Operations": {
-      "These Are All": "mailto:pseudonyms@earthrock.run"
+    Operations: {
+      "These Are All": `mailto:pseudonyms@earthrock.run`
     }
   },
-  "External": {
-    "Assets": {
-      "Kenney": `http://assetjesus.com`,
+  External: {
+    Assets: {
+      Kenney: `http://assetjesus.com`
     },
-    "Services": {
-      "GitHub": `http://github.com/`
+    Services: {
+      GitHub: `http://github.com/`
     },
-    "Libraries": {
-      "TWGL.js": "https://github.com/greggman/twgl.js",
-      "Svelte": "https://github.com/sveltejs/svelte",
-      "color": "https://github.com/Qix-/color",
-      "Tone.js": "https://github.com/Tonejs/Tone.js",
-      "Rollup": "https://github.com/rollup/rollup",
-      "Node.js": "https://nodejs.org",
-      "cuid": "",
-      "expr-eval": "",
-      "A Ton of Roll Up Plugins": "https://github.com/AGoblinKing/EarthRock/blob/master/package.json",
+    Libraries: {
+      "TWGL.js": `https://github.com/greggman/twgl.js`,
+      Svelte: `https://github.com/sveltejs/svelte`,
+      color: `https://github.com/Qix-/color`,
+      "Tone.js": `https://github.com/Tonejs/Tone.js`,
+      Rollup: `https://github.com/rollup/rollup`,
+      "Node.js": `https://nodejs.org`,
+      cuid: ``,
+      "expr-eval": ``,
+      "A Ton of Roll Up Plugins": `https://github.com/AGoblinKing/EarthRock/blob/master/package.json`
     },
-    "Languages": {
-      "Go": "https://golang.org/",
-      "JavaScript": "http://devdocs.io"
+    Languages: {
+      Go: `https://golang.org/`,
+      JavaScript: `http://devdocs.io`
     },
-    "IDE": {
-      "Visual Studio Code": "https://code.visualstudio.com/",
-      "Theme - Cyberpunk - UMBRA protocol": "https://marketplace.visualstudio.com/items?itemName=max-SS.cyberpunk"
-    },
+    IDE: {
+      "Visual Studio Code": `https://code.visualstudio.com/`,
+      "Theme - Cyberpunk - UMBRA protocol": `https://marketplace.visualstudio.com/items?itemName=max-SS.cyberpunk`
+    }
   },
   "Special Thanks": {
-    "Greg": {},
-    "Robert": {},
-    "Luna": {},
+    Greg: {},
+    Robert: {},
+    Luna: {},
     "Godzirra the Burninator": {},
-    "Ember": {},
+    Ember: {},
     "Tic Tac Toe": {}
   }
 }
@@ -84,7 +84,7 @@ const credits = {
   height: 100%;
   left: 0;
   top: 0;
-  filter: drop-shadow(5px 5px 2px rgb(255, 255, 255));
+  filter: drop-shadow(5px 5px 2px rgb(0, 0, 0));
   position: absolute;
 }
 .credits h1 {

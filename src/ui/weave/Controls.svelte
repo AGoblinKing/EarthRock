@@ -49,7 +49,7 @@ const toggle = () => {
 
 .play {
   font-size: 4rem;
-  color: white;
+  color: rgb(224, 168, 83);
   background-color: #222;
   transition: all 250ms linear;
   border: 0.25rem solid black;

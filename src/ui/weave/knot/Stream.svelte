@@ -1,5 +1,5 @@
 <script>
-import { animation } from "/sys/flag.js"
+import { SVELTE_ANIMATION } from "/sys/flag.js"
 import color from '/ui/action/color.js'
 import Port from "/ui/weave/Port.svelte"
 import { fly } from 'svelte/transition'
@@ -16,8 +16,8 @@ $: id = knot.id
     <div class="value_add">
       <pre class="flex">{JSON.stringify($value, null, 2)}</pre>
       {#if $value === null} 
-        <div class="doit" in:fly={animation}>\/\/</div>
-        <div class="doit" in:fly={animation}>
+        <div class="doit" in:fly={$SVELTE_ANIMATION }>\/\/</div>
+        <div class="doit" in:fly={$SVELTE_ANIMATION }>
 JSON IT!
         </div>
       {/if}
@@ -36,7 +36,7 @@ JSON IT!
 .JSON {
   display: flex;
   padding: 2rem;
-  color: white;
+  color: rgb(224, 168, 83);
   margin: 0;
   height: 10rem;
   text-align:center;

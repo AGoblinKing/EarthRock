@@ -24,6 +24,7 @@ scroll_set.set([
   $size[0] / 2, $size[1] / 2, 0
 ])
 
+zoom.set(0.75)
 woven.set(weave.name.get())
 
 const knots = weave.knots

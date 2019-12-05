@@ -1,6 +1,6 @@
 <script>
 import { button_press, button } from "/sound/ui.js"
-import {path} from "/sys/path.js"
+import { path } from "/sys/path.js"
 
 const audio = new Audio(`/music/earthrock-final-theme.mp3`)
 audio.loop = true
@@ -19,10 +19,9 @@ const toggle = () => {
 }
 
 const end = () => {
-  path.set('')
+  path.set(``)
   button_press()
 }
-
 </script>
 
 <div class="tools">
@@ -55,9 +54,9 @@ const end = () => {
     text-align: center;
 }
 .tools > *:hover {
-    color: #222;
+    color: rgb(245, 222, 13);
 }
 .tools > *:active {
-    color: #111;
+    color: rgb(255, 255, 255);
 }
 </style>

@@ -62,7 +62,7 @@ $: id = knot.id
   flex-direction: column;
   text-align: center;
   font-size: 1rem;
-  color: white;
+  color: rgb(224, 168, 83);
 
 }
 .address input {

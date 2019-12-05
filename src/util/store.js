@@ -1,16 +1,40 @@
-import { writable, readable, derived as d, get as val } from "svelte/store"
+const writable = (val) => {
+  const subs = new Set()
 
-const json = (store) => {
-  store.get = () => val(store)
-  store.toJSON = () => val(store)
-  store.poke = () => store.set(val(store))
-  store.listen = store.subscribe
-  store.set = store.set || (() => {})
-  return store
+  const w = {
+    get: () => val,
+    poke: () => w.set(w.get()),
+    set: (val_new) => {
+      val = val_new
+      subs.forEach((fn) => fn(val))
+    },
+    update: (fn) => {
+      w.set(fn(val))
+    },
+    subscribe: (fn) => {
+      subs.add(fn)
+      fn(val)
+      return () => subs.delete(fn)
+    }
+  }
+
+  w.toJSON = w.get
+  w.listen = w.subscribe
+
+  return w
 }
 
-export const write = (thing) => json(writable(thing))
-export const read = (thing, handler) => json(readable(thing, handler))
+const readable = (val, handler) => {
+  const w = writable(val)
+  const { set } = w
+  w.set = () => {}
+
+  if (handler) handler(set)
+  return w
+}
+
+export const write = (thing) => writable(thing)
+export const read = (thing, handler) => readable(thing, handler)
 
 export const set = (store, value) => {
   store.set(value)
@@ -30,24 +54,12 @@ export const transformer = (transform) => {
   return store
 }
 
-export const derived = (...args) => json(d(...args))
-
 export const listen = (subs, fn) => {
   const call = () =>
     fn(subs.map((s) => s.get()))
 
   const cancels = subs.map((store) => store.subscribe(call))
   return () => cancels.forEach(fn => fn())
-}
-
-export const aggregate = (amount = 10) => {
-  const a = write([])
-  const { set } = a
-  a.set = (new_value) => {
-    const a_new = [new_value, ...a.get()]
-  }
-
-  return json(a)
 }
 
 export const map = (init = {}) => {
@@ -68,3 +80,16 @@ export const map = (init = {}) => {
 
   return m
 }
+
+export const derived = (stores, fn) => readable(undefined, (set) => {
+  stores = Array.isArray(stores)
+    ? stores
+    : [stores]
+
+  const cancels = stores.map(
+    (store) =>
+      store.listen(() =>
+        set(fn(stores.map((s) => s.get())))
+      )
+  )
+})

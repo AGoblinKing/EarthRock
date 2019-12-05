@@ -3,10 +3,9 @@ import { onDestroy } from "svelte"
 
 import { add } from "/util/vector.js"
 import * as knots from "/weave/knots.js"
-import { scale as Scaling, size} from "/sys/screen.js"
+import { scale as Scaling, size } from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
-import { scroll } from "/sys/input.js"
 
 import Knot_Factory from "/weave/knot.js"
 
@@ -20,10 +19,10 @@ let picking = false
 
 const pick = (e) => {
   position = add([
-      e.x - 50 * $Scaling - $size[0]/2, 
-      e.y + 10 * $Scaling - $size[1]/2, 
-      0 
-    ]
+    e.x - 50 * $Scaling - $size[0] / 2,
+    e.y + 10 * $Scaling - $size[1] / 2,
+    0
+  ]
   )
 
   picking = true
@@ -33,7 +32,7 @@ const nopick = () => {
   picking = false
 }
 
-const create = (k) => 
+const create = (k) =>
   weave.add({
     knot: k
   })
@@ -43,15 +42,15 @@ const cancel = () => cancels.forEach(fn => fn())
 const cancels = [
   match.subscribe((new_match) => {
     if (!new_match) return
-    
+
     weave.give_thread.set(new_match)
   }),
-  
+
   del.subscribe((port) => {
-    if(!port) return
-    const [id, type] = port.split("|")
-    if(type === "write") return
-    
+    if (!port) return
+    const [id, type] = port.split(`|`)
+    if (type === `write`) return
+
     weave.take_thread.set(id)
   })
 ]

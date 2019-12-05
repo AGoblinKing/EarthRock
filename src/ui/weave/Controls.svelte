@@ -9,11 +9,11 @@ $: name = weave.name
 let runs = $running[$name]
 
 $: {
-  if($down === " ") toggle()
+  if ($down === ` `) toggle()
 }
 
 const toggle = () => {
-  if(runs) {
+  if (runs) {
     stop($name)
   } else {
     start($name)
@@ -49,7 +49,7 @@ const toggle = () => {
 
 .play {
   font-size: 4rem;
-  color: rgb(224, 168, 83);
+  color: white;
   background-color: #222;
   transition: all 250ms linear;
   border: 0.25rem solid black;

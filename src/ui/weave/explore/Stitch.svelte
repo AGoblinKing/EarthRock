@@ -2,6 +2,7 @@
 import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 import Channel from "./Channel.svelte"
+import Postage from "/ui/weave/Postage.svelte"
 
 export let filter = []
 export let stitch
@@ -18,6 +19,9 @@ $: chans = Object.entries($value)
   on:click={() => open = !open}
   use:color={$name}
 >
+  <div class="postage">
+    <Postage />
+  </div>
   {$name}
 </div>
 
@@ -32,7 +36,16 @@ $: chans = Object.entries($value)
 {/if}
 
 <style>
+.postage {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  margin-right: 1rem;
+}
+
 .stitch {
+  display: flex;
+  align-items: center;
   padding: 1rem;
   margin-left: 1rem;
   font-size: 0.9rem;

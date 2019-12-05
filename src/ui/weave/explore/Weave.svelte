@@ -19,7 +19,10 @@ $: stitches = Object.values($names)
   use:color={$name}
   on:click={() => { open = !open }}
 >
-  <Postage /> {$name}
+  <div class="postage">
+    <Postage />
+  </div>
+  {$name}
 </div>
 
 {#if open}
@@ -36,7 +39,16 @@ $: stitches = Object.values($names)
 {/if}
 
 <style>
+.postage {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  margin-right: 1rem;
+}
+
 .weave {
+  align-items:center;
+  display: flex;
   padding: 1rem;
   border-bottom: 0.25rem solid #111;
   border-top: 0.25rem solid #111;

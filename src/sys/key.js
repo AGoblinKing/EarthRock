@@ -10,7 +10,7 @@ export const up = read(``, (set) =>
     }
 
     e.preventDefault()
-    set(``)
+
     set(e.key.toLowerCase())
   })
 )
@@ -25,20 +25,21 @@ export const down = read(``, (set) =>
     }
 
     e.preventDefault()
-    set(``)
+
     set(e.key.toLowerCase())
   })
 )
 
 export const keys = read({}, (set) => {
-  down.listen((char) =>
-    set({
-      ...keys.get(),
-      [char]: true
-    })
-  )
-  up.listen((char) => set({
-    ...keys.get(),
-    [char]: false
-  }))
+  const value = {}
+
+  down.listen((char) => {
+    value[char] = true
+    set(value)
+  })
+
+  up.listen((char) => {
+    delete value[char]
+    set(value)
+  })
 })

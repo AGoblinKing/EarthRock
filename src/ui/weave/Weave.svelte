@@ -2,7 +2,7 @@
 import * as Wheel from "/sys/wheel.js"
 import { size } from "/sys/screen.js"
 import { woven } from "/sys/weave.js"
-import { scroll, scroll_set, zoom } from "/sys/input.js"
+import { scroll, zoom } from "/sys/input.js"
 
 import { Basic } from "/prefab/weaves.js"
 
@@ -20,7 +20,7 @@ const { basic: weave } = Wheel.spawn({
 })
 
 // Reset Scroll
-scroll_set.set([
+scroll.set([
   $size[0] / 2, $size[1] / 2, 0
 ])
 
@@ -50,7 +50,7 @@ const get_ui = (knot) => {
   style={
     [
       `transform:`,
-      `translate(${$scroll[0]}px, ${$scroll[1]}px)`,
+      `translate3d(${$scroll[0]}px, ${$scroll[1]}px, 0)`,
       `scale(${$zoom})`,
       `;`
     ].join(` `)
@@ -76,10 +76,6 @@ const get_ui = (knot) => {
 
 .knots {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  left: -50%;
-  top: -50%;
   z-index: 6;
   transition: transform 100ms linear;
 }

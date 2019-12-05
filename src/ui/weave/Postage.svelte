@@ -3,11 +3,17 @@ import { path } from "/sys/path.js"
 
 import Tile from "/ui/image/Tile.svelte"
 export let address = ``
+
+const punch_it = (e) => {
+  e.preventDefault()
+  path.set(`weave${address}`)
+  return false
+}
 </script>
 
 <div 
   class="postage no-drag"
-  on:click={() => path.set(`weave${address}`)}
+  on:click={punch_it}
 >
   <Tile width={1} height={1} random />
 </div>

@@ -11,23 +11,23 @@ import {
 import { read, write } from "/util/store.js"
 import { add, length, multiply_scalar } from "/util/vector.js"
 
+// raw translate commands
 export const translate = read([0, 0, 0], (set) => {
-  let buffer = [0, 0, 0]
-
+  const b_key = [0, 0, 0]
   Time.frame.listen(() => {
     const { w, a, s, d } = Key.keys.get()
 
-    let b_key = [0, 0, 0]
-    if (w) b_key = add(b_key, [0, -1, 0])
-    if (s) b_key = add(b_key, [0, 1, 0])
-    if (a) b_key = add(b_key, [-1, 0, 0])
-    if (d) b_key = add(b_key, [1, 0, 0])
+    b_key[0] = 0
+    b_key[1] = 0
 
-    buffer = add(b_key, buffer)
-    if (length(buffer) === 0) return
+    if (w) b_key[1] -= 1
+    if (s) b_key[1] += 1
+    if (a) b_key[0] -= 1
+    if (d) b_key[0] += 1
 
-    set([...buffer])
-    buffer = [0, 0, 0]
+    if (length(b_key) === 0) return
+
+    set(b_key)
   })
 
   // Mouse.scroll.listen((value_new) => {
@@ -35,36 +35,32 @@ export const translate = read([0, 0, 0], (set) => {
   // })
 })
 
-export const scroll_set = write([0, 0, 0])
-
 let scroll_velocity = [0, 0, 0]
 
-export const scroll = read([0, 0, 0], (set) => {
-  scroll_set.listen((v) => set(v))
+export const scroll = write([0, 0, 0])
 
-  Time.tick.listen(() => {
-    if (Math.abs(length(scroll_velocity)) < 1) return
+Time.tick.listen(() => {
+  if (Math.abs(length(scroll_velocity)) < 1) return
 
-    set(add(
-      scroll.get(),
-      scroll_velocity
-    ).map((n) => Math.round(n)))
+  scroll.set(add(
+    scroll.get(),
+    scroll_velocity
+  ).map((n) => Math.round(n)))
 
-    scroll_velocity = multiply_scalar(
-      scroll_velocity,
-      0.5
+  scroll_velocity = multiply_scalar(
+    scroll_velocity,
+    0.5
+  )
+})
+
+translate.listen((t) => {
+  scroll_velocity = add(
+    scroll_velocity,
+    multiply_scalar(
+      t,
+      INPUT_SCROLL_STRENGTH.get()
     )
-  })
-
-  translate.listen((t) => {
-    scroll_velocity = add(
-      scroll_velocity,
-      multiply_scalar(
-        t,
-        INPUT_SCROLL_STRENGTH.get()
-      )
-    )
-  })
+  )
 })
 
 export const zoom = write(0.75)

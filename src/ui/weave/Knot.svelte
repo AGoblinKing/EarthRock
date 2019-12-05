@@ -65,15 +65,13 @@ const drag = (e) => {
   window.addEventListener(`mouseup`, handler)
 }
 
-$: tru_position = add(
+$: tru_position =
   dragging
     ? multiply_scalar(minus(
       $Mouse,
       $scroll
     ), 1 / $zoom)
     : $positions[knot.id.get()]
-
-)
 
 $: tru_scale = dragging
   ? 1.168

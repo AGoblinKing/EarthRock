@@ -1,4 +1,4 @@
-import { write, read, derived, transformer } from "/util/store.js"
+import { write, read, transformer, derived } from "/util/store.js"
 
 import { random } from "/util/text.js"
 
@@ -80,7 +80,7 @@ export default ({
 
   // index by name, uniqueness not guaranteed
   // Stitches only right now
-  w.names = derived(w.knots, ($knots) => Object.fromEntries(
+  w.names = derived(w.knots, ([$knots]) => Object.fromEntries(
     Object.values($knots)
       .filter(({ knot }) => knot.get() === `stitch`)
       .map(

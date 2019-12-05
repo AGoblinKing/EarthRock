@@ -1,5 +1,6 @@
 <script>
 import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
+import { keys } from "/sys/key.js"
 
 import color from "/ui/action/color.js"
 import Stitch from "./Stitch.svelte"
@@ -12,15 +13,25 @@ export let open = $WEAVE_EXPLORE_OPEN
 $: name = weave.name
 $: names = weave.names
 $: stitches = Object.values($names)
+
+let super_open = $WEAVE_EXPLORE_OPEN
 </script>
 <div 
   class="weave"
   class:open
   use:color={$name}
-  on:click={() => { open = !open }}
+  on:click={() => {
+    if ($keys.shift) {
+      open = true
+      super_open = !super_open
+      return
+    }
+
+    open = !open
+  }}
 >
   <div class="postage">
-    <Postage />
+    <Postage address={`/${$name}`} />
   </div>
   {$name}
 </div>
@@ -32,7 +43,12 @@ $: stitches = Object.values($names)
         filter.length === 0 ||
         stitch.name.get().indexOf(filter[0]) !== -1
       }
-        <Stitch {stitch} filter={filter.slice(1)}/>
+        <Stitch 
+          {stitch} 
+          filter={filter.slice(1)} 
+          open={super_open} 
+          {weave}
+        />
       {/if}
     {/each}
   </div>

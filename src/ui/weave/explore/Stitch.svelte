@@ -7,7 +7,9 @@ import Postage from "/ui/weave/Postage.svelte"
 export let filter = []
 export let stitch
 export let open = $WEAVE_EXPLORE_OPEN
+export let weave
 
+$: w_name = weave.name
 $: name = stitch.name
 $: value = stitch.value
 $: chans = Object.entries($value)
@@ -16,11 +18,11 @@ $: chans = Object.entries($value)
 <div 
   class="stitch"
   class:open
-  on:click={() => open = !open}
+  on:click={() => { open = !open }}
   use:color={$name}
 >
   <div class="postage">
-    <Postage />
+    <Postage address={`/${$w_name}/${$name}`}/>
   </div>
   {$name}
 </div>

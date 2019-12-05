@@ -14,13 +14,17 @@ export const tick = read(0, (set) => {
 
 export const frame = read([0, 0], (set) => {
   let old
+  const data = [0, 0]
   const frame_t = (ts) => {
     requestAnimationFrame(frame_t)
 
     if (old === undefined) old = ts
-    const dt = ts - old
 
-    set([dt, ts])
+    data[0] = ts
+    data[1] = Math.round(ts - old)
+
+    old = ts
+    set(data)
   }
 
   requestAnimationFrame(frame_t)

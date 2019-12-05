@@ -8,18 +8,19 @@ import { read } from "/util/store.js"
 
 export let weave
 
+const val = new Set()
 // filter for just this weave
-const recent = read(new Set(), (set) => {
+const recent = read(val, (set) => {
   let t = 0
 
   const deletes = {}
 
   tick.subscribe(() => {
-    t += 250
+    t += 100
     const dels = Object.entries(deletes)
     if (dels.length === 0) return
 
-    const r = recent.get()
+    const r = val
 
     let change = false
     dels.forEach(([key, del_t]) => {
@@ -44,7 +45,7 @@ const recent = read(new Set(), (set) => {
     if (weave_id !== weave_write && weave_id !== weave_read) return
     const id = `${local_read.join(`/`)}-${local_write.join(`/`)}`
 
-    const s_recent = recent.get()
+    const s_recent = val
     if (!s_recent.has(id)) {
       s_recent.add(id)
       set(s_recent)

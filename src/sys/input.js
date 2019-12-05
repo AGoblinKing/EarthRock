@@ -14,6 +14,7 @@ import { add, length, multiply_scalar } from "/util/vector.js"
 // raw translate commands
 export const translate = read([0, 0, 0], (set) => {
   const b_key = [0, 0, 0]
+  // frame stuff has to be fast :/
   Time.frame.listen(() => {
     const { w, a, s, d } = Key.keys.get()
 

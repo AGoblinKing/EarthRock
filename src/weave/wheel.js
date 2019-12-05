@@ -193,7 +193,7 @@ export const stop = (weave_name) => {
   const r = running.get()
   delete r[weave_name]
 
-  running.set(r)
+  running_set(r)
 
   if (h === undefined) {
     throw new Error(`can't stop ${weave_name}`)

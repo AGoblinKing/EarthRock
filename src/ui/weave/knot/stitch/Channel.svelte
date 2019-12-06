@@ -1,27 +1,26 @@
 <script>
 import Port from "/ui/weave/Port.svelte"
 import color from "/ui/action/color.js"
-import { write } from "/util/store.js"
 
 export let knot
 export let chan
 export let name
 
-const edit = write($chan)
+$: edit = JSON.stringify($chan)
 
 $: id = knot.id
 
-const address = (channel) => `${$id}/${channel}`
-
-const cancel = edit.subscribe((txt) => {
-  let v = txt
+const save = () => {
+  let v = $chan
   try {
-    v = JSON.parse(txt)
+    v = JSON.parse(edit)
+    chan.set(v)
   } catch (ex) {
-    // no biggie
+    // no boggie
+    edit = JSON.stringify($chan)
   }
-  chan.set(v)
-})
+}
+const address = (channel) => `${$id}/${channel}`
 </script>
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>
@@ -30,7 +29,14 @@ const cancel = edit.subscribe((txt) => {
     <input 
       class="edit" 
       type="text" 
-      bind:value={$chan} 
+      bind:value={edit} 
+      on:blur={() => {
+        save()
+      }}
+      on:keydown={({ which }) => {
+        if (which !== 13) return
+        save()
+      }}
       placeholder="JSON plz"
     />
   </div>

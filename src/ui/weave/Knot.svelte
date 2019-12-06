@@ -61,11 +61,11 @@ const drag = (e) => {
 
   const handler = () => {
     dragging = false
-    position = [
+    position = multiply_scalar([
       $Mouse[0] - $scroll[0],
       $Mouse[1] - $scroll[1],
       0
-    ]
+    ], 1 / $zoom)
     update()
     draggee.set(``)
 
@@ -106,7 +106,6 @@ $: tru_scale = dragging
 <style>
 
 .knot {
-  filter: drop-shadow(1rem 1rem 0.25rem rgba(0, 0, 0, 0.5));
   display: flex;
   flex-direction: column;
   background-color: #222;

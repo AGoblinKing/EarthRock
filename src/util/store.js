@@ -33,7 +33,7 @@ const readable = (val, handler) => {
   const w = writable(val)
   const { set } = w
   w.set = () => console.warn(`tried to write to readable`)
-
+  w.readonly = true
   if (handler) handler(set)
   return w
 }

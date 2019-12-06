@@ -1,6 +1,5 @@
 <script>
 import { main } from "/sys/screen.js"
-import Spatial from "/ui/Spatial.svelte"
 
 export let full = false
 
@@ -10,12 +9,13 @@ const toggle = () => {
 
 const insert = (node) => ({
   destroy: main.subscribe((canvas) => {
+    if (!canvas || !canvas.style) return
     canvas.style.flex = 1
-    
+
     while (node.firstChild) {
       node.removeChild(node.firstChild)
     }
-    
+
     node.appendChild(canvas)
   })
 })
@@ -32,7 +32,7 @@ const insert = (node) => ({
 .main {
   z-index: 2000;
   position: absolute;
-  right: 5vw;
+  left: 5vw;
   bottom: 5vw;
   width: 10rem;
   height: 10rem;

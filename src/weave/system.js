@@ -7,11 +7,10 @@ import * as screen from "/sys/screen.js"
 import * as input from "/sys/input.js"
 import * as key from "/sys/key.js"
 import * as flag from "/sys/flag.js"
-import * as weave from "/sys/weave.js"
 
 // private sytems
 import "/sys/data.js"
-
+import "/sys/weave.js"
 const tie = (items) =>
   Object.entries(items)
     .reduce((result, [key, value]) => ({
@@ -32,7 +31,6 @@ export default Weave({
     screen,
     input,
     key,
-    flag,
-    weave
+    flag
   })
 })

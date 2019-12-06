@@ -14,9 +14,11 @@ $: offset = [
 ]
 
 $: tru_scale = Math.round(100 * scale) / 100
+
+$: tru_position = position || [0, 0, 0]
 $: transform = [
   `transform:`,
-  `translate(${Math.round(position[0])}px, ${Math.round(position[1])}px)`,
+  `translate(${Math.round(tru_position[0])}px, ${Math.round(tru_position[1])}px)`,
   rotate === 0 ? `` : `rotate(${rotate}deg)`,
   scale === 1 ? `` : `scale(${tru_scale});`
 ].join(` `)
@@ -31,7 +33,12 @@ $: tru_zIndex = `z-index: ${Math.max(1, Math.round(scale * 100 + zIndex))};`
 $: style = [tru_zIndex, anchor, transform].join(` `)
 </script>
 
-<div class="spatial" class:transition {style}>
+<div 
+  class="spatial" 
+  class:transition 
+  {style}
+
+>
     <slot />
 </div>
 

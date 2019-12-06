@@ -25,21 +25,22 @@ const end = () => {
 </script>
 
 <div class="tools">
-    <div on:click={toggle}>
-        {audo_playing ? `>` : `!>`}
-    </div>
+    
     {#if $path !== false && $path !== ``}
         <div on:click={end} on:mouseenter={button}>
             X
         </div>
     {/if}
+    <div on:click={toggle}>
+        {audo_playing ? `>` : `!>`}
+    </div>
 </div>
 
 <style>
 .tools {
     display: flex;
     position: absolute; 
-    right: 0;
+    left: 0;
     z-index: 1100;
     filter: drop-shadow(0.25rem 0.25rem 0.25rem black);
 }

@@ -93,7 +93,7 @@ const init = async () => {
 
   Wheel.spawn(Object.fromEntries(
     weaves
-      .filter((w) => w.id !== Wheel.SYSTEM)
+      .filter((w) => w.name !== Wheel.SYSTEM)
       .map((w) => [
         w.name,
         w

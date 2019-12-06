@@ -9,4 +9,4 @@ export const path = transformer((path_new) => {
   window.history.pushState({ page: 1 }, ``, `/${path_new}`)
 
   return path_split
-}).set(window.location.pathname.slice(1))
+}).set(decodeURI(window.location.pathname.slice(1)))

@@ -15,26 +15,26 @@ $: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
 let filter = ``
 
-$: parts = filter.split(`/`)
+$: parts = filter[0] === `-` || filter[0] === `+`
+  ? [``, ``]
+  : filter.split(`/`)
 
-let adder = ``
 const do_add = () => {
-  if (adder[0] === `-`) {
-    Wheel.del({
-      [adder.slice(1)]: true
-    })
-    adder = ``
+  switch (filter[0]) {
+    case `-`:
+      Wheel.del({
+        [filter.slice(1)]: true
+      })
+      filter = ``
+      return
+    case `+`:
+      Wheel.spawn({
+        [filter.slice(1)]: {
 
-    return
+        }
+      })
+      filter = ``
   }
-
-  Wheel.spawn({
-    [adder]: {
-
-    }
-  })
-
-  adder = ``
 }
 </script>
 
@@ -42,8 +42,9 @@ const do_add = () => {
   <input 
     type="text" 
     class="filter" 
-    placeholder="Filter eg: sys/"
+    placeholder="Filter and +/-name"
     bind:value={filter}
+    on:keydown={({ which }) => which === 13 && do_add()}
   />
 
   <div class="weaves">
@@ -56,38 +57,28 @@ const do_add = () => {
     {/if}
   {/each}
   </div>
-
-  <input 
-    type="text"
-    class="adder"
-    bind:value={adder}
-    on:keydown={({ which }) => which === 13 && do_add()}
-    placeholder={`-${ws[ws.length - 1].name.get()} to delete`}
-  />
 </div>
 
 <style>
-.adder {
-  border-top: 0.25rem solid #333;
-  padding: 1rem;
-}
+
+
 .explore {
   color: rgb(224, 168, 83);
   font-size: 1rem;
   position: absolute;
-  left: 0;
+  right: 0;
   top: 0;
   width: 20%;
   height: 100%;
   border-right: 0.25rem solid black;
-  background-color: #111;
   display: flex;
   flex-direction: column;
   z-index: 1001;
   overflow: auto;
 }
-.filter {
-  border-bottom: 0.25rem solid #333;
+.filter, .adder {
+  background-color: #111;
+  border: 0.25rem solid #333;
   padding: 1rem;
 }
 

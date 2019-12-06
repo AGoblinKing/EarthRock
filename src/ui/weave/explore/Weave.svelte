@@ -68,8 +68,8 @@ let super_open = $WEAVE_EXPLORE_OPEN
   align-items:center;
   display: flex;
   padding: 1rem;
-  border-bottom: 0.25rem solid #111;
-  border-top: 0.25rem solid #111;
+  border: 0.25rem solid #111;
+  border-right: none;
 }
 .weave:hover {
   background-color: green !important;

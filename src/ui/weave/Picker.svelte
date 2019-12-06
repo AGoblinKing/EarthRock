@@ -1,6 +1,7 @@
 <script>
-import { positions } from "/sys/weave.js"
-import { scroll } from "/sys/input.js"
+import Postage from "/ui/weave/Postage.svelte"
+import { positions, woven } from "/sys/weave.js"
+import { random } from "/util/text.js"
 import * as knots from "/weave/knots.js"
 import { scale, size } from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
@@ -38,7 +39,7 @@ const create = (k) => {
   const i = knot_new.id.get()
   const ps = positions.get()
   ps[i] = [...position]
-  console.log(i, ps[i])
+
   positions.set(ps)
 }
 
@@ -61,14 +62,90 @@ const cancels = [
 ]
 
 $: arr_knots = Object.entries(knots)
-</script>
 
+let files
+let nameit = false
+const drop = (e) => {
+  const files = e.dataTransfer.files
+  for (let i = 0; i < files.length; i++) {
+    const reader = new FileReader()
+
+    reader.onloadend = (e) => {
+      const r = JSON.parse(e.target.result)
+      nameit = r
+      name = `${nameit.name} ${random(2)}`
+    }
+    reader.readAsText(files[i])
+  }
+  e.preventDefault()
+  e.stopPropagation()
+}
+let dragover
+
+const over = (whether) => (e) => {
+  e.dataTransfer.dropEffect = `copy`
+  dragover = whether
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+const play_it = () => {
+  delete nameit.id
+
+  Wheel.spawn({
+    [name]: nameit
+  })
+  woven.set(name)
+  nameit = false
+}
+let name
+</script>
+{#if nameit}
+<div 
+  class="nameprompt"
+  use:color={`/${name}`}
+>
+  <h2>Name It!</h2>
+
+  <div class="spirit">
+    <Postage address={`/${name}`} nopunch={true} />
+  </div>
+
+  <input
+    class="nameit" 
+    on:keydown={(e) => {
+      if (e.which !== 13) return
+      play_it()
+    }}
+    type="text" 
+    bind:value={name} 
+    placeholder="Name it" 
+  />
+  <div class="controls">
+    <div class="false" on:click={() => { nameit = false }}>Cancel</div>
+    <div class="true" on:click={play_it}>Play</div>
+  </div>
+</div>
+{/if}
 <div 
   class="picker" 
   class:picking 
+  class:dragover
   on:mousedown={pick}
+  on:drop={drop}
+  on:dragover={over(true)}
+  on:dragleave={over(false)}
 >
 
+<input 
+  type="file" 
+  class="file" 
+  bind:this={files} 
+  multiple="multiple"
+  on:change={(e) => {
+    console.log(e.dataTransfer, e.target)
+  }}
+/>
 {#if picking}
   <Knot {position} {knot}>
     <div class="prompt">
@@ -88,6 +165,18 @@ $: arr_knots = Object.entries(knots)
 <svelte:window on:mouseup={nopick} />
 
 <style>
+.spirit {
+  margin: 1rem;
+  height: 10rem;
+  width: 10rem;
+}
+.nameit {
+  background-color: #111;
+  border: 0.25rem solid #333;
+}
+.file {
+  display: none;
+}
 .picker {
   position: absolute;
   top: 0;
@@ -119,9 +208,43 @@ $: arr_knots = Object.entries(knots)
   padding: 0.5rem;
   /* transition: all 250ms cubic-bezier(0.075, 0.82, 0.165, 1); */
 }
-
+.dragover {
+  background: rgba(0, 255, 0, 0.1);
+}
 .kind:hover {
   filter: invert(1);
+}
+.controls {
+  display: flex; 
+  justify-content: flex-end;
+}
+.false:hover, .true:hover {
+  background-color: blue;
+}
+.false, .true {
+  padding: 1rem;
+  border: 0.25rem solid #333;
+  margin: 0.25rem;
+}
+.false {
+  background-color: red;
+}
+.true {
+  background-color: green;
+}
+.nameprompt {
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  padding: 5rem;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #111;
+  z-index: 1001;
+  border: 1rem solid black;
 }
 
 </style>

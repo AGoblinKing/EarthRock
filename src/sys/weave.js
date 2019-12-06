@@ -30,8 +30,7 @@ Wheel.trash.listen((trashee) => {
 path.listen(async ($path) => {
   if (
     $path[0] !== `weave` ||
-    $path.length === 1 ||
-    woven.get().name.get() === $path[1]
+    $path.length === 1
   ) return
 
   await loaded
@@ -193,9 +192,15 @@ tick.listen((t) => {
     Object.keys($bodies).forEach((o_id) => {
       if (o_id === id) return
 
-      const [[x, y], [o_x, o_y]] = [
+      const [pos_id, pos_oid] = [
         $positions[id],
         $positions[o_id]
+      ]
+      if (!pos_id || !pos_oid) return
+
+      const [[x, y], [o_x, o_y]] = [
+        pos_id,
+        pos_oid
       ]
 
       const [[w, h], [o_w, o_h]] = [

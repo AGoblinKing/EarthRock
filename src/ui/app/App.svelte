@@ -8,7 +8,7 @@ import Weave from "/ui/weave/Weave.svelte"
 import Credits from "./Credits.svelte"
 import { path } from "/sys/path.js"
 import { derived } from "/util/store.js"
-
+import { tick } from "/sys/time.js"
 const paths = {
   cards: Design,
   weave: Weave,
@@ -25,7 +25,7 @@ const view = derived(path, ([$path]) => paths[$path[0]] || Intro)
 <Tools />
 
 <div class="background">
-    <Tile random width={100} height={100}/>
+    <Tile random width={5} height={5} />
 </div>
 
 <style>

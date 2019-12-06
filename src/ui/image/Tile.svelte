@@ -1,5 +1,6 @@
 <script>
 import { tile } from "/util/text.js"
+
 import Tile from '/image/tile.js'
 
 export let data = ``

@@ -1,7 +1,7 @@
 import * as twgl from "twgl"
 import { read, transformer } from "/util/store.js"
 import { frame } from "/sys/time.js"
-import { test } from "/sys/shader.js"
+import { sprite } from "/sys/shader.js"
 
 const VALUE = () => ({
   square: read({
@@ -48,7 +48,7 @@ export default ({
 
   const program_info = twgl.createProgramInfo(
     gl,
-    test.get()
+    sprite.get()
   )
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)

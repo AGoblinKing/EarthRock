@@ -63,6 +63,7 @@ const do_add = () => {
 
 
 .explore {
+  pointer-events: none;
   color: rgb(224, 168, 83);
   font-size: 1rem;
   position: absolute;
@@ -77,14 +78,15 @@ const do_add = () => {
   overflow: auto;
 }
 .filter, .adder {
+  pointer-events: all;
   background-color: #111;
   border: 0.25rem solid #333;
   padding: 1rem;
 }
 
 .weaves {
-  flex: 1;
   display: flex;
+  pointer-events: all;
   flex-direction: column;
 }
 </style>

@@ -1,7 +1,8 @@
 <script>
+import exif from "piexifjs"
+
 import Postage from "/ui/weave/Postage.svelte"
 import { positions, woven } from "/sys/weave.js"
-import { random } from "/util/text.js"
 import * as knots from "/weave/knots.js"
 import { scale, size } from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
@@ -71,11 +72,12 @@ const drop = (e) => {
     const reader = new FileReader()
 
     reader.onloadend = (e) => {
-      const r = JSON.parse(e.target.result)
-      nameit = r
-      name = `${nameit.name} ${random(2)}`
+      const r = exif.load(e.target.result)
+
+      nameit = JSON.parse(r[`0th`][exif.ImageIFD.Make])
+      name = `${nameit.name}`
     }
-    reader.readAsText(files[i])
+    reader.readAsDataURL(files[i])
   }
   e.preventDefault()
   e.stopPropagation()

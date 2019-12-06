@@ -89,7 +89,7 @@ export default async ({
     })
   }
 
-  const result = data_canvas.toDataURL(`image/png`)
+  const result = data_canvas.toDataURL(`image/jpeg`)
   if (!random) {
     repo.set(key, result)
   }

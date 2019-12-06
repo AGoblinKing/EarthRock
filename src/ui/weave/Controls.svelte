@@ -1,6 +1,9 @@
 <script>
-import fs from "file-saver"
+import exif from "piexifjs"
 
+import fs from "file-saver"
+import { tile } from "/util/text.js"
+import Tile from "/image/tile.js"
 import { down } from "/sys/key.js"
 
 export let weave
@@ -23,10 +26,23 @@ const toggle = () => {
 $: {
   if ($down === ` `) toggle()
 }
-const save = () => {
-  const blob = new Blob([JSON.stringify(weave, null, `  `)], { type: `text/plain;charset=utf-8` })
+const save = async () => {
+  const obj = {
+    "0th": {
+      [exif.ImageIFD.Make]: JSON.stringify(weave),
+      [exif.ImageIFD.Software]: `isekai`
+    },
+    Exif: {},
+    GPS: {}
+  }
 
-  fs.saveAs(blob, `${$name}.card.json`)
+  const t = await Tile({
+    width: 2,
+    height: 2,
+    data: `${tile(`/${$name}`)} `.repeat(4)
+  })
+
+  fs.saveAs(exif.insert(exif.dump(obj), t), `${$name}.weave.jpg`)
 }
 </script>
 

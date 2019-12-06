@@ -1,7 +1,9 @@
+import { TILE_COUNT, TILE_COLUMNS } from "/sys/flag.js"
+
 const SIZE = 16
 const SPACING = 1
-const COLUMNS = 32
-const COUNT = 1024
+const COLUMNS = TILE_COLUMNS.get()
+const COUNT = TILE_COUNT.get()
 
 const ready = new Promise((resolve) => {
   const tiles = new Image()

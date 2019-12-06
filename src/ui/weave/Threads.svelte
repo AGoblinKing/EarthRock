@@ -1,6 +1,5 @@
 <script>
 import { size } from "/sys/screen.js"
-import { feed } from "/sys/wheel.js"
 import { frame, tick } from "/sys/time.js"
 import { first } from "/sys/port-connection.js"
 import { position } from "/sys/mouse.js"
@@ -34,7 +33,7 @@ const recent = read(val, (set) => {
     if (change) set(r)
   })
 
-  feed.subscribe(({ writer, reader }) => {
+  Wheel.feed.subscribe(({ writer, reader }) => {
     if (!writer || !reader) return
 
     const [weave_write, ...local_write] = writer.split(`/`)

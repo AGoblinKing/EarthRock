@@ -1,7 +1,9 @@
+import "/weave/init.js"
+import system from "/weave/system.js"
 import App from '/ui/app/app.svelte'
-import * as Wheel from "/weave/wheel.js"
 
-window.Wheel = Wheel
+const ws = Wheel.weaves.get()
+ws[Wheel.SYSTEM] = system
 
 const app = new App({
   target: document.body,

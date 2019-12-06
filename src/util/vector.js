@@ -10,11 +10,6 @@ export const toJSON = (obj) => Object.fromEntries(
     })
 )
 
-export const powerToJSON = (obj) => {
-  obj.toJSON = () => toJSON(obj)
-  return obj
-}
-
 export const add = (...vecs) => vecs.reduce((result, vec) =>
   v3.add(result, vec)
 , [0, 0, 0])

@@ -41,6 +41,7 @@ const end = () => {
     position: absolute; 
     right: 0;
     z-index: 1100;
+    filter: drop-shadow(0.25rem 0.25rem 0.25rem black);
 }
 
 .tools > * {

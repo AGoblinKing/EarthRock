@@ -2,7 +2,7 @@
 import physics from "/ui/action/physics.js"
 
 import Spatial from "/ui/Spatial.svelte"
-import { add, minus, multiply_scalar } from "/util/vector.js"
+import { minus, multiply_scalar } from "/util/vector.js"
 
 import {
   zoom,
@@ -24,16 +24,27 @@ export let knot
 $: type = knot.knot
 $: id = knot.id
 
-const update = () =>
-  positions.set({
-    ...positions.get(),
-    [knot.id.get()]: position
-  })
-
-update()
-
 let dragging = false
 let zIndex = 7
+let tru_position
+
+const update = () => {
+  $positions[knot.id.get()] = position
+  positions.set($positions)
+}
+
+$: {
+  if (dragging) {
+    tru_position = multiply_scalar(minus(
+      $Mouse,
+      $scroll
+    ), 1 / $zoom)
+  } else {
+    tru_position = $positions[$id]
+  }
+}
+
+update()
 
 const drag = (e) => {
   if (
@@ -65,14 +76,6 @@ const drag = (e) => {
   window.addEventListener(`mouseup`, handler)
 }
 
-$: tru_position =
-  dragging
-    ? multiply_scalar(minus(
-      $Mouse,
-      $scroll
-    ), 1 / $zoom)
-    : $positions[knot.id.get()]
-
 $: tru_scale = dragging
   ? 1.168
   : 1
@@ -103,6 +106,7 @@ $: tru_scale = dragging
 <style>
 
 .knot {
+  filter: drop-shadow(1rem 1rem 0.25rem rgba(0, 0, 0, 0.5));
   display: flex;
   flex-direction: column;
   background-color: #222;

@@ -12,13 +12,11 @@ import { derived } from "/util/store.js"
 const paths = {
   cards: Design,
   weave: Weave,
-  "/": Intro,
   credits: Credits
 }
 
-const view = derived(path, ($path) => paths[$path] || Intro)
+const view = derived(path, ([$path]) => paths[$path[0]] || Intro)
 </script>
-
 
 <svelte:component 
   this={$view}
@@ -27,7 +25,7 @@ const view = derived(path, ($path) => paths[$path] || Intro)
 <Tools />
 
 <div class="background">
-    <Tile random/>
+    <Tile random width={100} height={100}/>
 </div>
 
 <style>

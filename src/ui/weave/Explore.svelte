@@ -9,9 +9,9 @@
   [New]
 -->
 <script>
-import { weaves, del, spawn } from "/sys/wheel.js"
 import Weave from "./explore/Weave.svelte"
 
+$: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
 let filter = ``
 
@@ -20,7 +20,7 @@ $: parts = filter.split(`/`)
 let adder = ``
 const do_add = () => {
   if (adder[0] === `-`) {
-    del({
+    Wheel.del({
       [adder.slice(1)]: true
     })
     adder = ``
@@ -28,7 +28,7 @@ const do_add = () => {
     return
   }
 
-  spawn({
+  Wheel.spawn({
     [adder]: {
 
     }

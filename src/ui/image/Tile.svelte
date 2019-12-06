@@ -1,17 +1,22 @@
 <script>
-import { onMount } from 'svelte'
-import Tile from '../../image/tile.js'
+import { tile } from "/util/text.js"
+import Tile from '/image/tile.js'
 
-export let data = ""
+export let data = ``
 export let width = 10
 export let height = 7
 export let random = false
+export let text = false
 
-let image_src = Tile({
-    width, 
-    height, 
-    data,
-    random
+$: tru_data = text
+  ? tile(text)
+  : data
+
+$: image_src = Tile({
+  width,
+  height,
+  data: tru_data,
+  random
 })
 </script>
 
@@ -28,5 +33,4 @@ let image_src = Tile({
     max-width: 100%;
     pointer-events: none;
 }
-
 </style>

@@ -1,11 +1,12 @@
-import { write } from "/util/store.js"
+import { transformer } from "/util/store.js"
 
-export const path = write(window.location.pathname.slice(1))
-
-path.subscribe((new_path) => {
-  if (window.location.pathname === new_path) {
-    return
+export const path = transformer((path_new) => {
+  const path_split = path_new.split(`/`)
+  if (window.location.pathname === path_new) {
+    return path_split
   }
 
-  window.history.pushState({ page: 1 }, ``, `/${new_path}`)
-})
+  window.history.pushState({ page: 1 }, ``, `/${path_new}`)
+
+  return path_split
+}).set(window.location.pathname.slice(1))

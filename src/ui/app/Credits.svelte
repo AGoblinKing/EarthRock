@@ -60,6 +60,9 @@ const credits = {
     "Godzirra the Burninator": {},
     Ember: {},
     "Tic Tac Toe": {}
+  },
+  "Thank You": {
+
   }
 }
 </script>
@@ -84,7 +87,7 @@ const credits = {
   height: 100%;
   left: 0;
   top: 0;
-  filter: drop-shadow(5px 5px 2px rgb(0, 0, 0));
+  filter: drop-shadow(0.25rem 0.25rem 0.25rem rgb(0, 0, 0));
   position: absolute;
 }
 .credits h1 {

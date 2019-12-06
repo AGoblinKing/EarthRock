@@ -1,9 +1,8 @@
 <script>
-import { onDestroy } from "svelte"
-
-import { add } from "/util/vector.js"
+import { positions } from "/sys/weave.js"
+import { scroll } from "/sys/input.js"
 import * as knots from "/weave/knots.js"
-import { scale as Scaling, size } from "/sys/screen.js"
+import { scale, size } from "/sys/screen.js"
 import { match, del } from "/sys/port-connection.js"
 import color from "/ui/action/color.js"
 
@@ -15,15 +14,15 @@ export let weave
 
 const knot = Knot_Factory()
 
+let position = [0, 0, 0]
 let picking = false
 
 const pick = (e) => {
-  position = add([
-    e.x - 50 * $Scaling - $size[0] / 2,
-    e.y + 10 * $Scaling - $size[1] / 2,
+  position = [
+    e.x - $size[0] / 2 - 5 * $scale,
+    e.y - $size[1] / 2 - 1 * $scale,
     0
   ]
-  )
 
   picking = true
 }
@@ -32,10 +31,16 @@ const nopick = () => {
   picking = false
 }
 
-const create = (k) =>
-  weave.add({
+const create = (k) => {
+  const knot_new = weave.add({
     knot: k
   })
+  const i = knot_new.id.get()
+  const ps = positions.get()
+  ps[i] = [...position]
+  console.log(i, ps[i])
+  positions.set(ps)
+}
 
 const cancel = () => cancels.forEach(fn => fn())
 
@@ -55,15 +60,15 @@ const cancels = [
   })
 ]
 
-let position = [0, 0, 0]
-
 $: arr_knots = Object.entries(knots)
 </script>
+
 <div 
   class="picker" 
   class:picking 
   on:mousedown={pick}
 >
+
 {#if picking}
   <Knot {position} {knot}>
     <div class="prompt">

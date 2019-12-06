@@ -1,10 +1,7 @@
 <script>
-import * as Wheel from "/sys/wheel.js"
 import { size } from "/sys/screen.js"
 import { woven } from "/sys/weave.js"
 import { scroll, zoom } from "/sys/input.js"
-
-import { Basic } from "/prefab/weaves.js"
 
 import MainScreen from "./MainScreen.svelte"
 import Controls from "./Controls.svelte"
@@ -15,19 +12,15 @@ import Explore from "./Explore.svelte"
 
 import * as knot_kinds from "./spawnable.js"
 
-const { basic: weave } = Wheel.spawn({
-  basic: Basic()
-})
-
 // Reset Scroll
 scroll.set([
   $size[0] / 2, $size[1] / 2, 0
 ])
 
 zoom.set(0.75)
-woven.set(weave.name.get())
 
-const knots = weave.knots
+$: knots = $woven.knots
+$: weave = $woven
 
 const get_ui = (knot) => {
   const ui = knot_kinds[knot.knot.get()]

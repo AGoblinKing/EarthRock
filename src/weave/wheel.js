@@ -1,6 +1,7 @@
 import Weave from "./weave.js"
 import { write, read } from "/util/store.js"
-import system from "./system.js"
+
+export const SYSTEM = `sys`
 
 let feed_set
 export const feed = read({
@@ -9,14 +10,12 @@ export const feed = read({
   feed_set = set
 })
 
-const SYSTEM = `sys`
-
-let weaves_set
 // weaves [name]weave
-export const weaves = read({
-  [SYSTEM]: system
-}, (set) => {
-  weaves_set = set
+export const weaves = write({
+  [SYSTEM]: Weave({
+    name: SYSTEM,
+    id: SYSTEM
+  })
 })
 
 const highways = new Map()
@@ -60,7 +59,7 @@ export const del = (keys) => {
     }
   })
 
-  if (dirty) weaves_set($weaves)
+  if (dirty) weaves.set($weaves)
 }
 
 export const get = (address) => {
@@ -103,7 +102,7 @@ export const spawn = (pattern = {}) => Object.fromEntries(
 
       ws[weave_id] = w
 
-      weaves_set(ws)
+      weaves.set(ws)
       return [weave_id, w]
     }
 
@@ -203,3 +202,9 @@ export const stop = (weave_name) => {
 
   highways.delete(weave_name)
 }
+
+const bump = (what) => JSON.parse(JSON.stringify(what))
+export const toJSON = () => ({
+  weaves: bump(weaves),
+  running: bump(running)
+})

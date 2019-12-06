@@ -1,6 +1,5 @@
 <script>
 import { path } from "/sys/path.js"
-import { running } from "/sys/wheel.js"
 
 import Tile from "/ui/image/Tile.svelte"
 export let address = ``
@@ -11,6 +10,7 @@ const punch_it = (e) => {
   return false
 }
 
+$: running = Wheel.running
 $: active = $running[address.split(`/`)[1]] === true
 </script>
 
@@ -19,7 +19,11 @@ $: active = $running[address.split(`/`)[1]] === true
   on:click={punch_it}
   class:active
 >
-  <Tile width={1} height={1} random />
+  <Tile 
+    width={1} 
+    height={1} 
+    text={address}
+  />
 </div>
 
 <style>

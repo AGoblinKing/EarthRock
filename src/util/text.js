@@ -1,3 +1,5 @@
+import { TILE_COUNT } from "/sys/flag.js"
+
 const str_color = (str) => {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
@@ -23,6 +25,15 @@ const words = [
   `tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
   `rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
 ]
+
+export const tile = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+
+  return `${Math.abs(hash) % TILE_COUNT.get()}`
+}
 
 export const random = (count) => Array
   .from(new Array(count))

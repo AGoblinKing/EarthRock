@@ -1,119 +1,111 @@
-import { writable, readable, get } from "svelte/store"
+import { tick } from "/sys/time.js"
 
-const VERSION = 1
+const VERSION = 2
 
 let db
+let loaded = false
 
-const init = async () => {
-  weave.set(await query({
-    action: `getAll`
-  }))
-
-  query({
-    store: `flags`
-  })
-}
-
-export const flags = writable()
-
-export const name = writable({
-  // [alias]: uuid
-})
-
-export const trash = writable({})
-
-export const weave = writable({
-  // [uuid]: writable({... weave stuff})
-})
-
-export const ready = readable(false, set => {
+export const data = new Promise((resolve) => {
   const req = window.indexedDB.open(`isekai`, VERSION)
 
-  req.onupgradeneeded = ({ event: { target: result } }) => {
-    db = result
+  req.onupgradeneeded = async (e) => {
+    db = e.target.result
 
     db.createObjectStore(`weave`, { keyPath: `id` })
-    db.createObjectStore(`trash`, { keyPath: `id` })
+    db.createObjectStore(`running`, { keyPath: `id` })
 
-    init()
-    set(true)
+    resolve(db)
   }
 
-  req.onsuccess = ({ event: { target: result } }) => {
-    db = result
-    init()
-    set(true)
+  req.onsuccess = (e) => {
+    db = e.target.result
+
+    resolve(db)
   }
 })
 
-const { set } = weave
-
-const query = ({
+export const query = ({
   store = `weave`,
-  action = `get`,
-  args = []
-}) => new Promise((resolve, reject) => {
-  const t = db.transaction([store, `readwrite`])
-  t.onerror = reject
-  t.objectStore(store)[action](...args).onsuccess = resolve
+  action = `getAll`,
+  args = [],
+  foronly = `readwrite`
+} = false) => new Promise((resolve, reject) => {
+  data.then(() => {
+    const t = db.transaction([store], foronly)
+    t.onerror = reject
+    t.objectStore(store)[action](...args).onsuccess = (e) => resolve(e.target.result)
+  })
 })
 
-weave.set = (weaves_data) => {
-  const ws = get(weave)
-  const ns = get(name)
+export const save = async () => {
+  const {
+    running, weaves
+  } = Wheel.toJSON()
 
-  const add_weave = (weave) => {
-    const weave_w = ws[weave.id] = writable({})
-    ns[weave.name] = weave.id
-    const { set: weave_set } = weave_w
+  await Promise.all([
+    query({
+      action: `clear`
+    }),
+    query({
+      store: `running`,
+      action: `clear`
+    })
+  ])
 
-    weave_w.set = (data) => {
-      // db transactions
-
-      weave_set(data)
-    }
-
-    weave_w.set(weave)
-  }
-
-  const delete_weave = ({ id, name }) => {
-    const [ws, ns] = [get(weave), get(name)]
-
-    delete ns[name]
-    delete ws[id]
-
-    // db transaction, its okay for these to be laggy
-
-    name.set(ns)
-    set(ws)
-  }
-
-  const update_weave = (weave) => {
-    const ws = get(weave)
-    const ns = get(name)
-
-    const { name: old_name } = get(ws[weave.id])
-    ws[weave.id].set(weave)
-
-    if (old_name !== weave.name) delete ns[old_name]
-
-    ns[weave.name] = weave.id
-    name.set(ns)
-  }
-
-  Object.entries(weaves_data).forEach(
-    ([id, weave]) =>
-      !ws[id]
-        ? add_weave(weave)
-        : weave === undefined
-          ? delete_weave(weave)
-          : update_weave(weave)
-  )
-
-  // bulk transaction
-  set({
-    ...ws
-  })
-
-  name.set(ns)
+  await Promise.all([
+    ...Object.values(weaves).map((data) => query({
+      action: `put`,
+      args: [data]
+    })),
+    ...Object.keys(running).map((id) => query({
+      store: `running`,
+      action: `put`,
+      args: [{
+        id
+      }]
+    }))
+  ])
 }
+
+tick.listen((t) => {
+  if (
+    t % 10 !== 0 ||
+    db === undefined ||
+    !loaded
+  ) return
+
+  save()
+})
+
+window.query = query
+
+const init = async () => {
+  loaded = true
+  const [
+    weaves,
+    running
+  ] = await Promise.all([
+    await query(),
+    await query({
+      store: `running`
+    })
+  ])
+
+  console.log(weaves, running)
+  Wheel.spawn(Object.fromEntries(
+    weaves
+      .filter((w) => w.id !== Wheel.SYSTEM)
+      .map((w) => [
+        w.name,
+        w
+      ])
+  ))
+
+  running.forEach((r) => {
+    if (r.id === Wheel.SYSTEM) return
+
+    Wheel.start(r.id)
+  })
+}
+
+init()

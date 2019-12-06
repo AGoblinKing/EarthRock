@@ -25,7 +25,7 @@ const cancel = edit.subscribe((txt) => {
 </script>
 <div class="channel">
   <Port writable address={`${address(name)}|write`}/>
-  <div class="vbox" use:color={JSON.stringify($chan)}>
+  <div class="vbox" use:color={JSON.stringify(name)}>
     <div class="name">{name}</div>
     <input 
       class="edit" 

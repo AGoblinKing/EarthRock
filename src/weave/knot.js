@@ -1,7 +1,5 @@
 import uuid from "cuid"
 import { read } from "/util/store.js"
-import { powerToJSON } from "/util/vector.js"
-
 import * as knots from "./knots.js"
 
 // the basic knot
@@ -10,14 +8,18 @@ export default ({
   knot,
 
   ...rest
-} = false) => powerToJSON({
-  ...(knots[knot]
-    ? knots[knot]({
-      ...rest,
-      id
-    })
-    : { knot: read(knot) }
-  ),
+} = false) => {
+  const k = {
+    ...(knots[knot]
+      ? knots[knot]({
+        ...rest,
+        id
+      })
+      : { knot: read(knot) }
+    ),
 
-  id: read(id)
-})
+    id: read(id),
+    toJSON: () => k
+  }
+  return k
+}

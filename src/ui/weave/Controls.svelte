@@ -1,25 +1,27 @@
 <script>
 import Spatial from "../Spatial.svelte"
-import { running, stop, start } from "/sys/wheel.js"
+
 import { down } from "/sys/key.js"
 
 export let weave
 
 $: name = weave.name
-let runs = $running[$name]
+$: running = Wheel.running
 
-$: {
-  if ($down === ` `) toggle()
-}
+$: runs = $running[weave.name.get()]
 
 const toggle = () => {
   if (runs) {
-    stop($name)
+    Wheel.stop($name)
   } else {
-    start($name)
+    Wheel.start($name)
   }
 
   runs = !runs
+}
+
+$: {
+  if ($down === ` `) toggle()
 }
 </script>
 

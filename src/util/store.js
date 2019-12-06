@@ -3,13 +3,18 @@ const writable = (val) => {
 
   const w = {
     get: () => val,
-    poke: () => w.set(w.get()),
+    poke: () => {
+      w.set(w.get())
+      return w
+    },
     set: (val_new) => {
       val = val_new
       subs.forEach((fn) => fn(val))
+      return w
     },
     update: (fn) => {
       w.set(fn(val))
+      return w
     },
     subscribe: (fn) => {
       subs.add(fn)
@@ -27,7 +32,7 @@ const writable = (val) => {
 const readable = (val, handler) => {
   const w = writable(val)
   const { set } = w
-  w.set = () => {}
+  w.set = () => console.warn(`tried to write to readable`)
 
   if (handler) handler(set)
   return w

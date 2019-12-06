@@ -1,12 +1,14 @@
 <script>
+import Postage from "/ui/weave/Postage.svelte"
 import Channel from "./stitch/Channel.svelte"
 import color from "/ui/action/color.js"
 import { random } from "/util/text.js"
 import { write } from "/util/store.js"
-import Port from "../Port.svelte"
+import { woven } from "/sys/weave.js"
+
+import Port from "/ui/weave/Port.svelte"
 
 export let knot
-
 let weave_add = ``
 
 $: id = knot.id
@@ -32,12 +34,22 @@ const check_add = ({ which }) => {
   <Port address={`${$id}|read`} />
 </div>
 
+
 <div class="nameit">
-  <div use:color={$name}>
+  <div 
+    use:color={$name}
+    class="header"
+  >
     <input type="text"  class="edit"  bind:value={$name} placeholder="Name It!"/>
   </div>
 </div>
+
 <div class="board">
+  <div class="postage">
+    <Postage 
+      address={`/${$woven.name.get()}/${$name}`} 
+    />
+  </div>
     {#each Object.entries($value) as [chan_name, chan] (chan_name)}
       <Channel {chan} {knot} name={chan_name}/>
     {:else}
@@ -57,6 +69,16 @@ const check_add = ({ which }) => {
 
 
 <style>
+.postage {
+  position: absolute;
+  width: 20rem;
+  height: 20rem;
+  align-self: center;
+  display: flex;
+  justify-self: center;
+  opacity: 0.05;
+  pointer-events: none;
+}
 
 .no-stitches {
   font-size: 7rem;
@@ -66,7 +88,10 @@ const check_add = ({ which }) => {
 .add_channel:hover {
   background-color: #151;
 }
-
+.header {
+  display: flex;
+  flex-direction: column;
+}
 .add_channel {
   border-top: 0.25rem solid  #111;
   background-color: #333;
@@ -91,6 +116,7 @@ const check_add = ({ which }) => {
   flex-direction: column;
   width: 25rem;
   align-items: center;
+ 
 }
 
 .nameit {

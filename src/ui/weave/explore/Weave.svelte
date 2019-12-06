@@ -31,7 +31,9 @@ let super_open = $WEAVE_EXPLORE_OPEN
   }}
 >
   <div class="postage">
-    <Postage address={`/${$name}`} />
+    <Postage 
+      address={`/${$name}`} 
+    />
   </div>
   {$name}
 </div>

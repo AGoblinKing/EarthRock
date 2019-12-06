@@ -11,7 +11,7 @@ $: id = knot.id
 
 <div class="mail" use:color={$whom || `/???/`}>
   <div class="postage">
-    <Postage address={$whom} />
+    <Postage address={$whom.split(`/`).slice(0, 3).join(`/`)} />
   </div>
   <div class="center">
     <div class="port left">
@@ -22,12 +22,11 @@ $: id = knot.id
     </div>
     <div class="port right">
       <Port address={`${$id}|read`} />
-  </div>
+    </div>
   </div>
 </div>
 
 <style>
-
 .postage {
   position: absolute;
   align-self: flex-end;

@@ -37,7 +37,24 @@ export default ({
       }))
 
       return k
-    })
+    }),
+    toJSON: () => {
+      const {
+        id,
+        knot,
+        name,
+        threads,
+        knots
+      } = w
+
+      return JSON.parse(JSON.stringify({
+        id,
+        knot,
+        name,
+        threads,
+        knots
+      }))
+    }
   }
 
   const life_set = w.lives.set
@@ -59,6 +76,8 @@ export default ({
       ...$knots,
       [k.id.get()]: k
     }))
+
+    return k
   }
 
   w.knots = write(Object

@@ -1,6 +1,8 @@
 import { transformer, write } from "/util/store.js"
-import { get, trash } from "/sys/wheel.js"
 import { tick } from "/sys/time.js"
+import { path } from "/sys/path.js"
+// TODO MOVE
+import { Basic } from "/prefab/weaves.js"
 
 import {
   add,
@@ -12,15 +14,29 @@ import {
 
 // Which weave is being woven
 export const woven = transformer((weave_id) =>
-  get(weave_id)
+  Wheel.get(weave_id)
 ).set(`sys`)
 
-trash.listen((trashee) => {
+Wheel.trash.listen((trashee) => {
   if (!trashee) return
 
   if (woven.get().name.get() === trashee.name.get()) {
     woven.set(`sys`)
   }
+})
+
+Wheel.spawn({
+  basic: Basic()
+})
+
+path.listen(($path) => {
+  if (
+    $path[0] !== `weave` ||
+    $path.length === 1 ||
+    woven.get().name.get() === $path[1]
+  ) return
+
+  woven.set($path[1])
 })
 
 export const hoveree = write(``)

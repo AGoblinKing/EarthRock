@@ -3,8 +3,9 @@ import { tick } from "/sys/time.js"
 const VERSION = 2
 
 let db
-let loaded = false
 
+let load_res
+export const loaded = new Promise((resolve) => { load_res = resolve })
 export const data = new Promise((resolve) => {
   const req = window.indexedDB.open(`isekai`, VERSION)
 
@@ -80,7 +81,6 @@ tick.listen((t) => {
 window.query = query
 
 const init = async () => {
-  loaded = true
   const [
     weaves,
     running
@@ -91,7 +91,6 @@ const init = async () => {
     })
   ])
 
-  console.log(weaves, running)
   Wheel.spawn(Object.fromEntries(
     weaves
       .filter((w) => w.id !== Wheel.SYSTEM)
@@ -106,6 +105,8 @@ const init = async () => {
 
     Wheel.start(r.id)
   })
+
+  load_res(true)
 }
 
 init()

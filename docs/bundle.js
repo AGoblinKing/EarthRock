@@ -1086,60 +1086,124 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     return path_split
   }).set(window.location.pathname.slice(1));
 
-  const Basic = () => ({
-    knots: {
-      mail: {
-        knot: `mail`
-      },
-      stream: {
-        knot: `stream`
-      },
-      math: {
-        knot: `math`,
-        math: `[v[0]/10, v[1]/10]`
-      },
-      stitch: {
-        name: `player`,
-        knot: `stitch`,
-        value: {
-          position: [0, 0],
-          screen: null,
-          foo: null
-        }
-      },
-      main: {
-        knot: `mail`,
-        whom: `/sys/screen/main`
-      },
-      stream2: {
-        knot: `stream`
-      },
-      screen2: {
-        knot: `screen`
-      },
-      math2: {
-        knot: `math`
-      },
-      math3: {
-        knot: `math`
-      }
-    },
-    threads: {
-      mail: `stream`,
-      stream: `math`,
-      math: `stitch/position`,
-      screen2: `main`,
-      stream2: `stitch/foo`,
-      stitch: `screen2`,
-      "stitch/screen": `math2`,
-      "stitch/foo": `math3`
-    }
+  const VERSION = 2;
+
+  let db;
+
+  let load_res;
+  const loaded = new Promise((resolve) => { load_res = resolve; });
+  const data = new Promise((resolve) => {
+    const req = window.indexedDB.open(`isekai`, VERSION);
+
+    req.onupgradeneeded = async (e) => {
+      db = e.target.result;
+
+      db.createObjectStore(`weave`, { keyPath: `id` });
+      db.createObjectStore(`running`, { keyPath: `id` });
+
+      resolve(db);
+    };
+
+    req.onsuccess = (e) => {
+      db = e.target.result;
+
+      resolve(db);
+    };
   });
 
+  const query = ({
+    store = `weave`,
+    action = `getAll`,
+    args = [],
+    foronly = `readwrite`
+  } = false) => new Promise((resolve, reject) => {
+    data.then(() => {
+      const t = db.transaction([store], foronly);
+      t.onerror = reject;
+      t.objectStore(store)[action](...args).onsuccess = (e) => resolve(e.target.result);
+    });
+  });
+
+  const save = async () => {
+    const {
+      running, weaves
+    } = Wheel.toJSON();
+
+    await Promise.all([
+      query({
+        action: `clear`
+      }),
+      query({
+        store: `running`,
+        action: `clear`
+      })
+    ]);
+
+    await Promise.all([
+      ...Object.values(weaves).map((data) => query({
+        action: `put`,
+        args: [data]
+      })),
+      ...Object.keys(running).map((id) => query({
+        store: `running`,
+        action: `put`,
+        args: [{
+          id
+        }]
+      }))
+    ]);
+  };
+
+  tick.listen((t) => {
+    if (
+      t % 10 !== 0 ||
+      db === undefined ||
+      !loaded
+    ) return
+
+    save();
+  });
+
+  window.query = query;
+
+  const init = async () => {
+    const [
+      weaves,
+      running
+    ] = await Promise.all([
+      await query(),
+      await query({
+        store: `running`
+      })
+    ]);
+
+    Wheel.spawn(Object.fromEntries(
+      weaves
+        .filter((w) => w.id !== Wheel.SYSTEM)
+        .map((w) => [
+          w.name,
+          w
+        ])
+    ));
+
+    running.forEach((r) => {
+      if (r.id === Wheel.SYSTEM) return
+
+      Wheel.start(r.id);
+    });
+
+    load_res(true);
+  };
+
+  init();
+
   // Which weave is being woven
-  const woven = transformer((weave_id) =>
-    Wheel.get(weave_id)
-  ).set(`sys`);
+  const woven = transformer((weave_id) => {
+    const w = Wheel.get(weave_id);
+    if (!w) return woven.get()
+
+    return w
+  }).set(`sys`);
 
   Wheel.trash.listen((trashee) => {
     if (!trashee) return
@@ -1149,16 +1213,18 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     }
   });
 
-  Wheel.spawn({
-    basic: Basic()
-  });
-
-  path.listen(($path) => {
+  path.listen(async ($path) => {
     if (
       $path[0] !== `weave` ||
       $path.length === 1 ||
       woven.get().name.get() === $path[1]
     ) return
+
+    await loaded;
+    if (!Wheel.get($path[1])) {
+      path.set(`weave`);
+      return
+    }
 
     woven.set($path[1]);
   });
@@ -1372,116 +1438,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     bodies: bodies,
     positions: positions
   });
-
-  const VERSION = 2;
-
-  let db;
-  let loaded = false;
-
-  const data = new Promise((resolve) => {
-    const req = window.indexedDB.open(`isekai`, VERSION);
-
-    req.onupgradeneeded = async (e) => {
-      db = e.target.result;
-
-      db.createObjectStore(`weave`, { keyPath: `id` });
-      db.createObjectStore(`running`, { keyPath: `id` });
-
-      resolve(db);
-    };
-
-    req.onsuccess = (e) => {
-      db = e.target.result;
-
-      resolve(db);
-    };
-  });
-
-  const query = ({
-    store = `weave`,
-    action = `getAll`,
-    args = [],
-    foronly = `readwrite`
-  } = false) => new Promise((resolve, reject) => {
-    data.then(() => {
-      const t = db.transaction([store], foronly);
-      t.onerror = reject;
-      t.objectStore(store)[action](...args).onsuccess = (e) => resolve(e.target.result);
-    });
-  });
-
-  const save = async () => {
-    const {
-      running, weaves
-    } = Wheel.toJSON();
-
-    await Promise.all([
-      query({
-        action: `clear`
-      }),
-      query({
-        store: `running`,
-        action: `clear`
-      })
-    ]);
-
-    await Promise.all([
-      ...Object.values(weaves).map((data) => query({
-        action: `put`,
-        args: [data]
-      })),
-      ...Object.keys(running).map((id) => query({
-        store: `running`,
-        action: `put`,
-        args: [{
-          id
-        }]
-      }))
-    ]);
-  };
-
-  tick.listen((t) => {
-    if (
-      t % 10 !== 0 ||
-      db === undefined ||
-      !loaded
-    ) return
-
-    save();
-  });
-
-  window.query = query;
-
-  const init = async () => {
-    loaded = true;
-    const [
-      weaves,
-      running
-    ] = await Promise.all([
-      await query(),
-      await query({
-        store: `running`
-      })
-    ]);
-
-    console.log(weaves, running);
-    Wheel.spawn(Object.fromEntries(
-      weaves
-        .filter((w) => w.id !== Wheel.SYSTEM)
-        .map((w) => [
-          w.name,
-          w
-        ])
-    ));
-
-    running.forEach((r) => {
-      if (r.id === Wheel.SYSTEM) return
-
-      Wheel.start(r.id);
-    });
-  };
-
-  init();
 
   const tie = (items) =>
     Object.entries(items)

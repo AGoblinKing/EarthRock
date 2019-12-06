@@ -1,8 +1,7 @@
 import { transformer, write } from "/util/store.js"
 import { tick } from "/sys/time.js"
 import { path } from "/sys/path.js"
-// TODO MOVE
-import { Basic } from "/prefab/weaves.js"
+import { loaded } from "/sys/data.js"
 
 import {
   add,
@@ -13,9 +12,12 @@ import {
 } from "/util/vector.js"
 
 // Which weave is being woven
-export const woven = transformer((weave_id) =>
-  Wheel.get(weave_id)
-).set(`sys`)
+export const woven = transformer((weave_id) => {
+  const w = Wheel.get(weave_id)
+  if (!w) return woven.get()
+
+  return w
+}).set(`sys`)
 
 Wheel.trash.listen((trashee) => {
   if (!trashee) return
@@ -25,16 +27,18 @@ Wheel.trash.listen((trashee) => {
   }
 })
 
-Wheel.spawn({
-  basic: Basic()
-})
-
-path.listen(($path) => {
+path.listen(async ($path) => {
   if (
     $path[0] !== `weave` ||
     $path.length === 1 ||
     woven.get().name.get() === $path[1]
   ) return
+
+  await loaded
+  if (!Wheel.get($path[1])) {
+    path.set(`weave`)
+    return
+  }
 
   woven.set($path[1])
 })

@@ -83,3 +83,5 @@ Time.tick.listen(() => {
   )
   zoom_velocity *= 0.5
 })
+
+export const focus = write(``)

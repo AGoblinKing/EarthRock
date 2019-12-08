@@ -1,8 +1,8 @@
 <script>
+import { focus } from "/sys/input.js"
 import Postage from "/ui/weave/Postage.svelte"
 import Channel from "./stitch/Channel.svelte"
 import color from "/ui/action/color.js"
-import { random } from "/util/text.js"
 import { write } from "/util/store.js"
 import { woven } from "/sys/weave.js"
 
@@ -22,9 +22,10 @@ const check_add = ({ which }) => {
   if (weave_add[0] === `-`) {
     delete val[weave_add.slice(1)]
   } else {
-    val[weave_add] = write(random(2))
+    val[weave_add] = write()
   }
 
+  focus.set(`${$id}/${weave_add}`)
   value.set(val)
   weave_add = ``
 }

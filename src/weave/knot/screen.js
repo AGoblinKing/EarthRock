@@ -26,11 +26,30 @@ export default ({
   canvas.width = 100
   canvas.height = 100
   const gl = canvas.getContext(`webgl`)
+  const textures = twgl.createTextures(gl, {
+    map: {
+      src: `/sheets/default.png`,
+      mag: gl.NEAREST,
+      min: gl.LINEAR
+    }
+  })
+
+  const p_m = twgl.m4.perspective(
+    60,
+    canvas.width / canvas.height,
+    0.01,
+    2000
+  )
+
+  // move camera back
+  twgl.m4.translate(p_m, [0, 0, 10], p_m)
 
   let buffer_data = {}
 
   const buffer_defaults = {
-    position: read([0, 0, 0])
+    position: read([0, 0, 0]),
+    sprite: read(0),
+    color: read([1.0, 1, 1, 1.0])
   }
 
   const gpu = ({
@@ -56,7 +75,9 @@ export default ({
   const snapshot = () => {
     const $value = buffer_data
     const buffer = {
-      position: []
+      position: [],
+      sprite: 0,
+      color: []
     }
     const uniforms = {}
 
@@ -73,7 +94,7 @@ export default ({
         $chan === null ||
         $chan === undefined
       ) {
-        uniforms[key] = $chan
+        uniforms[`u_${key}`] = $chan
         return
       }
 
@@ -102,14 +123,13 @@ export default ({
   // lifecycle on knot
   life(() => frame.subscribe(([, t]) => {
     if (program_info === null) return
-    const { buffer } = snapshot()
+    const { buffer, uniforms } = snapshot()
 
     const u = {
-      time: t * 0.001,
-      resolution: [
-        gl.canvas.width,
-        gl.canvas.height
-      ]
+      ...uniforms,
+      u_map: textures.map,
+      u_time: t * 0.001,
+      u_projection_matrix: p_m
     }
 
     try {

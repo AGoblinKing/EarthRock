@@ -323,9 +323,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   var test_vert = "attribute vec4 position;void main(){gl_Position=position;}";
 
-  var sprite_frag = "precision highp float;uniform sampler2D map;varying vec2 vUv;varying vec3 vTint;varying float vOpacity;vec4 LinearToLinear(in vec4 value){return value;}void main(){gl_FragColor=LinearToLinear(texture2D(map,vUv))*vec4(vTint,vOpacity);if(gl_FragColor.a<0.5)discard;}";
+  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite)*v_color;}";
 
-  var sprite_vert = "precision highp float;uniform mat4 model_view_matrix;uniform mat4 projectionMatrix;uniform float time;attribute float scale;attribute vec3 position;attribute float sprite;attribute float opacity;attribute float color;attribute vec2 slice;varying float vOpacity;varying vec3 vTint;varying vec2 vUv;void main(){vTint=tint;vOpacity=opacity;vUv=uv*cellsize+slice*cellsize;vec2 huv=vec2((translate.x+100.0)/200.0,(-translate.y+100.0)/200.0);float alpha=texture2D(heightmap,huv).a;vec4 offset=vec4(translate.x-0.5,alpha*255.0*0.2+0.5,translate.y-0.5,1.0);vec4 mvPosition=model_view_matrix*offset;mvPosition.xyz+=position.xyz*scale;gl_Position=projectionMatrix*mvPosition;}";
+  var sprite_vert = "precision highp float;uniform mat4 u_projection_matrix;attribute vec3 position;attribute float sprite;attribute vec4 color;varying vec4 v_color;varying vec2 v_sprite;void main(){v_color=color;v_sprite=vec2(mod(sprite,1024.0),floor(sprite/1024.0));gl_Position=u_projection_matrix*vec4(position,1.0);}";
 
   const breaker = (a) => a.map(i => `\r\n${i}`);
 
@@ -362,11 +362,30 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     canvas.width = 100;
     canvas.height = 100;
     const gl = canvas.getContext(`webgl`);
+    const textures = twgl.createTextures(gl, {
+      map: {
+        src: `/sheets/default.png`,
+        mag: gl.NEAREST,
+        min: gl.LINEAR
+      }
+    });
+
+    const p_m = twgl.m4.perspective(
+      60,
+      canvas.width / canvas.height,
+      0.01,
+      2000
+    );
+
+    // move camera back
+    twgl.m4.translate(p_m, [0, 0, 10], p_m);
 
     let buffer_data = {};
 
     const buffer_defaults = {
-      position: read([0, 0, 0])
+      position: read([0, 0, 0]),
+      sprite: read(0),
+      color: read([1.0, 1, 1, 1.0])
     };
 
     const gpu = ({
@@ -392,7 +411,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     const snapshot = () => {
       const $value = buffer_data;
       const buffer = {
-        position: []
+        position: [],
+        sprite: 0,
+        color: []
       };
       const uniforms = {};
 
@@ -409,7 +430,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
           $chan === null ||
           $chan === undefined
         ) {
-          uniforms[key] = $chan;
+          uniforms[`u_${key}`] = $chan;
           return
         }
 
@@ -438,14 +459,13 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     // lifecycle on knot
     life(() => frame.subscribe(([, t]) => {
       if (program_info === null) return
-      const { buffer } = snapshot();
+      const { buffer, uniforms } = snapshot();
 
       const u = {
-        time: t * 0.001,
-        resolution: [
-          gl.canvas.width,
-          gl.canvas.height
-        ]
+        ...uniforms,
+        u_map: textures.map,
+        u_time: t * 0.001,
+        u_projection_matrix: p_m
       };
 
       try {
@@ -732,6 +752,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       weave_id,
       weave_data
     ]) => {
+      if (weave_id === SYSTEM) {
+        console.warn(`tried to spawn ${SYSTEM}`);
+        return [weave_id, get(weave_id)]
+      }
       const weave = get(weave_id);
 
       if (weave === undefined) {
@@ -1068,11 +1092,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     zoom_velocity *= 0.5;
   });
 
+  const focus = write(``);
+
   var input = /*#__PURE__*/Object.freeze({
     __proto__: null,
     translate: translate,
     scroll: scroll$1,
-    zoom: zoom
+    zoom: zoom,
+    focus: focus
   });
 
   const VERSION = 2;
@@ -8009,7 +8036,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   var FileSaver_min = createCommonjsModule(function (module, exports) {
   (function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-
+  //# sourceMappingURL=FileSaver.min.js.map
   });
 
   /* src/ui/weave/Controls.svelte generated by Svelte v3.14.1 */
@@ -12306,6 +12333,13 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	}
   }
 
+  var focus$1 = (node, addr) => ({
+    cancel: focus.listen(($focus) => {
+      if ($focus !== addr) return
+      node.focus();
+    })
+  });
+
   /* src/ui/weave/knot/stitch/Channel.svelte generated by Svelte v3.14.1 */
   const file$i = "src/ui/weave/knot/stitch/Channel.svelte";
 
@@ -12317,6 +12351,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let t1;
   	let t2;
   	let input;
+  	let focus_action;
   	let color_action;
   	let t3;
   	let current;
@@ -12348,15 +12383,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t3 = space();
   			create_component(port1.$$.fragment);
   			attr_dev(div0, "class", "name svelte-18j6qdc");
-  			add_location(div0, file$i, 27, 4, 542);
+  			add_location(div0, file$i, 28, 4, 582);
   			attr_dev(input, "class", "edit svelte-18j6qdc");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON plz");
-  			add_location(input, file$i, 28, 4, 577);
+  			add_location(input, file$i, 29, 4, 617);
   			attr_dev(div1, "class", "vbox svelte-18j6qdc");
-  			add_location(div1, file$i, 26, 2, 486);
+  			add_location(div1, file$i, 27, 2, 526);
   			attr_dev(div2, "class", "channel svelte-18j6qdc");
-  			add_location(div2, file$i, 24, 0, 408);
+  			add_location(div2, file$i, 25, 0, 448);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -12377,6 +12412,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div1, t2);
   			append_dev(div1, input);
   			set_input_value(input, ctx.edit);
+  			focus_action = focus$1.call(null, input, ctx.address(ctx.name)) || ({});
   			color_action = color$1.call(null, div1, JSON.stringify(ctx.name)) || ({});
   			append_dev(div2, t3);
   			mount_component(port1, div2, null);
@@ -12392,6 +12428,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				set_input_value(input, ctx.edit);
   			}
 
+  			if (is_function(focus_action.update) && changed.name) focus_action.update.call(null, ctx.address(ctx.name));
   			if (is_function(color_action.update) && changed.name) color_action.update.call(null, JSON.stringify(ctx.name));
   			const port1_changes = {};
   			if (changed.name) port1_changes.address = `${ctx.address(ctx.name)}|read`;
@@ -12411,6 +12448,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div2);
   			destroy_component(port0);
+  			if (focus_action && is_function(focus_action.destroy)) focus_action.destroy();
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   			destroy_component(port1);
   			run_all(dispose);
@@ -12589,7 +12627,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (55:4) {:else}
+  // (56:4) {:else}
   function create_else_block$1(ctx) {
   	let div;
 
@@ -12598,7 +12636,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			div = element("div");
   			div.textContent = "/\\/\\";
   			attr_dev(div, "class", "no-stitches svelte-1flykfe");
-  			add_location(div, file$j, 55, 6, 1140);
+  			add_location(div, file$j, 56, 6, 1165);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -12612,14 +12650,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_else_block$1.name,
   		type: "else",
-  		source: "(55:4) {:else}",
+  		source: "(56:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (53:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
+  // (54:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
   function create_each_block$5(key_1, ctx) {
   	let first;
   	let current;
@@ -12672,7 +12710,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$5.name,
   		type: "each",
-  		source: "(53:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}",
+  		source: "(54:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}",
   		ctx
   	});
 
@@ -12747,23 +12785,23 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t3 = space();
   			input1 = element("input");
   			attr_dev(div0, "class", "port svelte-1flykfe");
-  			add_location(div0, file$j, 32, 0, 646);
+  			add_location(div0, file$j, 33, 0, 671);
   			attr_dev(input0, "type", "text");
   			attr_dev(input0, "class", "edit svelte-1flykfe");
   			attr_dev(input0, "placeholder", "Name It!");
-  			add_location(input0, file$j, 42, 4, 787);
+  			add_location(input0, file$j, 43, 4, 812);
   			attr_dev(div1, "class", "header svelte-1flykfe");
-  			add_location(div1, file$j, 38, 2, 732);
+  			add_location(div1, file$j, 39, 2, 757);
   			attr_dev(div2, "class", "nameit svelte-1flykfe");
-  			add_location(div2, file$j, 37, 0, 709);
+  			add_location(div2, file$j, 38, 0, 734);
   			attr_dev(div3, "class", "postage svelte-1flykfe");
-  			add_location(div3, file$j, 47, 2, 904);
+  			add_location(div3, file$j, 48, 2, 929);
   			attr_dev(input1, "type", "text");
   			attr_dev(input1, "class", "add_channel svelte-1flykfe");
   			attr_dev(input1, "placeholder", input1_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`);
-  			add_location(input1, file$j, 58, 4, 1196);
+  			add_location(input1, file$j, 59, 4, 1221);
   			attr_dev(div4, "class", "board svelte-1flykfe");
-  			add_location(div4, file$j, 46, 0, 882);
+  			add_location(div4, file$j, 47, 0, 907);
 
   			dispose = [
   				listen_dev(input0, "input", ctx.input0_input_handler),
@@ -12920,9 +12958,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if (weave_add[0] === `-`) {
   			delete val[weave_add.slice(1)];
   		} else {
-  			val[weave_add] = write(random(2));
+  			val[weave_add] = write();
   		}
 
+  		focus.set(`${$id}/${weave_add}`);
   		value.set(val);
   		$$invalidate("weave_add", weave_add = ``);
   	};
@@ -14495,7 +14534,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	const tools = new Tools({ $$inline: true });
 
   	const tile = new Tile_1({
-  			props: { random: true, width: 5, height: 5 },
+  			props: { random: true, width: 50, height: 50 },
   			$$inline: true
   		});
 
@@ -14508,7 +14547,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			div = element("div");
   			create_component(tile.$$.fragment);
   			attr_dev(div, "class", "background svelte-1yk8nt3");
-  			add_location(div, file$p, 26, 0, 590);
+  			add_location(div, file$p, 27, 0, 591);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");

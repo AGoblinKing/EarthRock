@@ -30,7 +30,8 @@ export default {
       color: `Color`,
       tone: `Tone`,
       "expr-eval": `exprEval`,
-      twgl: `twgl`
+      twgl: `twgl`,
+      Wheel: `Wheel`
     }
   },
 

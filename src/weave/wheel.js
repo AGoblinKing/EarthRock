@@ -91,6 +91,10 @@ export const spawn = (pattern = {}) => Object.fromEntries(
     weave_id,
     weave_data
   ]) => {
+    if (weave_id === SYSTEM) {
+      console.warn(`tried to spawn ${SYSTEM}`)
+      return [weave_id, get(weave_id)]
+    }
     const weave = get(weave_id)
 
     if (weave === undefined) {

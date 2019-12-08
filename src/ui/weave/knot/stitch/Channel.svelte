@@ -1,4 +1,5 @@
 <script>
+import focus from "/ui/action/focus.js"
 import Port from "/ui/weave/Port.svelte"
 import color from "/ui/action/color.js"
 
@@ -7,7 +8,6 @@ export let chan
 export let name
 
 $: edit = JSON.stringify($chan)
-
 $: id = knot.id
 
 const save = () => {
@@ -20,6 +20,7 @@ const save = () => {
     edit = JSON.stringify($chan)
   }
 }
+
 const address = (channel) => `${$id}/${channel}`
 </script>
 <div class="channel">
@@ -28,7 +29,8 @@ const address = (channel) => `${$id}/${channel}`
     <div class="name">{name}</div>
     <input 
       class="edit" 
-      type="text" 
+      type="text"
+      use:focus={address(name)} 
       bind:value={edit} 
       on:blur={() => {
         save()

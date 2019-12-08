@@ -267,7 +267,12 @@ tick.listen((t) => {
         0
       ]
     }
-    height += $bodies[id][1] + 300
+    const $body = $bodies[id]
+    const offset = $body === undefined
+      ? 100
+      : $body[1]
+
+    height += 300 + offset
   })
 
   if (dirty) positions.set($positions)
@@ -288,7 +293,7 @@ path.listen(async ($path) => {
   woven.set($path[1])
 
   const [w, h] = size.get()
-  scroll.set([w / 2, h / 4, 0])
+  scroll.set([w / 3, h / 4, 0])
 
   if (!$path[2]) return
 
@@ -303,7 +308,7 @@ path.listen(async ($path) => {
     if (!pos) return
 
     scroll.set([
-      w / 2,
+      w / 3,
       -pos[1] * zoom.get() + h / 4,
       0
     ])

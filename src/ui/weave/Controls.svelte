@@ -37,12 +37,29 @@ const save = async () => {
   }
 
   const t = await Tile({
-    width: 2,
-    height: 2,
-    data: `${tile(`/${$name}`)} `.repeat(4)
+    width: 4,
+    height: 4,
+    data: `${tile(`/${$name}`)} `.repeat(4 * 4)
   })
 
-  fs.saveAs(exif.insert(exif.dump(obj), t), `${$name}.seed.jpg`)
+  const image = new Image()
+  image.src = t
+
+  const canvas = document.createElement(`canvas`)
+  canvas.width = 64
+  canvas.height = 64
+
+  const ctx = canvas.getContext(`2d`)
+  ctx.imageSmoothingEnabled = false
+  ctx.imageSmoothingQuality = 1
+
+  ctx.drawImage(image, 0, 0, 64, 64, 0, 0, 64, 64)
+  ctx.lineWidth = 4
+  ctx.lineCap = `round`
+
+  ctx.rect(4, 4, 56, 56)
+  ctx.stroke()
+  fs.saveAs(exif.insert(exif.dump(obj), canvas.toDataURL(`image/jpeg`, 0.95)), `${$name}.seed.jpg`)
 }
 </script>
 

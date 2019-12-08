@@ -126,7 +126,7 @@ let name
   />
   <div class="controls">
     <div class="false" on:click={() => { nameit = false }}>Cancel</div>
-    <div class="true" on:click={play_it}>Play</div>
+    <div class="true" on:click={play_it}>Plant</div>
   </div>
 </div>
 {/if}

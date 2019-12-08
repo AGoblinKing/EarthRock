@@ -40,7 +40,7 @@ const punch_it = (e) => {
   flex: 1;
   display: flex;
   background-color: #111;
-  filter: sepia(1) hue-rotate(180deg)    
+  filter: sepia(1) hue-rotate(-50deg)    
     drop-shadow(-0.25rem 0.25rem 0 black)
     drop-shadow(0.25rem -0.25rem 0 black);
 

@@ -48,7 +48,7 @@ export default ({
 
   const buffer_defaults = {
     position: read([0, 0, 0]),
-    sprite: read(0),
+    sprite: read([0]),
     color: read([1.0, 1, 1, 1.0])
   }
 
@@ -76,7 +76,7 @@ export default ({
     const $value = buffer_data
     const buffer = {
       position: [],
-      sprite: 0,
+      sprite: [],
       color: []
     }
     const uniforms = {}
@@ -103,7 +103,7 @@ export default ({
         const chan_buffer = $chan[key_buffer]
 
         // doesn't have the channel
-        if (!chan_buffer || !chan_buffer.get) {
+        if (!chan_buffer || !chan_buffer.get || !chan_buffer.get()) {
           buffer[key_buffer].push(
             ...buffer_defaults[key_buffer].get()
           )

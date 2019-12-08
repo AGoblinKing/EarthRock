@@ -1,4 +1,6 @@
 <script>
+import { THEME_BG } from "/sys/flag.js"
+import border from "/ui/action/border.js"
 import { focus } from "/sys/input.js"
 import Postage from "/ui/weave/Postage.svelte"
 import Channel from "./stitch/Channel.svelte"
@@ -15,7 +17,13 @@ $: id = knot.id
 $: value = knot.value
 $: name = knot.name
 
+$: is_sys = $woven.name.get() === Wheel.SYSTEM
+
 const check_add = ({ which }) => {
+  if (is_sys) {
+    return console.warn(`Tried to add/remove to ${Wheel.SYSTEM}`)
+  }
+
   if (which !== 13) return
   const val = $value
 
@@ -31,12 +39,12 @@ const check_add = ({ which }) => {
 }
 </script>
 
-<div class="port">
+<div class="port" use:border style={`background-color:${$THEME_BG};`}>
   <Port address={`${$id}|read`} />
 </div>
 
 
-<div class="nameit">
+<div class="nameit" use:border>
   <div 
     use:color={$name}
     class="header"
@@ -57,15 +65,18 @@ const check_add = ({ which }) => {
       <div class="no-stitches">/\/\</div>
     {/each}
    
+   {#if !is_sys}
     <input
       type="text" 
       class="add_channel" 
+      use:border
+      style={`background-color: ${$THEME_BG};`}
       bind:value={weave_add} 
       on:keypress={check_add} 
       on:blur={() => { weave_add = `` }}
       placeholder={`-${Object.keys($value)[0]} to remove!`}
     />
- 
+  {/if}
 </div>
 
 
@@ -89,13 +100,17 @@ const check_add = ({ which }) => {
 .add_channel:hover {
   background-color: #151;
 }
+
 .header {
   display: flex;
   flex-direction: column;
 }
+
 .add_channel {
-  border-top: 0.25rem solid  #111;
-  background-color: #333;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 1rem;
   flex: 1;
   text-align: center;
   width: 25rem;
@@ -104,9 +119,8 @@ const check_add = ({ which }) => {
 .port {
   align-self: center;
   position: absolute;
-  margin-top: -4rem;
+  margin-top: -5rem;
   background-color: #222;
-  border: 0.25rem solid black;
 }
 
 .board {
@@ -123,7 +137,9 @@ const check_add = ({ which }) => {
 .nameit {
   background-color: #222;
   width: 100%;
-  border-bottom: 0.25rem solid  #333;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
 }
 
 .edit {

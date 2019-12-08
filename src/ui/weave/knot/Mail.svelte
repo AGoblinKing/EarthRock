@@ -1,7 +1,6 @@
 <script>
 import Postage from "/ui/weave/Postage.svelte"
 import Port from "/ui/weave/Port.svelte"
-import color from "/ui/action/color.js"
 
 export let knot
 
@@ -9,8 +8,11 @@ $: whom = knot.whom
 $: id = knot.id
 </script>
 
-<div class="mail" use:color={$whom || `/???/`}>
+<div class="mail">
   <div class="postage">
+    <Postage address={$whom.split(`/`).slice(0, 3).join(`/`)} />
+  </div>
+  <div class="stamp">
     <Postage address={$whom.split(`/`).slice(0, 3).join(`/`)} />
   </div>
   <div class="center">
@@ -27,12 +29,20 @@ $: id = knot.id
 </div>
 
 <style>
+.stamp {
+  align-self: flex-end;
+  position: absolute;
+  width: 5rem;
+  display: flex;
+  height: 5rem;
+}
 .postage {
   position: absolute;
-  align-self: flex-end;
-  width: 4rem;
+  width: 15rem;
   display: flex;
-  height: 4rem;
+  height: 15rem;
+  opacity: 0.1;
+  pointer-events: none;
 }
 .mail {
   display: flex;
@@ -48,10 +58,10 @@ $: id = knot.id
 }
 
 .port {
-  border: 0.25rem solid black;
+
   display: flex;
   margin: 0.25rem;
-  background-color: #333;
+
 }
 
 .address {

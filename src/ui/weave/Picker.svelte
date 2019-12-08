@@ -67,6 +67,7 @@ $: arr_knots = Object.entries(knots)
 let files
 let nameit = false
 const drop = (e) => {
+  dragover = false
   const files = e.dataTransfer.files
   for (let i = 0; i < files.length; i++) {
     const reader = new FileReader()

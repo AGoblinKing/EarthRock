@@ -2,6 +2,8 @@ import { transformer, write } from "/util/store.js"
 import { tick } from "/sys/time.js"
 import { path } from "/sys/path.js"
 import { loaded } from "/sys/data.js"
+import { size } from "/sys/screen.js"
+import { scroll, zoom } from "/sys/input.js"
 
 import {
   add,
@@ -25,21 +27,6 @@ Wheel.trash.listen((trashee) => {
   if (woven.get().name.get() === trashee.name.get()) {
     woven.set(`sys`)
   }
-})
-
-path.listen(async ($path) => {
-  if (
-    $path[0] !== `weave` ||
-    $path.length === 1
-  ) return
-
-  await loaded
-  if (!Wheel.get($path[1])) {
-    path.set(`weave`)
-    return
-  }
-
-  woven.set($path[1])
 })
 
 export const hoveree = write(``)
@@ -68,9 +55,10 @@ woven.listen(() => {
 const vel = (id) => velocities[id] || [0, 0, 0]
 
 tick.listen((t) => {
-  const { threads, knots } = woven.get()
+  const { threads, knots, names } = woven.get()
   const $knots = knots.get()
   const $threads = threads.get()
+  const $names = names.get()
   const $positions = positions.get()
   const $bodies = bodies.get()
 
@@ -89,7 +77,7 @@ tick.listen((t) => {
 
     return [
       25 + (idx % 2) * 161.8,
-      -125 * idx,
+      -150 * idx,
       0
     ]
   }
@@ -109,7 +97,12 @@ tick.listen((t) => {
 
     if (!$bodies[id] || !$bodies[id_o]) return
 
-    const [w, h] = $bodies[id]
+    let [w, h] = $bodies[id]
+
+    h = stitch(id)
+      ? 0
+      : h / 2
+
     const [w_o, h_o] = $bodies[id_o]
     // woho my friend
 
@@ -143,7 +136,7 @@ tick.listen((t) => {
     if (stitch(id) && chan === undefined) {
       pos_other = add(
         pos_other,
-        [w_o, h + h_o, 0]
+        [w_o, h + h_o + 100, 0]
       )
     }
 
@@ -177,12 +170,27 @@ tick.listen((t) => {
     )
   })
 
+  const bodies_dirty = false
   // Quad tree eventually
   Object.entries($bodies).forEach(([
     id, [w, h]
   ]) => {
     id = id.split(`/`)[0]
-    if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
+    // don't move nonexistant things
+    if (!$knots[id]) {
+      // delete $bodies[id]
+      // bodies_dirty = true
+      return
+    }
+
+    const k = $knots[id]
+
+    // don't apply velocities to stitches
+    if (k.knot.get() === `stitch`) {
+      return
+    }
+
+    // stop hover from moving
     if ($hoveree === id) {
       velocities[id] = [0, 0, 0]
       return
@@ -244,6 +252,60 @@ tick.listen((t) => {
       vel(id)
     )
   })
+  if (bodies_dirty) bodies.set($bodies)
+
+  let height = 0
+
+  Object.values($names).forEach((k) => {
+    const id = k.id.get()
+    const y = 1 + height
+    if (pos(id)[1] !== y) {
+      dirty = true
+      $positions[id] = [
+        0,
+        y,
+        0
+      ]
+    }
+    height += $bodies[id][1] + 300
+  })
 
   if (dirty) positions.set($positions)
+})
+
+path.listen(async ($path) => {
+  if (
+    $path[0] !== `weave` ||
+    $path.length === 1
+  ) return
+
+  await loaded
+  if (!Wheel.get($path[1])) {
+    path.set(`weave`)
+    return
+  }
+
+  woven.set($path[1])
+
+  const [w, h] = size.get()
+  scroll.set([w / 2, h / 4, 0])
+
+  if (!$path[2]) return
+
+  const knot = woven.get().names.get()[$path[2]]
+
+  setTimeout(() => {
+    const $positions = positions.get()
+    const $id = knot.id.get()
+
+    const pos = $positions[$id]
+
+    if (!pos) return
+
+    scroll.set([
+      w / 2,
+      -pos[1] * zoom.get() + h / 4,
+      0
+    ])
+  }, 100)
 })

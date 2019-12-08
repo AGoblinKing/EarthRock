@@ -1,4 +1,7 @@
 <script>
+import { THEME_BG } from "/sys/flag.js"
+
+import border from "/ui/action/border.js"
 import physics from "/ui/action/physics.js"
 
 import Spatial from "/ui/Spatial.svelte"
@@ -23,6 +26,8 @@ export let knot
 
 $: type = knot.knot
 $: id = knot.id
+
+$: notstitch = $type !== `stitch`
 
 let dragging = false
 let zIndex = 7
@@ -95,26 +100,49 @@ $: tru_scale = dragging
   >
     <div 
       class="knot" 
+      use:border
+      class:notstitch
       on:mousedown={drag}
       use:physics={$id}
+      style={`background-color: ${$THEME_BG};`}
     >
+  
       <slot />
+
     </div>
   </div>
 </Spatial>
 
 <style>
-
+.noshow {
+display: flex;
+  flex-direction: column;
+  opacity: 0;
+}
 .knot {
+  box-shadow:
+    0rem -6rem  rgba(0, 100, 0, 0.7),
+    0rem -3rem  rgba(0, 50, 0, 0.7);
   display: flex;
   flex-direction: column;
-  background-color: #222;
-  border: 0.5rem solid black;
-  z-index: 1;
   font-size: 0.75rem;
 }
 
-.knot:hover {
-  filter: drop-shadow(0rem 0rem 1rem rgba(0, 255, 0, 0.5));
+.notstitch {
+  box-shadow:
+    -6rem -6rem  rgba(0, 100, 0, 0.7),
+    -3rem 3rem  rgba(0, 100, 0, 0.7),
+    3rem -3rem  rgba(0, 50, 0, 0.7),
+    6rem 6rem  rgba(0, 50, 0, 0.7);
 }
+
+.notstitch:hover {
+    box-shadow: 
+    -6rem -6rem  rgba(0, 100, 0, 0.8),
+    -3rem 3rem  rgba(0, 100, 0, 0.8),
+    3rem -3rem  rgba(0, 50, 0, 0.8),
+    6rem 6rem  rgba(0, 50, 0, 0.8);
+}
+
+
 </style>

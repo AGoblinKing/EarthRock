@@ -16,7 +16,6 @@ const punch_it = (e) => {
   e.preventDefault()
 
   if (nopunch) return
-  if ($path[1] === weave) return
 
   path.set(`weave${address}`)
   return true
@@ -51,25 +50,23 @@ const punch_it = (e) => {
 .postage:hover {
   background-color: green;
 }
+.postage:active {
+  background-color: black;
+  filter: sepia(1) hue-rotate(180deg)    
+    drop-shadow(0.25rem 0.25rem 0 black)
+    drop-shadow(-0.25rem -0.25rem 0 black);
+}
 
 .postage.running {
   filter: sepia(1) hue-rotate(90deg) 
     drop-shadow(-0.25rem 0.25rem 0 black)
-    drop-shadow(0.25rem -0.25rem 0 black)
-    drop-shadow(0 0 1rem green);
+    drop-shadow(0.25rem -0.25rem 0 black);
 }
-.postage.active {
-  filter: sepia(1) hue-rotate(90deg) 
-    drop-shadow(-0.25rem 0.25rem 0 black)
-    drop-shadow(0.25rem -0.25rem 0 black)
-    drop-shadow(0 0 1rem blue);
+.postage.running:active {
+  background-color: black;
+  filter: sepia(1) hue-rotate(90deg)    
+    drop-shadow(0.25rem 0.25rem 0 black)
+    drop-shadow(-0.25rem -0.25rem 0 black);
 }
 
-.postage.active.running {
-  filter: sepia(1) hue-rotate(90deg) 
-    drop-shadow(-0.25rem 0.25rem 0 black)
-    drop-shadow(0.25rem -0.25rem 0 black)
-    drop-shadow(0 0 0.5rem blue)
-    drop-shadow(0 0 1rem green);
-}
 </style>

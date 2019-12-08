@@ -1,4 +1,5 @@
 <script>
+import border from "/ui/action/border.js"
 import { SVELTE_ANIMATION } from "/sys/flag.js"
 import color from '/ui/action/color.js'
 import Port from "/ui/weave/Port.svelte"
@@ -12,13 +13,13 @@ $: id = knot.id
 
 <div class="box">
   <Port writable address={`${$id}|write`} />
-  <div class="JSON" use:color={$value}>
+  <div class="JSON" use:color={$value} use:border>
     <div class="value_add">
       <pre class="flex">{JSON.stringify($value, null, 2)}</pre>
       {#if $value === null} 
         <div class="doit" in:fly={$SVELTE_ANIMATION }>\/\/</div>
         <div class="doit" in:fly={$SVELTE_ANIMATION }>
-JSON IT!
+STREAM IT!
         </div>
       {/if}
   
@@ -40,10 +41,10 @@ JSON IT!
   margin: 0;
   height: 10rem;
   text-align:center;
-  border: 0.25rem solid  #222;
-  border-top: none;
+ 
+  border-top: none !important;
   justify-content: center;
-  border-bottom: none;
+  border-bottom: none !important;
   flex: 1;
   width: 20rem;
   flex-wrap: wrap;

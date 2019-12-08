@@ -42,7 +42,7 @@ const save = async () => {
     data: `${tile(`/${$name}`)} `.repeat(4)
   })
 
-  fs.saveAs(exif.insert(exif.dump(obj), t), `${$name}.weave.jpg`)
+  fs.saveAs(exif.insert(exif.dump(obj), t), `${$name}.seed.jpg`)
 }
 </script>
 

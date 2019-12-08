@@ -1,4 +1,5 @@
 <script>
+import border from "/ui/action/border.js"
 import color from "/ui/action/color.js"
 
 export let channel
@@ -8,6 +9,7 @@ $: [key, value] = channel
 
 <div 
   class="channel"
+  use:border
   use:color={key}
 >
   <div class="key">
@@ -25,7 +27,6 @@ $: [key, value] = channel
   overflow: hidden;
   margin-left: 2rem;
   padding: 0.5rem;
-  border: 0.25rem solid #111;
 }
 .key {
   border-right: 0.25rem solid rgb(224, 168, 83);

@@ -1,4 +1,5 @@
 <script>
+import border from "/ui/action/border.js"
 import { first, second } from "/sys/port-connection.js"
 
 // In/out ports
@@ -19,6 +20,7 @@ const mouseup = () => {
 
 <div
   class="port no-drag"
+  use:border
   id={address}
   class:writable
   class:name
@@ -31,14 +33,14 @@ const mouseup = () => {
 <style>
 .port {
   width: 2rem;
+  border-radius: 2rem;
   height: 2rem;
   margin: 0.5rem;
-  border: 0.25rem solid black;
-  background-color: blue;
+  background-color: rgb(15, 15, 110);
 }
 
 .writable {
-  background-color: red;
+  background-color: rgb(97, 22, 22);
 }
 
 .name {

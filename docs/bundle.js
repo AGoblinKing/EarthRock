@@ -1,10 +1,10 @@
-var app = (function (uuid, expr, twgl, Tone, Color) {
+var app = (function (Color, uuid, expr, twgl, Tone) {
   'use strict';
 
+  Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
   uuid = uuid && uuid.hasOwnProperty('default') ? uuid['default'] : uuid;
   expr = expr && expr.hasOwnProperty('default') ? expr['default'] : expr;
   Tone = Tone && Tone.hasOwnProperty('default') ? Tone['default'] : Tone;
-  Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
 
   const writable = (val) => {
     const subs = new Set();
@@ -102,12 +102,22 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   const WEAVE_EXPLORE_OPEN = write(false);
 
-  const INPUT_SCROLL_STRENGTH = write(20);
+  const INPUT_SCROLL_STRENGTH = write(10);
   const INPUT_ZOOM_STRENGTH = write(0.01);
   const INPUT_ZOOM_MIN = write(0.1);
 
   const TILE_COUNT = read(1024);
   const TILE_COLUMNS = read(32);
+
+  const THEME_BG = write(`#533118`);
+  const THEME_GLOW = write(`green`);
+
+  const THEME_BORDER = read(``, (set) =>
+    THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
+      .darkenByRatio(0.5)
+      .toCSS()
+    ))
+  );
 
   var flag = /*#__PURE__*/Object.freeze({
     __proto__: null,
@@ -120,7 +130,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     INPUT_ZOOM_STRENGTH: INPUT_ZOOM_STRENGTH,
     INPUT_ZOOM_MIN: INPUT_ZOOM_MIN,
     TILE_COUNT: TILE_COUNT,
-    TILE_COLUMNS: TILE_COLUMNS
+    TILE_COLUMNS: TILE_COLUMNS,
+    THEME_BG: THEME_BG,
+    THEME_GLOW: THEME_GLOW,
+    THEME_BORDER: THEME_BORDER
   });
 
   const str_color = (str) => {
@@ -384,7 +397,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
     const buffer_defaults = {
       position: read([0, 0, 0]),
-      sprite: read(0),
+      sprite: read([0]),
       color: read([1.0, 1, 1, 1.0])
     };
 
@@ -412,7 +425,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       const $value = buffer_data;
       const buffer = {
         position: [],
-        sprite: 0,
+        sprite: [],
         color: []
       };
       const uniforms = {};
@@ -439,7 +452,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
           const chan_buffer = $chan[key_buffer];
 
           // doesn't have the channel
-          if (!chan_buffer || !chan_buffer.get) {
+          if (!chan_buffer || !chan_buffer.get || !chan_buffer.get()) {
             buffer[key_buffer].push(
               ...buffer_defaults[key_buffer].get()
             );
@@ -528,6 +541,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   } = false) => {
     let threads_set;
 
+    const exists = (id) => {
+      const [knot, channel] = id.split(`/`);
+
+      const k = w.knots.get()[knot];
+      if (!k) return false
+      if (channel === undefined) return true
+
+      return Object.keys(k.value.get()).indexOf(channel) !== -1
+    };
     const w = {
       id: read(id),
       knot: read(`weave`),
@@ -552,6 +574,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
         return k
       }),
+      validate: () => {
+        let dirty = false;
+        const t = w.threads.get();
+        Object.entries(t).forEach(([r, w]) => {
+          if (exists(r) && exists(w)) return
+
+          dirty = true;
+          delete (t[r]);
+        });
+
+        if (!dirty) return
+
+        w.threads.set(t);
+      },
       toJSON: () => {
         const {
           id,
@@ -659,6 +695,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       threads_set(threads);
     });
 
+    w.validate();
     return w
   };
 
@@ -1019,6 +1056,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   // Collection of meta controllers
 
+  const zoom = write(0.75);
+
   // raw translate commands
   const translate = read([0, 0, 0], (set) => {
     const b_key = [0, 0, 0];
@@ -1046,7 +1085,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   let scroll_velocity = [0, 0, 0];
 
-  const scroll$1 = write([0, 0, 0]);
+  const scroll$1 = transformer((data) => data.map((i) => Math.round(i)));
+
+  scroll$1.set([0, 0, 0]);
 
   tick.listen(() => {
     if (Math.abs(length(scroll_velocity)) < 1) return
@@ -1058,7 +1099,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
     scroll_velocity = multiply_scalar(
       scroll_velocity,
-      0.5
+      0.25
     );
   });
 
@@ -1071,8 +1112,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       )
     );
   });
-
-  const zoom = write(0.75);
 
   let zoom_velocity = 0;
 
@@ -1096,9 +1135,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   var input = /*#__PURE__*/Object.freeze({
     __proto__: null,
+    zoom: zoom,
     translate: translate,
     scroll: scroll$1,
-    zoom: zoom,
     focus: focus
   });
 
@@ -1240,21 +1279,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     }
   });
 
-  path.listen(async ($path) => {
-    if (
-      $path[0] !== `weave` ||
-      $path.length === 1
-    ) return
-
-    await loaded;
-    if (!Wheel.get($path[1])) {
-      path.set(`weave`);
-      return
-    }
-
-    woven.set($path[1]);
-  });
-
   const hoveree = write(``);
   const draggee = write(``);
   const drag_count = write(0);
@@ -1281,9 +1305,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   const vel = (id) => velocities[id] || [0, 0, 0];
 
   tick.listen((t) => {
-    const { threads, knots } = woven.get();
+    const { threads, knots, names } = woven.get();
     const $knots = knots.get();
     const $threads = threads.get();
+    const $names = names.get();
     const $positions = positions.get();
     const $bodies = bodies.get();
 
@@ -1302,7 +1327,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
       return [
         25 + (idx % 2) * 161.8,
-        -125 * idx,
+        -150 * idx,
         0
       ]
     };
@@ -1322,7 +1347,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
       if (!$bodies[id] || !$bodies[id_o]) return
 
-      const [w, h] = $bodies[id];
+      let [w, h] = $bodies[id];
+
+      h = stitch(id)
+        ? 0
+        : h / 2;
+
       const [w_o, h_o] = $bodies[id_o];
       // woho my friend
 
@@ -1356,7 +1386,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       if (stitch(id) && chan === undefined) {
         pos_other = add(
           pos_other,
-          [w_o, h + h_o, 0]
+          [w_o, h + h_o + 100, 0]
         );
       }
 
@@ -1389,13 +1419,26 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
         )
       );
     });
-
     // Quad tree eventually
     Object.entries($bodies).forEach(([
       id, [w, h]
     ]) => {
       id = id.split(`/`)[0];
-      if (!$knots[id] || $knots[id].knot.get() === `stitch`) return
+      // don't move nonexistant things
+      if (!$knots[id]) {
+        // delete $bodies[id]
+        // bodies_dirty = true
+        return
+      }
+
+      const k = $knots[id];
+
+      // don't apply velocities to stitches
+      if (k.knot.get() === `stitch`) {
+        return
+      }
+
+      // stop hover from moving
       if ($hoveree === id) {
         velocities[id] = [0, 0, 0];
         return
@@ -1458,7 +1501,60 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       );
     });
 
+    let height = 0;
+
+    Object.values($names).forEach((k) => {
+      const id = k.id.get();
+      const y = 1 + height;
+      if (pos(id)[1] !== y) {
+        dirty = true;
+        $positions[id] = [
+          0,
+          y,
+          0
+        ];
+      }
+      height += $bodies[id][1] + 300;
+    });
+
     if (dirty) positions.set($positions);
+  });
+
+  path.listen(async ($path) => {
+    if (
+      $path[0] !== `weave` ||
+      $path.length === 1
+    ) return
+
+    await loaded;
+    if (!Wheel.get($path[1])) {
+      path.set(`weave`);
+      return
+    }
+
+    woven.set($path[1]);
+
+    const [w, h] = size.get();
+    scroll$1.set([w / 2, h / 4, 0]);
+
+    if (!$path[2]) return
+
+    const knot = woven.get().names.get()[$path[2]];
+
+    setTimeout(() => {
+      const $positions = positions.get();
+      const $id = knot.id.get();
+
+      const pos = $positions[$id];
+
+      if (!pos) return
+
+      scroll$1.set([
+        w / 2,
+        -pos[1] * zoom.get() + h / 4,
+        0
+      ]);
+    }, 100);
   });
 
   const tie = (items) =>
@@ -1631,6 +1727,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
       if (value != null || input.value) {
           input.value = value;
       }
+  }
+  function set_style(node, key, value, important) {
+      node.style.setProperty(key, value, important ? 'important' : '');
   }
   function toggle_class(element, name, toggle) {
       element.classList[toggle ? 'add' : 'remove'](name);
@@ -8061,7 +8160,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if_block.c();
   			attr_dev(div, "class", "play svelte-oye7pq");
   			toggle_class(div, "runs", ctx.runs);
-  			add_location(div, file$6, 59, 2, 947);
+  			add_location(div, file$6, 59, 2, 946);
   			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
   		},
   		m: function mount(target, anchor) {
@@ -8174,11 +8273,11 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t2 = space();
   			if (if_block) if_block.c();
   			attr_dev(div0, "class", "bar svelte-oye7pq");
-  			add_location(div0, file$6, 48, 0, 800);
+  			add_location(div0, file$6, 48, 0, 799);
   			attr_dev(div1, "class", "save svelte-oye7pq");
-  			add_location(div1, file$6, 52, 2, 851);
+  			add_location(div1, file$6, 52, 2, 850);
   			attr_dev(div2, "class", "controls svelte-oye7pq");
-  			add_location(div2, file$6, 51, 0, 826);
+  			add_location(div2, file$6, 51, 0, 825);
   			dispose = listen_dev(div1, "click", ctx.save, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -8270,7 +8369,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			data: `${tile(`/${$name}`)} `.repeat(4)
   		});
 
-  		FileSaver_min.saveAs(piexif.insert(piexif.dump(obj), t), `${$name}.weave.jpg`);
+  		FileSaver_min.saveAs(piexif.insert(piexif.dump(obj), t), `${$name}.seed.jpg`);
   	};
 
   	const writable_props = ["weave"];
@@ -8465,52 +8564,87 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (114:2) {#if $first}
+  // (112:2) {#if $first}
   function create_if_block_1$1(ctx) {
-  	let line;
-  	let line_stroke_value;
-  	let line_x__value;
-  	let line_y__value;
-  	let line_x__value_1;
-  	let line_y__value_1;
+  	let line0;
+  	let line0_x__value;
+  	let line0_y__value;
+  	let line0_x__value_1;
+  	let line0_y__value_1;
+  	let line1;
+  	let line1_stroke_value;
+  	let line1_x__value;
+  	let line1_y__value;
+  	let line1_x__value_1;
+  	let line1_y__value_1;
 
   	const block = {
   		c: function create() {
-  			line = svg_element("line");
-  			attr_dev(line, "stroke", line_stroke_value = ctx.get_color(ctx.$first, ctx.$position));
-  			attr_dev(line, "x1", line_x__value = ctx.first_rec.x + ctx.first_rec.width / 2);
-  			attr_dev(line, "y1", line_y__value = ctx.first_rec.y + ctx.first_rec.height / 2);
-  			attr_dev(line, "x2", line_x__value_1 = ctx.$position[0]);
-  			attr_dev(line, "y2", line_y__value_1 = ctx.$position[1]);
-  			attr_dev(line, "class", "line svelte-1o54c58");
-  			add_location(line, file$7, 114, 4, 3008);
+  			line0 = svg_element("line");
+  			line1 = svg_element("line");
+  			attr_dev(line0, "stroke", ctx.$THEME_BORDER);
+  			attr_dev(line0, "x1", line0_x__value = ctx.first_rec.x + ctx.first_rec.width / 2);
+  			attr_dev(line0, "y1", line0_y__value = ctx.first_rec.y + ctx.first_rec.height / 2);
+  			attr_dev(line0, "x2", line0_x__value_1 = ctx.$position[0]);
+  			attr_dev(line0, "y2", line0_y__value_1 = ctx.$position[1]);
+  			attr_dev(line0, "class", "line svelte-1winrt2");
+  			add_location(line0, file$7, 112, 4, 2782);
+  			attr_dev(line1, "stroke", line1_stroke_value = ctx.get_color(ctx.$first, ctx.$position));
+  			attr_dev(line1, "x1", line1_x__value = ctx.first_rec.x + ctx.first_rec.width / 2);
+  			attr_dev(line1, "y1", line1_y__value = ctx.first_rec.y + ctx.first_rec.height / 2);
+  			attr_dev(line1, "x2", line1_x__value_1 = ctx.$position[0]);
+  			attr_dev(line1, "y2", line1_y__value_1 = ctx.$position[1]);
+  			attr_dev(line1, "class", "line thin svelte-1winrt2");
+  			add_location(line1, file$7, 121, 4, 3019);
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, line, anchor);
+  			insert_dev(target, line0, anchor);
+  			insert_dev(target, line1, anchor);
   		},
   		p: function update(changed, ctx) {
-  			if ((changed.$first || changed.$position) && line_stroke_value !== (line_stroke_value = ctx.get_color(ctx.$first, ctx.$position))) {
-  				attr_dev(line, "stroke", line_stroke_value);
+  			if (changed.$THEME_BORDER) {
+  				attr_dev(line0, "stroke", ctx.$THEME_BORDER);
   			}
 
-  			if (changed.first_rec && line_x__value !== (line_x__value = ctx.first_rec.x + ctx.first_rec.width / 2)) {
-  				attr_dev(line, "x1", line_x__value);
+  			if (changed.first_rec && line0_x__value !== (line0_x__value = ctx.first_rec.x + ctx.first_rec.width / 2)) {
+  				attr_dev(line0, "x1", line0_x__value);
   			}
 
-  			if (changed.first_rec && line_y__value !== (line_y__value = ctx.first_rec.y + ctx.first_rec.height / 2)) {
-  				attr_dev(line, "y1", line_y__value);
+  			if (changed.first_rec && line0_y__value !== (line0_y__value = ctx.first_rec.y + ctx.first_rec.height / 2)) {
+  				attr_dev(line0, "y1", line0_y__value);
   			}
 
-  			if (changed.$position && line_x__value_1 !== (line_x__value_1 = ctx.$position[0])) {
-  				attr_dev(line, "x2", line_x__value_1);
+  			if (changed.$position && line0_x__value_1 !== (line0_x__value_1 = ctx.$position[0])) {
+  				attr_dev(line0, "x2", line0_x__value_1);
   			}
 
-  			if (changed.$position && line_y__value_1 !== (line_y__value_1 = ctx.$position[1])) {
-  				attr_dev(line, "y2", line_y__value_1);
+  			if (changed.$position && line0_y__value_1 !== (line0_y__value_1 = ctx.$position[1])) {
+  				attr_dev(line0, "y2", line0_y__value_1);
+  			}
+
+  			if ((changed.$first || changed.$position) && line1_stroke_value !== (line1_stroke_value = ctx.get_color(ctx.$first, ctx.$position))) {
+  				attr_dev(line1, "stroke", line1_stroke_value);
+  			}
+
+  			if (changed.first_rec && line1_x__value !== (line1_x__value = ctx.first_rec.x + ctx.first_rec.width / 2)) {
+  				attr_dev(line1, "x1", line1_x__value);
+  			}
+
+  			if (changed.first_rec && line1_y__value !== (line1_y__value = ctx.first_rec.y + ctx.first_rec.height / 2)) {
+  				attr_dev(line1, "y1", line1_y__value);
+  			}
+
+  			if (changed.$position && line1_x__value_1 !== (line1_x__value_1 = ctx.$position[0])) {
+  				attr_dev(line1, "x2", line1_x__value_1);
+  			}
+
+  			if (changed.$position && line1_y__value_1 !== (line1_y__value_1 = ctx.$position[1])) {
+  				attr_dev(line1, "y2", line1_y__value_1);
   			}
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(line);
+  			if (detaching) detach_dev(line0);
+  			if (detaching) detach_dev(line1);
   		}
   	};
 
@@ -8518,17 +8652,16 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block_1$1.name,
   		type: "if",
-  		source: "(114:2) {#if $first}",
+  		source: "(112:2) {#if $first}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (136:6) {#if $recent.has(`${x_id}-${y_id}`)}
+  // (152:6) {#if $recent.has(`${x_id}-${y_id}`)}
   function create_if_block$2(ctx) {
   	let line;
-  	let line_stroke_value;
   	let line_x__value;
   	let line_y__value;
   	let line_x__value_1;
@@ -8537,20 +8670,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	const block = {
   		c: function create() {
   			line = svg_element("line");
-  			attr_dev(line, "stroke", line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear" : "linear-other") + ")");
+  			attr_dev(line, "stroke", ctx.$THEME_BORDER);
   			attr_dev(line, "x1", line_x__value = ctx.x.x + ctx.x.width / 2);
   			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
   			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
   			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-  			attr_dev(line, "class", "active svelte-1o54c58");
-  			add_location(line, file$7, 136, 6, 3599);
+  			attr_dev(line, "class", "active svelte-1winrt2");
+  			add_location(line, file$7, 152, 6, 3791);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, line, anchor);
   		},
   		p: function update(changed, ctx) {
-  			if (changed.rects && line_stroke_value !== (line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear" : "linear-other") + ")")) {
-  				attr_dev(line, "stroke", line_stroke_value);
+  			if (changed.$THEME_BORDER) {
+  				attr_dev(line, "stroke", ctx.$THEME_BORDER);
   			}
 
   			if (changed.rects && line_x__value !== (line_x__value = ctx.x.x + ctx.x.width / 2)) {
@@ -8578,62 +8711,95 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block$2.name,
   		type: "if",
-  		source: "(136:6) {#if $recent.has(`${x_id}-${y_id}`)}",
+  		source: "(152:6) {#if $recent.has(`${x_id}-${y_id}`)}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (126:2) {#each rects as [x, y, x_id, y_id]}
+  // (133:2) {#each rects as [x, y, x_id, y_id]}
   function create_each_block(ctx) {
-  	let line;
-  	let line_stroke_value;
-  	let line_x__value;
-  	let line_y__value;
-  	let line_x__value_1;
-  	let line_y__value_1;
+  	let line0;
+  	let line0_x__value;
+  	let line0_y__value;
+  	let line0_x__value_1;
+  	let line0_y__value_1;
+  	let line1;
+  	let line1_x__value;
+  	let line1_y__value;
+  	let line1_x__value_1;
+  	let line1_y__value_1;
   	let show_if = ctx.$recent.has(`${ctx.x_id}-${ctx.y_id}`);
   	let if_block_anchor;
   	let if_block = show_if && create_if_block$2(ctx);
 
   	const block = {
   		c: function create() {
-  			line = svg_element("line");
+  			line0 = svg_element("line");
+  			line1 = svg_element("line");
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(line, "stroke", line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear-dark" : "linear-other-dark") + ")");
-  			attr_dev(line, "x1", line_x__value = ctx.x.x + ctx.x.width / 2);
-  			attr_dev(line, "y1", line_y__value = ctx.x.y + ctx.x.height / 2);
-  			attr_dev(line, "x2", line_x__value_1 = ctx.y.x + ctx.y.width / 2);
-  			attr_dev(line, "y2", line_y__value_1 = ctx.y.y + ctx.y.height / 2);
-  			attr_dev(line, "class", "line svelte-1o54c58");
-  			add_location(line, file$7, 126, 6, 3295);
+  			attr_dev(line0, "stroke", ctx.$THEME_BORDER);
+  			attr_dev(line0, "x1", line0_x__value = ctx.x.x + ctx.x.width / 2);
+  			attr_dev(line0, "y1", line0_y__value = ctx.x.y + ctx.x.height / 2);
+  			attr_dev(line0, "x2", line0_x__value_1 = ctx.y.x + ctx.y.width / 2);
+  			attr_dev(line0, "y2", line0_y__value_1 = ctx.y.y + ctx.y.height / 2);
+  			attr_dev(line0, "class", "line svelte-1winrt2");
+  			add_location(line0, file$7, 133, 6, 3311);
+  			attr_dev(line1, "stroke", ctx.$THEME_BG);
+  			attr_dev(line1, "x1", line1_x__value = ctx.x.x + ctx.x.width / 2);
+  			attr_dev(line1, "y1", line1_y__value = ctx.x.y + ctx.x.height / 2);
+  			attr_dev(line1, "x2", line1_x__value_1 = ctx.y.x + ctx.y.width / 2);
+  			attr_dev(line1, "y2", line1_y__value_1 = ctx.y.y + ctx.y.height / 2);
+  			attr_dev(line1, "class", "line thin svelte-1winrt2");
+  			add_location(line1, file$7, 142, 6, 3529);
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, line, anchor);
+  			insert_dev(target, line0, anchor);
+  			insert_dev(target, line1, anchor);
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, if_block_anchor, anchor);
   		},
   		p: function update(changed, ctx) {
-  			if (changed.rects && line_stroke_value !== (line_stroke_value = "url(#" + (ctx.x.x > ctx.y.x ? "linear-dark" : "linear-other-dark") + ")")) {
-  				attr_dev(line, "stroke", line_stroke_value);
+  			if (changed.$THEME_BORDER) {
+  				attr_dev(line0, "stroke", ctx.$THEME_BORDER);
   			}
 
-  			if (changed.rects && line_x__value !== (line_x__value = ctx.x.x + ctx.x.width / 2)) {
-  				attr_dev(line, "x1", line_x__value);
+  			if (changed.rects && line0_x__value !== (line0_x__value = ctx.x.x + ctx.x.width / 2)) {
+  				attr_dev(line0, "x1", line0_x__value);
   			}
 
-  			if (changed.rects && line_y__value !== (line_y__value = ctx.x.y + ctx.x.height / 2)) {
-  				attr_dev(line, "y1", line_y__value);
+  			if (changed.rects && line0_y__value !== (line0_y__value = ctx.x.y + ctx.x.height / 2)) {
+  				attr_dev(line0, "y1", line0_y__value);
   			}
 
-  			if (changed.rects && line_x__value_1 !== (line_x__value_1 = ctx.y.x + ctx.y.width / 2)) {
-  				attr_dev(line, "x2", line_x__value_1);
+  			if (changed.rects && line0_x__value_1 !== (line0_x__value_1 = ctx.y.x + ctx.y.width / 2)) {
+  				attr_dev(line0, "x2", line0_x__value_1);
   			}
 
-  			if (changed.rects && line_y__value_1 !== (line_y__value_1 = ctx.y.y + ctx.y.height / 2)) {
-  				attr_dev(line, "y2", line_y__value_1);
+  			if (changed.rects && line0_y__value_1 !== (line0_y__value_1 = ctx.y.y + ctx.y.height / 2)) {
+  				attr_dev(line0, "y2", line0_y__value_1);
+  			}
+
+  			if (changed.$THEME_BG) {
+  				attr_dev(line1, "stroke", ctx.$THEME_BG);
+  			}
+
+  			if (changed.rects && line1_x__value !== (line1_x__value = ctx.x.x + ctx.x.width / 2)) {
+  				attr_dev(line1, "x1", line1_x__value);
+  			}
+
+  			if (changed.rects && line1_y__value !== (line1_y__value = ctx.x.y + ctx.x.height / 2)) {
+  				attr_dev(line1, "y1", line1_y__value);
+  			}
+
+  			if (changed.rects && line1_x__value_1 !== (line1_x__value_1 = ctx.y.x + ctx.y.width / 2)) {
+  				attr_dev(line1, "x2", line1_x__value_1);
+  			}
+
+  			if (changed.rects && line1_y__value_1 !== (line1_y__value_1 = ctx.y.y + ctx.y.height / 2)) {
+  				attr_dev(line1, "y2", line1_y__value_1);
   			}
 
   			if (changed.$recent || changed.rects) show_if = ctx.$recent.has(`${ctx.x_id}-${ctx.y_id}`);
@@ -8652,7 +8818,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(line);
+  			if (detaching) detach_dev(line0);
+  			if (detaching) detach_dev(line1);
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(if_block_anchor);
   		}
@@ -8662,7 +8829,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(126:2) {#each rects as [x, y, x_id, y_id]}",
+  		source: "(133:2) {#each rects as [x, y, x_id, y_id]}",
   		ctx
   	});
 
@@ -8674,16 +8841,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let defs;
   	let linearGradient0;
   	let stop0;
+  	let stop0_stop_color_value;
   	let stop1;
+  	let stop1_stop_color_value;
   	let linearGradient1;
   	let stop2;
+  	let stop2_stop_color_value;
   	let stop3;
-  	let linearGradient2;
-  	let stop4;
-  	let stop5;
-  	let linearGradient3;
-  	let stop6;
-  	let stop7;
+  	let stop3_stop_color_value;
   	let if_block_anchor;
   	let svg_width_value;
   	let svg_height_value;
@@ -8705,12 +8870,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			linearGradient1 = svg_element("linearGradient");
   			stop2 = svg_element("stop");
   			stop3 = svg_element("stop");
-  			linearGradient2 = svg_element("linearGradient");
-  			stop4 = svg_element("stop");
-  			stop5 = svg_element("stop");
-  			linearGradient3 = svg_element("linearGradient");
-  			stop6 = svg_element("stop");
-  			stop7 = svg_element("stop");
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
 
@@ -8719,58 +8878,35 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			attr_dev(stop0, "offset", "30%");
-  			attr_dev(stop0, "stop-color", "#F00");
-  			add_location(stop0, file$7, 94, 8, 2264);
+  			attr_dev(stop0, "stop-color", stop0_stop_color_value = ctx.gradient[0]);
+  			add_location(stop0, file$7, 102, 8, 2410);
   			attr_dev(stop1, "offset", "70%");
-  			attr_dev(stop1, "stop-color", "#00F");
-  			add_location(stop1, file$7, 95, 8, 2311);
+  			attr_dev(stop1, "stop-color", stop1_stop_color_value = ctx.gradient[1]);
+  			add_location(stop1, file$7, 103, 8, 2466);
   			attr_dev(linearGradient0, "id", "linear");
   			attr_dev(linearGradient0, "x1", "0%");
   			attr_dev(linearGradient0, "y1", "0%");
   			attr_dev(linearGradient0, "x2", "100%");
   			attr_dev(linearGradient0, "y2", "0%");
-  			add_location(linearGradient0, file$7, 93, 6, 2193);
+  			add_location(linearGradient0, file$7, 101, 6, 2339);
   			attr_dev(stop2, "offset", "30%");
-  			attr_dev(stop2, "stop-color", "#00F");
-  			add_location(stop2, file$7, 98, 10, 2459);
+  			attr_dev(stop2, "stop-color", stop2_stop_color_value = ctx.gradient[1]);
+  			add_location(stop2, file$7, 106, 10, 2621);
   			attr_dev(stop3, "offset", "70%");
-  			attr_dev(stop3, "stop-color", "#F00");
-  			add_location(stop3, file$7, 99, 10, 2508);
+  			attr_dev(stop3, "stop-color", stop3_stop_color_value = ctx.gradient[0]);
+  			add_location(stop3, file$7, 107, 10, 2677);
   			attr_dev(linearGradient1, "id", "linear-other");
   			attr_dev(linearGradient1, "x1", "0%");
   			attr_dev(linearGradient1, "y1", "0%");
   			attr_dev(linearGradient1, "x2", "100%");
   			attr_dev(linearGradient1, "y2", "0%");
-  			add_location(linearGradient1, file$7, 97, 6, 2380);
-  			attr_dev(stop4, "offset", "5%");
-  			attr_dev(stop4, "stop-color", "#F00");
-  			add_location(stop4, file$7, 102, 8, 2657);
-  			attr_dev(stop5, "offset", "95%");
-  			attr_dev(stop5, "stop-color", "#00F");
-  			add_location(stop5, file$7, 104, 8, 2706);
-  			attr_dev(linearGradient2, "id", "linear-dark");
-  			attr_dev(linearGradient2, "x1", "0%");
-  			attr_dev(linearGradient2, "y1", "0%");
-  			attr_dev(linearGradient2, "x2", "100%");
-  			attr_dev(linearGradient2, "y2", "0%");
-  			add_location(linearGradient2, file$7, 101, 8, 2581);
-  			attr_dev(stop6, "offset", "5%");
-  			attr_dev(stop6, "stop-color", "#00F");
-  			add_location(stop6, file$7, 107, 10, 2859);
-  			attr_dev(stop7, "offset", "95%");
-  			attr_dev(stop7, "stop-color", "#F00");
-  			add_location(stop7, file$7, 109, 10, 2910);
-  			attr_dev(linearGradient3, "id", "linear-other-dark");
-  			attr_dev(linearGradient3, "x1", "0%");
-  			attr_dev(linearGradient3, "y1", "0%");
-  			attr_dev(linearGradient3, "x2", "100%");
-  			attr_dev(linearGradient3, "y2", "0%");
-  			add_location(linearGradient3, file$7, 106, 6, 2775);
-  			add_location(defs, file$7, 92, 4, 2180);
+  			add_location(linearGradient1, file$7, 105, 6, 2542);
+  			add_location(defs, file$7, 100, 4, 2326);
   			attr_dev(svg, "width", svg_width_value = ctx.$size[0]);
   			attr_dev(svg, "height", svg_height_value = ctx.$size[1]);
-  			attr_dev(svg, "class", "threads svelte-1o54c58");
-  			add_location(svg, file$7, 91, 0, 2119);
+  			attr_dev(svg, "class", "threads svelte-1winrt2");
+  			set_style(svg, "font-size", "20px");
+  			add_location(svg, file$7, 97, 0, 2237);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -8784,12 +8920,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(defs, linearGradient1);
   			append_dev(linearGradient1, stop2);
   			append_dev(linearGradient1, stop3);
-  			append_dev(defs, linearGradient2);
-  			append_dev(linearGradient2, stop4);
-  			append_dev(linearGradient2, stop5);
-  			append_dev(defs, linearGradient3);
-  			append_dev(linearGradient3, stop6);
-  			append_dev(linearGradient3, stop7);
   			if (if_block) if_block.m(svg, null);
   			append_dev(svg, if_block_anchor);
 
@@ -8811,7 +8941,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				if_block = null;
   			}
 
-  			if (changed.$recent || changed.rects) {
+  			if (changed.$recent || changed.rects || changed.$THEME_BORDER || changed.$THEME_BG) {
   				each_value = ctx.rects;
   				let i;
 
@@ -8872,6 +9002,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   	let $first;
   	let $size;
+  	let $THEME_BORDER;
+  	let $THEME_BG;
   	let $recent;
   	validate_store(position, "position");
   	component_subscribe($$self, position, $$value => $$invalidate("$position", $position = $$value));
@@ -8881,6 +9013,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	component_subscribe($$self, first, $$value => $$invalidate("$first", $first = $$value));
   	validate_store(size, "size");
   	component_subscribe($$self, size, $$value => $$invalidate("$size", $size = $$value));
+  	validate_store(THEME_BORDER, "THEME_BORDER");
+  	component_subscribe($$self, THEME_BORDER, $$value => $$invalidate("$THEME_BORDER", $THEME_BORDER = $$value));
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_threads());
   	let { weave } = $$props;
   	const val = new Set();
@@ -8939,6 +9075,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			: `url(#${loc.x < $position[0] ? `linear` : `linear-other`})`;
   	};
 
+  	const gradient = [`rgb(97, 22, 22)`, `rgb(15, 15, 110)`];
   	const writable_props = ["weave"];
 
   	Object_1.keys($$props).forEach(key => {
@@ -8960,6 +9097,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			first_rec,
   			$first,
   			$size,
+  			$THEME_BORDER,
+  			$THEME_BG,
   			$recent
   		};
   	};
@@ -8974,6 +9113,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("first_rec" in $$props) $$invalidate("first_rec", first_rec = $$props.first_rec);
   		if ("$first" in $$props) first.set($first = $$props.$first);
   		if ("$size" in $$props) size.set($size = $$props.$size);
+  		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$recent" in $$props) recent.set($recent = $$props.$recent);
   	};
 
@@ -9004,12 +9145,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		weave,
   		recent,
   		get_color,
+  		gradient,
   		$position,
   		threads,
   		rects,
   		first_rec,
   		$first,
   		$size,
+  		$THEME_BORDER,
+  		$THEME_BG,
   		$recent
   	};
   }
@@ -9060,10 +9204,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		c: function create() {
   			div = element("div");
   			create_component(tile.$$.fragment);
-  			attr_dev(div, "class", "postage no-drag svelte-dtt18w");
+  			attr_dev(div, "class", "postage no-drag svelte-1x1uc2o");
   			toggle_class(div, "active", ctx.active);
   			toggle_class(div, "running", ctx.running);
-  			add_location(div, file$8, 25, 0, 501);
+  			add_location(div, file$8, 24, 0, 468);
   			dispose = listen_dev(div, "click", ctx.punch_it, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -9120,11 +9264,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$subscribe_runnings = () => ($$unsubscribe_runnings(), $$unsubscribe_runnings = subscribe(runnings, $$value => $$invalidate("$runnings", $runnings = $$value)), runnings);
 
   	let $woven;
-  	let $path;
   	validate_store(woven, "woven");
   	component_subscribe($$self, woven, $$value => $$invalidate("$woven", $woven = $$value));
-  	validate_store(path, "path");
-  	component_subscribe($$self, path, $$value => $$invalidate("$path", $path = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_runnings());
   	let { address = `` } = $$props;
   	let { nopunch = false } = $$props;
@@ -9133,7 +9274,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		e.stopPropagation();
   		e.preventDefault();
   		if (nopunch) return;
-  		if ($path[1] === weave) return;
   		path.set(`weave${address}`);
   		return true;
   	};
@@ -9158,8 +9298,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			running,
   			$runnings,
   			active,
-  			$woven,
-  			$path
+  			$woven
   		};
   	};
 
@@ -9172,7 +9311,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("$runnings" in $$props) runnings.set($runnings = $$props.$runnings);
   		if ("active" in $$props) $$invalidate("active", active = $$props.active);
   		if ("$woven" in $$props) woven.set($woven = $$props.$woven);
-  		if ("$path" in $$props) path.set($path = $$props.$path);
   	};
 
   	let runnings;
@@ -9249,6 +9387,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
     return handler
   };
 
+  var border = (node, size = 0.5) => ({
+    destroy: THEME_BORDER.listen(($border) => {
+      node.style.border = `${size}rem solid ${$border}`;
+    })
+  });
+
   var physics = (node, id) => {
     const update = () =>
       bodies.update(($b) => ({
@@ -9290,10 +9434,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   /* src/ui/weave/Knot.svelte generated by Svelte v3.14.1 */
   const file$9 = "src/ui/weave/Knot.svelte";
 
-  // (84:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
+  // (89:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >
   function create_default_slot$1(ctx) {
   	let div1;
   	let div0;
+  	let div0_style_value;
+  	let border_action;
   	let physics_action;
   	let current;
   	let dispose;
@@ -9305,10 +9451,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			div1 = element("div");
   			div0 = element("div");
   			if (default_slot) default_slot.c();
-  			attr_dev(div0, "class", "knot svelte-101hgun");
-  			add_location(div0, file$9, 95, 4, 1601);
+  			attr_dev(div0, "class", "knot svelte-15n5c1l");
+  			attr_dev(div0, "style", div0_style_value = `background-color: ${ctx.$THEME_BG};`);
+  			toggle_class(div0, "notstitch", ctx.notstitch);
+  			add_location(div0, file$9, 100, 4, 1719);
   			attr_dev(div1, "class", "adjust");
-  			add_location(div1, file$9, 90, 2, 1484);
+  			add_location(div1, file$9, 95, 2, 1602);
 
   			dispose = [
   				listen_dev(div0, "mousedown", ctx.drag, false, false, false),
@@ -9324,6 +9472,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				default_slot.m(div0, null);
   			}
 
+  			border_action = border.call(null, div0) || ({});
   			physics_action = physics.call(null, div0, ctx.$id) || ({});
   			current = true;
   		},
@@ -9332,7 +9481,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				default_slot.p(get_slot_changes(default_slot_template, ctx, changed, null), get_slot_context(default_slot_template, ctx, null));
   			}
 
+  			if (!current || changed.$THEME_BG && div0_style_value !== (div0_style_value = `background-color: ${ctx.$THEME_BG};`)) {
+  				attr_dev(div0, "style", div0_style_value);
+  			}
+
   			if (is_function(physics_action.update) && changed.$id) physics_action.update.call(null, ctx.$id);
+
+  			if (changed.notstitch) {
+  				toggle_class(div0, "notstitch", ctx.notstitch);
+  			}
   		},
   		i: function intro(local) {
   			if (current) return;
@@ -9346,6 +9503,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div1);
   			if (default_slot) default_slot.d(detaching);
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (physics_action && is_function(physics_action.destroy)) physics_action.destroy();
   			run_all(dispose);
   		}
@@ -9355,7 +9513,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_default_slot$1.name,
   		type: "slot",
-  		source: "(84:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
+  		source: "(89:0) <Spatial   anchor = {[50, 50]}   position = {tru_position}   transition = {!dragging}   scale = {tru_scale}   {zIndex} >",
   		ctx
   	});
 
@@ -9396,7 +9554,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (changed.tru_scale) spatial_changes.scale = ctx.tru_scale;
   			if (changed.zIndex) spatial_changes.zIndex = ctx.zIndex;
 
-  			if (changed.$$scope || changed.$id) {
+  			if (changed.$$scope || changed.$id || changed.$THEME_BG || changed.notstitch) {
   				spatial_changes.$$scope = { changed, ctx };
   			}
 
@@ -9428,6 +9586,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   }
 
   function instance$8($$self, $$props, $$invalidate) {
+  	let $type,
+  		$$unsubscribe_type = noop,
+  		$$subscribe_type = () => ($$unsubscribe_type(), $$unsubscribe_type = subscribe(type, $$value => $$invalidate("$type", $type = $$value)), type);
+
   	let $positions;
   	let $Mouse;
   	let $scroll;
@@ -9437,6 +9599,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$unsubscribe_id = noop,
   		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
 
+  	let $THEME_BG;
   	validate_store(positions, "positions");
   	component_subscribe($$self, positions, $$value => $$invalidate("$positions", $positions = $$value));
   	validate_store(position, "Mouse");
@@ -9445,6 +9608,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	component_subscribe($$self, scroll$1, $$value => $$invalidate("$scroll", $scroll = $$value));
   	validate_store(zoom, "zoom");
   	component_subscribe($$self, zoom, $$value => $$invalidate("$zoom", $zoom = $$value));
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
+  	$$self.$$.on_destroy.push(() => $$unsubscribe_type());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
   	let { position: position$1 = [0, 0, 0] } = $$props;
   	let { knot } = $$props;
@@ -9504,12 +9670,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			tru_position,
   			type,
   			id,
+  			notstitch,
+  			$type,
   			$positions,
   			$Mouse,
   			$scroll,
   			$zoom,
   			$id,
-  			tru_scale
+  			tru_scale,
+  			$THEME_BG
   		};
   	};
 
@@ -9519,27 +9688,35 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("dragging" in $$props) $$invalidate("dragging", dragging = $$props.dragging);
   		if ("zIndex" in $$props) $$invalidate("zIndex", zIndex = $$props.zIndex);
   		if ("tru_position" in $$props) $$invalidate("tru_position", tru_position = $$props.tru_position);
-  		if ("type" in $$props) type = $$props.type;
+  		if ("type" in $$props) $$subscribe_type($$invalidate("type", type = $$props.type));
   		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
+  		if ("notstitch" in $$props) $$invalidate("notstitch", notstitch = $$props.notstitch);
+  		if ("$type" in $$props) type.set($type = $$props.$type);
   		if ("$positions" in $$props) positions.set($positions = $$props.$positions);
   		if ("$Mouse" in $$props) position.set($Mouse = $$props.$Mouse);
   		if ("$scroll" in $$props) scroll$1.set($scroll = $$props.$scroll);
   		if ("$zoom" in $$props) zoom.set($zoom = $$props.$zoom);
   		if ("$id" in $$props) id.set($id = $$props.$id);
   		if ("tru_scale" in $$props) $$invalidate("tru_scale", tru_scale = $$props.tru_scale);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   	};
 
   	let type;
   	let id;
+  	let notstitch;
   	let tru_scale;
 
-  	$$self.$$.update = (changed = { knot: 1, dragging: 1, $Mouse: 1, $scroll: 1, $zoom: 1, $positions: 1, $id: 1 }) => {
+  	$$self.$$.update = (changed = { knot: 1, $type: 1, dragging: 1, $Mouse: 1, $scroll: 1, $zoom: 1, $positions: 1, $id: 1 }) => {
   		if (changed.knot) {
-  			 type = knot.knot;
+  			 $$subscribe_type($$invalidate("type", type = knot.knot));
   		}
 
   		if (changed.knot) {
   			 $$subscribe_id($$invalidate("id", id = knot.id));
+  		}
+
+  		if (changed.$type) {
+  			 $$invalidate("notstitch", notstitch = $type !== `stitch`);
   		}
 
   		if (changed.dragging || changed.$Mouse || changed.$scroll || changed.$zoom || changed.$positions || changed.$id) {
@@ -9564,9 +9741,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		zIndex,
   		tru_position,
   		drag,
+  		type,
   		id,
+  		notstitch,
   		$id,
   		tru_scale,
+  		$THEME_BG,
   		mouseover_handler,
   		mouseout_handler,
   		$$slots,
@@ -9623,7 +9803,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (105:0) {#if nameit}
+  // (106:0) {#if nameit}
   function create_if_block_1$2(ctx) {
   	let div4;
   	let h2;
@@ -9662,21 +9842,21 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t5 = space();
   			div2 = element("div");
   			div2.textContent = "Play";
-  			add_location(h2, file$a, 109, 2, 2005);
+  			add_location(h2, file$a, 110, 2, 2024);
   			attr_dev(div0, "class", "spirit svelte-1ilb0s7");
-  			add_location(div0, file$a, 111, 2, 2026);
+  			add_location(div0, file$a, 112, 2, 2045);
   			attr_dev(input, "class", "nameit svelte-1ilb0s7");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "Name it");
-  			add_location(input, file$a, 115, 2, 2111);
+  			add_location(input, file$a, 116, 2, 2130);
   			attr_dev(div1, "class", "false svelte-1ilb0s7");
-  			add_location(div1, file$a, 126, 4, 2320);
+  			add_location(div1, file$a, 127, 4, 2339);
   			attr_dev(div2, "class", "true svelte-1ilb0s7");
-  			add_location(div2, file$a, 127, 4, 2392);
+  			add_location(div2, file$a, 128, 4, 2411);
   			attr_dev(div3, "class", "controls svelte-1ilb0s7");
-  			add_location(div3, file$a, 125, 2, 2293);
+  			add_location(div3, file$a, 126, 2, 2312);
   			attr_dev(div4, "class", "nameprompt svelte-1ilb0s7");
-  			add_location(div4, file$a, 105, 0, 1949);
+  			add_location(div4, file$a, 106, 0, 1968);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -9734,14 +9914,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block_1$2.name,
   		type: "if",
-  		source: "(105:0) {#if nameit}",
+  		source: "(106:0) {#if nameit}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (151:0) {#if picking}
+  // (152:0) {#if picking}
   function create_if_block$3(ctx) {
   	let current;
 
@@ -9791,14 +9971,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block$3.name,
   		type: "if",
-  		source: "(151:0) {#if picking}",
+  		source: "(152:0) {#if picking}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (157:6) {#each arr_knots as [kind, fn] (kind)}
+  // (158:6) {#each arr_knots as [kind, fn] (kind)}
   function create_each_block$1(key_1, ctx) {
   	let div;
   	let t0_value = ctx.kind + "";
@@ -9819,7 +9999,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t0 = text(t0_value);
   			t1 = space();
   			attr_dev(div, "class", "kind svelte-1ilb0s7");
-  			add_location(div, file$a, 157, 8, 2948);
+  			add_location(div, file$a, 158, 8, 2967);
   			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
   			this.first = div;
   		},
@@ -9845,14 +10025,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$1.name,
   		type: "each",
-  		source: "(157:6) {#each arr_knots as [kind, fn] (kind)}",
+  		source: "(158:6) {#each arr_knots as [kind, fn] (kind)}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (152:2) <Knot {position} {knot}>
+  // (153:2) <Knot {position} {knot}>
   function create_default_slot$2(ctx) {
   	let div1;
   	let div0;
@@ -9880,9 +10060,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			attr_dev(div0, "class", "title svelte-1ilb0s7");
-  			add_location(div0, file$a, 153, 6, 2844);
+  			add_location(div0, file$a, 154, 6, 2863);
   			attr_dev(div1, "class", "prompt");
-  			add_location(div1, file$a, 152, 4, 2817);
+  			add_location(div1, file$a, 153, 4, 2836);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div1, anchor);
@@ -9910,7 +10090,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_default_slot$2.name,
   		type: "slot",
-  		source: "(152:2) <Knot {position} {knot}>",
+  		source: "(153:2) <Knot {position} {knot}>",
   		ctx
   	});
 
@@ -9938,11 +10118,11 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			attr_dev(input, "type", "file");
   			attr_dev(input, "class", "file svelte-1ilb0s7");
   			input.multiple = "multiple";
-  			add_location(input, file$a, 141, 0, 2618);
+  			add_location(input, file$a, 142, 0, 2637);
   			attr_dev(div, "class", "picker svelte-1ilb0s7");
   			toggle_class(div, "picking", ctx.picking);
   			toggle_class(div, "dragover", ctx.dragover);
-  			add_location(div, file$a, 131, 0, 2462);
+  			add_location(div, file$a, 132, 0, 2481);
 
   			dispose = [
   				listen_dev(window, "mouseup", ctx.nopick, false, false, false),
@@ -10093,6 +10273,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let nameit = false;
 
   	const drop = e => {
+  		$$invalidate("dragover", dragover = false);
   		const files = e.dataTransfer.files;
 
   		for (let i = 0; i < files.length; i++) {
@@ -10260,6 +10441,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let div1;
   	let t2_value = JSON.stringify(ctx.$value) + "";
   	let t2;
+  	let border_action;
   	let color_action;
 
   	const block = {
@@ -10270,12 +10452,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t1 = space();
   			div1 = element("div");
   			t2 = text(t2_value);
-  			attr_dev(div0, "class", "key svelte-11l3zy8");
-  			add_location(div0, file$b, 12, 2, 153);
-  			attr_dev(div1, "class", "value svelte-11l3zy8");
-  			add_location(div1, file$b, 15, 2, 192);
-  			attr_dev(div2, "class", "channel svelte-11l3zy8");
-  			add_location(div2, file$b, 8, 0, 107);
+  			attr_dev(div0, "class", "key svelte-m692a5");
+  			add_location(div0, file$b, 14, 2, 208);
+  			attr_dev(div1, "class", "value svelte-m692a5");
+  			add_location(div1, file$b, 17, 2, 247);
+  			attr_dev(div2, "class", "channel svelte-m692a5");
+  			add_location(div2, file$b, 9, 0, 149);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10287,6 +10469,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div2, t1);
   			append_dev(div2, div1);
   			append_dev(div1, t2);
+  			border_action = border.call(null, div2) || ({});
   			color_action = color$1.call(null, div2, ctx.key) || ({});
   		},
   		p: function update(changed, ctx) {
@@ -10298,6 +10481,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		o: noop,
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div2);
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   		}
   	};
@@ -10393,7 +10577,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (30:0) {#if open}
+  // (32:0) {#if open}
   function create_if_block$4(ctx) {
   	let div;
   	let current;
@@ -10417,7 +10601,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			attr_dev(div, "class", "chans");
-  			add_location(div, file$c, 30, 0, 601);
+  			add_location(div, file$c, 32, 0, 646);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -10484,14 +10668,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block$4.name,
   		type: "if",
-  		source: "(30:0) {#if open}",
+  		source: "(32:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (33:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+  // (35:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
   function create_if_block_1$3(ctx) {
   	let current;
 
@@ -10531,14 +10715,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block_1$3.name,
   		type: "if",
-  		source: "(33:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
+  		source: "(35:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (32:0) {#each chans as channel}
+  // (34:0) {#each chans as channel}
   function create_each_block$2(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.channel.name.indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
@@ -10597,7 +10781,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$2.name,
   		type: "each",
-  		source: "(32:0) {#each chans as channel}",
+  		source: "(34:0) {#each chans as channel}",
   		ctx
   	});
 
@@ -10609,7 +10793,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let div0;
   	let t0;
   	let t1;
-  	let color_action;
+  	let border_action;
   	let t2;
   	let if_block_anchor;
   	let current;
@@ -10632,11 +10816,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div0, "class", "postage svelte-16sajlg");
-  			add_location(div0, file$c, 23, 2, 493);
-  			attr_dev(div1, "class", "stitch svelte-16sajlg");
+  			attr_dev(div0, "class", "postage svelte-1p0ahj9");
+  			add_location(div0, file$c, 25, 2, 538);
+  			attr_dev(div1, "class", "stitch svelte-1p0ahj9");
+  			set_style(div1, "background-color", ctx.$THEME_BG);
   			toggle_class(div1, "open", ctx.open);
-  			add_location(div1, file$c, 17, 0, 397);
+  			add_location(div1, file$c, 18, 0, 410);
   			dispose = listen_dev(div1, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -10648,7 +10833,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			mount_component(postage, div0, null);
   			append_dev(div1, t0);
   			append_dev(div1, t1);
-  			color_action = color$1.call(null, div1, ctx.$name) || ({});
+  			border_action = border.call(null, div1) || ({});
   			insert_dev(target, t2, anchor);
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, if_block_anchor, anchor);
@@ -10659,7 +10844,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (changed.$w_name || changed.$name) postage_changes.address = `/${ctx.$w_name}/${ctx.$name}`;
   			postage.$set(postage_changes);
   			if (!current || changed.$name) set_data_dev(t1, ctx.$name);
-  			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
+
+  			if (!current || changed.$THEME_BG) {
+  				set_style(div1, "background-color", ctx.$THEME_BG);
+  			}
 
   			if (changed.open) {
   				toggle_class(div1, "open", ctx.open);
@@ -10699,7 +10887,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div1);
   			destroy_component(postage);
-  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (detaching) detach_dev(t2);
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(if_block_anchor);
@@ -10725,19 +10913,23 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$unsubscribe_value = noop,
   		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
-  	let $name,
-  		$$unsubscribe_name = noop,
-  		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
+  	let $THEME_BG;
 
   	let $w_name,
   		$$unsubscribe_w_name = noop,
   		$$subscribe_w_name = () => ($$unsubscribe_w_name(), $$unsubscribe_w_name = subscribe(w_name, $$value => $$invalidate("$w_name", $w_name = $$value)), w_name);
 
+  	let $name,
+  		$$unsubscribe_name = noop,
+  		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
+
   	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
   	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
-  	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_w_name());
+  	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
   	let { filter = [] } = $$props;
   	let { stitch } = $$props;
   	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
@@ -10771,8 +10963,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			value,
   			chans,
   			$value,
-  			$name,
-  			$w_name
+  			$THEME_BG,
+  			$w_name,
+  			$name
   		};
   	};
 
@@ -10787,8 +10980,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
   		if ("chans" in $$props) $$invalidate("chans", chans = $$props.chans);
   		if ("$value" in $$props) value.set($value = $$props.$value);
-  		if ("$name" in $$props) name.set($name = $$props.$name);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$w_name" in $$props) w_name.set($w_name = $$props.$w_name);
+  		if ("$name" in $$props) name.set($name = $$props.$name);
   	};
 
   	let w_name;
@@ -10823,8 +11017,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		name,
   		value,
   		chans,
-  		$name,
+  		$THEME_BG,
   		$w_name,
+  		$name,
   		click_handler
   	};
   }
@@ -10897,7 +11092,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (41:0) {#if open}
+  // (47:0) {#if open}
   function create_if_block$5(ctx) {
   	let div;
   	let current;
@@ -10921,7 +11116,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			attr_dev(div, "class", "stitches");
-  			add_location(div, file$d, 41, 2, 732);
+  			add_location(div, file$d, 47, 2, 872);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -10988,14 +11183,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block$5.name,
   		type: "if",
-  		source: "(41:0) {#if open}",
+  		source: "(47:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (44:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }
+  // (50:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }
   function create_if_block_1$4(ctx) {
   	let current;
 
@@ -11043,14 +11238,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_if_block_1$4.name,
   		type: "if",
-  		source: "(44:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }",
+  		source: "(50:6) {#if          filter.length === 0 ||         stitch.name.get().indexOf(filter[0]) !== -1       }",
   		ctx
   	});
 
   	return block;
   }
 
-  // (43:4) {#each stitches as stitch}
+  // (49:4) {#each stitches as stitch}
   function create_each_block$3(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.stitch.name.get().indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
@@ -11109,7 +11304,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$3.name,
   		type: "each",
-  		source: "(43:4) {#each stitches as stitch}",
+  		source: "(49:4) {#each stitches as stitch}",
   		ctx
   	});
 
@@ -11121,7 +11316,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let div0;
   	let t0;
   	let t1;
-  	let color_action;
+  	let border_action;
   	let t2;
   	let if_block_anchor;
   	let current;
@@ -11144,11 +11339,13 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div0, "class", "postage svelte-t5xhn");
-  			add_location(div0, file$d, 32, 2, 620);
-  			attr_dev(div1, "class", "weave svelte-t5xhn");
+  			attr_dev(div0, "class", "postage svelte-hhx9xm");
+  			add_location(div0, file$d, 38, 2, 760);
+  			attr_dev(div1, "class", "weave svelte-hhx9xm");
+  			set_style(div1, "background-color", ctx.$THEME_BG);
   			toggle_class(div1, "open", ctx.open);
-  			add_location(div1, file$d, 18, 0, 427);
+  			toggle_class(div1, "active", ctx.active);
+  			add_location(div1, file$d, 22, 0, 519);
   			dispose = listen_dev(div1, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -11160,7 +11357,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			mount_component(postage, div0, null);
   			append_dev(div1, t0);
   			append_dev(div1, t1);
-  			color_action = color$1.call(null, div1, ctx.$name) || ({});
+  			border_action = border.call(null, div1) || ({});
   			insert_dev(target, t2, anchor);
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, if_block_anchor, anchor);
@@ -11171,10 +11368,17 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (changed.$name) postage_changes.address = `/${ctx.$name}`;
   			postage.$set(postage_changes);
   			if (!current || changed.$name) set_data_dev(t1, ctx.$name);
-  			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
+
+  			if (!current || changed.$THEME_BG) {
+  				set_style(div1, "background-color", ctx.$THEME_BG);
+  			}
 
   			if (changed.open) {
   				toggle_class(div1, "open", ctx.open);
+  			}
+
+  			if (changed.active) {
+  				toggle_class(div1, "active", ctx.active);
   			}
 
   			if (ctx.open) {
@@ -11211,7 +11415,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div1);
   			destroy_component(postage);
-  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (detaching) detach_dev(t2);
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(if_block_anchor);
@@ -11237,13 +11441,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$unsubscribe_names = noop,
   		$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate("$names", $names = $$value)), names);
 
+  	let $woven;
+
   	let $name,
   		$$unsubscribe_name = noop,
   		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
+  	let $THEME_BG;
   	let $keys;
   	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
   	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
+  	validate_store(woven, "woven");
+  	component_subscribe($$self, woven, $$value => $$invalidate("$woven", $woven = $$value));
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
   	validate_store(keys, "keys");
   	component_subscribe($$self, keys, $$value => $$invalidate("$keys", $keys = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_names());
@@ -11285,7 +11496,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			names,
   			stitches,
   			$names,
+  			active,
+  			$woven,
   			$name,
+  			$THEME_BG,
   			$keys
   		};
   	};
@@ -11300,15 +11514,19 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("names" in $$props) $$subscribe_names($$invalidate("names", names = $$props.names));
   		if ("stitches" in $$props) $$invalidate("stitches", stitches = $$props.stitches);
   		if ("$names" in $$props) names.set($names = $$props.$names);
+  		if ("active" in $$props) $$invalidate("active", active = $$props.active);
+  		if ("$woven" in $$props) woven.set($woven = $$props.$woven);
   		if ("$name" in $$props) name.set($name = $$props.$name);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$keys" in $$props) keys.set($keys = $$props.$keys);
   	};
 
   	let name;
   	let names;
   	let stitches;
+  	let active;
 
-  	$$self.$$.update = (changed = { weave: 1, $names: 1 }) => {
+  	$$self.$$.update = (changed = { weave: 1, $names: 1, $woven: 1, $name: 1 }) => {
   		if (changed.weave) {
   			 $$subscribe_name($$invalidate("name", name = weave.name));
   		}
@@ -11320,6 +11538,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if (changed.$names) {
   			 $$invalidate("stitches", stitches = Object.values($names));
   		}
+
+  		if (changed.$woven || changed.$name) {
+  			 $$invalidate("active", active = $woven.name.get() === $name);
+  		}
   	};
 
   	return {
@@ -11330,7 +11552,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		name,
   		names,
   		stitches,
+  		active,
   		$name,
+  		$THEME_BG,
   		$keys,
   		click_handler
   	};
@@ -11723,16 +11947,17 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   function create_fragment$f(ctx) {
   	let div;
+  	let border_action;
   	let dispose;
 
   	const block = {
   		c: function create() {
   			div = element("div");
-  			attr_dev(div, "class", "port no-drag svelte-1erz1ih");
+  			attr_dev(div, "class", "port no-drag svelte-2emxaq");
   			attr_dev(div, "id", ctx.address);
   			toggle_class(div, "writable", ctx.writable);
   			toggle_class(div, "name", ctx.name);
-  			add_location(div, file$f, 19, 0, 270);
+  			add_location(div, file$f, 20, 0, 312);
 
   			dispose = [
   				listen_dev(div, "mousedown", ctx.mousedown, false, false, false),
@@ -11744,6 +11969,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
+  			border_action = border.call(null, div) || ({});
   		},
   		p: function update(changed, ctx) {
   			if (changed.address) {
@@ -11762,6 +11988,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		o: noop,
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div);
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			run_all(dispose);
   		}
   	};
@@ -11863,21 +12090,29 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   const file$g = "src/ui/weave/knot/Mail.svelte";
 
   function create_fragment$g(ctx) {
-  	let div5;
+  	let div6;
   	let div0;
   	let t0;
-  	let div4;
   	let div1;
   	let t1;
+  	let div5;
   	let div2;
-  	let input;
   	let t2;
   	let div3;
-  	let color_action;
+  	let input;
+  	let t3;
+  	let div4;
   	let current;
   	let dispose;
 
-  	const postage = new Postage({
+  	const postage0 = new Postage({
+  			props: {
+  				address: ctx.$whom.split(`/`).slice(0, 3).join(`/`)
+  			},
+  			$$inline: true
+  		});
+
+  	const postage1 = new Postage({
   			props: {
   				address: ctx.$whom.split(`/`).slice(0, 3).join(`/`)
   			},
@@ -11899,62 +12134,72 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   	const block = {
   		c: function create() {
-  			div5 = element("div");
+  			div6 = element("div");
   			div0 = element("div");
-  			create_component(postage.$$.fragment);
+  			create_component(postage0.$$.fragment);
   			t0 = space();
-  			div4 = element("div");
   			div1 = element("div");
-  			create_component(port0.$$.fragment);
+  			create_component(postage1.$$.fragment);
   			t1 = space();
+  			div5 = element("div");
   			div2 = element("div");
-  			input = element("input");
+  			create_component(port0.$$.fragment);
   			t2 = space();
   			div3 = element("div");
+  			input = element("input");
+  			t3 = space();
+  			div4 = element("div");
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "postage svelte-azj26s");
-  			add_location(div0, file$g, 12, 2, 252);
-  			attr_dev(div1, "class", "port left svelte-azj26s");
-  			add_location(div1, file$g, 16, 4, 375);
+  			attr_dev(div0, "class", "postage svelte-1cm99");
+  			add_location(div0, file$g, 11, 2, 183);
+  			attr_dev(div1, "class", "stamp svelte-1cm99");
+  			add_location(div1, file$g, 14, 2, 281);
+  			attr_dev(div2, "class", "port left svelte-1cm99");
+  			add_location(div2, file$g, 18, 4, 402);
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "AdDrEsS hErE");
-  			attr_dev(input, "class", "svelte-azj26s");
-  			add_location(input, file$g, 20, 6, 491);
-  			attr_dev(div2, "class", "address svelte-azj26s");
-  			add_location(div2, file$g, 19, 4, 463);
-  			attr_dev(div3, "class", "port right svelte-azj26s");
-  			add_location(div3, file$g, 22, 4, 573);
-  			attr_dev(div4, "class", "center svelte-azj26s");
-  			add_location(div4, file$g, 15, 2, 350);
-  			attr_dev(div5, "class", "mail svelte-azj26s");
-  			add_location(div5, file$g, 11, 0, 202);
+  			attr_dev(input, "class", "svelte-1cm99");
+  			add_location(input, file$g, 22, 6, 518);
+  			attr_dev(div3, "class", "address svelte-1cm99");
+  			add_location(div3, file$g, 21, 4, 490);
+  			attr_dev(div4, "class", "port right svelte-1cm99");
+  			add_location(div4, file$g, 24, 4, 600);
+  			attr_dev(div5, "class", "center svelte-1cm99");
+  			add_location(div5, file$g, 17, 2, 377);
+  			attr_dev(div6, "class", "mail svelte-1cm99");
+  			add_location(div6, file$g, 10, 0, 162);
   			dispose = listen_dev(input, "input", ctx.input_input_handler);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, div5, anchor);
-  			append_dev(div5, div0);
-  			mount_component(postage, div0, null);
-  			append_dev(div5, t0);
-  			append_dev(div5, div4);
-  			append_dev(div4, div1);
-  			mount_component(port0, div1, null);
-  			append_dev(div4, t1);
-  			append_dev(div4, div2);
-  			append_dev(div2, input);
+  			insert_dev(target, div6, anchor);
+  			append_dev(div6, div0);
+  			mount_component(postage0, div0, null);
+  			append_dev(div6, t0);
+  			append_dev(div6, div1);
+  			mount_component(postage1, div1, null);
+  			append_dev(div6, t1);
+  			append_dev(div6, div5);
+  			append_dev(div5, div2);
+  			mount_component(port0, div2, null);
+  			append_dev(div5, t2);
+  			append_dev(div5, div3);
+  			append_dev(div3, input);
   			set_input_value(input, ctx.$whom);
-  			append_dev(div4, t2);
-  			append_dev(div4, div3);
-  			mount_component(port1, div3, null);
-  			color_action = color$1.call(null, div5, ctx.$whom || `/???/`) || ({});
+  			append_dev(div5, t3);
+  			append_dev(div5, div4);
+  			mount_component(port1, div4, null);
   			current = true;
   		},
   		p: function update(changed, ctx) {
-  			const postage_changes = {};
-  			if (changed.$whom) postage_changes.address = ctx.$whom.split(`/`).slice(0, 3).join(`/`);
-  			postage.$set(postage_changes);
+  			const postage0_changes = {};
+  			if (changed.$whom) postage0_changes.address = ctx.$whom.split(`/`).slice(0, 3).join(`/`);
+  			postage0.$set(postage0_changes);
+  			const postage1_changes = {};
+  			if (changed.$whom) postage1_changes.address = ctx.$whom.split(`/`).slice(0, 3).join(`/`);
+  			postage1.$set(postage1_changes);
   			const port0_changes = {};
   			if (changed.$id) port0_changes.address = `${ctx.$id}|write`;
   			port0.$set(port0_changes);
@@ -11966,27 +12211,28 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			const port1_changes = {};
   			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
   			port1.$set(port1_changes);
-  			if (is_function(color_action.update) && changed.$whom) color_action.update.call(null, ctx.$whom || `/???/`);
   		},
   		i: function intro(local) {
   			if (current) return;
-  			transition_in(postage.$$.fragment, local);
+  			transition_in(postage0.$$.fragment, local);
+  			transition_in(postage1.$$.fragment, local);
   			transition_in(port0.$$.fragment, local);
   			transition_in(port1.$$.fragment, local);
   			current = true;
   		},
   		o: function outro(local) {
-  			transition_out(postage.$$.fragment, local);
+  			transition_out(postage0.$$.fragment, local);
+  			transition_out(postage1.$$.fragment, local);
   			transition_out(port0.$$.fragment, local);
   			transition_out(port1.$$.fragment, local);
   			current = false;
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(div5);
-  			destroy_component(postage);
+  			if (detaching) detach_dev(div6);
+  			destroy_component(postage0);
+  			destroy_component(postage1);
   			destroy_component(port0);
   			destroy_component(port1);
-  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   			dispose();
   		}
   	};
@@ -12103,11 +12349,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let t0;
   	let div1;
   	let textarea;
+  	let color_action;
+  	let border_action;
   	let t1;
   	let t2;
   	let t3;
   	let div2;
-  	let color_action;
   	let current;
   	let dispose;
 
@@ -12138,20 +12385,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t3 = space();
   			div2 = element("div");
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "port svelte-1p8xt2c");
-  			add_location(div0, file$h, 17, 4, 312);
-  			attr_dev(textarea, "class", "text svelte-1p8xt2c");
+  			attr_dev(div0, "class", "port svelte-13kv8pt");
+  			add_location(div0, file$h, 16, 4, 274);
+  			attr_dev(textarea, "class", "text svelte-13kv8pt");
   			attr_dev(textarea, "type", "text");
   			attr_dev(textarea, "placeholder", "2 + 2 = ChAiR");
-  			add_location(textarea, file$h, 21, 6, 423);
-  			attr_dev(div1, "class", "address svelte-1p8xt2c");
-  			add_location(div1, file$h, 20, 4, 395);
-  			attr_dev(div2, "class", "port svelte-1p8xt2c");
-  			add_location(div2, file$h, 29, 4, 580);
-  			attr_dev(div3, "class", "center svelte-1p8xt2c");
-  			add_location(div3, file$h, 13, 2, 239);
-  			attr_dev(div4, "class", "mail svelte-1p8xt2c");
-  			add_location(div4, file$h, 12, 0, 218);
+  			add_location(textarea, file$h, 20, 6, 385);
+  			attr_dev(div1, "class", "address svelte-13kv8pt");
+  			add_location(div1, file$h, 19, 4, 357);
+  			attr_dev(div2, "class", "port svelte-13kv8pt");
+  			add_location(div2, file$h, 30, 4, 604);
+  			attr_dev(div3, "class", "center svelte-13kv8pt");
+  			add_location(div3, file$h, 13, 2, 240);
+  			attr_dev(div4, "class", "mail svelte-13kv8pt");
+  			add_location(div4, file$h, 12, 0, 219);
   			dispose = listen_dev(textarea, "input", ctx.textarea_input_handler);
   		},
   		l: function claim(nodes) {
@@ -12166,12 +12413,13 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div3, div1);
   			append_dev(div1, textarea);
   			set_input_value(textarea, ctx.$math);
+  			color_action = color$1.call(null, textarea, JSON.stringify(ctx.$value)) || ({});
+  			border_action = border.call(null, textarea) || ({});
   			append_dev(div1, t1);
   			append_dev(div1, t2);
   			append_dev(div3, t3);
   			append_dev(div3, div2);
   			mount_component(port1, div2, null);
-  			color_action = color$1.call(null, div3, JSON.stringify(ctx.$value)) || ({});
   			current = true;
   		},
   		p: function update(changed, ctx) {
@@ -12183,11 +12431,11 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				set_input_value(textarea, ctx.$math);
   			}
 
+  			if (is_function(color_action.update) && changed.$value) color_action.update.call(null, JSON.stringify(ctx.$value));
   			if (!current || changed.$value) set_data_dev(t2, ctx.$value);
   			const port1_changes = {};
   			if (changed.$id) port1_changes.address = `${ctx.$id}|read`;
   			port1.$set(port1_changes);
-  			if (is_function(color_action.update) && changed.$value) color_action.update.call(null, JSON.stringify(ctx.$value));
   		},
   		i: function intro(local) {
   			if (current) return;
@@ -12203,8 +12451,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div4);
   			destroy_component(port0);
-  			destroy_component(port1);
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
+  			destroy_component(port1);
   			dispose();
   		}
   	};
@@ -12221,20 +12470,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   }
 
   function instance$g($$self, $$props, $$invalidate) {
-  	let $value,
-  		$$unsubscribe_value = noop,
-  		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
-
   	let $id,
   		$$unsubscribe_id = noop,
   		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
+
+  	let $value,
+  		$$unsubscribe_value = noop,
+  		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
   	let $math,
   		$$unsubscribe_math = noop,
   		$$subscribe_math = () => ($$unsubscribe_math(), $$unsubscribe_math = subscribe(math, $$value => $$invalidate("$math", $math = $$value)), math);
 
-  	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
+  	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_math());
   	let { knot } = $$props;
   	const writable_props = ["knot"];
@@ -12258,8 +12507,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			math,
   			value,
   			id,
-  			$value,
   			$id,
+  			$value,
   			$math
   		};
   	};
@@ -12269,8 +12518,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("math" in $$props) $$subscribe_math($$invalidate("math", math = $$props.math));
   		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
   		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
-  		if ("$value" in $$props) value.set($value = $$props.$value);
   		if ("$id" in $$props) id.set($id = $$props.$id);
+  		if ("$value" in $$props) value.set($value = $$props.$value);
   		if ("$math" in $$props) math.set($math = $$props.$math);
   	};
 
@@ -12297,8 +12546,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		math,
   		value,
   		id,
-  		$value,
   		$id,
+  		$value,
   		$math,
   		textarea_input_handler
   	};
@@ -12334,7 +12583,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   }
 
   var focus$1 = (node, addr) => ({
-    cancel: focus.listen(($focus) => {
+    destroy: focus.listen(($focus) => {
       if ($focus !== addr) return
       node.focus();
     })
@@ -12349,11 +12598,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let div1;
   	let div0;
   	let t1;
+  	let border_action;
   	let t2;
   	let input;
-  	let focus_action;
   	let color_action;
+  	let border_action_1;
+  	let focus_action;
   	let t3;
+  	let div2_style_value;
+  	let border_action_2;
   	let current;
   	let dispose;
 
@@ -12382,16 +12635,17 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			input = element("input");
   			t3 = space();
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "name svelte-18j6qdc");
-  			add_location(div0, file$i, 28, 4, 582);
-  			attr_dev(input, "class", "edit svelte-18j6qdc");
+  			attr_dev(div0, "class", "name svelte-1i1gj4m");
+  			add_location(div0, file$i, 30, 4, 683);
+  			attr_dev(input, "class", "edit svelte-1i1gj4m");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON plz");
-  			add_location(input, file$i, 29, 4, 617);
-  			attr_dev(div1, "class", "vbox svelte-18j6qdc");
-  			add_location(div1, file$i, 27, 2, 526);
-  			attr_dev(div2, "class", "channel svelte-18j6qdc");
-  			add_location(div2, file$i, 25, 0, 448);
+  			add_location(input, file$i, 31, 4, 729);
+  			attr_dev(div1, "class", "vbox svelte-1i1gj4m");
+  			add_location(div1, file$i, 29, 2, 660);
+  			attr_dev(div2, "class", "channel svelte-1i1gj4m");
+  			attr_dev(div2, "style", div2_style_value = `background-color:${ctx.$THEME_BG};`);
+  			add_location(div2, file$i, 27, 0, 530);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -12409,13 +12663,16 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div2, div1);
   			append_dev(div1, div0);
   			append_dev(div0, t1);
+  			border_action = border.call(null, div0) || ({});
   			append_dev(div1, t2);
   			append_dev(div1, input);
   			set_input_value(input, ctx.edit);
+  			color_action = color$1.call(null, input, JSON.stringify(ctx.name)) || ({});
+  			border_action_1 = border.call(null, input) || ({});
   			focus_action = focus$1.call(null, input, ctx.address(ctx.name)) || ({});
-  			color_action = color$1.call(null, div1, JSON.stringify(ctx.name)) || ({});
   			append_dev(div2, t3);
   			mount_component(port1, div2, null);
+  			border_action_2 = border.call(null, div2) || ({});
   			current = true;
   		},
   		p: function update(changed, ctx) {
@@ -12428,11 +12685,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				set_input_value(input, ctx.edit);
   			}
 
-  			if (is_function(focus_action.update) && changed.name) focus_action.update.call(null, ctx.address(ctx.name));
   			if (is_function(color_action.update) && changed.name) color_action.update.call(null, JSON.stringify(ctx.name));
+  			if (is_function(focus_action.update) && changed.name) focus_action.update.call(null, ctx.address(ctx.name));
   			const port1_changes = {};
   			if (changed.name) port1_changes.address = `${ctx.address(ctx.name)}|read`;
   			port1.$set(port1_changes);
+
+  			if (!current || changed.$THEME_BG && div2_style_value !== (div2_style_value = `background-color:${ctx.$THEME_BG};`)) {
+  				attr_dev(div2, "style", div2_style_value);
+  			}
   		},
   		i: function intro(local) {
   			if (current) return;
@@ -12448,9 +12709,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div2);
   			destroy_component(port0);
-  			if (focus_action && is_function(focus_action.destroy)) focus_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action_1 && is_function(border_action_1.destroy)) border_action_1.destroy();
+  			if (focus_action && is_function(focus_action.destroy)) focus_action.destroy();
   			destroy_component(port1);
+  			if (border_action_2 && is_function(border_action_2.destroy)) border_action_2.destroy();
   			run_all(dispose);
   		}
   	};
@@ -12475,6 +12739,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$unsubscribe_id = noop,
   		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
 
+  	let $THEME_BG;
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_chan());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
   	let { knot } = $$props;
@@ -12522,7 +12789,16 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	};
 
   	$$self.$capture_state = () => {
-  		return { knot, chan, name, edit, $chan, id, $id };
+  		return {
+  			knot,
+  			chan,
+  			name,
+  			edit,
+  			$chan,
+  			id,
+  			$id,
+  			$THEME_BG
+  		};
   	};
 
   	$$self.$inject_state = $$props => {
@@ -12533,6 +12809,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("$chan" in $$props) chan.set($chan = $$props.$chan);
   		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
   		if ("$id" in $$props) id.set($id = $$props.$id);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   	};
 
   	let edit;
@@ -12556,6 +12833,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		address,
   		edit,
   		id,
+  		$THEME_BG,
   		input_input_handler,
   		blur_handler,
   		keydown_handler
@@ -12617,7 +12895,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   /* src/ui/weave/knot/Stitch.svelte generated by Svelte v3.14.1 */
 
-  const { Object: Object_1$5 } = globals;
+  const { Object: Object_1$5, console: console_1$1 } = globals;
   const file$j = "src/ui/weave/knot/Stitch.svelte";
 
   function get_each_context$5(ctx, list, i) {
@@ -12627,7 +12905,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (56:4) {:else}
+  // (64:4) {:else}
   function create_else_block$1(ctx) {
   	let div;
 
@@ -12635,8 +12913,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		c: function create() {
   			div = element("div");
   			div.textContent = "/\\/\\";
-  			attr_dev(div, "class", "no-stitches svelte-1flykfe");
-  			add_location(div, file$j, 56, 6, 1165);
+  			attr_dev(div, "class", "no-stitches svelte-mt38f7");
+  			add_location(div, file$j, 64, 6, 1445);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -12650,14 +12928,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_else_block$1.name,
   		type: "else",
-  		source: "(56:4) {:else}",
+  		source: "(64:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (54:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
+  // (62:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}
   function create_each_block$5(key_1, ctx) {
   	let first;
   	let current;
@@ -12710,7 +12988,66 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$5.name,
   		type: "each",
-  		source: "(54:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}",
+  		source: "(62:4) {#each Object.entries($value) as [chan_name, chan] (chan_name)}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (68:3) {#if !is_sys}
+  function create_if_block$7(ctx) {
+  	let input;
+  	let input_style_value;
+  	let input_placeholder_value;
+  	let border_action;
+  	let dispose;
+
+  	const block = {
+  		c: function create() {
+  			input = element("input");
+  			attr_dev(input, "type", "text");
+  			attr_dev(input, "class", "add_channel svelte-mt38f7");
+  			attr_dev(input, "style", input_style_value = `background-color: ${ctx.$THEME_BG};`);
+  			attr_dev(input, "placeholder", input_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`);
+  			add_location(input, file$j, 68, 4, 1518);
+
+  			dispose = [
+  				listen_dev(input, "input", ctx.input_input_handler_1),
+  				listen_dev(input, "keypress", ctx.check_add, false, false, false),
+  				listen_dev(input, "blur", ctx.blur_handler, false, false, false)
+  			];
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, input, anchor);
+  			set_input_value(input, ctx.weave_add);
+  			border_action = border.call(null, input) || ({});
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.$THEME_BG && input_style_value !== (input_style_value = `background-color: ${ctx.$THEME_BG};`)) {
+  				attr_dev(input, "style", input_style_value);
+  			}
+
+  			if (changed.$value && input_placeholder_value !== (input_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`)) {
+  				attr_dev(input, "placeholder", input_placeholder_value);
+  			}
+
+  			if (changed.weave_add && input.value !== ctx.weave_add) {
+  				set_input_value(input, ctx.weave_add);
+  			}
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(input);
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
+  			run_all(dispose);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_if_block$7.name,
+  		type: "if",
+  		source: "(68:3) {#if !is_sys}",
   		ctx
   	});
 
@@ -12719,11 +13056,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   function create_fragment$j(ctx) {
   	let div0;
+  	let div0_style_value;
+  	let border_action;
   	let t0;
   	let div2;
   	let div1;
-  	let input0;
+  	let input;
   	let color_action;
+  	let border_action_1;
   	let t1;
   	let div4;
   	let div3;
@@ -12731,8 +13071,6 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let each_blocks = [];
   	let each_1_lookup = new Map();
   	let t3;
-  	let input1;
-  	let input1_placeholder_value;
   	let current;
   	let dispose;
 
@@ -12764,6 +13102,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		each_1_else.c();
   	}
 
+  	let if_block = !ctx.is_sys && create_if_block$7(ctx);
+
   	const block = {
   		c: function create() {
   			div0 = element("div");
@@ -12771,7 +13111,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t0 = space();
   			div2 = element("div");
   			div1 = element("div");
-  			input0 = element("input");
+  			input = element("input");
   			t1 = space();
   			div4 = element("div");
   			div3 = element("div");
@@ -12783,32 +13123,23 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			t3 = space();
-  			input1 = element("input");
-  			attr_dev(div0, "class", "port svelte-1flykfe");
-  			add_location(div0, file$j, 33, 0, 671);
-  			attr_dev(input0, "type", "text");
-  			attr_dev(input0, "class", "edit svelte-1flykfe");
-  			attr_dev(input0, "placeholder", "Name It!");
-  			add_location(input0, file$j, 43, 4, 812);
-  			attr_dev(div1, "class", "header svelte-1flykfe");
-  			add_location(div1, file$j, 39, 2, 757);
-  			attr_dev(div2, "class", "nameit svelte-1flykfe");
-  			add_location(div2, file$j, 38, 0, 734);
-  			attr_dev(div3, "class", "postage svelte-1flykfe");
-  			add_location(div3, file$j, 48, 2, 929);
-  			attr_dev(input1, "type", "text");
-  			attr_dev(input1, "class", "add_channel svelte-1flykfe");
-  			attr_dev(input1, "placeholder", input1_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`);
-  			add_location(input1, file$j, 59, 4, 1221);
-  			attr_dev(div4, "class", "board svelte-1flykfe");
-  			add_location(div4, file$j, 47, 0, 907);
-
-  			dispose = [
-  				listen_dev(input0, "input", ctx.input0_input_handler),
-  				listen_dev(input1, "input", ctx.input1_input_handler),
-  				listen_dev(input1, "keypress", ctx.check_add, false, false, false),
-  				listen_dev(input1, "blur", ctx.blur_handler, false, false, false)
-  			];
+  			if (if_block) if_block.c();
+  			attr_dev(div0, "class", "port svelte-mt38f7");
+  			attr_dev(div0, "style", div0_style_value = `background-color:${ctx.$THEME_BG};`);
+  			add_location(div0, file$j, 41, 0, 888);
+  			attr_dev(input, "type", "text");
+  			attr_dev(input, "class", "edit svelte-mt38f7");
+  			attr_dev(input, "placeholder", "Name It!");
+  			add_location(input, file$j, 51, 4, 1092);
+  			attr_dev(div1, "class", "header svelte-mt38f7");
+  			add_location(div1, file$j, 47, 2, 1037);
+  			attr_dev(div2, "class", "nameit svelte-mt38f7");
+  			add_location(div2, file$j, 46, 0, 1003);
+  			attr_dev(div3, "class", "postage svelte-mt38f7");
+  			add_location(div3, file$j, 56, 2, 1209);
+  			attr_dev(div4, "class", "board svelte-mt38f7");
+  			add_location(div4, file$j, 55, 0, 1187);
+  			dispose = listen_dev(input, "input", ctx.input_input_handler);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -12816,12 +13147,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		m: function mount(target, anchor) {
   			insert_dev(target, div0, anchor);
   			mount_component(port, div0, null);
+  			border_action = border.call(null, div0) || ({});
   			insert_dev(target, t0, anchor);
   			insert_dev(target, div2, anchor);
   			append_dev(div2, div1);
-  			append_dev(div1, input0);
-  			set_input_value(input0, ctx.$name);
+  			append_dev(div1, input);
+  			set_input_value(input, ctx.$name);
   			color_action = color$1.call(null, div1, ctx.$name) || ({});
+  			border_action_1 = border.call(null, div2) || ({});
   			insert_dev(target, t1, anchor);
   			insert_dev(target, div4, anchor);
   			append_dev(div4, div3);
@@ -12837,8 +13170,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			append_dev(div4, t3);
-  			append_dev(div4, input1);
-  			set_input_value(input1, ctx.weave_add);
+  			if (if_block) if_block.m(div4, null);
   			current = true;
   		},
   		p: function update(changed, ctx) {
@@ -12846,8 +13178,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (changed.$id) port_changes.address = `${ctx.$id}|read`;
   			port.$set(port_changes);
 
-  			if (changed.$name && input0.value !== ctx.$name) {
-  				set_input_value(input0, ctx.$name);
+  			if (!current || changed.$THEME_BG && div0_style_value !== (div0_style_value = `background-color:${ctx.$THEME_BG};`)) {
+  				attr_dev(div0, "style", div0_style_value);
+  			}
+
+  			if (changed.$name && input.value !== ctx.$name) {
+  				set_input_value(input, ctx.$name);
   			}
 
   			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
@@ -12870,12 +13206,17 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				each_1_else.m(div4, t3);
   			}
 
-  			if (!current || changed.$value && input1_placeholder_value !== (input1_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`)) {
-  				attr_dev(input1, "placeholder", input1_placeholder_value);
-  			}
-
-  			if (changed.weave_add && input1.value !== ctx.weave_add) {
-  				set_input_value(input1, ctx.weave_add);
+  			if (!ctx.is_sys) {
+  				if (if_block) {
+  					if_block.p(changed, ctx);
+  				} else {
+  					if_block = create_if_block$7(ctx);
+  					if_block.c();
+  					if_block.m(div4, null);
+  				}
+  			} else if (if_block) {
+  				if_block.d(1);
+  				if_block = null;
   			}
   		},
   		i: function intro(local) {
@@ -12902,9 +13243,11 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div0);
   			destroy_component(port);
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			if (detaching) detach_dev(t0);
   			if (detaching) detach_dev(div2);
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action_1 && is_function(border_action_1.destroy)) border_action_1.destroy();
   			if (detaching) detach_dev(t1);
   			if (detaching) detach_dev(div4);
   			destroy_component(postage);
@@ -12914,7 +13257,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			}
 
   			if (each_1_else) each_1_else.d();
-  			run_all(dispose);
+  			if (if_block) if_block.d();
+  			dispose();
   		}
   	};
 
@@ -12930,6 +13274,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   }
 
   function instance$i($$self, $$props, $$invalidate) {
+  	let $woven;
+
   	let $value,
   		$$unsubscribe_value = noop,
   		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
@@ -12938,13 +13284,16 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		$$unsubscribe_id = noop,
   		$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate("$id", $id = $$value)), id);
 
+  	let $THEME_BG;
+
   	let $name,
   		$$unsubscribe_name = noop,
   		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
-  	let $woven;
   	validate_store(woven, "woven");
   	component_subscribe($$self, woven, $$value => $$invalidate("$woven", $woven = $$value));
+  	validate_store(THEME_BG, "THEME_BG");
+  	component_subscribe($$self, THEME_BG, $$value => $$invalidate("$THEME_BG", $THEME_BG = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_id());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
@@ -12952,6 +13301,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let weave_add = ``;
 
   	const check_add = ({ which }) => {
+  		if (is_sys) {
+  			return console.warn(`Tried to add/remove to ${Wheel.SYSTEM}`);
+  		}
+
   		if (which !== 13) return;
   		const val = $value;
 
@@ -12969,15 +13322,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	const writable_props = ["knot"];
 
   	Object_1$5.keys($$props).forEach(key => {
-  		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Stitch> was created with unknown prop '${key}'`);
+  		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Stitch> was created with unknown prop '${key}'`);
   	});
 
-  	function input0_input_handler() {
+  	function input_input_handler() {
   		$name = this.value;
   		name.set($name);
   	}
 
-  	function input1_input_handler() {
+  	function input_input_handler_1() {
   		weave_add = this.value;
   		$$invalidate("weave_add", weave_add);
   	}
@@ -12997,10 +13350,12 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			id,
   			value,
   			name,
+  			is_sys,
+  			$woven,
   			$value,
   			$id,
-  			$name,
-  			$woven
+  			$THEME_BG,
+  			$name
   		};
   	};
 
@@ -13010,17 +13365,20 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if ("id" in $$props) $$subscribe_id($$invalidate("id", id = $$props.id));
   		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
   		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
+  		if ("is_sys" in $$props) $$invalidate("is_sys", is_sys = $$props.is_sys);
+  		if ("$woven" in $$props) woven.set($woven = $$props.$woven);
   		if ("$value" in $$props) value.set($value = $$props.$value);
   		if ("$id" in $$props) id.set($id = $$props.$id);
+  		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$name" in $$props) name.set($name = $$props.$name);
-  		if ("$woven" in $$props) woven.set($woven = $$props.$woven);
   	};
 
   	let id;
   	let value;
   	let name;
+  	let is_sys;
 
-  	$$self.$$.update = (changed = { knot: 1 }) => {
+  	$$self.$$.update = (changed = { knot: 1, $woven: 1 }) => {
   		if (changed.knot) {
   			 $$subscribe_id($$invalidate("id", id = knot.id));
   		}
@@ -13032,6 +13390,10 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		if (changed.knot) {
   			 $$subscribe_name($$invalidate("name", name = knot.name));
   		}
+
+  		if (changed.$woven) {
+  			 $$invalidate("is_sys", is_sys = $woven.name.get() === Wheel.SYSTEM);
+  		}
   	};
 
   	return {
@@ -13041,12 +13403,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		id,
   		value,
   		name,
+  		is_sys,
+  		$woven,
   		$value,
   		$id,
+  		$THEME_BG,
   		$name,
-  		$woven,
-  		input0_input_handler,
-  		input1_input_handler,
+  		input_input_handler,
+  		input_input_handler_1,
   		blur_handler
   	};
   }
@@ -13067,7 +13431,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		const props = options.props || ({});
 
   		if (ctx.knot === undefined && !("knot" in props)) {
-  			console.warn("<Stitch> was created without expected prop 'knot'");
+  			console_1$1.warn("<Stitch> was created without expected prop 'knot'");
   		}
   	}
 
@@ -13083,8 +13447,8 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   /* src/ui/weave/knot/Stream.svelte generated by Svelte v3.14.1 */
   const file$k = "src/ui/weave/knot/Stream.svelte";
 
-  // (18:6) {#if $value === null}
-  function create_if_block$7(ctx) {
+  // (19:6) {#if $value === null}
+  function create_if_block$8(ctx) {
   	let div0;
   	let div0_intro;
   	let t1;
@@ -13097,11 +13461,11 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			div0.textContent = "\\/\\/";
   			t1 = space();
   			div1 = element("div");
-  			div1.textContent = "JSON IT!";
-  			attr_dev(div0, "class", "doit svelte-41z4o3");
-  			add_location(div0, file$k, 18, 8, 477);
-  			attr_dev(div1, "class", "doit svelte-41z4o3");
-  			add_location(div1, file$k, 19, 8, 542);
+  			div1.textContent = "STREAM IT!";
+  			attr_dev(div0, "class", "doit svelte-1v80ykj");
+  			add_location(div0, file$k, 19, 8, 530);
+  			attr_dev(div1, "class", "doit svelte-1v80ykj");
+  			add_location(div1, file$k, 20, 8, 595);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div0, anchor);
@@ -13133,9 +13497,9 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block$7.name,
+  		id: create_if_block$8.name,
   		type: "if",
-  		source: "(18:6) {#if $value === null}",
+  		source: "(19:6) {#if $value === null}",
   		ctx
   	});
 
@@ -13152,6 +13516,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let t1;
   	let t2;
   	let color_action;
+  	let border_action;
   	let t3;
   	let current;
 
@@ -13163,7 +13528,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			$$inline: true
   		});
 
-  	let if_block = ctx.$value === null && create_if_block$7(ctx);
+  	let if_block = ctx.$value === null && create_if_block$8(ctx);
 
   	const port1 = new Port({
   			props: { address: `${ctx.$id}|read` },
@@ -13183,14 +13548,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (if_block) if_block.c();
   			t3 = space();
   			create_component(port1.$$.fragment);
-  			attr_dev(pre, "class", "flex svelte-41z4o3");
-  			add_location(pre, file$k, 16, 6, 382);
-  			attr_dev(div0, "class", "value_add svelte-41z4o3");
-  			add_location(div0, file$k, 15, 4, 352);
-  			attr_dev(div1, "class", "JSON svelte-41z4o3");
-  			add_location(div1, file$k, 14, 2, 310);
-  			attr_dev(div2, "class", "box svelte-41z4o3");
-  			add_location(div2, file$k, 12, 0, 245);
+  			attr_dev(pre, "class", "flex svelte-1v80ykj");
+  			add_location(pre, file$k, 17, 6, 435);
+  			attr_dev(div0, "class", "value_add svelte-1v80ykj");
+  			add_location(div0, file$k, 16, 4, 405);
+  			attr_dev(div1, "class", "JSON svelte-1v80ykj");
+  			add_location(div1, file$k, 15, 2, 352);
+  			attr_dev(div2, "class", "box svelte-1v80ykj");
+  			add_location(div2, file$k, 13, 0, 287);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -13206,6 +13571,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div0, t2);
   			if (if_block) if_block.m(div0, null);
   			color_action = color$1.call(null, div1, ctx.$value) || ({});
+  			border_action = border.call(null, div1) || ({});
   			append_dev(div2, t3);
   			mount_component(port1, div2, null);
   			current = true;
@@ -13218,7 +13584,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   			if (ctx.$value === null) {
   				if (!if_block) {
-  					if_block = create_if_block$7(ctx);
+  					if_block = create_if_block$8(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(div0, null);
@@ -13252,6 +13618,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			destroy_component(port0);
   			if (if_block) if_block.d();
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			destroy_component(port1);
   		}
   	};
@@ -13494,6 +13861,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	let t0;
   	let img;
   	let mirror_action;
+  	let border_action;
   	let t1;
   	let div1;
   	let current;
@@ -13521,15 +13889,15 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			t1 = space();
   			div1 = element("div");
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "port svelte-17c9bqw");
-  			add_location(div0, file$m, 14, 2, 226);
-  			attr_dev(img, "class", "view svelte-17c9bqw");
+  			attr_dev(div0, "class", "port svelte-iql4rg");
+  			add_location(div0, file$m, 15, 2, 268);
+  			attr_dev(img, "class", "view svelte-iql4rg");
   			attr_dev(img, "alt", "mirror");
-  			add_location(img, file$m, 18, 2, 304);
-  			attr_dev(div1, "class", "port svelte-17c9bqw");
-  			add_location(div1, file$m, 20, 2, 365);
-  			attr_dev(div2, "class", "main svelte-17c9bqw");
-  			add_location(div2, file$m, 13, 0, 205);
+  			add_location(img, file$m, 19, 2, 346);
+  			attr_dev(div1, "class", "port svelte-iql4rg");
+  			add_location(div1, file$m, 21, 2, 418);
+  			attr_dev(div2, "class", "main svelte-iql4rg");
+  			add_location(div2, file$m, 14, 0, 247);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -13541,6 +13909,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			append_dev(div2, t0);
   			append_dev(div2, img);
   			mirror_action = mirror.call(null, img, ctx.value.get()) || ({});
+  			border_action = border.call(null, img) || ({});
   			append_dev(div2, t1);
   			append_dev(div2, div1);
   			mount_component(port1, div1, null);
@@ -13570,6 +13939,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   			if (detaching) detach_dev(div2);
   			destroy_component(port0);
   			if (mirror_action && is_function(mirror_action.destroy)) mirror_action.destroy();
+  			if (border_action && is_function(border_action.destroy)) border_action.destroy();
   			destroy_component(port1);
   		}
   	};
@@ -13693,7 +14063,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	return child_ctx;
   }
 
-  // (54:2) <Knot      {knot}   >
+  // (55:2) <Knot      {knot}   >
   function create_default_slot$3(ctx) {
   	let t;
   	let current;
@@ -13770,14 +14140,14 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_default_slot$3.name,
   		type: "slot",
-  		source: "(54:2) <Knot      {knot}   >",
+  		source: "(55:2) <Knot      {knot}   >",
   		ctx
   	});
 
   	return block;
   }
 
-  // (53:0) {#each Object.values($knots) as knot (knot.id.get())}
+  // (54:0) {#each Object.values($knots) as knot (knot.id.get())}
   function create_each_block$6(key_1, ctx) {
   	let first;
   	let current;
@@ -13833,7 +14203,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   		block,
   		id: create_each_block$6.name,
   		type: "each",
-  		source: "(53:0) {#each Object.values($knots) as knot (knot.id.get())}",
+  		source: "(54:0) {#each Object.values($knots) as knot (knot.id.get())}",
   		ctx
   	});
 
@@ -13905,7 +14275,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   				`;`
   			].join(` `));
 
-  			add_location(div, file$n, 40, 0, 767);
+  			add_location(div, file$n, 41, 0, 768);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -14029,7 +14399,7 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
   	validate_store(zoom, "zoom");
   	component_subscribe($$self, zoom, $$value => $$invalidate("$zoom", $zoom = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_knots());
-  	scroll$1.set([$size[0] / 2, $size[1] / 2, 0]);
+  	scroll$1.set([$size[0] / 4, $size[1] / 4, 0]);
   	zoom.set(0.75);
 
   	const get_ui = knot => {
@@ -14671,5 +15041,5 @@ var app = (function (uuid, expr, twgl, Tone, Color) {
 
   return app;
 
-}(cuid, exprEval, twgl, Tone, Color));
+}(Color, cuid, exprEval, twgl, Tone));
 //# sourceMappingURL=bundle.js.map

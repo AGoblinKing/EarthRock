@@ -14,6 +14,15 @@ export default ({
 } = false) => {
   let threads_set
 
+  const exists = (id) => {
+    const [knot, channel] = id.split(`/`)
+
+    const k = w.knots.get()[knot]
+    if (!k) return false
+    if (channel === undefined) return true
+
+    return Object.keys(k.value.get()).indexOf(channel) !== -1
+  }
   const w = {
     id: read(id),
     knot: read(`weave`),
@@ -38,6 +47,20 @@ export default ({
 
       return k
     }),
+    validate: () => {
+      let dirty = false
+      const t = w.threads.get()
+      Object.entries(t).forEach(([r, w]) => {
+        if (exists(r) && exists(w)) return
+
+        dirty = true
+        delete (t[r])
+      })
+
+      if (!dirty) return
+
+      w.threads.set(t)
+    },
     toJSON: () => {
       const {
         id,
@@ -145,5 +168,6 @@ export default ({
     threads_set(threads)
   })
 
+  w.validate()
   return w
 }

@@ -1,5 +1,5 @@
 <script>
-import Tile from "/ui/image/Tile.svelte"
+import border from "/ui/action/border.js"
 import Port from "/ui/weave/Port.svelte"
 import color from "/ui/action/color.js"
 
@@ -13,23 +13,24 @@ $: id = knot.id
 <div class="mail">
   <div 
     class="center" 
-    use:color={JSON.stringify($value)}
   >
     <div class="port">
       <Port writable address={`${$id}|write`} />
     </div>
     <div class="address">
       <textarea 
+        use:color={JSON.stringify($value)}
         class="text" 
         type="text" 
+        use:border
         bind:value={$math} 
         placeholder="2 + 2 = ChAiR"
       />
       {$value}
     </div>
-    <div class="port">
+    <div class="port" >
       <Port address={`${$id}|read`} />
-  </div>
+    </div>
   </div>
 </div>
 
@@ -43,7 +44,6 @@ $: id = knot.id
 }
 
 .center {
-  background-color: #333;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -52,8 +52,6 @@ $: id = knot.id
 .port {
   display: flex;
   margin: 0.25rem;
-  border: 0.25rem solid black;
-  background-color: #333;
 }
 
 .address {
@@ -69,9 +67,8 @@ $: id = knot.id
 }
 
 .text {
-  border: 0.25rem solid  #111;
+  padding: 1rem;
   margin-bottom: 0.25rem;
-  background-color: #333;
   width: 12rem;
   margin-top: 1rem;
   font-size: 0.75rem;

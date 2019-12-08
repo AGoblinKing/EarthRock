@@ -1,6 +1,7 @@
 <script>
-import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
-import color from "/ui/action/color.js"
+import border from "/ui/action/border.js"
+import { WEAVE_EXPLORE_OPEN, THEME_BG } from "/sys/flag.js"
+
 import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
@@ -17,9 +18,10 @@ $: chans = Object.entries($value)
 
 <div 
   class="stitch"
+  use:border
   class:open
   on:click={() => { open = !open }}
-  use:color={$name}
+  style="background-color:{$THEME_BG}"
 >
   <div class="postage">
     <Postage address={`/${$w_name}/${$name}`}/>
@@ -51,7 +53,6 @@ $: chans = Object.entries($value)
   padding: 1rem;
   margin-left: 1rem;
   font-size: 0.9rem;
-  border: 0.25rem solid #111;
   border-right: none;
 }
 .stitch:hover {

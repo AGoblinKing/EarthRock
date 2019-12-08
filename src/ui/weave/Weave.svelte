@@ -1,6 +1,7 @@
 <script>
 import { size } from "/sys/screen.js"
 import { woven } from "/sys/weave.js"
+
 import { scroll, zoom } from "/sys/input.js"
 
 import MainScreen from "./MainScreen.svelte"
@@ -14,7 +15,7 @@ import * as knot_kinds from "./spawnable.js"
 
 // Reset Scroll
 scroll.set([
-  $size[0] / 2, $size[1] / 2, 0
+  $size[0] / 4, $size[1] / 4, 0
 ])
 
 zoom.set(0.75)
@@ -46,7 +47,7 @@ const get_ui = (knot) => {
       `translate3d(${$scroll[0]}px, ${$scroll[1]}px, 0)`,
       `scale(${$zoom})`,
       `;`
-    ].join(` `)
+    ].join(` `) 
   }
 >
 

@@ -1,8 +1,10 @@
 <script>
-import { WEAVE_EXPLORE_OPEN } from "/sys/flag.js"
+import { woven } from "/sys/weave.js"
+import { WEAVE_EXPLORE_OPEN, THEME_BG } from "/sys/flag.js"
 import { keys } from "/sys/key.js"
 
-import color from "/ui/action/color.js"
+import border from "/ui/action/border.js"
+
 import Stitch from "./Stitch.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
@@ -15,11 +17,15 @@ $: names = weave.names
 $: stitches = Object.values($names)
 
 let super_open = $WEAVE_EXPLORE_OPEN
+
+$: active = $woven.name.get() === $name
 </script>
 <div 
   class="weave"
   class:open
-  use:color={$name}
+  style="background-color: {$THEME_BG}"
+  use:border
+  class:active
   on:click={() => {
     if ($keys.shift) {
       open = true
@@ -64,11 +70,13 @@ let super_open = $WEAVE_EXPLORE_OPEN
   margin-right: 1rem;
 }
 
+.active {
+  background-color: rgb(25, 66, 25) !important;
+}
 .weave {
   align-items:center;
   display: flex;
   padding: 1rem;
-  border: 0.25rem solid #111;
   border-right: none;
 }
 .weave:hover {

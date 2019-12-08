@@ -2,14 +2,17 @@
 import * as Mouse from "/sys/mouse.js"
 import * as Key from "/sys/key.js"
 import * as Time from "/sys/time.js"
+
 import {
   INPUT_SCROLL_STRENGTH,
   INPUT_ZOOM_STRENGTH,
   INPUT_ZOOM_MIN
 } from "/sys/flag.js"
 
-import { read, write } from "/util/store.js"
+import { read, write, transformer } from "/util/store.js"
 import { add, length, multiply_scalar } from "/util/vector.js"
+
+export const zoom = write(0.75)
 
 // raw translate commands
 export const translate = read([0, 0, 0], (set) => {
@@ -38,7 +41,9 @@ export const translate = read([0, 0, 0], (set) => {
 
 let scroll_velocity = [0, 0, 0]
 
-export const scroll = write([0, 0, 0])
+export const scroll = transformer((data) => data.map((i) => Math.round(i)))
+
+scroll.set([0, 0, 0])
 
 Time.tick.listen(() => {
   if (Math.abs(length(scroll_velocity)) < 1) return
@@ -50,7 +55,7 @@ Time.tick.listen(() => {
 
   scroll_velocity = multiply_scalar(
     scroll_velocity,
-    0.5
+    0.25
   )
 })
 
@@ -63,8 +68,6 @@ translate.listen((t) => {
     )
   )
 })
-
-export const zoom = write(0.75)
 
 let zoom_velocity = 0
 

@@ -1,4 +1,5 @@
 <script>
+import border from "/ui/action/border.js"
 import Port from "../Port.svelte"
 import mirror from "/ui/action/mirror.js"
 
@@ -16,7 +17,7 @@ $: value = knot.value
     <Port writable address={`${$id}|write`} />
   </div>
 
-  <img use:mirror={value.get()} class="view" alt="mirror"/>
+  <img use:mirror={value.get()} use:border class="view" alt="mirror"/>
 
   <div class="port">
     <Port address={`${$id}|read`} />
@@ -29,8 +30,8 @@ $: value = knot.value
   display: flex;
   width: 200px;
   height: 200px;
-  border-left: 0.5rem solid  #333;
-  border-right: 0.5rem solid  #333;
+  border-top: none !important;
+  border-bottom: none !important;
 }
 
 .main {
@@ -40,6 +41,5 @@ $: value = knot.value
 .port {
   display: flex;
   align-items: center;
-  background-color: #333;
 } 
 </style>

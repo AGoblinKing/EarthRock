@@ -49,6 +49,7 @@ STREAM IT!
   width: 20rem;
   flex-wrap: wrap;
   display: flex;
+  transition: all 100ms linear;
 }  
 
 .box {

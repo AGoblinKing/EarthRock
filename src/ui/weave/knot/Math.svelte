@@ -75,6 +75,7 @@ $: id = knot.id
   vertical-align: middle;
   display: table-cell;
   height: 10rem;
+  transition: all 100ms linear;
 }
 
 </style>

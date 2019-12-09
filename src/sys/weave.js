@@ -331,7 +331,7 @@ zoom.listen(() => {
 
   const pos = $positions[$id]
   const bod = $bodies[$id]
-  if (!pos) return
+  if (!pos || !bod) return
 
   scroll.set([
     w / 3,

@@ -1585,7 +1585,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
 
     const pos = $positions[$id];
     const bod = $bodies[$id];
-    if (!pos) return
+    if (!pos || !bod) return
 
     scroll$1.set([
       w / 3,

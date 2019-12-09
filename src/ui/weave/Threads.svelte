@@ -2,6 +2,7 @@
 import { THEME_BORDER, THEME_BG } from "/sys/flag.js"
 import { size } from "/sys/screen.js"
 import { frame, tick } from "/sys/time.js"
+import { zoom } from "/sys/input.js"
 import { first } from "/sys/port-connection.js"
 import { position } from "/sys/mouse.js"
 import { read } from "/util/store.js"
@@ -93,6 +94,12 @@ const gradient = [
   `rgb(97, 22, 22)`,
   `rgb(15, 15, 110)`
 ]
+
+const stroke = (node, amount = 4) => ({
+  cancel: zoom.listen(($z) => {
+    node.style.strokeWidth = `${$z * amount}rem`
+  })
+})
 </script>
 
 <svg width={$size[0]} height={$size[1]} class="threads"
@@ -112,6 +119,7 @@ const gradient = [
   {#if $first} 
     <line 
         stroke={$THEME_BORDER}
+        use:stroke
         x1={first_rec.x + first_rec.width / 2} 
         y1={first_rec.y + first_rec.height / 2} 
         x2={$position[0]} 
@@ -120,6 +128,7 @@ const gradient = [
       >
       </line> 
     <line 
+    use:stroke={2}
       stroke={get_color($first, $position)} 
       x1={first_rec.x + first_rec.width / 2} 
       y1={first_rec.y + first_rec.height / 2} 
@@ -132,6 +141,7 @@ const gradient = [
 
   {#each rects as [x, y, x_id, y_id]}
       <line 
+      use:stroke
         stroke={$THEME_BORDER}
         x1={x.x + x.width / 2} 
         y1={x.y + x.height / 2} 
@@ -141,6 +151,7 @@ const gradient = [
       >
       </line> 
       <line 
+      use:stroke={2}
         stroke={$THEME_BG}
         x1={x.x + x.width / 2} 
         y1={x.y + x.height / 2} 
@@ -151,6 +162,7 @@ const gradient = [
       </line> 
       {#if $recent.has(`${x_id}-${y_id}`)}
       <line  
+      use:stroke
         stroke={$THEME_BORDER}
         x1={x.x + x.width / 2} 
         y1={x.y + x.height / 2} 
@@ -164,16 +176,9 @@ const gradient = [
 </svg>
 
 <style>
-.active {
-  stroke-width:1.1rem;
-}
 
 .line {
-  stroke-width: 2rem;
   stroke-linecap: round;
-}
-.line.thin {
-  stroke-width: 1rem;
 }
 
 .threads {

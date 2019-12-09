@@ -1,6 +1,8 @@
 <script>
 import exif from "piexifjs"
 
+import { zoom } from "/sys/input.js"
+
 import fs from "file-saver"
 import { tile } from "/util/text.js"
 import Tile from "/image/tile.js"
@@ -69,9 +71,11 @@ const save = async () => {
     fs.saveAs(exif.insert(exif.dump(obj), canvas.toDataURL(`image/jpeg`, 0.95)), `${$name}.seed.jpg`)
   }
 }
+
+$: height = 3 * 1 / $zoom
 </script>
 
-<div class="bar"></div>
+<div class="bar" style="height: {height}rem"></div>
 
 
 <div class="controls">
@@ -107,6 +111,7 @@ const save = async () => {
   position: absolute;
   bottom: 0;
   height: 3rem;
+  transition: all 100ms linear;
   width: 100%;
   border-top: 0.25rem solid rgb(3, 17, 3);
   background-color: rgb(6, 48, 4);

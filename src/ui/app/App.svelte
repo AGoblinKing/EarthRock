@@ -26,7 +26,7 @@ const view = derived(path, ([$path]) => paths[$path[0]] || Intro)
 <Tools />
 
 <div class="background">
-    <Tile random width={50} height={50} />
+    <Tile random width={25} height={25} />
 </div>
 
 <style>
@@ -38,8 +38,8 @@ const view = derived(path, ([$path]) => paths[$path[0]] || Intro)
     top: 0;
     left: 0;
     position: absolute;
-    filter: sepia(1) hue-rotate(-90deg) lighten(0.5);
-    opacity: 0.05;
+    filter: sepia(1) hue-rotate(-90deg);
+    opacity: 0.02;
     pointer-events: none;
 }
 </style>

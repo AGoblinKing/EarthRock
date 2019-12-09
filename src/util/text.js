@@ -1,6 +1,8 @@
 import { TILE_COUNT } from "/sys/flag.js"
 
 const str_color = (str) => {
+  if (!str) return `#111`
+
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash)

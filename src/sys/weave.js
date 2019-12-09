@@ -303,6 +303,7 @@ path.listen(async ($path) => {
   const k_id = $path[2] || keys[keys.length - 1]
   const knot = $names[k_id]
 
+  zoom.set(0.25)
   if (tm) clearTimeout(tm)
   tm = setTimeout(() => {
     tm = false
@@ -314,6 +315,10 @@ path.listen(async ($path) => {
     const bod = $bodies[$id]
     if (!pos) return
 
+    zoom.set($path[2]
+      ? 0.5
+      : 0.1
+    )
     scroll.set([
       w / 3,
       -(pos[1] + bod[1]) * zoom.get() + h - 20,

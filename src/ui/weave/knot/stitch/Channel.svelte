@@ -76,12 +76,13 @@ const address = (channel) => `${$id}/${channel}`
   
 }
 .channel {
+  font-size: 1.5rem;
   display: flex;
   margin: 2rem 0;
-  padding: 0rem 1rem;
+  padding: 0rem 0.5rem;
   justify-content: center;
   align-items: center;
-  width: 30rem;
+  width: 40rem;
 }
 
 .channel:hover {

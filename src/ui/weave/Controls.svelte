@@ -98,8 +98,9 @@ const save = async () => {
   position: absolute;
   display: flex;
   align-items: center;
-  justify-content: center;
+
   bottom: 0;
+  pointer-events: none;
   width: 100%;
 }
 .bar {
@@ -107,14 +108,16 @@ const save = async () => {
   bottom: 0;
   height: 3rem;
   width: 100%;
-  border-top: 0.25rem solid black;
-  background-color: #333;
+  border-top: 0.25rem solid rgb(3, 17, 3);
+  background-color: rgb(6, 48, 4);
+  pointer-events: none;
 }
 
 .play, .save {
   margin: 0 1rem;
   font-size: 2rem;
   color: white;
+  pointer-events: all;
   background-color: #222;
   transition: all 100ms linear;
   border: 0.25rem solid black;

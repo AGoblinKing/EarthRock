@@ -74,7 +74,7 @@ const check_add = ({ which }) => {
       bind:value={weave_add} 
       on:keypress={check_add} 
       on:blur={() => { weave_add = `` }}
-      placeholder={`-${Object.keys($value)[0]} to remove!`}
+      placeholder={`-${Object.keys($value)[0]}?`}
     />
   {/if}
 </div>
@@ -88,7 +88,7 @@ const check_add = ({ which }) => {
   align-self: center;
   display: flex;
   justify-self: center;
-  opacity: 0.05;
+  opacity: 0.025;
   pointer-events: none;
 }
 
@@ -113,6 +113,7 @@ const check_add = ({ which }) => {
   padding: 1rem;
   flex: 1;
   text-align: center;
+  font-size: 1.25rem;
   width: 25rem;
 
 }
@@ -139,6 +140,7 @@ const check_add = ({ which }) => {
   width: 100%;
   border-top: none !important;
   border-left: none !important;
+  font-size: 1.25rem;
   border-right: none !important;
 }
 
@@ -146,6 +148,7 @@ const check_add = ({ which }) => {
   text-align: center;
   padding: 1rem;
   width: 100%;
+  font-size: 1.25rem;
 }
 
 .edit:hover {

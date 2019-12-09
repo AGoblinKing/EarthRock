@@ -32,9 +32,9 @@ $: id = knot.id
 .stamp {
   align-self: flex-end;
   position: absolute;
-  width: 5rem;
+  width: 3rem;
   display: flex;
-  height: 5rem;
+  height: 3rem;
 }
 .postage {
   position: absolute;

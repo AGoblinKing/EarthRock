@@ -18,7 +18,7 @@ scroll.set([
   $size[0] / 4, $size[1] / 4, 0
 ])
 
-zoom.set(0.75)
+zoom.set(0.50)
 
 $: knots = $woven.knots
 $: weave = $woven

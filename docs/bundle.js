@@ -867,15 +867,18 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
           ([
             mail_id,
             address
-          ]) => get(address).subscribe((value_new) => {
-            knots[mail_id].set(value_new);
-            feed_set({
-              reader: address,
-              writer: `${weave_name}/${mail_id}`,
-              value: value_new
-            });
+          ]) => {
+            const k = get(address);
+            if (!k) return () => {}
+            return k.subscribe((value_new) => {
+              knots[mail_id].set(value_new);
+              feed_set({
+                reader: address,
+                writer: `${weave_name}/${mail_id}`,
+                value: value_new
+              });
+            })
           })
-        )
     ]);
 
     running_set({
@@ -1253,6 +1256,10 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   init();
 
   const path = transformer((path_new) => {
+    if (Array.isArray(path_new)) {
+      return path_new
+    }
+
     const path_split = path_new.split(`/`);
     if (window.location.pathname === path_new) {
       return path_split
@@ -1525,6 +1532,9 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
     if (dirty) positions.set($positions);
   });
 
+  let tm;
+
+  let last_focus;
   path.listen(async ($path) => {
     if (
       $path[0] !== `weave` ||
@@ -1540,26 +1550,48 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
     woven.set($path[1]);
 
     const [w, h] = size.get();
-    scroll$1.set([w / 3, h / 4, 0]);
+    scroll$1.set([w / 3, 0, 0]);
 
-    if (!$path[2]) return
+    const $names = woven.get().names.get();
+    const keys = Object.keys($names);
+    const k_id = $path[2] || keys[keys.length - 1];
+    const knot = $names[k_id];
 
-    const knot = woven.get().names.get()[$path[2]];
-
-    setTimeout(() => {
+    if (tm) clearTimeout(tm);
+    tm = setTimeout(() => {
+      tm = false;
       const $positions = positions.get();
+      const $bodies = bodies.get();
       const $id = knot.id.get();
-
+      last_focus = $id;
       const pos = $positions[$id];
-
+      const bod = $bodies[$id];
       if (!pos) return
 
       scroll$1.set([
         w / 3,
-        -pos[1] * zoom.get() + h / 4,
+        -(pos[1] + bod[1]) * zoom.get() + h - 20,
         0
       ]);
     }, 100);
+  });
+
+  zoom.listen(() => {
+    if (!last_focus) return
+    const [w, h] = size.get();
+    const $positions = positions.get();
+    const $bodies = bodies.get();
+    const $id = last_focus;
+
+    const pos = $positions[$id];
+    const bod = $bodies[$id];
+    if (!pos) return
+
+    scroll$1.set([
+      w / 3,
+      -(pos[1] + bod[1]) * zoom.get() + h - 20,
+      0
+    ]);
   });
 
   const tie = (items) =>
@@ -8140,7 +8172,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   var FileSaver_min = createCommonjsModule(function (module, exports) {
   (function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-  //# sourceMappingURL=FileSaver.min.js.map
+
   });
 
   /* src/ui/weave/Controls.svelte generated by Svelte v3.14.1 */
@@ -8163,7 +8195,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   		c: function create() {
   			div = element("div");
   			if_block.c();
-  			attr_dev(div, "class", "play svelte-oye7pq");
+  			attr_dev(div, "class", "play svelte-15pip82");
   			toggle_class(div, "runs", ctx.runs);
   			add_location(div, file$6, 84, 2, 1593);
   			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
@@ -8277,11 +8309,11 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   			div1.textContent = "\\/";
   			t2 = space();
   			if (if_block) if_block.c();
-  			attr_dev(div0, "class", "bar svelte-oye7pq");
+  			attr_dev(div0, "class", "bar svelte-15pip82");
   			add_location(div0, file$6, 73, 0, 1446);
-  			attr_dev(div1, "class", "save svelte-oye7pq");
+  			attr_dev(div1, "class", "save svelte-15pip82");
   			add_location(div1, file$6, 77, 2, 1497);
-  			attr_dev(div2, "class", "controls svelte-oye7pq");
+  			attr_dev(div2, "class", "controls svelte-15pip82");
   			add_location(div2, file$6, 76, 0, 1472);
   			dispose = listen_dev(div1, "click", ctx.save, false, false, false);
   		},
@@ -10022,7 +10054,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   			t0 = text(t0_value);
   			t1 = space();
   			attr_dev(div, "class", "kind svelte-1ilb0s7");
-  			add_location(div, file$a, 158, 8, 2968);
+  			add_location(div, file$a, 158, 8, 2967);
   			dispose = listen_dev(div, "mouseup", mouseup_handler, false, false, false);
   			this.first = div;
   		},
@@ -10075,7 +10107,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   		c: function create() {
   			div1 = element("div");
   			div0 = element("div");
-  			div0.textContent = "SPAWN A ...";
+  			div0.textContent = "GROW A ...";
   			t1 = space();
 
   			for (let i = 0; i < each_blocks.length; i += 1) {
@@ -12173,23 +12205,23 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   			t3 = space();
   			div4 = element("div");
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "postage svelte-1cm99");
+  			attr_dev(div0, "class", "postage svelte-i142gl");
   			add_location(div0, file$g, 11, 2, 183);
-  			attr_dev(div1, "class", "stamp svelte-1cm99");
+  			attr_dev(div1, "class", "stamp svelte-i142gl");
   			add_location(div1, file$g, 14, 2, 281);
-  			attr_dev(div2, "class", "port left svelte-1cm99");
+  			attr_dev(div2, "class", "port left svelte-i142gl");
   			add_location(div2, file$g, 18, 4, 402);
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "AdDrEsS hErE");
-  			attr_dev(input, "class", "svelte-1cm99");
+  			attr_dev(input, "class", "svelte-i142gl");
   			add_location(input, file$g, 22, 6, 518);
-  			attr_dev(div3, "class", "address svelte-1cm99");
+  			attr_dev(div3, "class", "address svelte-i142gl");
   			add_location(div3, file$g, 21, 4, 490);
-  			attr_dev(div4, "class", "port right svelte-1cm99");
+  			attr_dev(div4, "class", "port right svelte-i142gl");
   			add_location(div4, file$g, 24, 4, 600);
-  			attr_dev(div5, "class", "center svelte-1cm99");
+  			attr_dev(div5, "class", "center svelte-i142gl");
   			add_location(div5, file$g, 17, 2, 377);
-  			attr_dev(div6, "class", "mail svelte-1cm99");
+  			attr_dev(div6, "class", "mail svelte-i142gl");
   			add_location(div6, file$g, 10, 0, 162);
   			dispose = listen_dev(input, "input", ctx.input_input_handler);
   		},
@@ -12658,15 +12690,15 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   			input = element("input");
   			t3 = space();
   			create_component(port1.$$.fragment);
-  			attr_dev(div0, "class", "name svelte-1i1gj4m");
+  			attr_dev(div0, "class", "name svelte-iqspg7");
   			add_location(div0, file$i, 30, 4, 683);
-  			attr_dev(input, "class", "edit svelte-1i1gj4m");
+  			attr_dev(input, "class", "edit svelte-iqspg7");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON plz");
   			add_location(input, file$i, 31, 4, 729);
-  			attr_dev(div1, "class", "vbox svelte-1i1gj4m");
+  			attr_dev(div1, "class", "vbox svelte-iqspg7");
   			add_location(div1, file$i, 29, 2, 660);
-  			attr_dev(div2, "class", "channel svelte-1i1gj4m");
+  			attr_dev(div2, "class", "channel svelte-iqspg7");
   			attr_dev(div2, "style", div2_style_value = `background-color:${ctx.$THEME_BG};`);
   			add_location(div2, file$i, 27, 0, 530);
 
@@ -12936,7 +12968,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   		c: function create() {
   			div = element("div");
   			div.textContent = "/\\/\\";
-  			attr_dev(div, "class", "no-stitches svelte-mt38f7");
+  			attr_dev(div, "class", "no-stitches svelte-1w5vrap");
   			add_location(div, file$j, 64, 6, 1445);
   		},
   		m: function mount(target, anchor) {
@@ -13030,9 +13062,9 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   		c: function create() {
   			input = element("input");
   			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "add_channel svelte-mt38f7");
+  			attr_dev(input, "class", "add_channel svelte-1w5vrap");
   			attr_dev(input, "style", input_style_value = `background-color: ${ctx.$THEME_BG};`);
-  			attr_dev(input, "placeholder", input_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`);
+  			attr_dev(input, "placeholder", input_placeholder_value = `-${Object.keys(ctx.$value)[0]}?`);
   			add_location(input, file$j, 68, 4, 1518);
 
   			dispose = [
@@ -13051,7 +13083,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   				attr_dev(input, "style", input_style_value);
   			}
 
-  			if (changed.$value && input_placeholder_value !== (input_placeholder_value = `-${Object.keys(ctx.$value)[0]} to remove!`)) {
+  			if (changed.$value && input_placeholder_value !== (input_placeholder_value = `-${Object.keys(ctx.$value)[0]}?`)) {
   				attr_dev(input, "placeholder", input_placeholder_value);
   			}
 
@@ -13147,20 +13179,20 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
 
   			t3 = space();
   			if (if_block) if_block.c();
-  			attr_dev(div0, "class", "port svelte-mt38f7");
+  			attr_dev(div0, "class", "port svelte-1w5vrap");
   			attr_dev(div0, "style", div0_style_value = `background-color:${ctx.$THEME_BG};`);
   			add_location(div0, file$j, 41, 0, 888);
   			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "edit svelte-mt38f7");
+  			attr_dev(input, "class", "edit svelte-1w5vrap");
   			attr_dev(input, "placeholder", "Name It!");
   			add_location(input, file$j, 51, 4, 1092);
-  			attr_dev(div1, "class", "header svelte-mt38f7");
+  			attr_dev(div1, "class", "header svelte-1w5vrap");
   			add_location(div1, file$j, 47, 2, 1037);
-  			attr_dev(div2, "class", "nameit svelte-mt38f7");
+  			attr_dev(div2, "class", "nameit svelte-1w5vrap");
   			add_location(div2, file$j, 46, 0, 1003);
-  			attr_dev(div3, "class", "postage svelte-mt38f7");
+  			attr_dev(div3, "class", "postage svelte-1w5vrap");
   			add_location(div3, file$j, 56, 2, 1209);
-  			attr_dev(div4, "class", "board svelte-mt38f7");
+  			attr_dev(div4, "class", "board svelte-1w5vrap");
   			add_location(div4, file$j, 55, 0, 1187);
   			dispose = listen_dev(input, "input", ctx.input_input_handler);
   		},
@@ -14423,7 +14455,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   	component_subscribe($$self, zoom, $$value => $$invalidate("$zoom", $zoom = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_knots());
   	scroll$1.set([$size[0] / 4, $size[1] / 4, 0]);
-  	zoom.set(0.75);
+  	zoom.set(0.5);
 
   	const get_ui = knot => {
   		const ui = knot_kinds[knot.knot.get()];

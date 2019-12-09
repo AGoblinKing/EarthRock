@@ -153,7 +153,7 @@ let name
   <Knot {position} {knot}>
     <div class="prompt">
       <div class="title">
-      SPAWN A ...
+      GROW A ...
       </div>
       {#each arr_knots as [kind, fn] (kind)}
         <div class="kind" use:color={kind} on:mouseup={() => create(kind)}>

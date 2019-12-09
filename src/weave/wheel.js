@@ -169,15 +169,18 @@ export const start = (weave_name) => {
         ([
           mail_id,
           address
-        ]) => get(address).subscribe((value_new) => {
-          knots[mail_id].set(value_new)
-          feed_set({
-            reader: address,
-            writer: `${weave_name}/${mail_id}`,
-            value: value_new
+        ]) => {
+          const k = get(address)
+          if (!k) return () => {}
+          return k.subscribe((value_new) => {
+            knots[mail_id].set(value_new)
+            feed_set({
+              reader: address,
+              writer: `${weave_name}/${mail_id}`,
+              value: value_new
+            })
           })
         })
-      )
   ])
 
   running_set({

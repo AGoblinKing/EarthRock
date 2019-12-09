@@ -16,7 +16,7 @@ const click = () => {
 }
 
 const discord = () => {
-  window.open(`https://discord.gg/HnvRacKS`, `_blank`)
+  window.open(`https://discord.gg/HnvRaKS`, `_blank`)
   click()
 }
 

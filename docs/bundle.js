@@ -4537,26 +4537,26 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   			a = element("a");
   			a.textContent = "[ GPL3 - //github.com/agoblinking/EarthRock]";
   			attr_dev(h1, "class", "title svelte-sh9sbr");
-  			add_location(h1, file, 34, 0, 630);
+  			add_location(h1, file, 34, 0, 629);
   			attr_dev(h2, "class", "desc svelte-sh9sbr");
-  			add_location(h2, file, 35, 0, 663);
+  			add_location(h2, file, 35, 0, 662);
   			attr_dev(button0, "class", "svelte-sh9sbr");
-  			add_location(button0, file, 48, 4, 952);
+  			add_location(button0, file, 48, 4, 951);
   			attr_dev(button1, "class", "svelte-sh9sbr");
-  			add_location(button1, file, 53, 4, 1051);
+  			add_location(button1, file, 53, 4, 1050);
   			attr_dev(button2, "class", "svelte-sh9sbr");
-  			add_location(button2, file, 58, 4, 1150);
+  			add_location(button2, file, 58, 4, 1149);
   			attr_dev(div0, "class", "menu svelte-sh9sbr");
-  			add_location(div0, file, 37, 0, 714);
-  			add_location(br, file, 66, 2, 1341);
+  			add_location(div0, file, 37, 0, 713);
+  			add_location(br, file, 66, 2, 1340);
   			attr_dev(a, "class", "link svelte-sh9sbr");
   			attr_dev(a, "target", "_new");
   			attr_dev(a, "href", "https://github.com/AGoblinKing/EarthRock");
-  			add_location(a, file, 67, 2, 1349);
+  			add_location(a, file, 67, 2, 1348);
   			attr_dev(div1, "class", "notice svelte-sh9sbr");
-  			add_location(div1, file, 64, 0, 1254);
+  			add_location(div1, file, 64, 0, 1253);
   			attr_dev(div2, "class", "intro svelte-sh9sbr");
-  			add_location(div2, file, 32, 0, 525);
+  			add_location(div2, file, 32, 0, 524);
 
   			dispose = [
   				listen_dev(button0, "mouseenter", ctx.mouseOver, false, false, false),
@@ -4638,7 +4638,7 @@ var app = (function (Color, uuid, expr, twgl, Tone) {
   	};
 
   	const discord = () => {
-  		window.open(`https://discord.gg/HnvRacKS`, `_blank`);
+  		window.open(`https://discord.gg/HnvRaKS`, `_blank`);
   		click();
   	};
 

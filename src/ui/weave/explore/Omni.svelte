@@ -1,4 +1,5 @@
 <script>
+import { THEME_BORDER } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 export let command = () => {}
 let omni = ``
@@ -53,6 +54,7 @@ const execute = () => {
 
 <input type="text"
   class="omni"
+  style="border: 0.25rem solid {$THEME_BORDER}"
   bind:value={omni}
   on:keydown={(e) => {
     if (e.which !== 13) return
@@ -68,6 +70,7 @@ const execute = () => {
   width: 100%;
   padding: 0.5rem;
   border: 0.25rem solid #333;
+  margin-top: -0.25rem;
   background-color: #111;
 }
 .omni:hover {

@@ -223,23 +223,23 @@ var app = (function (Color, uuid, expr, twgl) {
     }).set(name)
   });
 
-  var stream = () => {
-    const value = write();
-    const set = value.set;
+  var stream = ({
+    value = null
+  }) => {
+    const v = write();
+    const set = v.set;
 
-    value.set = (val) => {
+    v.set = (val) => {
       try {
         set(JSON.parse(val));
       } catch (ex) {
         set(val);
       }
     };
-
-    value.set(`null`);
-
+    v.set(value);
     return ({
       knot: read(`stream`),
-      value
+      value: v
     })
   };
 
@@ -256,8 +256,8 @@ var app = (function (Color, uuid, expr, twgl) {
 
   // math m = /sys/mouse/position; i = ./something/position; i[0] + m[0]
 
-  const re_id = /\.?\/[a-zA-Z \/]+/g;
-  const whitespace = /[ .]./g;
+  const re_id = /\$?\.?\/[a-zA-Z \/]+/g;
+  const whitespace = /[ .]/g;
 
   const escape = (str) =>
     str.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`); // $& means the whole matched string
@@ -274,26 +274,38 @@ var app = (function (Color, uuid, expr, twgl) {
 
     const values = write({});
 
-    const math_run = (expression) => {
+    const math_run = (expression) => requestAnimationFrame(() => {
       const matches = expression.match(re_id);
       const vs = {};
 
       new Set(matches).forEach((item) => {
+        const shh = item[0] === `$`;
         const gette = item
           .replace(`.`, `/${weave.name.get()}`)
+          .replace(`$`, ``)
           .trim();
 
         const k = Wheel.get(gette);
-        if (!k) return
-
         const name = gette.replace(whitespace, ``).replace(re_var, ``);
+
+        if (!k) {
+          vs[name] = {
+            k: {
+              toJSON: () => null
+            },
+            shh: true
+          };
+          return
+        }
 
         expression = expression.replace(
           new RegExp(escape(item), `g`),
           name
         );
-
-        vs[name] = k;
+        vs[name] = {
+          k,
+          shh
+        };
       });
 
       // also wtf dont recompile expression each time
@@ -303,20 +315,18 @@ var app = (function (Color, uuid, expr, twgl) {
       } catch (ex) {
         return console.warn(`MATH`, ex)
       }
-    };
+    });
 
     const m = ({
       knot: read(`math`),
       math: transformer((expression) => {
         math_run(expression);
         return expression
-      }).set(math$1),
+      }),
       value: write(value)
     });
 
     const set = m.value.set;
-    math_run(math$1);
-
     m.value.set = (val) => {
       const vs = values.get();
       val = val === undefined
@@ -325,22 +335,28 @@ var app = (function (Color, uuid, expr, twgl) {
 
       const result = math_fn({
         ...Object.fromEntries(Object.entries(vs).map(
-          ([key, k]) => [key, k.toJSON()]
+          ([key, { k }]) => [key, k.toJSON() === undefined
+            ? null
+            : k.toJSON()
+          ]
         )),
         v: val
       });
       set(result);
       return m.value
     };
-
+    m.math.set(math$1);
     life(() => {
+      math_run(m.math.get());
       const cancels = new Set();
       //
       const cancel_vs = values.listen((vs) => {
         cancels.forEach((cancel) => cancel());
         cancels.clear();
 
-        Object.entries(vs).forEach(([key, k]) => {
+        Object.entries(vs).forEach(([key, { k, shh }]) => {
+          if (shh) return
+
           cancels.add(k.listen(m.value.poke));
         });
       });
@@ -358,18 +374,24 @@ var app = (function (Color, uuid, expr, twgl) {
   var mail = ({
     whom = `/sys/mouse/position`,
     weave,
-    id
+    id,
+    life
   }) => {
     const value = write();
     const { set } = value;
 
+    const fix = (address) => address
+      .replace(`$`, ``)
+      .replace(`.`, `/${weave.name.get()}`);
+
     // when set hit up the remote
     value.set = (value_new) => {
-      const $whom = m.whom.get().replace(`.`, `/${weave.id.get()}`);
+      const $whom = fix(m.whom.get());
+
       const v = Wheel.get($whom);
 
       if (!v || !v.set) {
-        console.warn(`tried to mail a readable or unknown`, m.whom.get());
+        console.warn(`tried to mail a readable or unknown`, m.whom.get(), $whom);
         return
       }
 
@@ -379,18 +401,43 @@ var app = (function (Color, uuid, expr, twgl) {
     // Subscribe to remote
     const m = ({
       knot: read(`mail`),
-      whom: transformer((whom_new) => {
-        weave.mails.update(($mails) => ({
-          ...$mails,
-          [id]: whom_new.replace(`.`, `/${weave.id.get()}`)
-        }));
-
-        return whom_new
-      }).set(whom),
+      whom: write(whom),
       value,
       set
     });
 
+    life(() => {
+      const cancels = new Set();
+      const clear = () => {
+        cancels.forEach((fn) => fn());
+        cancels.clear();
+      };
+
+      const cancel_whom = m.whom.listen(($whom) => {
+        clear();
+        $whom = $whom.replace(`.`, weave.name.get());
+
+        if ($whom[0] === `$`) {
+          $whom = $whom.replace(`$`, ``);
+          const thing = Wheel.get($whom);
+          if (!thing) return set(null)
+
+          set(thing.get());
+        }
+
+        const thing = Wheel.get($whom);
+        if (!thing) return set(null)
+
+        cancels.add(thing.listen(($thing) => {
+          set($thing);
+        }));
+      });
+
+      return () => {
+        cancel_whom();
+        clear();
+      }
+    });
     return m
   };
 
@@ -452,7 +499,6 @@ var app = (function (Color, uuid, expr, twgl) {
       threads: write(threads),
 
       lives: write([]),
-      mails: write({}),
       rezed: write(rezed),
       validate: () => {
         let dirty = false;
@@ -609,7 +655,6 @@ var app = (function (Color, uuid, expr, twgl) {
         )
     ));
 
-    w.validate();
     return w
   };
 
@@ -619,6 +664,12 @@ var app = (function (Color, uuid, expr, twgl) {
   const feed = read({}, (set) => {
     feed_set = set;
   });
+
+  const feed_add = (address) => {
+    const $f = feed.get();
+    $f[address] = Date.now();
+    feed_set($f);
+  };
 
   // weaves [name]weave
   const weaves = write({
@@ -751,10 +802,17 @@ var app = (function (Color, uuid, expr, twgl) {
           writer
         ]) => {
           const r = by_id(reader);
-          const w = by_id(writer);
+          const wr = by_id(writer);
+          if (!wr || !r) {
+            w.threads.update(($t) => {
+              delete $t[reader];
+              return $t
+            });
+            return () => {}
+          }
 
           return r.subscribe(($val) => {
-            w.set($val);
+            wr.set($val);
 
             // costly debug thingy,
             // TODO: better way?
@@ -766,36 +824,8 @@ var app = (function (Color, uuid, expr, twgl) {
             feed_set($f);
           })
         }),
-      // frames
-      ...w.lives.get().map((cb) => cb()),
-
-      // ramp
-      ...Object.entries(w.mails.get())
-        .map(
-          ([
-            mail_id,
-            address
-          ]) => {
-            const k = get(address);
-            if (!k) return () => {}
-            return k.subscribe((value_new) => {
-              if (!knots[mail_id]) {
-                // rogue mail entry
-                w.mails.update(($mail) => {
-                  delete $mail[mail_id];
-                  return $mail
-                });
-                return
-              }
-              knots[mail_id].set(value_new);
-
-              const $f = feed.get();
-              $f[address] = Date.now();
-              $f[`${weave_name}/${mail_id}`] = Date.now();
-
-              feed_set($f);
-            })
-          })
+      // lives
+      ...w.lives.get().map((cb) => cb())
     ]);
 
     running_set({
@@ -836,10 +866,13 @@ var app = (function (Color, uuid, expr, twgl) {
     running: bump(running)
   });
 
+  const REG_ID = /\$?\.?\/[a-zA-Z \/]+/g;
+
   var Wheel$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     SYSTEM: SYSTEM,
     feed: feed,
+    feed_add: feed_add,
     weaves: weaves,
     running: running,
     trash: trash,
@@ -850,7 +883,8 @@ var app = (function (Color, uuid, expr, twgl) {
     start: start,
     stop: stop,
     restart: restart,
-    toJSON: toJSON
+    toJSON: toJSON,
+    REG_ID: REG_ID
   });
 
   window.Wheel = Wheel$1;
@@ -934,25 +968,27 @@ var app = (function (Color, uuid, expr, twgl) {
     sprite_frag
   ]));
 
-  const up = [0, 1, 0];
+  const validate = ({ set }) => (val) => {
+    if (!Array.isArray(val)) return
+    set(val);
+  };
 
   const camera = write(twgl.m4.identity());
   const position$1 = write([0, 0, 0]);
   const look = write([0, 0, -1]);
 
-  const update = () => {
-    const c = camera.get();
+  look.set = validate(look);
+  position$1.set = validate(position$1);
 
-    twgl.m4.lookAt(position$1.get(), look.get(), up, c);
-
-    camera.set(c);
-  };
-
-  look.listen(update);
-  position$1.listen(update);
+  var camera$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    camera: camera,
+    position: position$1,
+    look: look
+  });
 
   const { m4 } = twgl;
-
+  const up = [0, 1, 0];
   var webgl = () => {
     const canvas = document.createElement(`canvas`);
     canvas.width = 100;
@@ -1020,8 +1056,11 @@ var app = (function (Color, uuid, expr, twgl) {
         0.01,
         2000
       );
+      const c = camera.get();
+      m4.lookAt(position$1.get(), look.get(), up, c);
 
-      m4.inverse(camera.get(), view);
+      m4.inverse(c, view);
+      camera.set(c);
       m4.multiply(projection, view, view_projection);
 
       const { buffer, uniforms } = snapshot();
@@ -1336,7 +1375,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
     running.forEach((r) => {
       if (r.id === Wheel.SYSTEM) return
-
+      if (!Wheel.get(r.id)) return
       Wheel.start(r.id);
     });
 
@@ -1365,7 +1404,8 @@ var app = (function (Color, uuid, expr, twgl) {
       screen,
       input,
       key,
-      flag
+      flag,
+      camera: camera$1
     })
   });
 
@@ -1502,7 +1542,7 @@ var app = (function (Color, uuid, expr, twgl) {
           while (dirty_components.length) {
               const component = dirty_components.shift();
               set_current_component(component);
-              update$1(component.$$);
+              update(component.$$);
           }
           while (binding_callbacks.length)
               binding_callbacks.pop()();
@@ -1524,7 +1564,7 @@ var app = (function (Color, uuid, expr, twgl) {
       }
       update_scheduled = false;
   }
-  function update$1($$) {
+  function update($$) {
       if ($$.fragment !== null) {
           $$.update($$.dirty);
           run_all($$.before_update);
@@ -4919,7 +4959,7 @@ var app = (function (Color, uuid, expr, twgl) {
       update: (txt) => {
         const col = Color(color(JSON.stringify(txt)));
 
-        node.style.backgroundColor = col.blend(Color(`#111`), 0.7).toCSS();
+        node.style.backgroundColor = col.setAlpha(0.25).toCSS();
       }
     };
 
@@ -5374,9 +5414,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			input = element("input");
   			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "omni svelte-dgpoa3");
+  			attr_dev(input, "class", "omni svelte-147gyvi");
+  			set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			attr_dev(input, "placeholder", ctx.tru_placeholder);
-  			add_location(input, file$5, 53, 0, 1015);
+  			add_location(input, file$5, 54, 0, 1059);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -5393,6 +5434,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			focusd_action = ctx.focusd.call(null, input, ctx.focus) || ({});
   		},
   		p: function update(changed, ctx) {
+  			if (changed.$THEME_BORDER) {
+  				set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
+  			}
+
   			if (changed.tru_placeholder) {
   				attr_dev(input, "placeholder", ctx.tru_placeholder);
   			}
@@ -5425,8 +5470,11 @@ var app = (function (Color, uuid, expr, twgl) {
 
   function instance$5($$self, $$props, $$invalidate) {
   	let $tick;
+  	let $THEME_BORDER;
   	validate_store(tick, "tick");
   	component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
+  	validate_store(THEME_BORDER, "THEME_BORDER");
+  	component_subscribe($$self, THEME_BORDER, $$value => $$invalidate("$THEME_BORDER", $THEME_BORDER = $$value));
 
   	let { command = () => {
   		
@@ -5505,7 +5553,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			focus,
   			placeholder,
   			tru_placeholder,
-  			$tick
+  			$tick,
+  			$THEME_BORDER
   		};
   	};
 
@@ -5517,6 +5566,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("placeholder" in $$props) $$invalidate("placeholder", placeholder = $$props.placeholder);
   		if ("tru_placeholder" in $$props) $$invalidate("tru_placeholder", tru_placeholder = $$props.tru_placeholder);
   		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
+  		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
   	};
 
   	let tru_placeholder;
@@ -5535,6 +5585,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		focusd,
   		execute,
   		tru_placeholder,
+  		$THEME_BORDER,
   		input_input_handler,
   		keydown_handler
   	};
@@ -5579,55 +5630,53 @@ var app = (function (Color, uuid, expr, twgl) {
   }
 
   /* src/ui/weave/explore/Thread.svelte generated by Svelte v3.14.1 */
+
+  const { Object: Object_1 } = globals;
   const file$6 = "src/ui/weave/explore/Thread.svelte";
 
   function get_each_context(ctx, list, i) {
-  	const child_ctx = Object.create(ctx);
+  	const child_ctx = Object_1.create(ctx);
   	child_ctx.link = list[i];
   	return child_ctx;
   }
 
-  // (135:2) {:else}
-  function create_else_block_1(ctx) {
-  	let input;
-  	let input_size_value;
+  // (212:2) {:else}
+  function create_else_block_2(ctx) {
+  	let textarea;
+  	let textarea_style_value;
   	let focus_action;
   	let dispose;
 
   	const block = {
   		c: function create() {
-  			input = element("input");
-  			attr_dev(input, "class", "edit svelte-vl2tg6");
-  			attr_dev(input, "type", "text");
-  			attr_dev(input, "style", ctx.style);
-  			attr_dev(input, "size", input_size_value = Math.max(ctx.edit.length, 5));
-  			add_location(input, file$6, 135, 4, 2592);
+  			textarea = element("textarea");
+  			attr_dev(textarea, "class", "edit svelte-w7naj0");
+  			attr_dev(textarea, "type", "text");
+  			attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
+  			add_location(textarea, file$6, 212, 4, 4051);
 
   			dispose = [
-  				listen_dev(input, "input", ctx.input_input_handler),
-  				listen_dev(input, "blur", ctx.execute, false, false, false)
+  				listen_dev(textarea, "input", ctx.textarea_input_handler),
+  				listen_dev(textarea, "blur", ctx.blur_handler, false, false, false),
+  				listen_dev(textarea, "keydown", ctx.keydown_handler, false, false, false)
   			];
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, input, anchor);
-  			set_input_value(input, ctx.edit);
-  			focus_action = ctx.focus.call(null, input) || ({});
+  			insert_dev(target, textarea, anchor);
+  			set_input_value(textarea, ctx.edit);
+  			focus_action = ctx.focus.call(null, textarea) || ({});
   		},
   		p: function update(changed, ctx) {
-  			if (changed.style) {
-  				attr_dev(input, "style", ctx.style);
+  			if ((changed.$THEME_BG || changed.$THEME_BORDER) && textarea_style_value !== (textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`)) {
+  				attr_dev(textarea, "style", textarea_style_value);
   			}
 
-  			if (changed.edit && input_size_value !== (input_size_value = Math.max(ctx.edit.length, 5))) {
-  				attr_dev(input, "size", input_size_value);
-  			}
-
-  			if (changed.edit && input.value !== ctx.edit) {
-  				set_input_value(input, ctx.edit);
+  			if (changed.edit) {
+  				set_input_value(textarea, ctx.edit);
   			}
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(input);
+  			if (detaching) detach_dev(textarea);
   			if (focus_action && is_function(focus_action.destroy)) focus_action.destroy();
   			run_all(dispose);
   		}
@@ -5635,19 +5684,19 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_else_block_1.name,
+  		id: create_else_block_2.name,
   		type: "else",
-  		source: "(135:2) {:else}",
+  		source: "(212:2) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (113:2) {#if !editing}
+  // (182:2) {#if !editing}
   function create_if_block$1(ctx) {
   	let each_1_anchor;
-  	let each_value = ctx.chain;
+  	let each_value = ctx.tru_thread;
   	let each_blocks = [];
 
   	for (let i = 0; i < each_value.length; i += 1) {
@@ -5657,7 +5706,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let each_1_else = null;
 
   	if (!each_value.length) {
-  		each_1_else = create_else_block(ctx);
+  		each_1_else = create_else_block_1(ctx);
   		each_1_else.c();
   	}
 
@@ -5681,8 +5730,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			}
   		},
   		p: function update(changed, ctx) {
-  			if (changed.style || changed.$THEME_BORDER || changed.$feed || changed.weave || changed.chain || changed.time_cut || changed.translate) {
-  				each_value = ctx.chain;
+  			if (changed.tru_thread || changed.style || changed.chain || changed.$feed || changed.weave || changed.time_cut || changed.condense || changed.$THEME_BORDER) {
+  				each_value = ctx.tru_thread;
   				let i;
 
   				for (i = 0; i < each_value.length; i += 1) {
@@ -5707,7 +5756,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (!each_value.length && each_1_else) {
   				each_1_else.p(changed, ctx);
   			} else if (!each_value.length) {
-  				each_1_else = create_else_block(ctx);
+  				each_1_else = create_else_block_1(ctx);
   				each_1_else.c();
   				each_1_else.m(each_1_anchor.parentNode, each_1_anchor);
   			} else if (each_1_else) {
@@ -5726,34 +5775,33 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$1.name,
   		type: "if",
-  		source: "(113:2) {#if !editing}",
+  		source: "(182:2) {#if !editing}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (127:4) {:else}
-  function create_else_block(ctx) {
+  // (203:4) {:else}
+  function create_else_block_1(ctx) {
   	let div;
   	let t;
-  	let div_style_value;
 
   	const block = {
   		c: function create() {
   			div = element("div");
-  			t = text("=>\n      ");
-  			attr_dev(div, "class", "cap svelte-vl2tg6");
-  			attr_dev(div, "style", div_style_value = ctx.style + `color: ${ctx.$THEME_BORDER}`);
-  			add_location(div, file$6, 127, 6, 2465);
+  			t = text("+\n      ");
+  			attr_dev(div, "class", "cap svelte-w7naj0");
+  			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
+  			add_location(div, file$6, 203, 6, 3914);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
   			append_dev(div, t);
   		},
   		p: function update(changed, ctx) {
-  			if ((changed.style || changed.$THEME_BORDER) && div_style_value !== (div_style_value = ctx.style + `color: ${ctx.$THEME_BORDER}`)) {
-  				attr_dev(div, "style", div_style_value);
+  			if (changed.$THEME_BORDER) {
+  				set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			}
   		},
   		d: function destroy(detaching) {
@@ -5763,66 +5811,156 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_else_block.name,
+  		id: create_else_block_1.name,
   		type: "else",
-  		source: "(127:4) {:else}",
+  		source: "(203:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (114:4) {#each chain as link}
-  function create_each_block(ctx) {
-  	let div0;
-  	let t0_value = ctx.translate(ctx.link) + "";
+  // (192:6) {:else}
+  function create_else_block(ctx) {
+  	let div;
+  	let t0_value = ctx.condense(ctx.link) + "";
   	let t0;
   	let t1;
-  	let div1;
-  	let t2;
-  	let div1_style_value;
+  	let color_action;
 
   	const block = {
   		c: function create() {
-  			div0 = element("div");
+  			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			div1 = element("div");
-  			t2 = text("=>\n      ");
-  			attr_dev(div0, "class", "thread svelte-vl2tg6");
-  			attr_dev(div0, "style", ctx.style);
-  			toggle_class(div0, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			add_location(div0, file$6, 114, 6, 2176);
-  			attr_dev(div1, "class", "root svelte-vl2tg6");
-  			attr_dev(div1, "style", div1_style_value = ctx.style + `color: ${ctx.$THEME_BORDER}`);
-  			add_location(div1, file$6, 121, 6, 2346);
+  			attr_dev(div, "class", "thread svelte-w7naj0");
+  			attr_dev(div, "style", ctx.style);
+  			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
+  			add_location(div, file$6, 192, 8, 3671);
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, div0, anchor);
-  			append_dev(div0, t0);
-  			insert_dev(target, t1, anchor);
-  			insert_dev(target, div1, anchor);
-  			append_dev(div1, t2);
+  			insert_dev(target, div, anchor);
+  			append_dev(div, t0);
+  			append_dev(div, t1);
+  			color_action = color$1.call(null, div, ctx.condense(ctx.link)) || ({});
   		},
-  		p: function update(changed, ctx) {
-  			if (changed.chain && t0_value !== (t0_value = ctx.translate(ctx.link) + "")) set_data_dev(t0, t0_value);
+  		p: function update(changed, new_ctx) {
+  			ctx = new_ctx;
+  			if (changed.tru_thread && t0_value !== (t0_value = ctx.condense(ctx.link) + "")) set_data_dev(t0, t0_value);
 
   			if (changed.style) {
-  				attr_dev(div0, "style", ctx.style);
+  				attr_dev(div, "style", ctx.style);
   			}
 
-  			if (changed.$feed || changed.weave || changed.chain || changed.time_cut) {
-  				toggle_class(div0, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			}
+  			if (is_function(color_action.update) && changed.tru_thread) color_action.update.call(null, ctx.condense(ctx.link));
 
-  			if ((changed.style || changed.$THEME_BORDER) && div1_style_value !== (div1_style_value = ctx.style + `color: ${ctx.$THEME_BORDER}`)) {
-  				attr_dev(div1, "style", div1_style_value);
+  			if (changed.$feed || changed.weave || changed.tru_thread || changed.time_cut) {
+  				toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
   			}
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(div0);
-  			if (detaching) detach_dev(t1);
-  			if (detaching) detach_dev(div1);
+  			if (detaching) detach_dev(div);
+  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_else_block.name,
+  		type: "else",
+  		source: "(192:6) {:else}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (184:6) {#if link[0] === `#`}
+  function create_if_block_1(ctx) {
+  	let div;
+  	let t0_value = ctx.link + "";
+  	let t0;
+  	let t1;
+
+  	const block = {
+  		c: function create() {
+  			div = element("div");
+  			t0 = text(t0_value);
+  			t1 = space();
+  			attr_dev(div, "class", "thread svelte-w7naj0");
+  			attr_dev(div, "style", ctx.style);
+  			toggle_class(div, "active", ctx.chain.some(ctx.func));
+  			add_location(div, file$6, 184, 0, 3462);
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, div, anchor);
+  			append_dev(div, t0);
+  			append_dev(div, t1);
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.tru_thread && t0_value !== (t0_value = ctx.link + "")) set_data_dev(t0, t0_value);
+
+  			if (changed.style) {
+  				attr_dev(div, "style", ctx.style);
+  			}
+
+  			if (changed.chain || changed.$feed || changed.weave || changed.time_cut) {
+  				toggle_class(div, "active", ctx.chain.some(ctx.func));
+  			}
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(div);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_if_block_1.name,
+  		type: "if",
+  		source: "(184:6) {#if link[0] === `#`}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (183:4) {#each tru_thread as link}
+  function create_each_block(ctx) {
+  	let if_block_anchor;
+
+  	function select_block_type_1(changed, ctx) {
+  		if (ctx.link[0] === `#`) return create_if_block_1;
+  		return create_else_block;
+  	}
+
+  	let current_block_type = select_block_type_1(null, ctx);
+  	let if_block = current_block_type(ctx);
+
+  	const block = {
+  		c: function create() {
+  			if_block.c();
+  			if_block_anchor = empty();
+  		},
+  		m: function mount(target, anchor) {
+  			if_block.m(target, anchor);
+  			insert_dev(target, if_block_anchor, anchor);
+  		},
+  		p: function update(changed, ctx) {
+  			if (current_block_type === (current_block_type = select_block_type_1(changed, ctx)) && if_block) {
+  				if_block.p(changed, ctx);
+  			} else {
+  				if_block.d(1);
+  				if_block = current_block_type(ctx);
+
+  				if (if_block) {
+  					if_block.c();
+  					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+  				}
+  			}
+  		},
+  		d: function destroy(detaching) {
+  			if_block.d(detaching);
+  			if (detaching) detach_dev(if_block_anchor);
   		}
   	};
 
@@ -5830,7 +5968,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(114:4) {#each chain as link}",
+  		source: "(183:4) {#each tru_thread as link}",
   		ctx
   	});
 
@@ -5843,7 +5981,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	function select_block_type(changed, ctx) {
   		if (!ctx.editing) return create_if_block$1;
-  		return create_else_block_1;
+  		return create_else_block_2;
   	}
 
   	let current_block_type = select_block_type(null, ctx);
@@ -5853,14 +5991,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			if_block.c();
-  			attr_dev(div, "class", "spot svelte-vl2tg6");
-  			add_location(div, file$6, 98, 0, 1939);
-
-  			dispose = [
-  				listen_dev(div, "click", ctx.click_handler, false, false, false),
-  				listen_dev(div, "keydown", ctx.keydown_handler, false, false, false),
-  				listen_dev(div, "blur", ctx.execute, false, false, false)
-  			];
+  			attr_dev(div, "class", "spot svelte-w7naj0");
+  			attr_dev(div, "data:super", ctx.super_open);
+  			add_location(div, file$6, 172, 0, 3243);
+  			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5881,13 +6015,17 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block.m(div, null);
   				}
   			}
+
+  			if (changed.super_open) {
+  				attr_dev(div, "data:super", ctx.super_open);
+  			}
   		},
   		i: noop,
   		o: noop,
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div);
   			if_block.d();
-  			run_all(dispose);
+  			dispose();
   		}
   	};
 
@@ -5932,16 +6070,49 @@ var app = (function (Color, uuid, expr, twgl) {
   	const knots = {
   		stream: k => JSON.stringify(k.value.get()),
   		math: k => k.math.get().trim(),
-  		mail: k => k.whom.get(),
+  		mail: k => k.whom.get().trim(),
   		default: k => k.knot.get(),
   		stitch: k => `./${k.name.get()}`
   	};
 
-  	const knots_create = {
-  		math: data => ({ knot: `math`, math: data })
+  	const knots_is = {
+  		mail: data => {
+  			const ms = data.match(Wheel.REG_ID);
+  			if (!ms || ms.length !== 1) return false;
+  			if (ms[0] !== data) return false;
+  			return true;
+  		},
+  		stream: data => {
+  			try {
+  				JSON.parse(data);
+  				return true;
+  			} catch(ex) {
+  				return false;
+  			}
+  		}
   	};
 
+  	const knots_create = {
+  		math: data => ({ knot: `math`, math: data }),
+  		mail: data => ({ knot: `mail`, whom: data }),
+  		stream: data => ({ knot: `stream`, value: JSON.parse(data) })
+  	};
+
+  	const what_is = data => {
+  		const entries = Object.entries(knots_is);
+
+  		for (let i = 0; i < entries.length; i++) {
+  			const [type, fn] = entries[i];
+  			if (fn(data)) return type;
+  		}
+
+  		return `math`;
+  	};
+
+  	const knot_create = data => knots_create[what_is(data)](data);
+
   	const translate = k => {
+  		if (k[0] === `#`) return k;
   		const knot = weave.knots.get()[k];
   		if (!knot) return `stitch`;
   		const type = knot.knot.get();
@@ -5954,7 +6125,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	const execute = () => {
   		if (!editing) return;
   		$$invalidate("editing", editing = false);
-  		const parts = edit.split(`=>`).reverse();
+  		const parts = edit.replace(/[\r\n]/g, ``).split(`=>`).reverse();
   		const threads_update = weave.threads.get();
   		const knots = weave.knots.get();
 
@@ -5969,7 +6140,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		parts.forEach(part => {
   			part = part.trim();
   			if (part === ``) return;
-  			const w_data = knots_create.math(part);
+  			const w_data = knot_create(part);
   			const k = weave.add(w_data);
   			threads_update[k.id.get()] = connection;
   			connection = k.id.get();
@@ -5983,25 +6154,59 @@ var app = (function (Color, uuid, expr, twgl) {
   		}
   	};
 
+  	const format = txt => {
+  		txt = txt.split(`;`);
+
+  		txt = txt.map((i, k) => {
+  			i = i.trim();
+
+  			if (k !== txt.length - 1) {
+  				i += `;`;
+  			}
+
+  			if (k === txt.length - 2) {
+  				i += `\r\n`;
+  			}
+
+  			return i;
+  		}).join(`\r\n`);
+
+  		txt = txt.split(`=>`).join(`\r\n\r\n=>`);
+  		return txt;
+  	};
+
+  	const condense = link => {
+  		const t = translate(link).split(`;`);
+  		const v = t.pop().trim();
+  		return t.length > 0 ? `#${t.length} ${v}` : v;
+  	};
+
   	const writable_props = ["channel", "stitch", "weave", "super_open"];
 
-  	Object.keys($$props).forEach(key => {
+  	Object_1.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Thread> was created with unknown prop '${key}'`);
   	});
 
-  	function input_input_handler() {
+  	const func = item => $feed[`${weave.name.get()}/${item}`] > time_cut;
+
+  	function textarea_input_handler() {
   		edit = this.value;
   		$$invalidate("edit", edit);
   	}
 
-  	const click_handler = () => {
-  		$$invalidate("editing", editing = true);
-  		$$invalidate("edit", edit = boxes);
+  	const blur_handler = e => {
+  		execute();
   	};
 
-  	const keydown_handler = ({ which }) => {
-  		if (which !== 13) return;
+  	const keydown_handler = ({ which, shiftKey }) => {
+  		if (which !== 13 || !shiftKey) return;
   		execute();
+  	};
+
+  	const click_handler = () => {
+  		if (editing) return;
+  		$$invalidate("editing", editing = true);
+  		$$invalidate("edit", edit = format(boxes));
   	};
 
   	$$self.$set = $$props => {
@@ -6050,7 +6255,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("boxes" in $$props) $$invalidate("boxes", boxes = $$props.boxes);
   		if ("time_cut" in $$props) $$invalidate("time_cut", time_cut = $$props.time_cut);
   		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
-  		if ("tru_thread" in $$props) tru_thread = $$props.tru_thread;
+  		if ("tru_thread" in $$props) $$invalidate("tru_thread", tru_thread = $$props.tru_thread);
   		if ("style" in $$props) $$invalidate("style", style = $$props.style);
   		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
@@ -6066,7 +6271,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let tru_thread;
   	let style;
 
-  	$$self.$$.update = (changed = { stitch: 1, channel: 1, weave: 1, $threads: 1, address: 1, chain: 1, $tick: 1, super_open: 1, boxes: 1, $THEME_BG: 1, $THEME_BORDER: 1 }) => {
+  	$$self.$$.update = (changed = { stitch: 1, channel: 1, weave: 1, $threads: 1, address: 1, chain: 1, $tick: 1, super_open: 1, $THEME_BG: 1, $THEME_BORDER: 1 }) => {
   		if (changed.stitch || changed.channel) {
   			 $$invalidate("address", address = `${stitch.id.get()}/${channel[0]}`);
   		}
@@ -6087,8 +6292,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			 $$invalidate("time_cut", time_cut = $tick && Date.now() - 1000);
   		}
 
-  		if (changed.super_open || changed.boxes || changed.chain) {
-  			 tru_thread = !super_open ? boxes || `#0` : `#${chain.length}`;
+  		if (changed.super_open || changed.chain) {
+  			 $$invalidate("tru_thread", tru_thread = !super_open ? chain : [`#${chain.length}`]);
   		}
 
   		if (changed.$THEME_BG || changed.$THEME_BORDER) {
@@ -6104,21 +6309,26 @@ var app = (function (Color, uuid, expr, twgl) {
   		weave,
   		super_open,
   		editing,
-  		translate,
   		edit,
   		focus,
   		execute,
+  		format,
+  		condense,
   		feed,
   		threads,
   		chain,
   		boxes,
   		time_cut,
+  		tru_thread,
   		style,
+  		$THEME_BG,
   		$THEME_BORDER,
   		$feed,
-  		input_input_handler,
-  		click_handler,
-  		keydown_handler
+  		func,
+  		textarea_input_handler,
+  		blur_handler,
+  		keydown_handler,
+  		click_handler
   	};
   }
 
@@ -6193,7 +6403,7 @@ var app = (function (Color, uuid, expr, twgl) {
   const file$7 = "src/ui/weave/explore/Channel.svelte";
 
   // (34:0) {#if weave.id.get() !== Wheel.SYSTEM}
-  function create_if_block_1(ctx) {
+  function create_if_block_1$1(ctx) {
   	let current;
 
   	const thread = new Thread({
@@ -6238,7 +6448,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block_1.name,
+  		id: create_if_block_1$1.name,
   		type: "if",
   		source: "(34:0) {#if weave.id.get() !== Wheel.SYSTEM}",
   		ctx
@@ -6351,7 +6561,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let color_action;
   	let current;
   	let dispose;
-  	let if_block0 = show_if && create_if_block_1(ctx);
+  	let if_block0 = show_if && create_if_block_1$1(ctx);
 
   	function select_block_type(changed, ctx) {
   		if (!ctx.editing) return create_if_block$2;
@@ -6391,7 +6601,7 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block0.p(changed, ctx);
   					transition_in(if_block0, 1);
   				} else {
-  					if_block0 = create_if_block_1(ctx);
+  					if_block0 = create_if_block_1$1(ctx);
   					if_block0.c();
   					transition_in(if_block0, 1);
   					if_block0.m(t.parentNode, t);
@@ -6682,16 +6892,16 @@ var app = (function (Color, uuid, expr, twgl) {
 
   /* src/ui/weave/explore/Stitch.svelte generated by Svelte v3.14.1 */
 
-  const { Object: Object_1 } = globals;
+  const { Object: Object_1$1 } = globals;
   const file$8 = "src/ui/weave/explore/Stitch.svelte";
 
   function get_each_context$1(ctx, list, i) {
-  	const child_ctx = Object_1.create(ctx);
+  	const child_ctx = Object_1$1.create(ctx);
   	child_ctx.channel = list[i];
   	return child_ctx;
   }
 
-  // (83:0) {#if open}
+  // (85:0) {#if open}
   function create_if_block$3(ctx) {
   	let div;
   	let t;
@@ -6718,8 +6928,8 @@ var app = (function (Color, uuid, expr, twgl) {
   				each_blocks[i].c();
   			}
 
-  			attr_dev(div, "class", "chans svelte-158jg2k");
-  			add_location(div, file$8, 83, 0, 1502);
+  			attr_dev(div, "class", "chans svelte-1cl6cnp");
+  			add_location(div, file$8, 85, 0, 1562);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -6811,14 +7021,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$3.name,
   		type: "if",
-  		source: "(83:0) {#if open}",
+  		source: "(85:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (86:0) {#if $w_name !== Wheel.SYSTEM}
+  // (88:0) {#if $w_name !== Wheel.SYSTEM}
   function create_if_block_2(ctx) {
   	let current;
 
@@ -6861,15 +7071,15 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_2.name,
   		type: "if",
-  		source: "(86:0) {#if $w_name !== Wheel.SYSTEM}",
+  		source: "(88:0) {#if $w_name !== Wheel.SYSTEM}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (91:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
-  function create_if_block_1$1(ctx) {
+  // (93:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+  function create_if_block_1$2(ctx) {
   	let current;
 
   	const channel = new Channel({
@@ -6917,21 +7127,21 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block_1$1.name,
+  		id: create_if_block_1$2.name,
   		type: "if",
-  		source: "(91:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
+  		source: "(93:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (90:0) {#each chans as channel}
+  // (92:0) {#each chans as channel}
   function create_each_block$1(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.channel.name.indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
   	let current;
-  	let if_block = show_if && create_if_block_1$1(ctx);
+  	let if_block = show_if && create_if_block_1$2(ctx);
 
   	const block = {
   		c: function create() {
@@ -6951,7 +7161,7 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block.p(changed, ctx);
   					transition_in(if_block, 1);
   				} else {
-  					if_block = create_if_block_1$1(ctx);
+  					if_block = create_if_block_1$2(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -6985,7 +7195,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block$1.name,
   		type: "each",
-  		source: "(90:0) {#each chans as channel}",
+  		source: "(92:0) {#each chans as channel}",
   		ctx
   	});
 
@@ -6997,6 +7207,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let div0;
   	let t0;
   	let t1;
+  	let color_action;
   	let t2;
   	let if_block_anchor;
   	let current;
@@ -7019,12 +7230,12 @@ var app = (function (Color, uuid, expr, twgl) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div0, "class", "postage svelte-158jg2k");
-  			add_location(div0, file$8, 76, 2, 1376);
-  			attr_dev(div1, "class", "stitch svelte-158jg2k");
+  			attr_dev(div0, "class", "postage svelte-1cl6cnp");
+  			add_location(div0, file$8, 78, 2, 1436);
+  			attr_dev(div1, "class", "stitch svelte-1cl6cnp");
   			attr_dev(div1, "style", ctx.$THEME_STYLE);
   			toggle_class(div1, "open", ctx.open);
-  			add_location(div1, file$8, 64, 0, 1196);
+  			add_location(div1, file$8, 65, 0, 1236);
 
   			dispose = [
   				listen_dev(div0, "click", ctx.toggle, false, false, false),
@@ -7040,6 +7251,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			mount_component(postage, div0, null);
   			append_dev(div1, t0);
   			append_dev(div1, t1);
+  			color_action = color$1.call(null, div1, ctx.$name) || ({});
   			insert_dev(target, t2, anchor);
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, if_block_anchor, anchor);
@@ -7054,6 +7266,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (!current || changed.$THEME_STYLE) {
   				attr_dev(div1, "style", ctx.$THEME_STYLE);
   			}
+
+  			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
 
   			if (changed.open) {
   				toggle_class(div1, "open", ctx.open);
@@ -7093,6 +7307,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div1);
   			destroy_component(postage);
+  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   			if (detaching) detach_dev(t2);
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(if_block_anchor);
@@ -7122,16 +7337,16 @@ var app = (function (Color, uuid, expr, twgl) {
   		$$unsubscribe_rezed = noop,
   		$$subscribe_rezed = () => ($$unsubscribe_rezed(), $$unsubscribe_rezed = subscribe(rezed, $$value => $$invalidate("$rezed", $rezed = $$value)), rezed);
 
+  	let $name,
+  		$$unsubscribe_name = noop,
+  		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
+
   	let $keys;
   	let $THEME_STYLE;
 
   	let $w_name,
   		$$unsubscribe_w_name = noop,
   		$$subscribe_w_name = () => ($$unsubscribe_w_name(), $$unsubscribe_w_name = subscribe(w_name, $$value => $$invalidate("$w_name", $w_name = $$value)), w_name);
-
-  	let $name,
-  		$$unsubscribe_name = noop,
-  		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
   	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
   	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
@@ -7141,8 +7356,8 @@ var app = (function (Color, uuid, expr, twgl) {
   	component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_rezed());
-  	$$self.$$.on_destroy.push(() => $$unsubscribe_w_name());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
+  	$$self.$$.on_destroy.push(() => $$unsubscribe_w_name());
   	let { filter = [] } = $$props;
   	let { stitch } = $$props;
   	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
@@ -7187,7 +7402,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	const writable_props = ["filter", "stitch", "open", "weave", "super_open"];
 
-  	Object_1.keys($$props).forEach(key => {
+  	Object_1$1.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Stitch> was created with unknown prop '${key}'`);
   	});
 
@@ -7225,10 +7440,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			chans,
   			$value,
   			$rezed,
+  			$name,
   			$keys,
   			$THEME_STYLE,
-  			$w_name,
-  			$name
+  			$w_name
   		};
   	};
 
@@ -7248,10 +7463,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("chans" in $$props) $$invalidate("chans", chans = $$props.chans);
   		if ("$value" in $$props) value.set($value = $$props.$value);
   		if ("$rezed" in $$props) rezed.set($rezed = $$props.$rezed);
+  		if ("$name" in $$props) name.set($name = $$props.$name);
   		if ("$keys" in $$props) keys.set($keys = $$props.$keys);
   		if ("$THEME_STYLE" in $$props) THEME_STYLE.set($THEME_STYLE = $$props.$THEME_STYLE);
   		if ("$w_name" in $$props) w_name.set($w_name = $$props.$w_name);
-  		if ("$name" in $$props) name.set($name = $$props.$name);
   	};
 
   	let w_name;
@@ -7302,10 +7517,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		rezed,
   		value,
   		chans,
+  		$name,
   		$keys,
   		$THEME_STYLE,
   		$w_name,
-  		$name,
   		click_handler
   	};
   }
@@ -7753,17 +7968,17 @@ var app = (function (Color, uuid, expr, twgl) {
 
   /* src/ui/weave/explore/Weave.svelte generated by Svelte v3.14.1 */
 
-  const { Object: Object_1$1 } = globals;
+  const { Object: Object_1$2 } = globals;
   const file$a = "src/ui/weave/explore/Weave.svelte";
 
   function get_each_context$2(ctx, list, i) {
-  	const child_ctx = Object_1$1.create(ctx);
+  	const child_ctx = Object_1$2.create(ctx);
   	child_ctx.s_name = list[i][0];
   	child_ctx.stitch = list[i][1];
   	return child_ctx;
   }
 
-  // (80:0) {#if open}
+  // (82:0) {#if open}
   function create_if_block$4(ctx) {
   	let div;
   	let t;
@@ -7799,7 +8014,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			}
 
   			attr_dev(div, "class", "stitches");
-  			add_location(div, file$a, 80, 2, 1460);
+  			add_location(div, file$a, 82, 2, 1520);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -7875,15 +8090,15 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$4.name,
   		type: "if",
-  		source: "(80:0) {#if open}",
+  		source: "(82:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (86:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }
-  function create_if_block_1$2(ctx) {
+  // (88:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }
+  function create_if_block_1$3(ctx) {
   	let current;
 
   	const stitch = new Stitch({
@@ -7930,21 +8145,21 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block_1$2.name,
+  		id: create_if_block_1$3.name,
   		type: "if",
-  		source: "(86:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }",
+  		source: "(88:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }",
   		ctx
   	});
 
   	return block;
   }
 
-  // (85:4) {#each stitches as [s_name,stitch]}
+  // (87:4) {#each stitches as [s_name,stitch]}
   function create_each_block$2(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
   	let current;
-  	let if_block = show_if && create_if_block_1$2(ctx);
+  	let if_block = show_if && create_if_block_1$3(ctx);
 
   	const block = {
   		c: function create() {
@@ -7964,7 +8179,7 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block.p(changed, ctx);
   					transition_in(if_block, 1);
   				} else {
-  					if_block = create_if_block_1$2(ctx);
+  					if_block = create_if_block_1$3(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -7998,7 +8213,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block$2.name,
   		type: "each",
-  		source: "(85:4) {#each stitches as [s_name,stitch]}",
+  		source: "(87:4) {#each stitches as [s_name,stitch]}",
   		ctx
   	});
 
@@ -8009,6 +8224,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let div;
   	let t0;
   	let t1;
+  	let color_action;
   	let t2;
   	let if_block_anchor;
   	let current;
@@ -8030,11 +8246,11 @@ var app = (function (Color, uuid, expr, twgl) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div, "class", "weave svelte-1pgr20z");
+  			attr_dev(div, "class", "weave svelte-296y2q");
   			set_style(div, "background-color", ctx.$THEME_BG);
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			toggle_class(div, "open", ctx.open);
-  			add_location(div, file$a, 52, 0, 952);
+  			add_location(div, file$a, 53, 0, 992);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -8045,6 +8261,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			mount_component(controls, div, null);
   			append_dev(div, t0);
   			append_dev(div, t1);
+  			color_action = color$1.call(null, div, ctx.$name) || ({});
   			insert_dev(target, t2, anchor);
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, if_block_anchor, anchor);
@@ -8063,6 +8280,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (!current || changed.$THEME_BORDER) {
   				set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			}
+
+  			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
 
   			if (changed.open) {
   				toggle_class(div, "open", ctx.open);
@@ -8102,6 +8321,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div);
   			destroy_component(controls);
+  			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   			if (detaching) detach_dev(t2);
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(if_block_anchor);
@@ -8127,14 +8347,13 @@ var app = (function (Color, uuid, expr, twgl) {
   		$$unsubscribe_names = noop,
   		$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate("$names", $names = $$value)), names);
 
-  	let $THEME_BG;
-  	let $THEME_BORDER;
-  	let $keys;
-
   	let $name,
   		$$unsubscribe_name = noop,
   		$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
+  	let $THEME_BG;
+  	let $THEME_BORDER;
+  	let $keys;
   	validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
   	component_subscribe($$self, WEAVE_EXPLORE_OPEN, $$value => $$invalidate("$WEAVE_EXPLORE_OPEN", $WEAVE_EXPLORE_OPEN = $$value));
   	validate_store(THEME_BG, "THEME_BG");
@@ -8169,7 +8388,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	const writable_props = ["weave", "filter", "open"];
 
-  	Object_1$1.keys($$props).forEach(key => {
+  	Object_1$2.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Weave> was created with unknown prop '${key}'`);
   	});
 
@@ -8214,10 +8433,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			stitches,
   			$names,
   			knots,
+  			$name,
   			$THEME_BG,
   			$THEME_BORDER,
-  			$keys,
-  			$name
+  			$keys
   		};
   	};
 
@@ -8233,10 +8452,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("stitches" in $$props) $$invalidate("stitches", stitches = $$props.stitches);
   		if ("$names" in $$props) names.set($names = $$props.$names);
   		if ("knots" in $$props) knots = $$props.knots;
+  		if ("$name" in $$props) name.set($name = $$props.$name);
   		if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
   		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
   		if ("$keys" in $$props) keys.set($keys = $$props.$keys);
-  		if ("$name" in $$props) name.set($name = $$props.$name);
   	};
 
   	let name;
@@ -8276,10 +8495,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		name,
   		names,
   		stitches,
+  		$name,
   		$THEME_BG,
   		$THEME_BORDER,
   		$keys,
-  		$name,
   		click_handler
   	};
   }
@@ -8331,11 +8550,11 @@ var app = (function (Color, uuid, expr, twgl) {
 
   /* src/ui/weave/Explore.svelte generated by Svelte v3.14.1 */
 
-  const { Object: Object_1$2 } = globals;
+  const { Object: Object_1$3 } = globals;
   const file$b = "src/ui/weave/Explore.svelte";
 
   function get_each_context$3(ctx, list, i) {
-  	const child_ctx = Object_1$2.create(ctx);
+  	const child_ctx = Object_1$3.create(ctx);
   	child_ctx.weave = list[i];
   	return child_ctx;
   }
@@ -8638,7 +8857,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	const writable_props = ["hidden"];
 
-  	Object_1$2.keys($$props).forEach(key => {
+  	Object_1$3.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Explore> was created with unknown prop '${key}'`);
   	});
 

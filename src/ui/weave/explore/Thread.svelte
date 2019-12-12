@@ -1,4 +1,5 @@
 <script>
+import color from "/ui/action/color.js"
 import { tick } from "/sys/time.js"
 import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 export let channel
@@ -16,19 +17,57 @@ $: threads = weave.threads
 const knots = {
   stream: (k) => JSON.stringify(k.value.get()),
   math: (k) => k.math.get().trim(),
-  mail: (k) => k.whom.get(),
+  mail: (k) => k.whom.get().trim(),
   default: (k) => k.knot.get(),
   stitch: (k) => `./${k.name.get()}`
+}
+
+const knots_is = {
+  mail: (data) => {
+    const ms = data.match(Wheel.REG_ID)
+    if (!ms || ms.length !== 1) return false
+    if (ms[0] !== data) return false
+    return true
+  },
+  stream: (data) => {
+    try {
+      JSON.parse(data)
+      return true
+    } catch (ex) {
+      return false
+    }
+  }
 }
 
 const knots_create = {
   math: (data) => ({
     knot: `math`,
     math: data
+  }),
+  mail: (data) => ({
+    knot: `mail`,
+    whom: data
+  }),
+  stream: (data) => ({
+    knot: `stream`,
+    value: JSON.parse(data)
   })
 }
 
+const what_is = (data) => {
+  const entries = Object.entries(knots_is)
+  for (let i = 0; i < entries.length; i++) {
+    const [type, fn] = entries[i]
+    if (fn(data)) return type
+  }
+  return `math`
+}
+const knot_create = (data) =>
+  knots_create[what_is(data)](data)
+
 const translate = (k) => {
+  if (k[0] === `#`) return k
+
   const knot = weave.knots.get()[k]
   if (!knot) return `stitch`
 
@@ -47,8 +86,8 @@ $: boxes = chain
 $: time_cut = $tick && Date.now() - 1000
 
 $: tru_thread = !super_open
-  ? boxes || `#0`
-  : `#${chain.length}`
+  ? chain
+  : [`#${chain.length}`]
 let edit = ``
 
 const focus = (node) => node.focus()
@@ -57,7 +96,11 @@ const execute = () => {
   if (!editing) return
   editing = false
 
-  const parts = edit.split(`=>`).reverse()
+  const parts = edit
+    .replace(/[\r\n]/g, ``)
+    .split(`=>`)
+    .reverse()
+
   const threads_update = weave.threads.get()
   const knots = weave.knots.get()
 
@@ -65,6 +108,7 @@ const execute = () => {
     delete knots[id]
     delete threads_update[id]
   })
+
   weave.knots.set(knots)
 
   let connection = address
@@ -75,7 +119,7 @@ const execute = () => {
 
     if (part === ``) return
 
-    const w_data = knots_create.math(part)
+    const w_data = knot_create(part)
 
     const k = weave.add(w_data)
 
@@ -93,54 +137,95 @@ const execute = () => {
   }
 }
 
+const format = (txt) => {
+  txt = txt.split(`;`)
+
+  txt = txt
+    .map((i, k) => {
+      i = i.trim()
+      if (k !== txt.length - 1) {
+        i += `;`
+      }
+      if (k === txt.length - 2) {
+        i += `\r\n`
+      }
+      return i
+    })
+    .join(`\r\n`)
+
+  txt = txt
+    .split(`=>`)
+    .join(`\r\n\r\n=>`)
+
+  return txt
+}
+
+const condense = (link) => {
+  const t = translate(link).split(`;`)
+  const v = t.pop().trim()
+  return t.length > 0
+    ? `#${t.length} ${v}`
+    : v
+}
 $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER};`
 </script>
 
 <div 
   class="spot" 
-  
+  data:super={super_open}
   on:click={() => {
+    if (editing) return
     editing = true
-    edit = boxes
+    edit = format(boxes)
   }}
-  on:keydown={({ which }) => {
-    if (which !== 13) return
-
-    execute()
-  }}
-  on:blur={execute}
 >
   {#if !editing}
-    {#each chain as link}
-      <div 
-        class="thread" 
-        {style}
-        class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
-      >
-        {translate(link)}
-      </div>
-      <div 
-        class="root" 
-        style={style + `color: ${$THEME_BORDER}`}>
-      =>
-      </div>
+    {#each tru_thread as link}
+      {#if link[0] === `#`}
+<div 
+          class="thread" 
+          {style}
+          class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
+        >
+          {link}
+        </div>
+      {:else}
+        <div 
+          class="thread" 
+          {style}
+          use:color={condense(link)}
+          class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
+        >
+          {condense(link)}
+        </div>
+      {/if}
+
     {:else}
       <div 
         class="cap" 
-        style={style + `color: ${$THEME_BORDER}`}>
-      =>
+        style="border: 0.25rem solid {$THEME_BORDER}"
+      >
+      +
       </div>
     {/each}
 
   {:else}
-    <input 
+    <textarea
       class="edit"
       type="text"
-      {style}
+      style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
       use:focus
       bind:value={edit}
-      on:blur={execute}
-      size={Math.max(edit.length, 5)}
+      on:blur={(e) => {
+        execute()
+      }}
+      on:keydown={({ which, shiftKey }) => {
+        if (
+          which !== 13 ||
+          !shiftKey
+        ) return
+        execute()
+      }}
     />
   {/if}
 </div>
@@ -155,46 +240,40 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
   margin-right: -2.00rem;
   width: auto;
   font-size: 0.75rem;
-  margin-top: 0;
-}
-
-.root {
-  border-left: none !important;
-  border-right: none !important;
-  padding: 0.10rem;
-  margin-left: -0.3rem;
-  margin-right: -0.3rem;
-  font-size: 0.5rem;
-  position: relative;
-  z-index: 2;
+  margin-top: -0.25rem;
 }
 
 .thread {
-  padding: 0.25rem;
+  padding: 0.5rem;
   white-space: nowrap;
   transition: all 100ms linear;
+  margin-right: -0.25rem;
 }
 
 .thread.active {
-  box-shadow: -0.5rem -0.5rem 0 rgba(65, 221, 3, 0.349), 0.5rem 0.5rem rgba(65, 221, 3, 0.349);
+  text-decoration: underline;
 }
 .edit {
-  font-size: 0.75rem;
+  position: relative;
+  width: 60rem;
+  height: 60rem;
+  z-index: 3;
+  font-size: 1rem;
   margin: 0;
-  margin-right: -0.20rem;
-  padding: 0.4rem;
+  padding: 1rem;
+  color: rgb(224, 168, 83);
 }
 
 .thread:hover {
   color: white;
 }
+
 .cap {
-  border-right: none !important;
-  padding: 0.10rem;
-  margin-left: -0.3rem;
-  margin-right: -0.3rem;
+  padding: 0.5rem;
+  margin-right: -0.25rem;
   position: relative;
   z-index: 2;
+  background-color: rgba(0,0,0, 0.25);
 }
 .cap:hover {
   color: white !important;

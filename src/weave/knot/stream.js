@@ -1,21 +1,21 @@
 import { write, read } from "/util/store.js"
 
-export default () => {
-  const value = write()
-  const set = value.set
+export default ({
+  value = null
+}) => {
+  const v = write()
+  const set = v.set
 
-  value.set = (val) => {
+  v.set = (val) => {
     try {
       set(JSON.parse(val))
     } catch (ex) {
       set(val)
     }
   }
-
-  value.set(`null`)
-
+  v.set(value)
   return ({
     knot: read(`stream`),
-    value
+    value: v
   })
 }

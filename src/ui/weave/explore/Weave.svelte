@@ -1,4 +1,5 @@
 <script>
+import color from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_BG, THEME_BORDER } from "/sys/flag.js"
 import { keys } from "/sys/key.js"
 
@@ -53,6 +54,7 @@ const command = ([
 <div 
   class="weave"
   class:open
+  use:color={$name}
   style="background-color: {$THEME_BG}; border: 0.25rem solid {$THEME_BORDER};"
   on:click={() => {
     if ($keys.shift) {
@@ -105,6 +107,7 @@ const command = ([
   align-items:center;
   display: flex;
   padding: 1rem;
+  margin-top: -0.25rem;
   border-right: none;
 }
 .weave:hover {

@@ -1,4 +1,5 @@
 <script>
+import color from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
 import { keys } from "/sys/key.js"
 
@@ -65,6 +66,7 @@ const toggle = (e) => {
 <div 
   class="stitch"
   class:open
+  use:color={$name}
   on:click={() => {
     if ($keys.shift) {
       super_open = !super_open
@@ -122,6 +124,7 @@ const toggle = (e) => {
   margin-left: 1rem;
   font-size: 0.9rem;
   border-right: none;
+  margin-top:-0.25rem;
 }
 .stitch:hover {
   color: white;

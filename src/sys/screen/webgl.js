@@ -2,10 +2,10 @@ import * as twgl from "twgl"
 import { write } from "/util/store.js"
 import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
-import { camera } from "/sys/camera.js"
+import { camera, position, look } from "/sys/camera.js"
 
 const { m4 } = twgl
-
+const up = [0, 1, 0]
 export default () => {
   const canvas = document.createElement(`canvas`)
   canvas.width = 100
@@ -79,8 +79,11 @@ export default () => {
       0.01,
       2000
     )
+    const c = camera.get()
+    m4.lookAt(position.get(), look.get(), up, c)
 
-    m4.inverse(camera.get(), view)
+    m4.inverse(c, view)
+    camera.set(c)
     m4.multiply(projection, view, view_projection)
 
     const { buffer, uniforms } = snapshot()

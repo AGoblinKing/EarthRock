@@ -4,18 +4,24 @@ import { transformer, write, read } from "/util/store.js"
 export default ({
   whom = `/sys/mouse/position`,
   weave,
-  id
+  id,
+  life
 }) => {
   const value = write()
   const { set } = value
 
+  const fix = (address) => address
+    .replace(`$`, ``)
+    .replace(`.`, `/${weave.name.get()}`)
+
   // when set hit up the remote
   value.set = (value_new) => {
-    const $whom = m.whom.get().replace(`.`, `/${weave.id.get()}`)
+    const $whom = fix(m.whom.get())
+
     const v = Wheel.get($whom)
 
     if (!v || !v.set) {
-      console.warn(`tried to mail a readable or unknown`, m.whom.get())
+      console.warn(`tried to mail a readable or unknown`, m.whom.get(), $whom)
       return
     }
 
@@ -25,17 +31,42 @@ export default ({
   // Subscribe to remote
   const m = ({
     knot: read(`mail`),
-    whom: transformer((whom_new) => {
-      weave.mails.update(($mails) => ({
-        ...$mails,
-        [id]: whom_new.replace(`.`, `/${weave.id.get()}`)
-      }))
-
-      return whom_new
-    }).set(whom),
+    whom: write(whom),
     value,
     set
   })
 
+  life(() => {
+    const cancels = new Set()
+    const clear = () => {
+      cancels.forEach((fn) => fn())
+      cancels.clear()
+    }
+
+    const cancel_whom = m.whom.listen(($whom) => {
+      clear()
+      $whom = $whom.replace(`.`, weave.name.get())
+
+      if ($whom[0] === `$`) {
+        $whom = $whom.replace(`$`, ``)
+        const thing = Wheel.get($whom)
+        if (!thing) return set(null)
+
+        set(thing.get())
+      }
+
+      const thing = Wheel.get($whom)
+      if (!thing) return set(null)
+
+      cancels.add(thing.listen(($thing) => {
+        set($thing)
+      }))
+    })
+
+    return () => {
+      cancel_whom()
+      clear()
+    }
+  })
   return m
 }

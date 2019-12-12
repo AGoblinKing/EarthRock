@@ -7,6 +7,7 @@ import * as screen from "/sys/screen.js"
 import * as input from "/sys/input.js"
 import * as key from "/sys/key.js"
 import * as flag from "/sys/flag.js"
+import * as camera from "/sys/camera.js"
 
 // private sytems
 import "/sys/data.js"
@@ -31,6 +32,7 @@ export default Weave({
     screen,
     input,
     key,
-    flag
+    flag,
+    camera
   })
 })

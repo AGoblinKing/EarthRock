@@ -8,6 +8,12 @@ export const feed = read({}, (set) => {
   feed_set = set
 })
 
+export const feed_add = (address) => {
+  const $f = feed.get()
+  $f[address] = Date.now()
+  feed_set($f)
+}
+
 // weaves [name]weave
 export const weaves = write({
   [SYSTEM]: Weave({
@@ -139,10 +145,17 @@ export const start = (weave_name) => {
         writer
       ]) => {
         const r = by_id(reader)
-        const w = by_id(writer)
+        const wr = by_id(writer)
+        if (!wr || !r) {
+          w.threads.update(($t) => {
+            delete $t[reader]
+            return $t
+          })
+          return () => {}
+        }
 
         return r.subscribe(($val) => {
-          w.set($val)
+          wr.set($val)
 
           // costly debug thingy,
           // TODO: better way?
@@ -154,36 +167,8 @@ export const start = (weave_name) => {
           feed_set($f)
         })
       }),
-    // frames
-    ...w.lives.get().map((cb) => cb()),
-
-    // ramp
-    ...Object.entries(w.mails.get())
-      .map(
-        ([
-          mail_id,
-          address
-        ]) => {
-          const k = get(address)
-          if (!k) return () => {}
-          return k.subscribe((value_new) => {
-            if (!knots[mail_id]) {
-              // rogue mail entry
-              w.mails.update(($mail) => {
-                delete $mail[mail_id]
-                return $mail
-              })
-              return
-            }
-            knots[mail_id].set(value_new)
-
-            const $f = feed.get()
-            $f[address] = Date.now()
-            $f[`${weave_name}/${mail_id}`] = Date.now()
-
-            feed_set($f)
-          })
-        })
+    // lives
+    ...w.lives.get().map((cb) => cb())
   ])
 
   running_set({
@@ -223,3 +208,5 @@ export const toJSON = () => ({
   weaves: bump(weaves),
   running: bump(running)
 })
+
+export const REG_ID = /\$?\.?\/[a-zA-Z \/]+/g

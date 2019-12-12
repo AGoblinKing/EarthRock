@@ -102,7 +102,7 @@ const init = async () => {
 
   running.forEach((r) => {
     if (r.id === Wheel.SYSTEM) return
-
+    if (!Wheel.get(r.id)) return
     Wheel.start(r.id)
   })
 

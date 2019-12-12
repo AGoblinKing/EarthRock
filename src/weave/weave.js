@@ -31,7 +31,6 @@ export default ({
     threads: write(threads),
 
     lives: write([]),
-    mails: write({}),
     rezed: write(rezed),
     validate: () => {
       let dirty = false
@@ -188,6 +187,5 @@ export default ({
       )
   ))
 
-  w.validate()
   return w
 }

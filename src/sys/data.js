@@ -43,16 +43,8 @@ export const save = async () => {
     running, weaves
   } = Wheel.toJSON()
 
-  await Promise.all([
-    query({
-      action: `clear`
-    }),
-    query({
-      store: `running`,
-      action: `clear`
-    })
-  ])
-
+  const current = (await query()).map((k) => [k.name, k])
+  // update current
   await Promise.all([
     ...Object.values(weaves).map((data) => query({
       action: `put`,
@@ -66,17 +58,18 @@ export const save = async () => {
       }]
     }))
   ])
+
+  Object.keys(weaves).forEach((w) => {
+    delete current[w]
+  })
+
+  await Promise.all(Object.keys(current).map((id) =>
+    query({
+      action: `delete`,
+      args: [id]
+    })
+  ))
 }
-
-tick.listen((t) => {
-  if (
-    t % 10 !== 0 ||
-    db === undefined ||
-    !loaded
-  ) return
-
-  save()
-})
 
 window.query = query
 
@@ -107,6 +100,16 @@ const init = async () => {
   })
 
   load_res(true)
+
+  tick.listen((t) => {
+    if (
+      t % 10 !== 0 ||
+      db === undefined ||
+      !loaded
+    ) return
+
+    save()
+  })
 }
 
 init()

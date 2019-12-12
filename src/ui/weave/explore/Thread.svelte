@@ -131,6 +131,7 @@ const execute = () => {
     threads_update
   )
 
+  weave.validate()
   const n = weave.name.get()
   if (Wheel.running.get()[n]) {
     Wheel.restart(n)

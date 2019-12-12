@@ -54,7 +54,7 @@ let name
   <h2>Name It!</h2>
 
   <div class="spirit">
-    <Postage address={`/${name}`} nopunch={true} />
+    <Postage address={`/${name}`}/>
   </div>
 
   <input

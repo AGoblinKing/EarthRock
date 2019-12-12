@@ -43,8 +43,10 @@ export default ({
         const chain = w.chain(k.id.get(), true)
         const last = chain[chain.length - 1].split(`/`)[0]
         const first = chain[0].split(`/`)[0]
-        if (ks[last].knot.get() === `stitch` ||
-          ks[first].knot.get() === `stitch`
+        const k_last = ks[last]
+        const k_first = ks[first]
+        if ((k_last && k_last.knot.get() === `stitch`) ||
+          (k_first && k_first.knot.get() === `stitch`)
         ) return
         delete ks[k.id.get()]
         deletes += 1

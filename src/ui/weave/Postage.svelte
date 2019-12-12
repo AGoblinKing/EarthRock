@@ -40,8 +40,8 @@ $: rezed = $r[id]
   display: flex;
   background-color: #111;
   filter: sepia(1) hue-rotate(-50deg)    
-    drop-shadow(-0.25rem 0.25rem 0 black)
-    drop-shadow(0.25rem -0.25rem 0 black);
+    drop-shadow(-0.25rem 0.25rem 0 rgba(0,0,0,0.75))
+    drop-shadow(0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 
   padding: 0.25rem;
   border: 0.25rem solid  #333;
@@ -50,25 +50,26 @@ $: rezed = $r[id]
   background-color: green;
 }
 .postage:active {
-  background-color: black;
+  background-color: rgba(0,0,0,0.75);
   filter: sepia(1) hue-rotate(180deg)    
-    drop-shadow(0.25rem 0.25rem 0 black)
-    drop-shadow(-0.25rem -0.25rem 0 black);
+    drop-shadow(0.25rem 0.25rem 0 rgba(0,0,0,0.75))
+    drop-shadow(-0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
 
 .postage.running {
   filter: sepia(1) hue-rotate(90deg) 
-    drop-shadow(-0.25rem 0.25rem 0 black)
-    drop-shadow(0.25rem -0.25rem 0 black);
+    drop-shadow(-0.25rem 0.25rem 0 rgba(0,0,0,0.75))
+    drop-shadow(0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
 .postage.running:active {
-  background-color: black;
+  background-color: rgba(0,0,0,0.75);
   filter: sepia(1) hue-rotate(90deg)    
-    drop-shadow(0.25rem 0.25rem 0 black)
-    drop-shadow(-0.25rem -0.25rem 0 black);
+    drop-shadow(0.25rem 0.25rem 0 rgba(0,0,0,0.75))
+    drop-shadow(-0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
 .postage.rezed {
-  box-shadow:    0 0 0.75rem white,
+  box-shadow: -0.25rem 0.25rem 0  rgba(255, 255, 255, 0.5),
+   0.25rem 0.25rem 0  rgba(255, 255, 255, 0.5),
     0.25rem 0.25rem 0 rgba(0, 255, 0, 0.5),
     -0.25rem 0.25rem 0 rgba(0, 255, 0, 0.5);
 }

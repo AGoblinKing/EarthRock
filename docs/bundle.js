@@ -511,8 +511,10 @@ var app = (function (Color, uuid, expr, twgl) {
           const chain = w.chain(k.id.get(), true);
           const last = chain[chain.length - 1].split(`/`)[0];
           const first = chain[0].split(`/`)[0];
-          if (ks[last].knot.get() === `stitch` ||
-            ks[first].knot.get() === `stitch`
+          const k_last = ks[last];
+          const k_first = ks[first];
+          if ((k_last && k_last.knot.get() === `stitch`) ||
+            (k_first && k_first.knot.get() === `stitch`)
           ) return
           delete ks[k.id.get()];
           deletes += 1;
@@ -952,7 +954,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   var test_vert = "attribute vec4 position;void main(){gl_Position=position;}";
 
-  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite)*v_color;}";
+  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite);}";
 
   var sprite_vert = "precision highp float;uniform mat4 u_view_projection;attribute vec3 position;attribute float sprite;attribute vec4 color;varying vec4 v_color;varying vec2 v_sprite;void main(){v_color=color;v_sprite=vec2(mod(sprite,32.0),floor(sprite/32.0));gl_Position=u_view_projection*vec4(position,1.0);}";
 
@@ -1316,16 +1318,8 @@ var app = (function (Color, uuid, expr, twgl) {
       running, weaves
     } = Wheel.toJSON();
 
-    await Promise.all([
-      query({
-        action: `clear`
-      }),
-      query({
-        store: `running`,
-        action: `clear`
-      })
-    ]);
-
+    const current = (await query()).map((k) => [k.name, k]);
+    // update current
     await Promise.all([
       ...Object.values(weaves).map((data) => query({
         action: `put`,
@@ -1339,17 +1333,18 @@ var app = (function (Color, uuid, expr, twgl) {
         }]
       }))
     ]);
+
+    Object.keys(weaves).forEach((w) => {
+      delete current[w];
+    });
+
+    await Promise.all(Object.keys(current).map((id) =>
+      query({
+        action: `delete`,
+        args: [id]
+      })
+    ));
   };
-
-  tick.listen((t) => {
-    if (
-      t % 10 !== 0 ||
-      db === undefined ||
-      !loaded
-    ) return
-
-    save();
-  });
 
   window.query = query;
 
@@ -1380,6 +1375,16 @@ var app = (function (Color, uuid, expr, twgl) {
     });
 
     load_res(true);
+
+    tick.listen((t) => {
+      if (
+        t % 10 !== 0 ||
+        db === undefined ||
+        !loaded
+      ) return
+
+      save();
+    });
   };
 
   init();
@@ -4762,7 +4767,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			create_component(tile.$$.fragment);
-  			attr_dev(div, "class", "postage svelte-6v2bs7");
+  			attr_dev(div, "class", "postage svelte-s1jubj");
   			toggle_class(div, "running", ctx.running);
   			toggle_class(div, "rezed", ctx.rezed);
   			toggle_class(div, "system", ctx.system);
@@ -4988,7 +4993,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let dispose;
 
   	const postage = new Postage({
-  			props: { address: `/${ctx.name}`, nopunch: true },
+  			props: { address: `/${ctx.name}` },
   			$$inline: true
   		});
 
@@ -5015,13 +5020,13 @@ var app = (function (Color, uuid, expr, twgl) {
   			attr_dev(input, "class", "nameit svelte-1hnyn9v");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "Name it");
-  			add_location(input, file$3, 59, 2, 1095);
+  			add_location(input, file$3, 59, 2, 1079);
   			attr_dev(div1, "class", "false svelte-1hnyn9v");
-  			add_location(div1, file$3, 70, 4, 1304);
+  			add_location(div1, file$3, 70, 4, 1288);
   			attr_dev(div2, "class", "true svelte-1hnyn9v");
-  			add_location(div2, file$3, 71, 4, 1376);
+  			add_location(div2, file$3, 71, 4, 1360);
   			attr_dev(div3, "class", "controls svelte-1hnyn9v");
-  			add_location(div3, file$3, 69, 2, 1277);
+  			add_location(div3, file$3, 69, 2, 1261);
   			attr_dev(div4, "class", "nameprompt svelte-1hnyn9v");
   			add_location(div4, file$3, 49, 0, 933);
 
@@ -5105,11 +5110,11 @@ var app = (function (Color, uuid, expr, twgl) {
   			t1 = space();
   			input = element("input");
   			attr_dev(div, "class", "picker svelte-1hnyn9v");
-  			add_location(div, file$3, 76, 0, 1448);
+  			add_location(div, file$3, 76, 0, 1432);
   			attr_dev(input, "type", "file");
   			attr_dev(input, "class", "file svelte-1hnyn9v");
   			input.multiple = "multiple";
-  			add_location(input, file$3, 84, 0, 1550);
+  			add_location(input, file$3, 84, 0, 1534);
 
   			dispose = [
   				listen_dev(div, "drop", ctx.drop, false, false, false),
@@ -5640,7 +5645,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return child_ctx;
   }
 
-  // (212:2) {:else}
+  // (213:2) {:else}
   function create_else_block_2(ctx) {
   	let textarea;
   	let textarea_style_value;
@@ -5653,7 +5658,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			attr_dev(textarea, "class", "edit svelte-w7naj0");
   			attr_dev(textarea, "type", "text");
   			attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
-  			add_location(textarea, file$6, 212, 4, 4051);
+  			add_location(textarea, file$6, 213, 4, 4070);
 
   			dispose = [
   				listen_dev(textarea, "input", ctx.textarea_input_handler),
@@ -5686,14 +5691,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block_2.name,
   		type: "else",
-  		source: "(212:2) {:else}",
+  		source: "(213:2) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (182:2) {#if !editing}
+  // (183:2) {#if !editing}
   function create_if_block$1(ctx) {
   	let each_1_anchor;
   	let each_value = ctx.tru_thread;
@@ -5775,14 +5780,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$1.name,
   		type: "if",
-  		source: "(182:2) {#if !editing}",
+  		source: "(183:2) {#if !editing}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (203:4) {:else}
+  // (204:4) {:else}
   function create_else_block_1(ctx) {
   	let div;
   	let t;
@@ -5793,7 +5798,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			t = text("+\n      ");
   			attr_dev(div, "class", "cap svelte-w7naj0");
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
-  			add_location(div, file$6, 203, 6, 3914);
+  			add_location(div, file$6, 204, 6, 3933);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5813,14 +5818,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block_1.name,
   		type: "else",
-  		source: "(203:4) {:else}",
+  		source: "(204:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (192:6) {:else}
+  // (193:6) {:else}
   function create_else_block(ctx) {
   	let div;
   	let t0_value = ctx.condense(ctx.link) + "";
@@ -5836,7 +5841,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			attr_dev(div, "class", "thread svelte-w7naj0");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			add_location(div, file$6, 192, 8, 3671);
+  			add_location(div, file$6, 193, 8, 3690);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5868,14 +5873,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block.name,
   		type: "else",
-  		source: "(192:6) {:else}",
+  		source: "(193:6) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (184:6) {#if link[0] === `#`}
+  // (185:6) {#if link[0] === `#`}
   function create_if_block_1(ctx) {
   	let div;
   	let t0_value = ctx.link + "";
@@ -5890,7 +5895,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			attr_dev(div, "class", "thread svelte-w7naj0");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
-  			add_location(div, file$6, 184, 0, 3462);
+  			add_location(div, file$6, 185, 0, 3481);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5917,14 +5922,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_1.name,
   		type: "if",
-  		source: "(184:6) {#if link[0] === `#`}",
+  		source: "(185:6) {#if link[0] === `#`}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (183:4) {#each tru_thread as link}
+  // (184:4) {#each tru_thread as link}
   function create_each_block(ctx) {
   	let if_block_anchor;
 
@@ -5968,7 +5973,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(183:4) {#each tru_thread as link}",
+  		source: "(184:4) {#each tru_thread as link}",
   		ctx
   	});
 
@@ -5993,7 +5998,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if_block.c();
   			attr_dev(div, "class", "spot svelte-w7naj0");
   			attr_dev(div, "data:super", ctx.super_open);
-  			add_location(div, file$6, 172, 0, 3243);
+  			add_location(div, file$6, 173, 0, 3262);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -6147,6 +6152,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		});
 
   		weave.threads.set(threads_update);
+  		weave.validate();
   		const n = weave.name.get();
 
   		if (Wheel.running.get()[n]) {
@@ -6466,6 +6472,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	const block = {
   		c: function create() {
   			input = element("input");
+  			attr_dev(input, "class", "edit svelte-w2moq1");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON PLZ");
   			add_location(input, file$7, 54, 2, 924);
@@ -6520,9 +6527,9 @@ var app = (function (Color, uuid, expr, twgl) {
   			t1 = space();
   			div1 = element("div");
   			t2 = text(t2_value);
-  			attr_dev(div0, "class", "key svelte-kib4wy");
+  			attr_dev(div0, "class", "key svelte-w2moq1");
   			add_location(div0, file$7, 47, 2, 817);
-  			attr_dev(div1, "class", "value svelte-kib4wy");
+  			attr_dev(div1, "class", "value svelte-w2moq1");
   			add_location(div1, file$7, 50, 2, 856);
   		},
   		m: function mount(target, anchor) {
@@ -6577,7 +6584,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			t = space();
   			div = element("div");
   			if_block1.c();
-  			attr_dev(div, "class", "channel svelte-kib4wy");
+  			attr_dev(div, "class", "channel svelte-w2moq1");
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			add_location(div, file$7, 37, 0, 630);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);

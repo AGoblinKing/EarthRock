@@ -53,6 +53,7 @@ const focusd = (node) => {
   </div>
 {:else}
   <input 
+    class="edit"
     use:focusd
     type="text"
     bind:value={val}
@@ -69,6 +70,10 @@ const focusd = (node) => {
 {/if}
 </div>
 <style>
+
+.edit {
+  padding: 0.5rem;
+}
 
 .channel {
   display: flex;

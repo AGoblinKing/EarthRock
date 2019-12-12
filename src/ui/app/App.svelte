@@ -1,45 +1,33 @@
 <script>
-import Intro from "./Intro.svelte"
 import Tools from "./Tools.svelte"
-// import Game from "../game/Game.svelte"
+
 import Tile from "../image/Tile.svelte"
-import Design from "./Design.svelte"
-import Weave from "/ui/weave/Weave.svelte"
-import Credits from "./Credits.svelte"
-import { path } from "/sys/path.js"
-import { derived } from "/util/store.js"
-import { tick } from "/sys/time.js"
 
-const paths = {
-  cards: Design,
-  weave: Weave,
-  credits: Credits
-}
+import { zoom } from "/sys/input.js"
 
-const view = derived(path, ([$path]) => paths[$path[0]] || Intro)
+import Explore from "/ui/weave/Explore.svelte"
 </script>
 
-<svelte:component 
-  this={$view}
-/>
 
+<Explore />
 <Tools />
 
-<div class="background">
+<div class="background" style="opacity: {$zoom * 0.02 + 0.01}">
     <Tile random width={25} height={25} />
 </div>
 
 <style>
 .background {
-    display: flex;
-    z-index: 0;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    position: absolute;
-    filter: sepia(1) hue-rotate(-90deg);
-    opacity: 0.02;
-    pointer-events: none;
+  display: flex;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  position: absolute;
+  filter: sepia(1) hue-rotate(-90deg);
+  transition: opacity 100ms linear;
+  opacity: 0.01;
+  pointer-events: none;
 }
 </style>

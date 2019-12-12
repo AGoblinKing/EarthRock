@@ -10,7 +10,7 @@ import * as flag from "/sys/flag.js"
 
 // private sytems
 import "/sys/data.js"
-import "/sys/weave.js"
+
 const tie = (items) =>
   Object.entries(items)
     .reduce((result, [key, value]) => ({

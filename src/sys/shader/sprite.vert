@@ -1,5 +1,5 @@
 precision highp float;
-uniform mat4 u_projection_matrix;
+uniform mat4 u_view_projection;
 
 attribute vec3 position;
 attribute float sprite;
@@ -10,7 +10,7 @@ varying vec2 v_sprite;
 
 void main() {
   v_color = color;
-  v_sprite = vec2(mod(sprite, 1024.0), floor(sprite / 1024.0));
+  v_sprite = vec2(mod(sprite,32.0), floor(sprite / 32.0));
   
-  gl_Position = u_projection_matrix * vec4(position, 1.0);
+  gl_Position = u_view_projection * vec4(position, 1.0);
 }

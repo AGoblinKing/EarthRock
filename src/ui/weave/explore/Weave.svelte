@@ -1,60 +1,97 @@
 <script>
-import { woven } from "/sys/weave.js"
-import { WEAVE_EXPLORE_OPEN, THEME_BG } from "/sys/flag.js"
+import { WEAVE_EXPLORE_OPEN, THEME_BG, THEME_BORDER } from "/sys/flag.js"
 import { keys } from "/sys/key.js"
 
-import border from "/ui/action/border.js"
-
+import Omni from "./Omni.svelte"
 import Stitch from "./Stitch.svelte"
-import Postage from "/ui/weave/Postage.svelte"
+import Controls from "/ui/weave/Controls.svelte"
 
-export let filter = []
 export let weave
-export let open = $WEAVE_EXPLORE_OPEN
-
 $: name = weave.name
 $: names = weave.names
-$: stitches = Object.values($names)
 
-let super_open = $WEAVE_EXPLORE_OPEN
+export let filter = []
+export let open = $WEAVE_EXPLORE_OPEN
 
-$: active = $woven.name.get() === $name
+open = open && weave.name.get() !== Wheel.SYSTEM
+
+$: stitches = Object.entries($names).sort(([a], [b]) => {
+  if (a > b) return 1
+  if (b > a) return -1
+  return 0
+})
+
+$: knots = weave.knots
+
+let super_open = open
+let super_duper_open = false
+const command = ([
+  command,
+  detail,
+  detail2
+]) => {
+  switch (command) {
+    case `~`:
+      const k = $names[detail]
+
+      if (!k) return
+      k.name.set(detail2)
+
+      break
+    case `+`:
+      weave.add({
+        knot: `stitch`,
+        name: detail
+      })
+      break
+    case `-`:
+      weave.remove_name(detail)
+  }
+}
 </script>
+
 <div 
   class="weave"
   class:open
-  style="background-color: {$THEME_BG}"
-  use:border
-  class:active
+  style="background-color: {$THEME_BG}; border: 0.25rem solid {$THEME_BORDER};"
   on:click={() => {
     if ($keys.shift) {
       open = true
-      super_open = !super_open
+      if (super_open === false) {
+        super_open = true
+        return
+      }
+      if (super_duper_open === false) {
+        super_duper_open = true
+        return
+      }
+      super_open = false
+      super_duper_open = false
       return
     }
 
     open = !open
   }}
 >
-  <div class="postage">
-    <Postage 
-      address={`/${$name}`} 
-    />
-  </div>
+  <Controls {weave} />
   {$name}
 </div>
 
 {#if open}
   <div class="stitches">
-    {#each stitches as stitch}
+    
+    <Omni {command} system={$name === Wheel.SYSTEM}/>
+    
+    {#each stitches as [s_name,stitch]}
       {#if 
         filter.length === 0 ||
-        stitch.name.get().indexOf(filter[0]) !== -1
+        s_name.indexOf(filter[0]) !== -1
       }
         <Stitch 
           {stitch} 
           filter={filter.slice(1)} 
           open={super_open} 
+          super_open={super_duper_open}
           {weave}
         />
       {/if}
@@ -63,16 +100,7 @@ $: active = $woven.name.get() === $name
 {/if}
 
 <style>
-.postage {
-  width: 3rem;
-  height: 3rem;
-  display: flex;
-  margin-right: 1rem;
-}
 
-.active {
-  background-color: rgb(25, 66, 25) !important;
-}
 .weave {
   align-items:center;
   display: flex;
@@ -80,7 +108,7 @@ $: active = $woven.name.get() === $name
   border-right: none;
 }
 .weave:hover {
-  background-color: green !important;
+  color: white;
 }
 
 </style>

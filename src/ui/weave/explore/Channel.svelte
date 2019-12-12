@@ -1,23 +1,72 @@
 <script>
-import border from "/ui/action/border.js"
+import Thread from "./Thread.svelte"
+import { THEME_BORDER } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 
+export let stitch
+export let weave
 export let channel
-
+export let focus = false
+export let executed = () => {}
+export let super_open = false
 $: [key, value] = channel
+
+$: editing = focus
+let val = ``
+
+const execute = () => {
+  editing = false
+
+  try {
+    value.set(JSON.parse(val))
+  } catch (ex) {
+    // no boggie
+  }
+  val = ``
+  executed()
+}
+
+const focusd = (node) => {
+  node.focus()
+}
 </script>
+
+{#if weave.id.get() !== Wheel.SYSTEM}
+  <Thread {channel} {stitch} {weave} {super_open}/>
+{/if}
 
 <div 
   class="channel"
-  use:border
+  style="border: 0.25rem solid {$THEME_BORDER};"
   use:color={key}
+  on:click={() => {
+    editing = true
+    val = JSON.stringify($value)
+  }}
 >
+{#if !editing}
   <div class="key">
     {key}
   </div>
   <div class="value">
     {JSON.stringify($value)}
   </div>
+{:else}
+  <input 
+    use:focusd
+    type="text"
+    bind:value={val}
+    placeholder="JSON PLZ"
+    on:keydown={({ which }) => {
+      if (which !== 13) return
+
+      execute()
+    }}
+    on:blur={() => {
+      execute()
+    }}
+  />
+{/if}
 </div>
 <style>
 
@@ -25,20 +74,25 @@ $: [key, value] = channel
   display: flex;
   font-size: 0.75rem;
   overflow: hidden;
-  margin-left: 2rem;
-  padding: 0.5rem;
+  margin-left: 1rem;
+  border-top: none !important;
 }
+
 .key {
-  border-right: 0.25rem solid rgb(224, 168, 83);
-  padding-right: 0.25rem;
-  margin-right: 0.2rem;
+  border-right: 0.25rem solid rgba(0,0, 0,0.5);
+  padding: 0.5rem;
 }
 
 .value {
+  display: flex;
   flex: 1;
+  user-select: all;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
 }
 
 .channel:hover {
-  background-color: #111 !important;
+  color: white;
 }
 </style>

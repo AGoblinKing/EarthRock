@@ -1,5 +1,6 @@
-import { read, write, derived } from "/util/store.js"
-import { scroll } from "/sys/mouse.js"
+import { read, write } from "/util/store.js"
+
+import webgl from "./screen/webgl.js"
 
 export const size = read([window.innerWidth, window.innerHeight], (set) => {
   window.addEventListener(`resize`, () => {
@@ -19,8 +20,4 @@ size.subscribe(([width, height]) => {
 })
 
 // main canvas
-export const main = write((() => {
-  const canvas = document.createElement(`canvas`)
-  canvas.width = canvas.height = 100
-  return canvas
-})())
+export const main = read(webgl())

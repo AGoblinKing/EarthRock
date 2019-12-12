@@ -1,4 +1,4 @@
-import { write, read, transformer, derived } from "/util/store.js"
+import { write, read, derived } from "/util/store.js"
 
 import { random } from "/util/text.js"
 
@@ -10,10 +10,9 @@ export default ({
   name = random(2),
   id = uuid(),
   knots = {},
-  threads = {}
+  threads = {},
+  rezed = {}
 } = false) => {
-  let threads_set
-
   const exists = (id) => {
     const [knot, channel] = id.split(`/`)
 
@@ -29,27 +28,33 @@ export default ({
 
     name: write(name),
 
-    threads: read(threads, set => {
-      threads_set = set
-    }),
+    threads: write(threads),
 
     lives: write([]),
     mails: write({}),
-    take_thread: write(),
-    give_thread: write(),
-    give_knot: transformer((knot) => {
-      const k = Knot(knot)
-
-      w.knots.update((knots) => ({
-        ...knots,
-        [k.id]: k
-      }))
-
-      return k
-    }),
+    rezed: write(rezed),
     validate: () => {
       let dirty = false
+      let deletes = 0
       const t = w.threads.get()
+      const ks = w.knots.get()
+
+      Object.values(ks).forEach((k) => {
+        if (k.knot.get() === `stitch`) return
+        const chain = w.chain(k.id.get(), true)
+        const last = chain[chain.length - 1].split(`/`)[0]
+        const first = chain[0].split(`/`)[0]
+        if (ks[last].knot.get() === `stitch` ||
+          ks[first].knot.get() === `stitch`
+        ) return
+        delete ks[k.id.get()]
+        deletes += 1
+      })
+      if (deletes > 0) {
+        console.log(`Deleted ${deletes} orphans on validation.`)
+        w.knots.set(ks)
+      }
+
       Object.entries(t).forEach(([r, w]) => {
         if (exists(r) && exists(w)) return
 
@@ -61,13 +66,24 @@ export default ({
 
       w.threads.set(t)
     },
+
+    chain: (address, right = false) => {
+      const other = right
+        ? w.threads.get()[address]
+        : w.threads_r.get()[address]
+
+      if (!other) return [address]
+      return [...w.chain(other, right), address]
+    },
+
     toJSON: () => {
       const {
         id,
         knot,
         name,
         threads,
-        knots
+        knots,
+        rezed
       } = w
 
       return JSON.parse(JSON.stringify({
@@ -75,7 +91,8 @@ export default ({
         knot,
         name,
         threads,
-        knots
+        knots,
+        rezed
       }))
     }
   }
@@ -88,6 +105,44 @@ export default ({
     life
   ])
 
+  w.threads_r = read({}, (set) => {
+    w.threads.listen(($threads) => {
+      set(Object.fromEntries(Object.entries($threads).map(
+        (item) => item.reverse()
+      )))
+    })
+  })
+
+  w.get_knot = (id) => w.knots.get()[id]
+
+  w.remove_name = (name) => {
+    const k = w.names.get()[name]
+    if (!k) return
+    const id = k.id.get()
+    return w.remove(id)
+  }
+
+  w.remove = (id) => {
+    const k = w.knots.get()[id]
+    if (!k) return
+
+    const $t = w.threads.get()
+    const t_o = $t[id]
+    const t_me = w.threads_r.get()[id]
+    if (t_o) {
+      delete $t[id]
+      w.threads.set($t)
+    }
+    if (t_me) {
+      delete $t[t_me]
+      w.threads.set($t)
+    }
+    w.knots.update(($knots) => {
+      delete $knots[id]
+
+      return $knots
+    })
+  }
   w.add = (properties) => {
     const k = Knot({
       ...properties,
@@ -95,10 +150,10 @@ export default ({
       life: life_add
     })
 
-    w.knots.update(($knots) => ({
-      ...$knots,
-      [k.id.get()]: k
-    }))
+    w.knots.update(($knots) => {
+      $knots[k.id.get()] = k
+      return $knots
+    })
 
     return k
   }
@@ -132,41 +187,6 @@ export default ({
         ]
       )
   ))
-
-  w.take_thread.subscribe((id) => {
-    if (!id) return
-    const $threads = w.threads.get()
-
-    if (!$threads[id]) return
-    delete $threads[id]
-
-    threads_set($threads)
-  })
-
-  w.give_thread.subscribe((match) => {
-    if (!match) return
-
-    const [[
-      x_id,
-      x_dir
-    ], [
-      y_id,
-      y_dir
-    ]] = match.map((address) => address.split(`|`))
-
-    if (x_dir === y_dir) {
-      console.warn(`Tried to match same direction`)
-      return
-    }
-
-    const target = [x_id, y_id]
-    x_dir === `write` && target.reverse()
-
-    const threads = w.threads.get()
-
-    threads[target[0]] = target[1]
-    threads_set(threads)
-  })
 
   w.validate()
   return w

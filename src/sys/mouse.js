@@ -10,11 +10,6 @@ export const mouse_up = read(null, set => window
 
 export const scroll = read([0, 0, 0], set => window
   .addEventListener(`wheel`, (e) => {
-    try {
-      e.preventDefault()
-    } catch (ex) {
-      // shh
-    }
     set([-e.deltaX, -e.deltaY, 0])
   })
 )

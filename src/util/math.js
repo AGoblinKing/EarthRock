@@ -1,7 +1,14 @@
 import expr from "expr-eval"
 
-const parser = new expr.Parser()
+export const parser = new expr.Parser({
+  in: true,
+  assignment: true
+})
 
-export const math = (formula, variables) => {
-  return parser.parse(formula).evaluate(variables)
+export const math = (formula) => {
+  const p = parser.parse(formula)
+
+  return (variables) => p.evaluate(variables)
 }
+
+// math m = /sys/mouse/position; i = ./something/position; i[0] + m[0]

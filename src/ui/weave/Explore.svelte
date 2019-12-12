@@ -1,15 +1,13 @@
-<!--
-  Explorer of weaves.
-  [ Filter ]
-  [Weave]
-    - [Stitch]
-      - [Key]: [Value]
-    - [Stitch]
-  
-  [New]
--->
 <script>
+import Picker from "./Picker.svelte"
+import MainScreen from "./MainScreen.svelte"
 import Weave from "./explore/Weave.svelte"
+import { down } from "/sys/key.js"
+
+down.listen((key) => {
+  if (key !== `\``) return
+  hidden = !hidden
+})
 
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
@@ -18,6 +16,8 @@ let filter = ``
 $: parts = filter[0] === `-` || filter[0] === `+`
   ? [``, ``]
   : filter.split(`/`)
+
+export let hidden = false
 
 const do_add = () => {
   switch (filter[0]) {
@@ -38,11 +38,17 @@ const do_add = () => {
 }
 </script>
 
-<div class="explore">
+<MainScreen />
+<Picker />
+
+<div 
+  class="explore"
+  class:hidden
+>
   <input 
     type="text" 
     class="filter" 
-    placeholder="Filter and +/-name"
+    placeholder="!/~/+/-"
     bind:value={filter}
     on:keydown={({ which }) => which === 13 && do_add()}
   />
@@ -75,9 +81,17 @@ const do_add = () => {
   display: flex;
   flex-direction: column;
   z-index: 1001;
-  overflow: auto;
+  opacity: 1;
+  transition: all 50ms linear;
 }
-.filter, .adder {
+
+.hidden {
+  right: -20%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter {
   pointer-events: all;
   background-color: #111;
   border: 0.25rem solid #333;

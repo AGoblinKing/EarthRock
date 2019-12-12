@@ -1,7 +1,4 @@
 <script>
-import { button_press, button } from "/sound/ui.js"
-import { path } from "/sys/path.js"
-
 const audio = new Audio(`/music/earthrock-final-theme.mp3`)
 audio.loop = true
 audio.volume = 0.5
@@ -17,20 +14,9 @@ const toggle = () => {
 
   audo_playing = !audo_playing
 }
-
-const end = () => {
-  path.set(``)
-  button_press()
-}
 </script>
 
 <div class="tools">
-    
-    {#if $path !== false && $path !== ``}
-        <div on:click={end} on:mouseenter={button}>
-            X
-        </div>
-    {/if}
     <div on:click={toggle}>
         {audo_playing ? `>` : `!>`}
     </div>

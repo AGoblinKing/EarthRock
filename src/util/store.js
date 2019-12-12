@@ -81,6 +81,18 @@ export const map = (init = {}) => {
       ])
   ))
 
+  m.add = (channels) => {
+    m.set({
+      ...m.get(),
+      ...channels
+    })
+  }
+
+  m.remove = (channel) => {
+    const $m = m.get()
+    delete $m[channel]
+    set_m($m)
+  }
   m.set(init)
 
   return m

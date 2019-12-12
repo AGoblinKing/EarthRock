@@ -4,9 +4,7 @@ import { write, read } from "/util/store.js"
 export const SYSTEM = `sys`
 
 let feed_set
-export const feed = read({
-  reader: ``
-}, (set) => {
+export const feed = read({}, (set) => {
   feed_set = set
 })
 
@@ -95,22 +93,17 @@ export const spawn = (pattern = {}) => Object.fromEntries(
       console.warn(`tried to spawn ${SYSTEM}`)
       return [weave_id, get(weave_id)]
     }
-    const weave = get(weave_id)
 
-    if (weave === undefined) {
-      const ws = weaves.get()
-      const w = Weave({
-        ...weave_data,
-        name: weave_id
-      })
+    const ws = weaves.get()
+    const w = Weave({
+      ...weave_data,
+      name: weave_id
+    })
 
-      ws[weave_id] = w
+    ws[weave_id] = w
 
-      weaves.set(ws)
-      return [weave_id, w]
-    }
-
-    return [weave_id, weave]
+    weaves.set(ws)
+    return [weave_id, w]
   })
 )
 
@@ -153,17 +146,18 @@ export const start = (weave_name) => {
 
           // costly debug thingy,
           // TODO: better way?
-          feed_set({
-            reader: `${weave_name}/${reader}`,
-            writer: `${weave_name}/${writer}`,
-            value: $val
-          })
+
+          const $f = feed.get()
+          $f[`${weave_name}/${reader}`] = Date.now()
+          $f[`${weave_name}/${writer}`] = Date.now()
+
+          feed_set($f)
         })
       }),
     // frames
     ...w.lives.get().map((cb) => cb()),
 
-    // ramp to/from the bifrost
+    // ramp
     ...Object.entries(w.mails.get())
       .map(
         ([
@@ -173,12 +167,21 @@ export const start = (weave_name) => {
           const k = get(address)
           if (!k) return () => {}
           return k.subscribe((value_new) => {
+            if (!knots[mail_id]) {
+              // rogue mail entry
+              w.mails.update(($mail) => {
+                delete $mail[mail_id]
+                return $mail
+              })
+              return
+            }
             knots[mail_id].set(value_new)
-            feed_set({
-              reader: address,
-              writer: `${weave_name}/${mail_id}`,
-              value: value_new
-            })
+
+            const $f = feed.get()
+            $f[address] = Date.now()
+            $f[`${weave_name}/${mail_id}`] = Date.now()
+
+            feed_set($f)
           })
         })
   ])
@@ -191,7 +194,7 @@ export const start = (weave_name) => {
 
 export const stop = (weave_name) => {
   if (weave_name === SYSTEM) {
-    throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
+    console.warn(`CaN NoT StArT or StOp /${SYSTEM}`)
   }
 
   const h = highways.get(weave_name)
@@ -202,7 +205,7 @@ export const stop = (weave_name) => {
   running_set(r)
 
   if (h === undefined) {
-    throw new Error(`can't stop ${weave_name}`)
+    return
   }
 
   h.forEach((cancel) => cancel())
@@ -210,7 +213,12 @@ export const stop = (weave_name) => {
   highways.delete(weave_name)
 }
 
+export const restart = (name) => {
+  Wheel.stop(name)
+  Wheel.start(name)
+}
 const bump = (what) => JSON.parse(JSON.stringify(what))
+
 export const toJSON = () => ({
   weaves: bump(weaves),
   running: bump(running)

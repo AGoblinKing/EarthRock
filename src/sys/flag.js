@@ -8,7 +8,7 @@ export const SVELTE_ANIMATION = write({ delay: 100, duration: 300 })
 
 export const TIME_TICK_RATE = write(100)
 
-export const WEAVE_EXPLORE_OPEN = write(false)
+export const WEAVE_EXPLORE_OPEN = write(true)
 
 export const INPUT_SCROLL_STRENGTH = write(10)
 export const INPUT_ZOOM_STRENGTH = write(0.01)
@@ -17,7 +17,7 @@ export const INPUT_ZOOM_MIN = write(0.1)
 export const TILE_COUNT = read(1024)
 export const TILE_COLUMNS = read(32)
 
-export const THEME_BG = write(`#533118`)
+export const THEME_BG = write(`#271905`)
 export const THEME_GLOW = write(`green`)
 
 export const THEME_BORDER = read(``, (set) =>
@@ -26,3 +26,19 @@ export const THEME_BORDER = read(``, (set) =>
     .toCSS()
   ))
 )
+
+export const THEME_STYLE = read(``, (set) => {
+  let $THEME_BG = ``
+  let $THEME_BORDER = ``
+
+  const update = () => set(`background-color: ${$THEME_BG}; border: 0.25rem solid ${$THEME_BORDER};`)
+
+  THEME_BORDER.listen(($val) => {
+    $THEME_BORDER = $val
+    update()
+  })
+  THEME_BG.listen(($val) => {
+    $THEME_BG = $val
+    update()
+  })
+})

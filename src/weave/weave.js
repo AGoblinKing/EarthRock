@@ -52,7 +52,7 @@ export default ({
         deletes += 1
       })
       if (deletes > 0) {
-        console.log(`Deleted ${deletes} orphans on validation.`)
+        console.warn(`Deleted ${deletes} orphans on validation.`)
         w.knots.set(ks)
       }
 
@@ -115,7 +115,14 @@ export default ({
   })
 
   w.get_knot = (id) => w.knots.get()[id]
+  w.to_address = (id_path) => {
+    const [knot] = id_path.split(`/`)
 
+    const k = w.get_knot(knot)
+    if (!k || !k.name) return `/sys/void`
+
+    return `/${w.name.get()}/${k.name.get()}`
+  }
   w.remove_name = (name) => {
     const k = w.names.get()[name]
     if (!k) return

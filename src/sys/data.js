@@ -1,7 +1,7 @@
 import { tick } from "/sys/time.js"
 
-const VERSION = 2
-
+const VERSION = 3
+const HOUR_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60)
 let db
 
 let load_res
@@ -12,8 +12,7 @@ export const data = new Promise((resolve) => {
   req.onupgradeneeded = async (e) => {
     db = e.target.result
 
-    db.createObjectStore(`weave`, { keyPath: `id` })
-    db.createObjectStore(`running`, { keyPath: `id` })
+    db.createObjectStore(`wheel`, { keyPath: `date` })
 
     resolve(db)
   }
@@ -26,8 +25,8 @@ export const data = new Promise((resolve) => {
 })
 
 export const query = ({
-  store = `weave`,
-  action = `getAll`,
+  store = `wheel`,
+  action = `get`,
   args = [],
   foronly = `readwrite`
 } = false) => new Promise((resolve, reject) => {
@@ -39,65 +38,41 @@ export const query = ({
 })
 
 export const save = async () => {
-  const {
-    running, weaves
-  } = Wheel.toJSON()
+  const wheel = Wheel.toJSON()
 
-  const current = (await query()).map((k) => [k.name, k])
+  wheel.date = Date.now()
+
   // update current
-  await Promise.all([
-    ...Object.values(weaves).map((data) => query({
-      action: `put`,
-      args: [data]
-    })),
-    ...Object.keys(running).map((id) => query({
-      store: `running`,
-      action: `put`,
-      args: [{
-        id
-      }]
-    }))
-  ])
-
-  Object.keys(weaves).forEach((w) => {
-    delete current[w]
+  await query({
+    action: `put`,
+    args: [wheel]
   })
-
-  await Promise.all(Object.keys(current).map((id) =>
-    query({
-      action: `delete`,
-      args: [id]
-    })
-  ))
 }
+
+export const clean = () => query({
+  action: `delete`,
+  args: [HOUR_AGO]
+})
 
 window.query = query
 
 const init = async () => {
-  const [
-    weaves,
-    running
-  ] = await Promise.all([
-    await query(),
-    await query({
-      store: `running`
-    })
-  ])
-
-  Wheel.spawn(Object.fromEntries(
-    weaves
-      .filter((w) => w.name !== Wheel.SYSTEM)
-      .map((w) => [
-        w.name,
-        w
-      ])
-  ))
-
-  running.forEach((r) => {
-    if (r.id === Wheel.SYSTEM) return
-    if (!Wheel.get(r.id)) return
-    Wheel.start(r.id)
+  const result = await query({
+    action: `getAll`
   })
+
+  if (result && result.length > 0) {
+    const { weaves, running } = result.pop()
+    delete weaves[Wheel.SYSTEM]
+
+    Wheel.spawn(weaves)
+
+    Object.keys(running).forEach((id) => {
+      if (id === Wheel.SYSTEM) return
+      if (!Wheel.get(id)) return
+      Wheel.start(id)
+    })
+  }
 
   load_res(true)
 
@@ -109,6 +84,7 @@ const init = async () => {
     ) return
 
     save()
+    if (t % 100 === 0) clean()
   })
 }
 

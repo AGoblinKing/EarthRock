@@ -1,8 +1,7 @@
 import { math as math_js } from "/util/math.js"
 import { write, read, transformer } from "/util/store.js"
 
-const re_id = /\$?\.?\/[a-zA-Z \/]+/g
-const whitespace = /[ .]/g
+const whitespace = /[ .~]/g
 
 const escape = (str) =>
   str.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`) // $& means the whole matched string
@@ -13,20 +12,22 @@ export default ({
   math = `2+2`,
   value,
   weave,
-  life
+  life,
+  id
 } = false) => {
   let math_fn = () => {}
 
   const values = write({})
 
   const math_run = (expression) => requestAnimationFrame(() => {
-    const matches = expression.match(re_id)
+    const matches = expression.match(Wheel.REG_ID)
     const vs = {}
-
+    const s = weave.to_address(weave.chain(id, true).pop())
     new Set(matches).forEach((item) => {
       const shh = item[0] === `$`
       const gette = item
-        .replace(`.`, `/${weave.name.get()}`)
+        .replace(`.`, s)
+        .replace(`~`, `/${weave.name.get()}`)
         .replace(`$`, ``)
         .trim()
 

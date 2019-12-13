@@ -241,7 +241,7 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
   margin-right: -2.00rem;
   width: auto;
   font-size: 0.75rem;
-  margin-top: -0.25rem;
+  margin-top: -0.125rem;
 }
 
 .thread {

@@ -12,7 +12,8 @@ export default ({
 
   const fix = (address) => address
     .replace(`$`, ``)
-    .replace(`.`, `/${weave.name.get()}`)
+    .replace(`~`, `/${weave.name.get()}`)
+    .replace(`.`, weave.to_address(weave.chain(id, true).shift()))
 
   // when set hit up the remote
   value.set = (value_new) => {
@@ -25,6 +26,8 @@ export default ({
     }
 
     v.set(value_new)
+
+    set(value_new)
   }
 
   // Subscribe to remote
@@ -44,7 +47,10 @@ export default ({
 
     const cancel_whom = m.whom.listen(($whom) => {
       clear()
-      $whom = $whom.replace(`.`, weave.name.get())
+
+      $whom = $whom
+        .replace(`.`, weave.to_address(weave.chain(id, true).shift()))
+        .replace(`~`, weave.name.get())
 
       if ($whom[0] === `$`) {
         $whom = $whom.replace(`$`, ``)
@@ -52,6 +58,7 @@ export default ({
         if (!thing) return set(null)
 
         set(thing.get())
+        return
       }
 
       let thing = Wheel.get($whom)

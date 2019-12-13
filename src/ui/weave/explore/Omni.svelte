@@ -8,7 +8,7 @@ export let system = false
 export let focus = false
 const place_default = system
   ? `!`
-  : `!|~|+|-`
+  : `! > + -`
 
 let placeholder = place_default
 

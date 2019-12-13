@@ -260,8 +260,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   // math m = /sys/mouse/position; i = ./something/position; i[0] + m[0]
 
-  const re_id = /\$?\.?\/[a-zA-Z \/]+/g;
-  const whitespace = /[ .]/g;
+  const whitespace = /[ .~]/g;
 
   const escape = (str) =>
     str.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`); // $& means the whole matched string
@@ -272,20 +271,22 @@ var app = (function (Color, uuid, expr, twgl) {
     math: math$1 = `2+2`,
     value,
     weave,
-    life
+    life,
+    id
   } = false) => {
     let math_fn = () => {};
 
     const values = write({});
 
     const math_run = (expression) => requestAnimationFrame(() => {
-      const matches = expression.match(re_id);
+      const matches = expression.match(Wheel.REG_ID);
       const vs = {};
-
+      const s = weave.to_address(weave.chain(id, true).pop());
       new Set(matches).forEach((item) => {
         const shh = item[0] === `$`;
         const gette = item
-          .replace(`.`, `/${weave.name.get()}`)
+          .replace(`.`, s)
+          .replace(`~`, `/${weave.name.get()}`)
           .replace(`$`, ``)
           .trim();
 
@@ -391,7 +392,8 @@ var app = (function (Color, uuid, expr, twgl) {
 
     const fix = (address) => address
       .replace(`$`, ``)
-      .replace(`.`, `/${weave.name.get()}`);
+      .replace(`~`, `/${weave.name.get()}`)
+      .replace(`.`, weave.to_address(weave.chain(id, true).shift()));
 
     // when set hit up the remote
     value.set = (value_new) => {
@@ -404,6 +406,8 @@ var app = (function (Color, uuid, expr, twgl) {
       }
 
       v.set(value_new);
+
+      set(value_new);
     };
 
     // Subscribe to remote
@@ -423,7 +427,10 @@ var app = (function (Color, uuid, expr, twgl) {
 
       const cancel_whom = m.whom.listen(($whom) => {
         clear();
-        $whom = $whom.replace(`.`, weave.name.get());
+
+        $whom = $whom
+          .replace(`.`, weave.to_address(weave.chain(id, true).shift()))
+          .replace(`~`, weave.name.get());
 
         if ($whom[0] === `$`) {
           $whom = $whom.replace(`$`, ``);
@@ -431,6 +438,7 @@ var app = (function (Color, uuid, expr, twgl) {
           if (!thing) return set(null)
 
           set(thing.get());
+          return
         }
 
         let thing = Wheel.get($whom);
@@ -531,7 +539,7 @@ var app = (function (Color, uuid, expr, twgl) {
           deletes += 1;
         });
         if (deletes > 0) {
-          console.log(`Deleted ${deletes} orphans on validation.`);
+          console.warn(`Deleted ${deletes} orphans on validation.`);
           w.knots.set(ks);
         }
 
@@ -594,7 +602,14 @@ var app = (function (Color, uuid, expr, twgl) {
     });
 
     w.get_knot = (id) => w.knots.get()[id];
+    w.to_address = (id_path) => {
+      const [knot] = id_path.split(`/`);
 
+      const k = w.get_knot(knot);
+      if (!k || !k.name) return `/sys/void`
+
+      return `/${w.name.get()}/${k.name.get()}`
+    };
     w.remove_name = (name) => {
       const k = w.names.get()[name];
       if (!k) return
@@ -880,7 +895,7 @@ var app = (function (Color, uuid, expr, twgl) {
     running: bump(running)
   });
 
-  const REG_ID = /\$?\.?\/[a-zA-Z \/]+/g;
+  const REG_ID = /\$?[~\.]?\/[a-zA-Z \/]+/g;
 
   var Wheel$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
@@ -1341,8 +1356,8 @@ var app = (function (Color, uuid, expr, twgl) {
     focus: focus
   });
 
-  const VERSION = 2;
-
+  const VERSION = 3;
+  const HOUR_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60);
   let db;
 
   let load_res;
@@ -1353,8 +1368,7 @@ var app = (function (Color, uuid, expr, twgl) {
     req.onupgradeneeded = async (e) => {
       db = e.target.result;
 
-      db.createObjectStore(`weave`, { keyPath: `id` });
-      db.createObjectStore(`running`, { keyPath: `id` });
+      db.createObjectStore(`wheel`, { keyPath: `date` });
 
       resolve(db);
     };
@@ -1367,8 +1381,8 @@ var app = (function (Color, uuid, expr, twgl) {
   });
 
   const query = ({
-    store = `weave`,
-    action = `getAll`,
+    store = `wheel`,
+    action = `get`,
     args = [],
     foronly = `readwrite`
   } = false) => new Promise((resolve, reject) => {
@@ -1380,65 +1394,41 @@ var app = (function (Color, uuid, expr, twgl) {
   });
 
   const save = async () => {
-    const {
-      running, weaves
-    } = Wheel.toJSON();
+    const wheel = Wheel.toJSON();
 
-    const current = (await query()).map((k) => [k.name, k]);
+    wheel.date = Date.now();
+
     // update current
-    await Promise.all([
-      ...Object.values(weaves).map((data) => query({
-        action: `put`,
-        args: [data]
-      })),
-      ...Object.keys(running).map((id) => query({
-        store: `running`,
-        action: `put`,
-        args: [{
-          id
-        }]
-      }))
-    ]);
-
-    Object.keys(weaves).forEach((w) => {
-      delete current[w];
+    await query({
+      action: `put`,
+      args: [wheel]
     });
-
-    await Promise.all(Object.keys(current).map((id) =>
-      query({
-        action: `delete`,
-        args: [id]
-      })
-    ));
   };
+
+  const clean = () => query({
+    action: `delete`,
+    args: [HOUR_AGO]
+  });
 
   window.query = query;
 
   const init = async () => {
-    const [
-      weaves,
-      running
-    ] = await Promise.all([
-      await query(),
-      await query({
-        store: `running`
-      })
-    ]);
-
-    Wheel.spawn(Object.fromEntries(
-      weaves
-        .filter((w) => w.name !== Wheel.SYSTEM)
-        .map((w) => [
-          w.name,
-          w
-        ])
-    ));
-
-    running.forEach((r) => {
-      if (r.id === Wheel.SYSTEM) return
-      if (!Wheel.get(r.id)) return
-      Wheel.start(r.id);
+    const result = await query({
+      action: `getAll`
     });
+
+    if (result && result.length > 0) {
+      const { weaves, running } = result.pop();
+      delete weaves[Wheel.SYSTEM];
+
+      Wheel.spawn(weaves);
+
+      Object.keys(running).forEach((id) => {
+        if (id === Wheel.SYSTEM) return
+        if (!Wheel.get(id)) return
+        Wheel.start(id);
+      });
+    }
 
     load_res(true);
 
@@ -1450,6 +1440,7 @@ var app = (function (Color, uuid, expr, twgl) {
       ) return
 
       save();
+      if (t % 100 === 0) clean();
     });
   };
 
@@ -4937,7 +4928,7 @@ var app = (function (Color, uuid, expr, twgl) {
       update: (txt) => {
         const col = Color(color(JSON.stringify(txt)));
 
-        node.style.backgroundColor = col.darkenByRatio(0.75).setAlpha(0.75).toCSS();
+        node.style.backgroundColor = col.darkenByRatio(0.7).setAlpha(0.925).toCSS();
       }
     };
 
@@ -5461,7 +5452,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let omni = ``;
   	let { system = false } = $$props;
   	let { focus = false } = $$props;
-  	const place_default = system ? `!` : `!|~|+|-`;
+  	const place_default = system ? `!` : `! > + -`;
   	let placeholder = place_default;
 
   	const calc_offset = ($t, $p) => {
@@ -5628,7 +5619,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	const block = {
   		c: function create() {
   			textarea = element("textarea");
-  			attr_dev(textarea, "class", "edit svelte-w7naj0");
+  			attr_dev(textarea, "class", "edit svelte-1ifqcjd");
   			attr_dev(textarea, "type", "text");
   			attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
   			add_location(textarea, file$5, 213, 4, 4070);
@@ -5769,7 +5760,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			t = text("+\n      ");
-  			attr_dev(div, "class", "cap svelte-w7naj0");
+  			attr_dev(div, "class", "cap svelte-1ifqcjd");
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			add_location(div, file$5, 204, 6, 3933);
   		},
@@ -5811,7 +5802,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-w7naj0");
+  			attr_dev(div, "class", "thread svelte-1ifqcjd");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
   			add_location(div, file$5, 193, 8, 3690);
@@ -5865,7 +5856,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-w7naj0");
+  			attr_dev(div, "class", "thread svelte-1ifqcjd");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
   			add_location(div, file$5, 185, 0, 3481);
@@ -5969,7 +5960,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			if_block.c();
-  			attr_dev(div, "class", "spot svelte-w7naj0");
+  			attr_dev(div, "class", "spot svelte-1ifqcjd");
   			attr_dev(div, "data:super", ctx.super_open);
   			add_location(div, file$5, 173, 0, 3262);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
@@ -6943,7 +6934,7 @@ var app = (function (Color, uuid, expr, twgl) {
   				check_outros();
   			}
 
-  			if (changed.filter || changed.chans || changed.stitch || changed.weave || changed.super_open || changed.focus || changed.executed) {
+  			if (changed.filter || changed.chans || changed.stitch || changed.weave || changed.super_open || changed.executed) {
   				each_value = ctx.chans;
   				let i;
 
@@ -7068,7 +7059,6 @@ var app = (function (Color, uuid, expr, twgl) {
   				stitch: ctx.stitch,
   				weave: ctx.weave,
   				super_open: ctx.super_open,
-  				focus: ctx.focus === ctx.channel[0],
   				executed: ctx.executed
   			},
   			$$inline: true
@@ -7088,7 +7078,6 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (changed.stitch) channel_changes.stitch = ctx.stitch;
   			if (changed.weave) channel_changes.weave = ctx.weave;
   			if (changed.super_open) channel_changes.super_open = ctx.super_open;
-  			if (changed.focus || changed.chans) channel_changes.focus = ctx.focus === ctx.channel[0];
   			channel.$set(channel_changes);
   		},
   		i: function intro(local) {
@@ -7356,7 +7345,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		switch (action) {
   			case `+`:
   				value.add({ [chan]: `` });
-  				$$invalidate("focus", focus = chan);
+  				focus = chan;
   				return;
   			case `-`:
   				value.remove(chan);
@@ -7434,7 +7423,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
   		if ("omni_focus" in $$props) $$invalidate("omni_focus", omni_focus = $$props.omni_focus);
-  		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
+  		if ("focus" in $$props) focus = $$props.focus;
   		if ("$WEAVE_EXPLORE_OPEN" in $$props) WEAVE_EXPLORE_OPEN.set($WEAVE_EXPLORE_OPEN = $$props.$WEAVE_EXPLORE_OPEN);
   		if ("w_name" in $$props) $$subscribe_w_name($$invalidate("w_name", w_name = $$props.w_name));
   		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
@@ -7488,7 +7477,6 @@ var app = (function (Color, uuid, expr, twgl) {
   		weave,
   		super_open,
   		omni_focus,
-  		focus,
   		executed,
   		command,
   		toggle,

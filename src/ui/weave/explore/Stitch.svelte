@@ -96,7 +96,6 @@ const toggle = (e) => {
       {stitch} 
       {weave} 
       {super_open}
-      focus={focus === channel[0]}
       {executed}
     />
   {/if}

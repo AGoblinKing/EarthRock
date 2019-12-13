@@ -1,6 +1,5 @@
 <script>
-import exif from "piexifjs"
-
+import { load } from "/sys/file.js"
 import Postage from "/ui/weave/Postage.svelte"
 import * as knots from "/weave/knots.js"
 
@@ -17,9 +16,8 @@ const drop = (e) => {
     const reader = new FileReader()
 
     reader.onloadend = (e) => {
-      const r = exif.load(e.target.result)
-
-      nameit = JSON.parse(r[`0th`][exif.ImageIFD.Make])
+      nameit = load(e.target.result)
+      if (!nameit) return
       name = `${nameit.name}`
     }
     reader.readAsDataURL(files[i])

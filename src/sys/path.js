@@ -10,7 +10,13 @@ export const path = transformer((path_new) => {
     return path_split
   }
 
-  window.history.pushState({ page: 1 }, ``, `/${path_new}`)
+  // window.history.pushState({ page: 1 }, ``, `/${path_new}`)
 
   return path_split
-}).set(decodeURI(window.location.pathname.slice(1)))
+})
+
+if (window.location.search) {
+  path.set(decodeURI(window.location.search.slice(1)))
+} else {
+  path.set(decodeURI(window.location.pathname.slice(1)))
+}

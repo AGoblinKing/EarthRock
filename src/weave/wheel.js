@@ -118,6 +118,8 @@ export const start = (weave_name) => {
     throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
   }
   const w = get(weave_name)
+  if (!w) return false
+
   const knots = w.knots.get()
 
   const by_id = (id) => {
@@ -175,6 +177,8 @@ export const start = (weave_name) => {
     ...running.get(),
     [weave_name]: true
   })
+
+  return true
 }
 
 export const stop = (weave_name) => {

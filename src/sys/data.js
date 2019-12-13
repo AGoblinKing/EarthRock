@@ -1,4 +1,6 @@
 import { tick } from "/sys/time.js"
+import { path } from "/sys/path.js"
+import { load } from "/sys/file.js"
 
 const VERSION = 3
 const HOUR_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60)
@@ -59,7 +61,7 @@ window.query = query
 const init = async () => {
   const result = await query({
     action: `getAll`
-  })
+  }).catch((e) => console.warn(`DB`, e.target.error))
 
   if (result && result.length > 0) {
     const { weaves, running } = result.pop()
@@ -89,3 +91,25 @@ const init = async () => {
 }
 
 init()
+
+path.listen(async ($path) => {
+  if ($path.length < 3) return
+  const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`
+
+  const reader = new FileReader()
+  const blob = await fetch(url)
+    .then((r) => r.blob())
+
+  reader.readAsDataURL(blob)
+
+  reader.addEventListener(`load`, () => {
+    const data = load(reader.result)
+    if (!data) return
+
+    Wheel.spawn({
+      [data.name]: data
+    })
+
+    Wheel.start(data.name)
+  })
+})

@@ -2,6 +2,7 @@
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
 import Weave from "./explore/Weave.svelte"
+import { THEME_STYLE } from "/sys/flag.js"
 import { down } from "/sys/key.js"
 
 down.listen((key) => {
@@ -45,6 +46,11 @@ const do_add = () => {
   class="explore"
   class:hidden
 >
+  <div 
+    class="logo"
+    style={$THEME_STYLE}
+  >[ I S E K A I ]</div>
+
   <input 
     type="text" 
     class="filter" 
@@ -67,6 +73,16 @@ const do_add = () => {
 
 <style>
 
+.logo {
+  display: none;
+  padding: 0.5rem;
+  text-align: center;
+  color: rgba(60, 255, 0, 0.123);
+  transition: all 250ms cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+.logo:hover {
+  color: rgba(60, 255, 0, 0.8);
+}
 
 .explore {
   pointer-events: none;

@@ -78,17 +78,21 @@ export default ({
       ? null
       : val
 
-    const result = math_fn({
-      ...Object.fromEntries(Object.entries(vs).map(
-        ([key, { k }]) => [key, k.toJSON() === undefined
-          ? null
-          : k.toJSON()
-        ]
-      )),
-      v: val
-    })
-    set(result)
-    return m.value
+    try {
+      const result = math_fn({
+        ...Object.fromEntries(Object.entries(vs).map(
+          ([key, { k }]) => [key, k.toJSON() === undefined
+            ? null
+            : k.toJSON()
+          ]
+        )),
+        v: val
+      })
+      set(result)
+      return m.value
+    } catch (ex) {
+
+    }
   }
   m.math.set(math)
   life(() => {
@@ -106,7 +110,8 @@ export default ({
       })
     })
 
-    m.value.poke()
+    set(m.value.get())
+
     return () => {
       cancel_vs()
       cancels.forEach((cancel) => cancel())

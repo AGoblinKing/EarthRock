@@ -5,6 +5,10 @@ export const parser = new expr.Parser({
   assignment: true
 })
 
+parser.functions.stop = function () {
+  throw new Error(`math stop`)
+}
+
 export const math = (formula) => {
   const p = parser.parse(formula)
 

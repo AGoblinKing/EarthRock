@@ -1,20 +1,18 @@
 <script>
-import Tools from "./Tools.svelte"
 
-import Tile from "../image/Tile.svelte"
+// import Tile from "../image/Tile.svelte"
 
-import { zoom } from "/sys/input.js"
+// import { zoom } from "/sys/input.js"
 
 import Explore from "/ui/weave/Explore.svelte"
 </script>
 
 
 <Explore />
-<Tools />
 
-<div class="background" style="opacity: {$zoom * 0.02 + 0.01}">
-    <Tile random width={25} height={25} />
-</div>
+<!-- <div class="background" style="opacity: {$zoom * 0.02 + 0.01}">
+    <Tile random width={25} height={25}/>
+</div> -->
 
 <style>
 .background {

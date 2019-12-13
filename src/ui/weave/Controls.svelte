@@ -7,7 +7,6 @@ import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 import fs from "file-saver"
 import { tile } from "/util/text.js"
 import Tile from "/image/tile.js"
-import { down } from "/sys/key.js"
 
 export let weave
 
@@ -19,6 +18,7 @@ $: runs = $running[weave.name.get()]
 const toggle = (e) => {
   e.stopPropagation()
   e.preventDefault()
+
   if (runs) {
     Wheel.stop($name)
   } else {
@@ -28,9 +28,6 @@ const toggle = (e) => {
   runs = !runs
 }
 
-$: {
-  if ($down === ` `) toggle()
-}
 const seed_image = async () => {
   const tn = tile(`/${$name}`)
   const t = await Tile({

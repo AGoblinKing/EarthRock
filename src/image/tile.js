@@ -1,13 +1,13 @@
 import { TILE_COUNT, TILE_COLUMNS } from "/sys/flag.js"
 
 const SIZE = 16
-const SPACING = 1
+const SPACING = 0
 const COLUMNS = TILE_COLUMNS.get()
 const COUNT = TILE_COUNT.get()
 
 const ready = new Promise((resolve) => {
   const tiles = new Image()
-  tiles.src = `/sheets/default.png`
+  tiles.src = `/sheets/default_2.png`
 
   tiles.onload = () => {
     const canvas = document.createElement(`canvas`)
@@ -89,7 +89,7 @@ export default async ({
     })
   }
 
-  const result = data_canvas.toDataURL(`image/jpeg`)
+  const result = data_canvas.toDataURL(`image/png`)
   if (!random) {
     repo.set(key, result)
   }

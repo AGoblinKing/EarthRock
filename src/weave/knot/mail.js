@@ -1,4 +1,4 @@
-import { transformer, write, read } from "/util/store.js"
+import { write, read } from "/util/store.js"
 
 // instead use the weave messaging channel
 export default ({
@@ -21,7 +21,6 @@ export default ({
     const v = Wheel.get($whom)
 
     if (!v || !v.set) {
-      console.warn(`tried to mail a readable or unknown`, m.whom.get(), $whom)
       return
     }
 
@@ -55,8 +54,11 @@ export default ({
         set(thing.get())
       }
 
-      const thing = Wheel.get($whom)
+      let thing = Wheel.get($whom)
       if (!thing) return set(null)
+      thing = thing.value
+        ? thing.value
+        : thing
 
       cancels.add(thing.listen(($thing) => {
         set($thing)

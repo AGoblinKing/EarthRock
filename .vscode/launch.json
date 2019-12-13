@@ -9,8 +9,8 @@
     "request": "attach",
     "name": "Attach",
     "webRoot": "${workspaceFolder}",
-    "host": "192.168.1.2",
-    "url": "http://localhost:5000"
+    "host": "192.168.1.3",
+    "url": "http://192.168.1.3:5000"
   },
     {
       "type": "chrome",

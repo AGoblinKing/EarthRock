@@ -19,15 +19,18 @@ export const translate = read([0, 0, 0], (set) => {
   const b_key = [0, 0, 0]
   // frame stuff has to be fast :/
   Time.frame.listen(() => {
-    const { w, a, s, d } = Key.keys.get()
+    const { w, a, s, d, q, e } = Key.keys.get()
 
     b_key[0] = 0
     b_key[1] = 0
+    b_key[2] = 0
 
-    if (w) b_key[1] -= 1
-    if (s) b_key[1] += 1
+    if (w) b_key[1] += 1
+    if (s) b_key[1] -= 1
     if (a) b_key[0] -= 1
     if (d) b_key[0] += 1
+    if (q) b_key[2] += 1
+    if (e) b_key[2] -= 1
 
     if (length(b_key) === 0) return
 

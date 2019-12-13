@@ -6,7 +6,7 @@ export default (node, txt_init) => {
     update: (txt) => {
       const col = Color(color(JSON.stringify(txt)))
 
-      node.style.backgroundColor = col.setAlpha(0.25).toCSS()
+      node.style.backgroundColor = col.darkenByRatio(0.75).setAlpha(0.75).toCSS()
     }
   }
 

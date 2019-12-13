@@ -202,6 +202,7 @@ export const restart = (name) => {
   Wheel.stop(name)
   Wheel.start(name)
 }
+
 const bump = (what) => JSON.parse(JSON.stringify(what))
 
 export const toJSON = () => ({

@@ -11,6 +11,7 @@ export let weave
 $: name = weave.name
 $: names = weave.names
 
+export let side = `in`
 export let filter = []
 export let open = $WEAVE_EXPLORE_OPEN
 
@@ -30,8 +31,14 @@ const command = ([
   command,
   detail,
   detail2
-]) => {
+], msg) => {
   switch (command) {
+    case `>`:
+      const knot = $names[detail]
+      if (!knot) return msg(`Couldn't find ${detail}`)
+      if ($names[detail2]) return msg(`${detail2} already exists`)
+      knot.knot.name.set(detail2)
+      return
     case `~`:
       const k = $names[detail]
 
@@ -44,6 +51,7 @@ const command = ([
         knot: `stitch`,
         name: detail
       })
+
       break
     case `-`:
       weave.remove_name(detail)
@@ -51,8 +59,8 @@ const command = ([
 }
 </script>
 
-<div 
-  class="weave"
+<div
+  class="weave {side}"
   class:open
   use:color={$name}
   style="background-color: {$THEME_BG}; border: 0.25rem solid {$THEME_BORDER};"
@@ -75,26 +83,27 @@ const command = ([
     open = !open
   }}
 >
-  <Controls {weave} />
+  <Controls {weave} {side} />
   {$name}
 </div>
 
 {#if open}
   <div class="stitches">
-    
+
     <Omni {command} system={$name === Wheel.SYSTEM}/>
-    
+
     {#each stitches as [s_name,stitch]}
-      {#if 
+      {#if
         filter.length === 0 ||
         s_name.indexOf(filter[0]) !== -1
       }
-        <Stitch 
-          {stitch} 
-          filter={filter.slice(1)} 
-          open={super_open} 
+        <Stitch
+          {stitch}
+          filter={filter.slice(1)}
+          open={super_open}
           super_open={super_duper_open}
           {weave}
+          {side}
         />
       {/if}
     {/each}
@@ -109,6 +118,10 @@ const command = ([
   padding: 1rem;
   margin-top: -0.25rem;
   border-right: none;
+}
+
+.out {
+   flex-direction: row-reverse;
 }
 .weave:hover {
   color: white;

@@ -46,9 +46,16 @@ const execute = () => {
     omni[0],
     ...omni.slice(1).split(`/`)
   ]
-  if (commands[data[0]]) commands[data[0]](data)
-  command(data)
   omni = ``
+
+  if (system) {
+    return commands[`!`]()
+  }
+
+  if (commands[data[0]]) commands[data[0]](data)
+  command(data, (ph) => {
+    placeholder = ph
+  })
 }
 </script>
 

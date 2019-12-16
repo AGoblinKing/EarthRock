@@ -9,6 +9,7 @@ import Postage from "/ui/weave/Postage.svelte"
 
 export let filter = []
 export let stitch
+export let side = `in`
 export let open = $WEAVE_EXPLORE_OPEN
 export let weave
 
@@ -63,8 +64,8 @@ const toggle = (e) => {
 }
 </script>
 
-<div 
-  class="stitch"
+<div
+  class="stitch {side}"
   class:open
   use:color={$name}
   on:click={() => {
@@ -91,12 +92,13 @@ const toggle = (e) => {
 
 {#each chans as channel}
   {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
-    <Channel 
-      {channel} 
-      {stitch} 
-      {weave} 
+    <Channel
+      {channel}
+      {stitch}
+      {weave}
       {super_open}
       {executed}
+      {side}
     />
   {/if}
 {/each}
@@ -113,7 +115,7 @@ const toggle = (e) => {
   width: 2rem;
   height: 2rem;
   display: flex;
-  margin-right: 1rem;
+  margin: 0 1rem;
 }
 
 .stitch {
@@ -125,6 +127,13 @@ const toggle = (e) => {
   border-right: none;
   margin-top:-0.25rem;
 }
+
+.stitch.out {
+  margin-left: 0;
+  margin-right: 1rem;
+  flex-direction: row-reverse;
+}
+
 .stitch:hover {
   color: white;
 }

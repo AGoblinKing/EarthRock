@@ -2,17 +2,30 @@
 import Thread from "./Thread.svelte"
 import { THEME_BORDER } from "/sys/flag.js"
 import color from "/ui/action/color.js"
-
+import { tick } from "/sys/time.js"
 export let stitch
 export let weave
 export let channel
+export let side = `in`
 export let focus = false
 export let executed = () => {}
 export let super_open = false
 $: [key, value] = channel
 
+let display = null
+
 $: editing = focus
 let val = ``
+
+// avoid massive updates
+const update = (t) => {
+  if (t % 2 !== 0 || display === value.get()) return
+  display = value.get()
+}
+
+$: {
+  update($tick)
+}
 
 const execute = () => {
   editing = false
@@ -32,11 +45,11 @@ const focusd = (node) => {
 </script>
 
 {#if weave.id.get() !== Wheel.SYSTEM}
-  <Thread {channel} {stitch} {weave} {super_open}/>
+  <Thread {channel} {stitch} {weave} {super_open} {side} />
 {/if}
 
-<div 
-  class="channel"
+<div
+  class="channel {side}"
   style="border: 0.25rem solid {$THEME_BORDER};"
   use:color={key}
   on:click={() => {
@@ -49,10 +62,10 @@ const focusd = (node) => {
     {key}
   </div>
   <div class="value">
-    {JSON.stringify($value)}
+    {JSON.stringify(display)}
   </div>
 {:else}
-  <input 
+  <input
     class="edit"
     use:focusd
     type="text"
@@ -73,6 +86,7 @@ const focusd = (node) => {
 
 .edit {
   padding: 0.5rem;
+  width: 100%;
 }
 
 .channel {
@@ -83,18 +97,30 @@ const focusd = (node) => {
   border-top: none !important;
 }
 
+.channel.out {
+  margin-left: 0;
+  margin-right: 1rem;
+  flex-direction: row-reverse;
+}
+
 .key {
   border-right: 0.25rem solid rgba(0,0, 0,0.5);
   padding: 0.5rem;
+}
+
+.out .key {
+  border-right: none;
+  border-left: 0.25rem solid rgba(0,0, 0,0.5);
 }
 
 .value {
   display: flex;
   flex: 1;
   user-select: all;
-  justify-content: center;
-  align-items: center;
   padding: 0.5rem;
+  overflow: hidden;
+  height: 0.75rem;
+  text-align: left;
 }
 
 .channel:hover {

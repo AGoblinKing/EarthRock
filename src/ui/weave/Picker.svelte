@@ -1,5 +1,5 @@
 <script>
-import { load } from "/sys/file.js"
+import { load, image } from "/sys/file.js"
 import Postage from "/ui/weave/Postage.svelte"
 import * as knots from "/weave/knots.js"
 
@@ -7,15 +7,20 @@ import color from "/ui/action/color.js"
 
 $: arr_knots = Object.entries(knots)
 
+let last = {
+
+}
 let files
 let nameit = false
 const drop = (e) => {
   dragover = false
+
   const files = e.dataTransfer.files
   for (let i = 0; i < files.length; i++) {
     const reader = new FileReader()
 
     reader.onloadend = (e) => {
+      last = files[i]
       nameit = load(e.target.result)
       if (!nameit) return
       name = `${nameit.name}`
@@ -40,30 +45,46 @@ const play_it = () => {
   Wheel.spawn({
     [name]: nameit
   })
+
+  const weave = Wheel.get(name)
+
+  weave.update({
+    info: {
+      knot: `stitch`,
+      value: {
+        from: last.name,
+        "save last": last.lastModified,
+        size: last.size
+      }
+    }
+  })
+
   nameit = false
 }
 let name
 </script>
 {#if nameit}
-<div 
+<div
   class="nameprompt"
   use:color={`/${name}`}
 >
   <h2>Name It!</h2>
 
   <div class="spirit">
-    <Postage address={`/${name}`}/>
+    {#await image(name) then src}
+      <img  class="flex" {src} alt="fileicon"/>
+    {/await}
   </div>
 
   <input
-    class="nameit" 
+    class="nameit"
     on:keydown={(e) => {
       if (e.which !== 13) return
       play_it()
     }}
-    type="text" 
-    bind:value={name} 
-    placeholder="Name it" 
+    type="text"
+    bind:value={name}
+    placeholder="Name it"
   />
   <div class="controls">
     <div class="false" on:click={() => { nameit = false }}>Cancel</div>
@@ -72,18 +93,18 @@ let name
 </div>
 {/if}
 
-<div 
-  class="picker" 
+<div
+  class="picker"
 
   on:drop={drop}
   on:dragover={over(true)}
   on:dragleave={over(false)}
 />
 
-<input 
-  type="file" 
-  class="file" 
-  bind:this={files} 
+<input
+  type="file"
+  class="file"
+  bind:this={files}
   multiple="multiple"
   on:change={(e) => {
     console.log(e.dataTransfer, e.target)
@@ -104,6 +125,9 @@ let name
 .file {
   display: none;
 }
+.flex {
+  flex: 1;
+}
 .picker {
   position: absolute;
   top: 0;
@@ -117,7 +141,7 @@ let name
 
 
 .controls {
-  display: flex; 
+  display: flex;
   justify-content: flex-end;
 }
 .false:hover, .true:hover {

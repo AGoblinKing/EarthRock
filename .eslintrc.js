@@ -19,6 +19,7 @@ module.exports = {
         "import/no-absolute-path": ["off"],
         "import/first": ["off"],
         quotes: ["error", "backtick"],
-        camelcase: ["off"]
+        camelcase: ["off"],
+        "prefer-const": ["warn"]
     }
 };

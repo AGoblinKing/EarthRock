@@ -1,6 +1,9 @@
 import { transformer } from "/util/store.js"
 
+let use_search = ``
+
 export const path = transformer((path_new) => {
+  window.history.pushState({ page: 1 }, ``, `${use_search}${path_new}`)
   if (Array.isArray(path_new)) {
     return path_new
   }
@@ -10,13 +13,22 @@ export const path = transformer((path_new) => {
     return path_split
   }
 
-  // window.history.pushState({ page: 1 }, ``, `/${path_new}`)
-
   return path_split
 })
 
-if (window.location.search) {
-  path.set(decodeURI(window.location.search.slice(1)))
-} else {
-  path.set(decodeURI(window.location.pathname.slice(1)))
+window.addEventListener(`popstate`, (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  update()
+})
+
+const update = () => {
+  if (window.location.search) {
+    use_search = `?`
+    path.set(decodeURI(window.location.search.slice(1)))
+  } else {
+    path.set(decodeURI(window.location.pathname.slice(1)))
+  }
 }
+
+update()

@@ -66,6 +66,9 @@ export const del = (keys) => {
   if (dirty) weaves.set($weaves)
 }
 
+// name of the current wheel, path watches
+export const name = write(``)
+
 export const get = (address) => {
   const [
     weave_name,
@@ -169,7 +172,7 @@ export const start = (weave_name) => {
           feed_set($f)
         })
       }),
-    // lives
+    // lives, think as this as the knots going out to other places
     ...w.lives.get().map((cb) => cb())
   ])
 
@@ -202,6 +205,20 @@ export const stop = (weave_name) => {
   highways.delete(weave_name)
 }
 
+export const stop_all = () => {
+  const $weaves = weaves.get()
+
+  Object.keys($weaves).forEach(($name) => stop($name))
+}
+
+export const clear = () => {
+  stop_all()
+  name.set(false)
+  weaves.set({
+    [SYSTEM]: weaves.get()[SYSTEM]
+  })
+}
+
 export const restart = (name) => {
   Wheel.stop(name)
   Wheel.start(name)
@@ -210,6 +227,7 @@ export const restart = (name) => {
 const bump = (what) => JSON.parse(JSON.stringify(what))
 
 export const toJSON = () => ({
+  name: name.get(),
   weaves: bump(weaves),
   running: bump(running)
 })

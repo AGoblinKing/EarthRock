@@ -3,6 +3,10 @@ import * as Mouse from "/sys/mouse.js"
 import * as Key from "/sys/key.js"
 import * as Time from "/sys/time.js"
 
+import { v3 } from "twgl.js"
+
+const { length, add, mulScalar } = v3
+
 import {
   INPUT_SCROLL_STRENGTH,
   INPUT_ZOOM_STRENGTH,
@@ -10,7 +14,6 @@ import {
 } from "/sys/flag.js"
 
 import { read, write, transformer } from "/util/store.js"
-import { add, length, multiply_scalar } from "/util/vector.js"
 
 export const zoom = write(0.75)
 
@@ -56,7 +59,7 @@ Time.tick.listen(() => {
     scroll_velocity
   ).map((n) => Math.round(n)))
 
-  scroll_velocity = multiply_scalar(
+  scroll_velocity = mulScalar(
     scroll_velocity,
     0.25
   )
@@ -65,7 +68,7 @@ Time.tick.listen(() => {
 translate.listen((t) => {
   scroll_velocity = add(
     scroll_velocity,
-    multiply_scalar(
+    mulScalar(
       t,
       INPUT_SCROLL_STRENGTH.get()
     )

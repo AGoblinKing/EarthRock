@@ -5,6 +5,7 @@ import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 export let channel
 export let stitch
 export let weave
+export let side
 
 $: feed = Wheel.feed
 
@@ -171,8 +172,8 @@ const condense = (link) => {
 $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER};`
 </script>
 
-<div 
-  class="spot" 
+<div
+  class="spot"
   data:super={super_open}
   on:click={() => {
     if (editing) return
@@ -183,16 +184,16 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
   {#if !editing}
     {#each tru_thread as link}
       {#if link[0] === `#`}
-<div 
-          class="thread" 
+<div
+          class="thread"
           {style}
           class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
         >
           {link}
         </div>
       {:else}
-        <div 
-          class="thread" 
+        <div
+          class="thread"
           {style}
           use:color={condense(link)}
           class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
@@ -202,8 +203,8 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
       {/if}
 
     {:else}
-      <div 
-        class="cap" 
+      <div
+        class="cap"
         style="border: 0.25rem solid {$THEME_BORDER}"
       >
       +
@@ -241,7 +242,7 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
   margin-right: -2.00rem;
   width: auto;
   font-size: 0.75rem;
-  margin-top: -0.125rem;
+  margin-top: -0.25rem;
 }
 
 .thread {
@@ -272,6 +273,7 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
 .cap {
   padding: 0.5rem;
   margin-right: -0.25rem;
+  margin-top: 0.125rem;
   position: relative;
   z-index: 2;
   background-color: rgba(0,0,0, 0.25);

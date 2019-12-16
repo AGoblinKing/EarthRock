@@ -24,14 +24,11 @@ export default ({
   }
   const w = {
     id: read(id),
-    knot: read(`weave`),
-
     name: write(name),
-
     threads: write(threads),
-
     lives: write([]),
     rezed: write(rezed),
+
     validate: () => {
       let dirty = false
       let deletes = 0
@@ -40,6 +37,7 @@ export default ({
 
       Object.values(ks).forEach((k) => {
         if (k.knot.get() === `stitch`) return
+
         const chain = w.chain(k.id.get(), true)
         const last = chain[chain.length - 1].split(`/`)[0]
         const first = chain[0].split(`/`)[0]
@@ -51,9 +49,11 @@ export default ({
         delete ks[k.id.get()]
         deletes += 1
       })
+
       if (deletes > 0) {
         console.warn(`Deleted ${deletes} orphans on validation.`)
-        w.knots.set(ks)
+        console.log(deletes)
+        //w.knots.set(ks)
       }
 
       Object.entries(t).forEach(([r, w]) => {
@@ -195,6 +195,24 @@ export default ({
         ]
       )
   ))
+
+  w.update = (structure) => {
+    const $names = w.names.get()
+
+    Object.entries(structure).forEach(([key, data]) => {
+      const k = $names[key]
+
+      if (!k) {
+        data.name = key
+        w.add(data)
+        return
+      }
+
+      Object.entries(data).forEach(([key_sub, data_sub]) => {
+        k[key_sub].set(data_sub)
+      })
+    })
+  }
 
   return w
 }

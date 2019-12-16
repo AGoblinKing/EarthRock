@@ -5,6 +5,7 @@ import Postage from "/ui/weave/Postage.svelte"
 import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 
 export let weave
+export let side
 
 $: name = weave.name
 $: running = Wheel.running
@@ -31,24 +32,25 @@ const save_it = (e) => {
 $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_BG};`
 </script>
 
-<div 
-  class="controls"
+<div
+  class="controls {side}"
 >
  <div class="postage" on:click={toggle}>
-    <Postage 
-      address={`/${$name}`} 
+    <Postage
+      address={`/${$name}`}
     />
   </div>
-
-  <div 
+  {#if $name !== Wheel.SYSTEM}
+  <div
     class="save"
     on:click={save_it}
     style="border: 0.5rem solid {$THEME_BORDER};"
-  > 
-    {#await image(weave) then src}
+  >
+    {#await image(weave.name.get()) then src}
       <img {src} alt="save" />
     {/await}
   </div>
+  {/if}
 
 </div>
 
@@ -62,7 +64,16 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 .controls {
   display: flex;
   align-items: center;
-  margin-right: 0.5rem;
+  margin: 0 0.5rem;
+}
+
+.controls.out {
+  flex-direction: row-reverse;
+}
+
+
+.postage, .save {
+  margin: 0 0.5rem;
 }
 
 .save {

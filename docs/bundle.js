@@ -1,9 +1,10 @@
-var app = (function (Color, uuid, expr, twgl) {
+var app = (function (Color, uuid, expr, twgl, exif) {
   'use strict';
 
   Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
   uuid = uuid && uuid.hasOwnProperty('default') ? uuid['default'] : uuid;
   expr = expr && expr.hasOwnProperty('default') ? expr['default'] : expr;
+  exif = exif && exif.hasOwnProperty('default') ? exif['default'] : exif;
 
   const writable = (val) => {
     const subs = new Set();
@@ -252,6 +253,18 @@ var app = (function (Color, uuid, expr, twgl) {
     throw new Error(`math stop`)
   };
 
+  Object.entries(twgl.v3).forEach(([key, fn]) => {
+    parser.functions[`v3_${key}`] = function (...args) {
+      return fn(...args)
+    };
+  });
+
+  Object.entries(twgl.m4).forEach(([key, fn]) => {
+    parser.functions[`m4_${key}`] = function (...args) {
+      return fn(...args)
+    };
+  });
+
   const math = (formula) => {
     const p = parser.parse(formula);
 
@@ -282,6 +295,7 @@ var app = (function (Color, uuid, expr, twgl) {
       const matches = expression.match(Wheel.REG_ID);
       const vs = {};
       const s = weave.to_address(weave.chain(id, true).pop());
+
       new Set(matches).forEach((item) => {
         const shh = item[0] === `$`;
         const gette = item
@@ -292,6 +306,10 @@ var app = (function (Color, uuid, expr, twgl) {
 
         const k = Wheel.get(gette);
         const name = gette.replace(whitespace, ``).replace(re_var, ``);
+        expression = expression.replace(
+          new RegExp(escape(item), `g`),
+          name
+        );
 
         if (!k) {
           vs[name] = {
@@ -303,10 +321,6 @@ var app = (function (Color, uuid, expr, twgl) {
           return
         }
 
-        expression = expression.replace(
-          new RegExp(escape(item), `g`),
-          name
-        );
         vs[name] = {
           k,
           shh
@@ -511,14 +525,11 @@ var app = (function (Color, uuid, expr, twgl) {
     };
     const w = {
       id: read(id),
-      knot: read(`weave`),
-
       name: write(name),
-
       threads: write(threads),
-
       lives: write([]),
       rezed: write(rezed),
+
       validate: () => {
         let dirty = false;
         let deletes = 0;
@@ -527,6 +538,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
         Object.values(ks).forEach((k) => {
           if (k.knot.get() === `stitch`) return
+
           const chain = w.chain(k.id.get(), true);
           const last = chain[chain.length - 1].split(`/`)[0];
           const first = chain[0].split(`/`)[0];
@@ -538,9 +550,11 @@ var app = (function (Color, uuid, expr, twgl) {
           delete ks[k.id.get()];
           deletes += 1;
         });
+
         if (deletes > 0) {
           console.warn(`Deleted ${deletes} orphans on validation.`);
-          w.knots.set(ks);
+          console.log(deletes);
+          //w.knots.set(ks)
         }
 
         Object.entries(t).forEach(([r, w]) => {
@@ -683,6 +697,24 @@ var app = (function (Color, uuid, expr, twgl) {
         )
     ));
 
+    w.update = (structure) => {
+      const $names = w.names.get();
+
+      Object.entries(structure).forEach(([key, data]) => {
+        const k = $names[key];
+
+        if (!k) {
+          data.name = key;
+          w.add(data);
+          return
+        }
+
+        Object.entries(data).forEach(([key_sub, data_sub]) => {
+          k[key_sub].set(data_sub);
+        });
+      });
+    };
+
     return w
   };
 
@@ -750,6 +782,9 @@ var app = (function (Color, uuid, expr, twgl) {
 
     if (dirty) weaves.set($weaves);
   };
+
+  // name of the current wheel, path watches
+  const name$1 = write(``);
 
   const get = (address) => {
     const [
@@ -854,7 +889,7 @@ var app = (function (Color, uuid, expr, twgl) {
             feed_set($f);
           })
         }),
-      // lives
+      // lives, think as this as the knots going out to other places
       ...w.lives.get().map((cb) => cb())
     ]);
 
@@ -887,6 +922,20 @@ var app = (function (Color, uuid, expr, twgl) {
     highways.delete(weave_name);
   };
 
+  const stop_all = () => {
+    const $weaves = weaves.get();
+
+    Object.keys($weaves).forEach(($name) => stop($name));
+  };
+
+  const clear = () => {
+    stop_all();
+    name$1.set(false);
+    weaves.set({
+      [SYSTEM]: weaves.get()[SYSTEM]
+    });
+  };
+
   const restart = (name) => {
     Wheel.stop(name);
     Wheel.start(name);
@@ -895,6 +944,7 @@ var app = (function (Color, uuid, expr, twgl) {
   const bump = (what) => JSON.parse(JSON.stringify(what));
 
   const toJSON = () => ({
+    name: name$1.get(),
     weaves: bump(weaves),
     running: bump(running)
   });
@@ -910,11 +960,14 @@ var app = (function (Color, uuid, expr, twgl) {
     running: running,
     trash: trash,
     del: del,
+    name: name$1,
     get: get,
     exists: exists,
     spawn: spawn,
     start: start,
     stop: stop,
+    stop_all: stop_all,
+    clear: clear,
     restart: restart,
     toJSON: toJSON,
     REG_ID: REG_ID
@@ -1205,7 +1258,7 @@ var app = (function (Color, uuid, expr, twgl) {
     main: main
   });
 
-  const up$1 = read(``, (set) =>
+  const key = read(``, (set) => {
     window.addEventListener(`keyup`, (e) => {
       if (
         e.target.tagName === `INPUT` ||
@@ -1216,11 +1269,9 @@ var app = (function (Color, uuid, expr, twgl) {
 
       e.preventDefault();
 
-      set(e.key.toLowerCase());
-    })
-  );
+      set(`${e.key.toLowerCase()}!`);
+    });
 
-  const down = read(``, (set) =>
     window.addEventListener(`keydown`, (e) => {
       if (
         e.target.tagName === `INPUT` ||
@@ -1232,45 +1283,484 @@ var app = (function (Color, uuid, expr, twgl) {
       e.preventDefault();
 
       set(e.key.toLowerCase());
-    })
-  );
+    });
+  });
 
   const keys = read({}, (set) => {
     const value = {};
 
-    down.listen((char) => {
+    key.listen((char) => {
       value[char] = true;
-      set(value);
-    });
-
-    up$1.listen((char) => {
-      delete value[char];
+      if (char.length > 1 && char[char.length - 1] === `!`) {
+        value[char.slice(0, -1)] = false;
+      } else {
+        value[`${char}!`] = false;
+      }
       set(value);
     });
   });
 
-  var key = /*#__PURE__*/Object.freeze({
+  var key$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    up: up$1,
-    down: down,
+    key: key,
     keys: keys
   });
 
-  const add = (...vecs) => vecs.reduce((result, vec) =>
-    twgl.v3.add(result, vec)
-  , [0, 0, 0]);
+  /* @license twgl.js 4.14.1 Copyright (c) 2015, Gregg Tavares All Rights Reserved.
+  Available via the MIT license.
+  see: http://github.com/greggman/twgl.js for details */
+  /*
+   * Copyright 2019 Gregg Tavares
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a
+   * copy of this software and associated documentation files (the "Software"),
+   * to deal in the Software without restriction, including without limitation
+   * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+   * and/or sell copies of the Software, and to permit persons to whom the
+   * Software is furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+   * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   * DEALINGS IN THE SOFTWARE.
+   */
 
-  const minus = twgl.v3.subtract;
-  const lerp = twgl.v3.lerp;
-  const length = twgl.v3.length;
-  const divide_scalar = twgl.v3.divScalar;
-  const divide = twgl.v3.divide;
-  const multiply = twgl.v3.multiply;
-  const multiply_scalar = twgl.v3.mulScalar;
-  const distance = twgl.v3.distance;
-  const negate = twgl.v3.negate;
+  /**
+   *
+   * Vec3 math math functions.
+   *
+   * Almost all functions take an optional `dst` argument. If it is not passed in the
+   * functions will create a new Vec3. In other words you can do this
+   *
+   *     var v = v3.cross(v1, v2);  // Creates a new Vec3 with the cross product of v1 x v2.
+   *
+   * or
+   *
+   *     var v = v3.create();
+   *     v3.cross(v1, v2, v);  // Puts the cross product of v1 x v2 in v
+   *
+   * The first style is often easier but depending on where it's used it generates garbage where
+   * as there is almost never allocation with the second style.
+   *
+   * It is always save to pass any vector as the destination. So for example
+   *
+   *     v3.cross(v1, v2, v1);  // Puts the cross product of v1 x v2 in v1
+   *
+   * @module twgl/v3
+   */
+
+  let VecType = Float32Array;
+
+  /**
+   * A JavaScript array with 3 values or a Float32Array with 3 values.
+   * When created by the library will create the default type which is `Float32Array`
+   * but can be set by calling {@link module:twgl/v3.setDefaultType}.
+   * @typedef {(number[]|Float32Array)} Vec3
+   * @memberOf module:twgl/v3
+   */
+
+  /**
+   * Sets the type this library creates for a Vec3
+   * @param {constructor} ctor the constructor for the type. Either `Float32Array` or `Array`
+   * @return {constructor} previous constructor for Vec3
+   * @memberOf module:twgl/v3
+   */
+  function setDefaultType(ctor) {
+    const oldType = VecType;
+    VecType = ctor;
+    return oldType;
+  }
+
+  /**
+   * Creates a vec3; may be called with x, y, z to set initial values.
+   * @param {number} [x] Initial x value.
+   * @param {number} [y] Initial y value.
+   * @param {number} [z] Initial z value.
+   * @return {module:twgl/v3.Vec3} the created vector
+   * @memberOf module:twgl/v3
+   */
+  function create(x, y, z) {
+    const dst = new VecType(3);
+    if (x) {
+      dst[0] = x;
+    }
+    if (y) {
+      dst[1] = y;
+    }
+    if (z) {
+      dst[2] = z;
+    }
+    return dst;
+  }
+
+  /**
+   * Adds two vectors; assumes a and b have the same dimension.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} A vector tha tis the sum of a and b.
+   * @memberOf module:twgl/v3
+   */
+  function add(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] + b[0];
+    dst[1] = a[1] + b[1];
+    dst[2] = a[2] + b[2];
+
+    return dst;
+  }
+
+  /**
+   * Subtracts two vectors.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} A vector that is the difference of a and b.
+   * @memberOf module:twgl/v3
+   */
+  function subtract(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] - b[0];
+    dst[1] = a[1] - b[1];
+    dst[2] = a[2] - b[2];
+
+    return dst;
+  }
+
+  /**
+   * Performs linear interpolation on two vectors.
+   * Given vectors a and b and interpolation coefficient t, returns
+   * a + t * (b - a).
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {number} t Interpolation coefficient.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The linear interpolated result.
+   * @memberOf module:twgl/v3
+   */
+  function lerp(a, b, t, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] + t * (b[0] - a[0]);
+    dst[1] = a[1] + t * (b[1] - a[1]);
+    dst[2] = a[2] + t * (b[2] - a[2]);
+
+    return dst;
+  }
+
+  /**
+   * Performs linear interpolation on two vectors.
+   * Given vectors a and b and interpolation coefficient vector t, returns
+   * a + t * (b - a).
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} t Interpolation coefficients vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} the linear interpolated result.
+   * @memberOf module:twgl/v3
+   */
+  function lerpV(a, b, t, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] + t[0] * (b[0] - a[0]);
+    dst[1] = a[1] + t[1] * (b[1] - a[1]);
+    dst[2] = a[2] + t[2] * (b[2] - a[2]);
+
+    return dst;
+  }
+
+  /**
+   * Return max values of two vectors.
+   * Given vectors a and b returns
+   * [max(a[0], b[0]), max(a[1], b[1]), max(a[2], b[2])].
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The max components vector.
+   * @memberOf module:twgl/v3
+   */
+  function max(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = Math.max(a[0], b[0]);
+    dst[1] = Math.max(a[1], b[1]);
+    dst[2] = Math.max(a[2], b[2]);
+
+    return dst;
+  }
+
+  /**
+   * Return min values of two vectors.
+   * Given vectors a and b returns
+   * [min(a[0], b[0]), min(a[1], b[1]), min(a[2], b[2])].
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The min components vector.
+   * @memberOf module:twgl/v3
+   */
+  function min(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = Math.min(a[0], b[0]);
+    dst[1] = Math.min(a[1], b[1]);
+    dst[2] = Math.min(a[2], b[2]);
+
+    return dst;
+  }
+
+  /**
+   * Multiplies a vector by a scalar.
+   * @param {module:twgl/v3.Vec3} v The vector.
+   * @param {number} k The scalar.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The scaled vector.
+   * @memberOf module:twgl/v3
+   */
+  function mulScalar(v, k, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = v[0] * k;
+    dst[1] = v[1] * k;
+    dst[2] = v[2] * k;
+
+    return dst;
+  }
+
+  /**
+   * Divides a vector by a scalar.
+   * @param {module:twgl/v3.Vec3} v The vector.
+   * @param {number} k The scalar.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The scaled vector.
+   * @memberOf module:twgl/v3
+   */
+  function divScalar(v, k, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = v[0] / k;
+    dst[1] = v[1] / k;
+    dst[2] = v[2] / k;
+
+    return dst;
+  }
+
+  /**
+   * Computes the cross product of two vectors; assumes both vectors have
+   * three entries.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The vector of a cross b.
+   * @memberOf module:twgl/v3
+   */
+  function cross(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    const t1 = a[2] * b[0] - a[0] * b[2];
+    const t2 = a[0] * b[1] - a[1] * b[0];
+    dst[0] = a[1] * b[2] - a[2] * b[1];
+    dst[1] = t1;
+    dst[2] = t2;
+
+    return dst;
+  }
+
+  /**
+   * Computes the dot product of two vectors; assumes both vectors have
+   * three entries.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @return {number} dot product
+   * @memberOf module:twgl/v3
+   */
+  function dot(a, b) {
+    return (a[0] * b[0]) + (a[1] * b[1]) + (a[2] * b[2]);
+  }
+
+  /**
+   * Computes the length of vector
+   * @param {module:twgl/v3.Vec3} v vector.
+   * @return {number} length of vector.
+   * @memberOf module:twgl/v3
+   */
+  function length$1(v) {
+    return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  }
+
+  /**
+   * Computes the square of the length of vector
+   * @param {module:twgl/v3.Vec3} v vector.
+   * @return {number} square of the length of vector.
+   * @memberOf module:twgl/v3
+   */
+  function lengthSq(v) {
+    return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  }
+
+  /**
+   * Computes the distance between 2 points
+   * @param {module:twgl/v3.Vec3} a vector.
+   * @param {module:twgl/v3.Vec3} b vector.
+   * @return {number} distance between a and b
+   * @memberOf module:twgl/v3
+   */
+  function distance(a, b) {
+    const dx = a[0] - b[0];
+    const dy = a[1] - b[1];
+    const dz = a[2] - b[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  /**
+   * Computes the square of the distance between 2 points
+   * @param {module:twgl/v3.Vec3} a vector.
+   * @param {module:twgl/v3.Vec3} b vector.
+   * @return {number} square of the distance between a and b
+   * @memberOf module:twgl/v3
+   */
+  function distanceSq(a, b) {
+    const dx = a[0] - b[0];
+    const dy = a[1] - b[1];
+    const dz = a[2] - b[2];
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  /**
+   * Divides a vector by its Euclidean length and returns the quotient.
+   * @param {module:twgl/v3.Vec3} a The vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The normalized vector.
+   * @memberOf module:twgl/v3
+   */
+  function normalize(a, dst) {
+    dst = dst || new VecType(3);
+
+    const lenSq = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+    const len = Math.sqrt(lenSq);
+    if (len > 0.00001) {
+      dst[0] = a[0] / len;
+      dst[1] = a[1] / len;
+      dst[2] = a[2] / len;
+    } else {
+      dst[0] = 0;
+      dst[1] = 0;
+      dst[2] = 0;
+    }
+
+    return dst;
+  }
+
+  /**
+   * Negates a vector.
+   * @param {module:twgl/v3.Vec3} v The vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} -v.
+   * @memberOf module:twgl/v3
+   */
+  function negate(v, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = -v[0];
+    dst[1] = -v[1];
+    dst[2] = -v[2];
+
+    return dst;
+  }
+
+  /**
+   * Copies a vector.
+   * @param {module:twgl/v3.Vec3} v The vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} A copy of v.
+   * @memberOf module:twgl/v3
+   */
+  function copy(v, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = v[0];
+    dst[1] = v[1];
+    dst[2] = v[2];
+
+    return dst;
+  }
+
+  /**
+   * Multiplies a vector by another vector (component-wise); assumes a and
+   * b have the same length.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The vector of products of entries of a and
+   *     b.
+   * @memberOf module:twgl/v3
+   */
+  function multiply(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] * b[0];
+    dst[1] = a[1] * b[1];
+    dst[2] = a[2] * b[2];
+
+    return dst;
+  }
+
+  /**
+   * Divides a vector by another vector (component-wise); assumes a and
+   * b have the same length.
+   * @param {module:twgl/v3.Vec3} a Operand vector.
+   * @param {module:twgl/v3.Vec3} b Operand vector.
+   * @param {module:twgl/v3.Vec3} [dst] vector to hold result. If not new one is created.
+   * @return {module:twgl/v3.Vec3} The vector of quotients of entries of a and
+   *     b.
+   * @memberOf module:twgl/v3
+   */
+  function divide(a, b, dst) {
+    dst = dst || new VecType(3);
+
+    dst[0] = a[0] / b[0];
+    dst[1] = a[1] / b[1];
+    dst[2] = a[2] / b[2];
+
+    return dst;
+  }
+
+  var v3 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    add: add,
+    copy: copy,
+    create: create,
+    cross: cross,
+    distance: distance,
+    distanceSq: distanceSq,
+    divide: divide,
+    divScalar: divScalar,
+    dot: dot,
+    lerp: lerp,
+    lerpV: lerpV,
+    length: length$1,
+    lengthSq: lengthSq,
+    max: max,
+    min: min,
+    mulScalar: mulScalar,
+    multiply: multiply,
+    negate: negate,
+    normalize: normalize,
+    setDefaultType: setDefaultType,
+    subtract: subtract
+  });
 
   // Collection of meta controllers
+
+  const { length, add: add$1, mulScalar: mulScalar$1 } = v3;
 
   const zoom = write(0.75);
 
@@ -1311,21 +1801,21 @@ var app = (function (Color, uuid, expr, twgl) {
   tick.listen(() => {
     if (Math.abs(length(scroll_velocity)) < 1) return
 
-    scroll$1.set(add(
+    scroll$1.set(add$1(
       scroll$1.get(),
       scroll_velocity
     ).map((n) => Math.round(n)));
 
-    scroll_velocity = multiply_scalar(
+    scroll_velocity = mulScalar$1(
       scroll_velocity,
       0.25
     );
   });
 
   translate.listen((t) => {
-    scroll_velocity = add(
+    scroll_velocity = add$1(
       scroll_velocity,
-      multiply_scalar(
+      mulScalar$1(
         t,
         INPUT_SCROLL_STRENGTH.get()
       )
@@ -1360,7 +1850,10 @@ var app = (function (Color, uuid, expr, twgl) {
     focus: focus
   });
 
+  let use_search = ``;
+
   const path = transformer((path_new) => {
+    window.history.pushState({ page: 1 }, ``, `${use_search}${path_new}`);
     if (Array.isArray(path_new)) {
       return path_new
     }
@@ -1370,16 +1863,25 @@ var app = (function (Color, uuid, expr, twgl) {
       return path_split
     }
 
-    // window.history.pushState({ page: 1 }, ``, `/${path_new}`)
-
     return path_split
   });
 
-  if (window.location.search) {
-    path.set(decodeURI(window.location.search.slice(1)));
-  } else {
-    path.set(decodeURI(window.location.pathname.slice(1)));
-  }
+  window.addEventListener(`popstate`, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    update();
+  });
+
+  const update = () => {
+    if (window.location.search) {
+      use_search = `?`;
+      path.set(decodeURI(window.location.search.slice(1)));
+    } else {
+      path.set(decodeURI(window.location.pathname.slice(1)));
+    }
+  };
+
+  update();
 
   var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -1387,2459 +1889,10 @@ var app = (function (Color, uuid, expr, twgl) {
   	return module = { exports: {} }, fn(module, module.exports), module.exports;
   }
 
-  var piexif = createCommonjsModule(function (module, exports) {
-  /* piexifjs
-
-  The MIT License (MIT)
-
-  Copyright (c) 2014, 2015 hMatoba(https://github.com/hMatoba)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-  */
-
-  (function () {
-      var that = {};
-      that.version = "1.0.4";
-
-      that.remove = function (jpeg) {
-          var b64 = false;
-          if (jpeg.slice(0, 2) == "\xff\xd8") ; else if (jpeg.slice(0, 23) == "data:image/jpeg;base64," || jpeg.slice(0, 22) == "data:image/jpg;base64,") {
-              jpeg = atob(jpeg.split(",")[1]);
-              b64 = true;
-          } else {
-              throw new Error("Given data is not jpeg.");
-          }
-          
-          var segments = splitIntoSegments(jpeg);
-          var newSegments = segments.filter(function(seg){
-            return  !(seg.slice(0, 2) == "\xff\xe1" &&
-                     seg.slice(4, 10) == "Exif\x00\x00"); 
-          });
-          
-          var new_data = newSegments.join("");
-          if (b64) {
-              new_data = "data:image/jpeg;base64," + btoa(new_data);
-          }
-
-          return new_data;
-      };
-
-
-      that.insert = function (exif, jpeg) {
-          var b64 = false;
-          if (exif.slice(0, 6) != "\x45\x78\x69\x66\x00\x00") {
-              throw new Error("Given data is not exif.");
-          }
-          if (jpeg.slice(0, 2) == "\xff\xd8") ; else if (jpeg.slice(0, 23) == "data:image/jpeg;base64," || jpeg.slice(0, 22) == "data:image/jpg;base64,") {
-              jpeg = atob(jpeg.split(",")[1]);
-              b64 = true;
-          } else {
-              throw new Error("Given data is not jpeg.");
-          }
-
-          var exifStr = "\xff\xe1" + pack(">H", [exif.length + 2]) + exif;
-          var segments = splitIntoSegments(jpeg);
-          var new_data = mergeSegments(segments, exifStr);
-          if (b64) {
-              new_data = "data:image/jpeg;base64," + btoa(new_data);
-          }
-
-          return new_data;
-      };
-
-
-      that.load = function (data) {
-          var input_data;
-          if (typeof (data) == "string") {
-              if (data.slice(0, 2) == "\xff\xd8") {
-                  input_data = data;
-              } else if (data.slice(0, 23) == "data:image/jpeg;base64," || data.slice(0, 22) == "data:image/jpg;base64,") {
-                  input_data = atob(data.split(",")[1]);
-              } else if (data.slice(0, 4) == "Exif") {
-                  input_data = data.slice(6);
-              } else {
-                  throw new Error("'load' gots invalid file data.");
-              }
-          } else {
-              throw new Error("'load' gots invalid type argument.");
-          }
-          var exif_dict = {
-              "0th": {},
-              "Exif": {},
-              "GPS": {},
-              "Interop": {},
-              "1st": {},
-              "thumbnail": null
-          };
-          var exifReader = new ExifReader(input_data);
-          if (exifReader.tiftag === null) {
-              return exif_dict;
-          }
-
-          if (exifReader.tiftag.slice(0, 2) == "\x49\x49") {
-              exifReader.endian_mark = "<";
-          } else {
-              exifReader.endian_mark = ">";
-          }
-
-          var pointer = unpack(exifReader.endian_mark + "L",
-              exifReader.tiftag.slice(4, 8))[0];
-          exif_dict["0th"] = exifReader.get_ifd(pointer, "0th");
-
-          var first_ifd_pointer = exif_dict["0th"]["first_ifd_pointer"];
-          delete exif_dict["0th"]["first_ifd_pointer"];
-
-          if (34665 in exif_dict["0th"]) {
-              pointer = exif_dict["0th"][34665];
-              exif_dict["Exif"] = exifReader.get_ifd(pointer, "Exif");
-          }
-          if (34853 in exif_dict["0th"]) {
-              pointer = exif_dict["0th"][34853];
-              exif_dict["GPS"] = exifReader.get_ifd(pointer, "GPS");
-          }
-          if (40965 in exif_dict["Exif"]) {
-              pointer = exif_dict["Exif"][40965];
-              exif_dict["Interop"] = exifReader.get_ifd(pointer, "Interop");
-          }
-          if (first_ifd_pointer != "\x00\x00\x00\x00") {
-              pointer = unpack(exifReader.endian_mark + "L",
-                  first_ifd_pointer)[0];
-              exif_dict["1st"] = exifReader.get_ifd(pointer, "1st");
-              if ((513 in exif_dict["1st"]) && (514 in exif_dict["1st"])) {
-                  var end = exif_dict["1st"][513] + exif_dict["1st"][514];
-                  var thumb = exifReader.tiftag.slice(exif_dict["1st"][513], end);
-                  exif_dict["thumbnail"] = thumb;
-              }
-          }
-
-          return exif_dict;
-      };
-
-
-      that.dump = function (exif_dict_original) {
-          var TIFF_HEADER_LENGTH = 8;
-
-          var exif_dict = copy(exif_dict_original);
-          var header = "Exif\x00\x00\x4d\x4d\x00\x2a\x00\x00\x00\x08";
-          var exif_is = false;
-          var gps_is = false;
-          var interop_is = false;
-          var first_is = false;
-
-          var zeroth_ifd,
-              exif_ifd,
-              interop_ifd,
-              gps_ifd,
-              first_ifd;
-          
-          if ("0th" in exif_dict) {
-              zeroth_ifd = exif_dict["0th"];
-          } else {
-              zeroth_ifd = {};
-          }
-          
-          if ((("Exif" in exif_dict) && (Object.keys(exif_dict["Exif"]).length)) ||
-              (("Interop" in exif_dict) && (Object.keys(exif_dict["Interop"]).length))) {
-              zeroth_ifd[34665] = 1;
-              exif_is = true;
-              exif_ifd = exif_dict["Exif"];
-              if (("Interop" in exif_dict) && Object.keys(exif_dict["Interop"]).length) {
-                  exif_ifd[40965] = 1;
-                  interop_is = true;
-                  interop_ifd = exif_dict["Interop"];
-              } else if (Object.keys(exif_ifd).indexOf(that.ExifIFD.InteroperabilityTag.toString()) > -1) {
-                  delete exif_ifd[40965];
-              }
-          } else if (Object.keys(zeroth_ifd).indexOf(that.ImageIFD.ExifTag.toString()) > -1) {
-              delete zeroth_ifd[34665];
-          }
-
-          if (("GPS" in exif_dict) && (Object.keys(exif_dict["GPS"]).length)) {
-              zeroth_ifd[that.ImageIFD.GPSTag] = 1;
-              gps_is = true;
-              gps_ifd = exif_dict["GPS"];
-          } else if (Object.keys(zeroth_ifd).indexOf(that.ImageIFD.GPSTag.toString()) > -1) {
-              delete zeroth_ifd[that.ImageIFD.GPSTag];
-          }
-          
-          if (("1st" in exif_dict) &&
-              ("thumbnail" in exif_dict) &&
-              (exif_dict["thumbnail"] != null)) {
-              first_is = true;
-              exif_dict["1st"][513] = 1;
-              exif_dict["1st"][514] = 1;
-              first_ifd = exif_dict["1st"];
-          }
-          
-          var zeroth_set = _dict_to_bytes(zeroth_ifd, "0th", 0);
-          var zeroth_length = (zeroth_set[0].length + exif_is * 12 + gps_is * 12 + 4 +
-              zeroth_set[1].length);
-
-          var exif_set,
-              exif_bytes = "",
-              exif_length = 0,
-              gps_set,
-              gps_bytes = "",
-              gps_length = 0,
-              interop_set,
-              interop_bytes = "",
-              interop_length = 0,
-              first_set,
-              first_bytes = "",
-              thumbnail;
-          if (exif_is) {
-              exif_set = _dict_to_bytes(exif_ifd, "Exif", zeroth_length);
-              exif_length = exif_set[0].length + interop_is * 12 + exif_set[1].length;
-          }
-          if (gps_is) {
-              gps_set = _dict_to_bytes(gps_ifd, "GPS", zeroth_length + exif_length);
-              gps_bytes = gps_set.join("");
-              gps_length = gps_bytes.length;
-          }
-          if (interop_is) {
-              var offset = zeroth_length + exif_length + gps_length;
-              interop_set = _dict_to_bytes(interop_ifd, "Interop", offset);
-              interop_bytes = interop_set.join("");
-              interop_length = interop_bytes.length;
-          }
-          if (first_is) {
-              var offset = zeroth_length + exif_length + gps_length + interop_length;
-              first_set = _dict_to_bytes(first_ifd, "1st", offset);
-              thumbnail = _get_thumbnail(exif_dict["thumbnail"]);
-              if (thumbnail.length > 64000) {
-                  throw new Error("Given thumbnail is too large. max 64kB");
-              }
-          }
-
-          var exif_pointer = "",
-              gps_pointer = "",
-              interop_pointer = "",
-              first_ifd_pointer = "\x00\x00\x00\x00";
-          if (exif_is) {
-              var pointer_value = TIFF_HEADER_LENGTH + zeroth_length;
-              var pointer_str = pack(">L", [pointer_value]);
-              var key = 34665;
-              var key_str = pack(">H", [key]);
-              var type_str = pack(">H", [TYPES["Long"]]);
-              var length_str = pack(">L", [1]);
-              exif_pointer = key_str + type_str + length_str + pointer_str;
-          }
-          if (gps_is) {
-              var pointer_value = TIFF_HEADER_LENGTH + zeroth_length + exif_length;
-              var pointer_str = pack(">L", [pointer_value]);
-              var key = 34853;
-              var key_str = pack(">H", [key]);
-              var type_str = pack(">H", [TYPES["Long"]]);
-              var length_str = pack(">L", [1]);
-              gps_pointer = key_str + type_str + length_str + pointer_str;
-          }
-          if (interop_is) {
-              var pointer_value = (TIFF_HEADER_LENGTH +
-                  zeroth_length + exif_length + gps_length);
-              var pointer_str = pack(">L", [pointer_value]);
-              var key = 40965;
-              var key_str = pack(">H", [key]);
-              var type_str = pack(">H", [TYPES["Long"]]);
-              var length_str = pack(">L", [1]);
-              interop_pointer = key_str + type_str + length_str + pointer_str;
-          }
-          if (first_is) {
-              var pointer_value = (TIFF_HEADER_LENGTH + zeroth_length +
-                  exif_length + gps_length + interop_length);
-              first_ifd_pointer = pack(">L", [pointer_value]);
-              var thumbnail_pointer = (pointer_value + first_set[0].length + 24 +
-                  4 + first_set[1].length);
-              var thumbnail_p_bytes = ("\x02\x01\x00\x04\x00\x00\x00\x01" +
-                  pack(">L", [thumbnail_pointer]));
-              var thumbnail_length_bytes = ("\x02\x02\x00\x04\x00\x00\x00\x01" +
-                  pack(">L", [thumbnail.length]));
-              first_bytes = (first_set[0] + thumbnail_p_bytes +
-                  thumbnail_length_bytes + "\x00\x00\x00\x00" +
-                  first_set[1] + thumbnail);
-          }
-
-          var zeroth_bytes = (zeroth_set[0] + exif_pointer + gps_pointer +
-              first_ifd_pointer + zeroth_set[1]);
-          if (exif_is) {
-              exif_bytes = exif_set[0] + interop_pointer + exif_set[1];
-          }
-
-          return (header + zeroth_bytes + exif_bytes + gps_bytes +
-              interop_bytes + first_bytes);
-      };
-
-
-      function copy(obj) {
-          return JSON.parse(JSON.stringify(obj));
-      }
-
-
-      function _get_thumbnail(jpeg) {
-          var segments = splitIntoSegments(jpeg);
-          while (("\xff\xe0" <= segments[1].slice(0, 2)) && (segments[1].slice(0, 2) <= "\xff\xef")) {
-              segments = [segments[0]].concat(segments.slice(2));
-          }
-          return segments.join("");
-      }
-
-
-      function _pack_byte(array) {
-          return pack(">" + nStr("B", array.length), array);
-      }
-
-
-      function _pack_short(array) {
-          return pack(">" + nStr("H", array.length), array);
-      }
-
-
-      function _pack_long(array) {
-          return pack(">" + nStr("L", array.length), array);
-      }
-
-
-      function _value_to_bytes(raw_value, value_type, offset) {
-          var four_bytes_over = "";
-          var value_str = "";
-          var length,
-              new_value,
-              num,
-              den;
-
-          if (value_type == "Byte") {
-              length = raw_value.length;
-              if (length <= 4) {
-                  value_str = (_pack_byte(raw_value) +
-                      nStr("\x00", 4 - length));
-              } else {
-                  value_str = pack(">L", [offset]);
-                  four_bytes_over = _pack_byte(raw_value);
-              }
-          } else if (value_type == "Short") {
-              length = raw_value.length;
-              if (length <= 2) {
-                  value_str = (_pack_short(raw_value) +
-                      nStr("\x00\x00", 2 - length));
-              } else {
-                  value_str = pack(">L", [offset]);
-                  four_bytes_over = _pack_short(raw_value);
-              }
-          } else if (value_type == "Long") {
-              length = raw_value.length;
-              if (length <= 1) {
-                  value_str = _pack_long(raw_value);
-              } else {
-                  value_str = pack(">L", [offset]);
-                  four_bytes_over = _pack_long(raw_value);
-              }
-          } else if (value_type == "Ascii") {
-              new_value = raw_value + "\x00";
-              length = new_value.length;
-              if (length > 4) {
-                  value_str = pack(">L", [offset]);
-                  four_bytes_over = new_value;
-              } else {
-                  value_str = new_value + nStr("\x00", 4 - length);
-              }
-          } else if (value_type == "Rational") {
-              if (typeof (raw_value[0]) == "number") {
-                  length = 1;
-                  num = raw_value[0];
-                  den = raw_value[1];
-                  new_value = pack(">L", [num]) + pack(">L", [den]);
-              } else {
-                  length = raw_value.length;
-                  new_value = "";
-                  for (var n = 0; n < length; n++) {
-                      num = raw_value[n][0];
-                      den = raw_value[n][1];
-                      new_value += (pack(">L", [num]) +
-                          pack(">L", [den]));
-                  }
-              }
-              value_str = pack(">L", [offset]);
-              four_bytes_over = new_value;
-          } else if (value_type == "SRational") {
-              if (typeof (raw_value[0]) == "number") {
-                  length = 1;
-                  num = raw_value[0];
-                  den = raw_value[1];
-                  new_value = pack(">l", [num]) + pack(">l", [den]);
-              } else {
-                  length = raw_value.length;
-                  new_value = "";
-                  for (var n = 0; n < length; n++) {
-                      num = raw_value[n][0];
-                      den = raw_value[n][1];
-                      new_value += (pack(">l", [num]) +
-                          pack(">l", [den]));
-                  }
-              }
-              value_str = pack(">L", [offset]);
-              four_bytes_over = new_value;
-          } else if (value_type == "Undefined") {
-              length = raw_value.length;
-              if (length > 4) {
-                  value_str = pack(">L", [offset]);
-                  four_bytes_over = raw_value;
-              } else {
-                  value_str = raw_value + nStr("\x00", 4 - length);
-              }
-          }
-
-          var length_str = pack(">L", [length]);
-
-          return [length_str, value_str, four_bytes_over];
-      }
-
-      function _dict_to_bytes(ifd_dict, ifd, ifd_offset) {
-          var TIFF_HEADER_LENGTH = 8;
-          var tag_count = Object.keys(ifd_dict).length;
-          var entry_header = pack(">H", [tag_count]);
-          var entries_length;
-          if (["0th", "1st"].indexOf(ifd) > -1) {
-              entries_length = 2 + tag_count * 12 + 4;
-          } else {
-              entries_length = 2 + tag_count * 12;
-          }
-          var entries = "";
-          var values = "";
-          var key;
-
-          for (var key in ifd_dict) {
-              if (typeof (key) == "string") {
-                  key = parseInt(key);
-              }
-              if ((ifd == "0th") && ([34665, 34853].indexOf(key) > -1)) {
-                  continue;
-              } else if ((ifd == "Exif") && (key == 40965)) {
-                  continue;
-              } else if ((ifd == "1st") && ([513, 514].indexOf(key) > -1)) {
-                  continue;
-              }
-
-              var raw_value = ifd_dict[key];
-              var key_str = pack(">H", [key]);
-              var value_type = TAGS[ifd][key]["type"];
-              var type_str = pack(">H", [TYPES[value_type]]);
-
-              if (typeof (raw_value) == "number") {
-                  raw_value = [raw_value];
-              }
-              var offset = TIFF_HEADER_LENGTH + entries_length + ifd_offset + values.length;
-              var b = _value_to_bytes(raw_value, value_type, offset);
-              var length_str = b[0];
-              var value_str = b[1];
-              var four_bytes_over = b[2];
-
-              entries += key_str + type_str + length_str + value_str;
-              values += four_bytes_over;
-          }
-
-          return [entry_header + entries, values];
-      }
-
-
-
-      function ExifReader(data) {
-          var segments,
-              app1;
-          if (data.slice(0, 2) == "\xff\xd8") { // JPEG
-              segments = splitIntoSegments(data);
-              app1 = getExifSeg(segments);
-              if (app1) {
-                  this.tiftag = app1.slice(10);
-              } else {
-                  this.tiftag = null;
-              }
-          } else if (["\x49\x49", "\x4d\x4d"].indexOf(data.slice(0, 2)) > -1) { // TIFF
-              this.tiftag = data;
-          } else if (data.slice(0, 4) == "Exif") { // Exif
-              this.tiftag = data.slice(6);
-          } else {
-              throw new Error("Given file is neither JPEG nor TIFF.");
-          }
-      }
-
-      ExifReader.prototype = {
-          get_ifd: function (pointer, ifd_name) {
-              var ifd_dict = {};
-              var tag_count = unpack(this.endian_mark + "H",
-                  this.tiftag.slice(pointer, pointer + 2))[0];
-              var offset = pointer + 2;
-              var t;
-              if (["0th", "1st"].indexOf(ifd_name) > -1) {
-                  t = "Image";
-              } else {
-                  t = ifd_name;
-              }
-
-              for (var x = 0; x < tag_count; x++) {
-                  pointer = offset + 12 * x;
-                  var tag = unpack(this.endian_mark + "H",
-                      this.tiftag.slice(pointer, pointer + 2))[0];
-                  var value_type = unpack(this.endian_mark + "H",
-                      this.tiftag.slice(pointer + 2, pointer + 4))[0];
-                  var value_num = unpack(this.endian_mark + "L",
-                      this.tiftag.slice(pointer + 4, pointer + 8))[0];
-                  var value = this.tiftag.slice(pointer + 8, pointer + 12);
-
-                  var v_set = [value_type, value_num, value];
-                  if (tag in TAGS[t]) {
-                      ifd_dict[tag] = this.convert_value(v_set);
-                  }
-              }
-
-              if (ifd_name == "0th") {
-                  pointer = offset + 12 * tag_count;
-                  ifd_dict["first_ifd_pointer"] = this.tiftag.slice(pointer, pointer + 4);
-              }
-
-              return ifd_dict;
-          },
-
-          convert_value: function (val) {
-              var data = null;
-              var t = val[0];
-              var length = val[1];
-              var value = val[2];
-              var pointer;
-
-              if (t == 1) { // BYTE
-                  if (length > 4) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = unpack(this.endian_mark + nStr("B", length),
-                          this.tiftag.slice(pointer, pointer + length));
-                  } else {
-                      data = unpack(this.endian_mark + nStr("B", length), value.slice(0, length));
-                  }
-              } else if (t == 2) { // ASCII
-                  if (length > 4) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = this.tiftag.slice(pointer, pointer + length - 1);
-                  } else {
-                      data = value.slice(0, length - 1);
-                  }
-              } else if (t == 3) { // SHORT
-                  if (length > 2) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = unpack(this.endian_mark + nStr("H", length),
-                          this.tiftag.slice(pointer, pointer + length * 2));
-                  } else {
-                      data = unpack(this.endian_mark + nStr("H", length),
-                          value.slice(0, length * 2));
-                  }
-              } else if (t == 4) { // LONG
-                  if (length > 1) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = unpack(this.endian_mark + nStr("L", length),
-                          this.tiftag.slice(pointer, pointer + length * 4));
-                  } else {
-                      data = unpack(this.endian_mark + nStr("L", length),
-                          value);
-                  }
-              } else if (t == 5) { // RATIONAL
-                  pointer = unpack(this.endian_mark + "L", value)[0];
-                  if (length > 1) {
-                      data = [];
-                      for (var x = 0; x < length; x++) {
-                          data.push([unpack(this.endian_mark + "L",
-                                  this.tiftag.slice(pointer + x * 8, pointer + 4 + x * 8))[0],
-                                     unpack(this.endian_mark + "L",
-                                  this.tiftag.slice(pointer + 4 + x * 8, pointer + 8 + x * 8))[0]
-                                     ]);
-                      }
-                  } else {
-                      data = [unpack(this.endian_mark + "L",
-                              this.tiftag.slice(pointer, pointer + 4))[0],
-                              unpack(this.endian_mark + "L",
-                              this.tiftag.slice(pointer + 4, pointer + 8))[0]
-                              ];
-                  }
-              } else if (t == 7) { // UNDEFINED BYTES
-                  if (length > 4) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = this.tiftag.slice(pointer, pointer + length);
-                  } else {
-                      data = value.slice(0, length);
-                  }
-              } else if (t == 9) { // SLONG
-                  if (length > 1) {
-                      pointer = unpack(this.endian_mark + "L", value)[0];
-                      data = unpack(this.endian_mark + nStr("l", length),
-                          this.tiftag.slice(pointer, pointer + length * 4));
-                  } else {
-                      data = unpack(this.endian_mark + nStr("l", length),
-                          value);
-                  }
-              } else if (t == 10) { // SRATIONAL
-                  pointer = unpack(this.endian_mark + "L", value)[0];
-                  if (length > 1) {
-                      data = [];
-                      for (var x = 0; x < length; x++) {
-                          data.push([unpack(this.endian_mark + "l",
-                                  this.tiftag.slice(pointer + x * 8, pointer + 4 + x * 8))[0],
-                                     unpack(this.endian_mark + "l",
-                                  this.tiftag.slice(pointer + 4 + x * 8, pointer + 8 + x * 8))[0]
-                                    ]);
-                      }
-                  } else {
-                      data = [unpack(this.endian_mark + "l",
-                              this.tiftag.slice(pointer, pointer + 4))[0],
-                              unpack(this.endian_mark + "l",
-                              this.tiftag.slice(pointer + 4, pointer + 8))[0]
-                             ];
-                  }
-              } else {
-                  throw new Error("Exif might be wrong. Got incorrect value " +
-                      "type to decode. type:" + t);
-              }
-
-              if ((data instanceof Array) && (data.length == 1)) {
-                  return data[0];
-              } else {
-                  return data;
-              }
-          },
-      };
-
-
-      if (typeof window !== "undefined" && typeof window.btoa === "function") {
-          var btoa = window.btoa;
-      }
-      if (typeof btoa === "undefined") {
-          var btoa = function (input) {        var output = "";
-              var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
-              var i = 0;
-              var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-              while (i < input.length) {
-
-                  chr1 = input.charCodeAt(i++);
-                  chr2 = input.charCodeAt(i++);
-                  chr3 = input.charCodeAt(i++);
-
-                  enc1 = chr1 >> 2;
-                  enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-                  enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-                  enc4 = chr3 & 63;
-
-                  if (isNaN(chr2)) {
-                      enc3 = enc4 = 64;
-                  } else if (isNaN(chr3)) {
-                      enc4 = 64;
-                  }
-
-                  output = output +
-                  keyStr.charAt(enc1) + keyStr.charAt(enc2) +
-                  keyStr.charAt(enc3) + keyStr.charAt(enc4);
-
-              }
-
-              return output;
-          };
-      }
-      
-      
-      if (typeof window !== "undefined" && typeof window.atob === "function") {
-          var atob = window.atob;
-      }
-      if (typeof atob === "undefined") {
-          var atob = function (input) {
-              var output = "";
-              var chr1, chr2, chr3;
-              var enc1, enc2, enc3, enc4;
-              var i = 0;
-              var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-              input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-
-              while (i < input.length) {
-
-                  enc1 = keyStr.indexOf(input.charAt(i++));
-                  enc2 = keyStr.indexOf(input.charAt(i++));
-                  enc3 = keyStr.indexOf(input.charAt(i++));
-                  enc4 = keyStr.indexOf(input.charAt(i++));
-
-                  chr1 = (enc1 << 2) | (enc2 >> 4);
-                  chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-                  chr3 = ((enc3 & 3) << 6) | enc4;
-
-                  output = output + String.fromCharCode(chr1);
-
-                  if (enc3 != 64) {
-                      output = output + String.fromCharCode(chr2);
-                  }
-                  if (enc4 != 64) {
-                      output = output + String.fromCharCode(chr3);
-                  }
-
-              }
-
-              return output;
-          };
-      }
-
-
-      function pack(mark, array) {
-          if (!(array instanceof Array)) {
-              throw new Error("'pack' error. Got invalid type argument.");
-          }
-          if ((mark.length - 1) != array.length) {
-              throw new Error("'pack' error. " + (mark.length - 1) + " marks, " + array.length + " elements.");
-          }
-
-          var littleEndian;
-          if (mark[0] == "<") {
-              littleEndian = true;
-          } else if (mark[0] == ">") {
-              littleEndian = false;
-          } else {
-              throw new Error("");
-          }
-          var packed = "";
-          var p = 1;
-          var val = null;
-          var c = null;
-          var valStr = null;
-
-          while (c = mark[p]) {
-              if (c.toLowerCase() == "b") {
-                  val = array[p - 1];
-                  if ((c == "b") && (val < 0)) {
-                      val += 0x100;
-                  }
-                  if ((val > 0xff) || (val < 0)) {
-                      throw new Error("'pack' error.");
-                  } else {
-                      valStr = String.fromCharCode(val);
-                  }
-              } else if (c == "H") {
-                  val = array[p - 1];
-                  if ((val > 0xffff) || (val < 0)) {
-                      throw new Error("'pack' error.");
-                  } else {
-                      valStr = String.fromCharCode(Math.floor((val % 0x10000) / 0x100)) +
-                          String.fromCharCode(val % 0x100);
-                      if (littleEndian) {
-                          valStr = valStr.split("").reverse().join("");
-                      }
-                  }
-              } else if (c.toLowerCase() == "l") {
-                  val = array[p - 1];
-                  if ((c == "l") && (val < 0)) {
-                      val += 0x100000000;
-                  }
-                  if ((val > 0xffffffff) || (val < 0)) {
-                      throw new Error("'pack' error.");
-                  } else {
-                      valStr = String.fromCharCode(Math.floor(val / 0x1000000)) +
-                          String.fromCharCode(Math.floor((val % 0x1000000) / 0x10000)) +
-                          String.fromCharCode(Math.floor((val % 0x10000) / 0x100)) +
-                          String.fromCharCode(val % 0x100);
-                      if (littleEndian) {
-                          valStr = valStr.split("").reverse().join("");
-                      }
-                  }
-              } else {
-                  throw new Error("'pack' error.");
-              }
-
-              packed += valStr;
-              p += 1;
-          }
-
-          return packed;
-      }
-
-      function unpack(mark, str) {
-          if (typeof (str) != "string") {
-              throw new Error("'unpack' error. Got invalid type argument.");
-          }
-          var l = 0;
-          for (var markPointer = 1; markPointer < mark.length; markPointer++) {
-              if (mark[markPointer].toLowerCase() == "b") {
-                  l += 1;
-              } else if (mark[markPointer].toLowerCase() == "h") {
-                  l += 2;
-              } else if (mark[markPointer].toLowerCase() == "l") {
-                  l += 4;
-              } else {
-                  throw new Error("'unpack' error. Got invalid mark.");
-              }
-          }
-
-          if (l != str.length) {
-              throw new Error("'unpack' error. Mismatch between symbol and string length. " + l + ":" + str.length);
-          }
-
-          var littleEndian;
-          if (mark[0] == "<") {
-              littleEndian = true;
-          } else if (mark[0] == ">") {
-              littleEndian = false;
-          } else {
-              throw new Error("'unpack' error.");
-          }
-          var unpacked = [];
-          var strPointer = 0;
-          var p = 1;
-          var val = null;
-          var c = null;
-          var length = null;
-          var sliced = "";
-
-          while (c = mark[p]) {
-              if (c.toLowerCase() == "b") {
-                  length = 1;
-                  sliced = str.slice(strPointer, strPointer + length);
-                  val = sliced.charCodeAt(0);
-                  if ((c == "b") && (val >= 0x80)) {
-                      val -= 0x100;
-                  }
-              } else if (c == "H") {
-                  length = 2;
-                  sliced = str.slice(strPointer, strPointer + length);
-                  if (littleEndian) {
-                      sliced = sliced.split("").reverse().join("");
-                  }
-                  val = sliced.charCodeAt(0) * 0x100 +
-                      sliced.charCodeAt(1);
-              } else if (c.toLowerCase() == "l") {
-                  length = 4;
-                  sliced = str.slice(strPointer, strPointer + length);
-                  if (littleEndian) {
-                      sliced = sliced.split("").reverse().join("");
-                  }
-                  val = sliced.charCodeAt(0) * 0x1000000 +
-                      sliced.charCodeAt(1) * 0x10000 +
-                      sliced.charCodeAt(2) * 0x100 +
-                      sliced.charCodeAt(3);
-                  if ((c == "l") && (val >= 0x80000000)) {
-                      val -= 0x100000000;
-                  }
-              } else {
-                  throw new Error("'unpack' error. " + c);
-              }
-
-              unpacked.push(val);
-              strPointer += length;
-              p += 1;
-          }
-
-          return unpacked;
-      }
-
-      function nStr(ch, num) {
-          var str = "";
-          for (var i = 0; i < num; i++) {
-              str += ch;
-          }
-          return str;
-      }
-
-      function splitIntoSegments(data) {
-          if (data.slice(0, 2) != "\xff\xd8") {
-              throw new Error("Given data isn't JPEG.");
-          }
-
-          var head = 2;
-          var segments = ["\xff\xd8"];
-          while (true) {
-              if (data.slice(head, head + 2) == "\xff\xda") {
-                  segments.push(data.slice(head));
-                  break;
-              } else {
-                  var length = unpack(">H", data.slice(head + 2, head + 4))[0];
-                  var endPoint = head + length + 2;
-                  segments.push(data.slice(head, endPoint));
-                  head = endPoint;
-              }
-
-              if (head >= data.length) {
-                  throw new Error("Wrong JPEG data.");
-              }
-          }
-          return segments;
-      }
-
-
-      function getExifSeg(segments) {
-          var seg;
-          for (var i = 0; i < segments.length; i++) {
-              seg = segments[i];
-              if (seg.slice(0, 2) == "\xff\xe1" &&
-                     seg.slice(4, 10) == "Exif\x00\x00") {
-                  return seg;
-              }
-          }
-          return null;
-      }
-
-
-      function mergeSegments(segments, exif) {
-          var hasExifSegment = false;
-          var additionalAPP1ExifSegments = [];
-
-          segments.forEach(function(segment, i) {
-              // Replace first occurence of APP1:Exif segment
-              if (segment.slice(0, 2) == "\xff\xe1" &&
-                  segment.slice(4, 10) == "Exif\x00\x00"
-              ) {
-                  if (!hasExifSegment) {
-                      segments[i] = exif;
-                      hasExifSegment = true;
-                  } else {
-                      additionalAPP1ExifSegments.unshift(i);
-                  }
-              }
-          });
-
-          // Remove additional occurences of APP1:Exif segment
-          additionalAPP1ExifSegments.forEach(function(segmentIndex) {
-              segments.splice(segmentIndex, 1);
-          });
-
-          if (!hasExifSegment && exif) {
-              segments = [segments[0], exif].concat(segments.slice(1));
-          }
-
-          return segments.join("");
-      }
-
-
-      var TYPES = {
-          "Byte": 1,
-          "Ascii": 2,
-          "Short": 3,
-          "Long": 4,
-          "Rational": 5,
-          "Undefined": 7,
-          "SLong": 9,
-          "SRational": 10
-      };
-
-
-      var TAGS = {
-          'Image': {
-              11: {
-                  'name': 'ProcessingSoftware',
-                  'type': 'Ascii'
-              },
-              254: {
-                  'name': 'NewSubfileType',
-                  'type': 'Long'
-              },
-              255: {
-                  'name': 'SubfileType',
-                  'type': 'Short'
-              },
-              256: {
-                  'name': 'ImageWidth',
-                  'type': 'Long'
-              },
-              257: {
-                  'name': 'ImageLength',
-                  'type': 'Long'
-              },
-              258: {
-                  'name': 'BitsPerSample',
-                  'type': 'Short'
-              },
-              259: {
-                  'name': 'Compression',
-                  'type': 'Short'
-              },
-              262: {
-                  'name': 'PhotometricInterpretation',
-                  'type': 'Short'
-              },
-              263: {
-                  'name': 'Threshholding',
-                  'type': 'Short'
-              },
-              264: {
-                  'name': 'CellWidth',
-                  'type': 'Short'
-              },
-              265: {
-                  'name': 'CellLength',
-                  'type': 'Short'
-              },
-              266: {
-                  'name': 'FillOrder',
-                  'type': 'Short'
-              },
-              269: {
-                  'name': 'DocumentName',
-                  'type': 'Ascii'
-              },
-              270: {
-                  'name': 'ImageDescription',
-                  'type': 'Ascii'
-              },
-              271: {
-                  'name': 'Make',
-                  'type': 'Ascii'
-              },
-              272: {
-                  'name': 'Model',
-                  'type': 'Ascii'
-              },
-              273: {
-                  'name': 'StripOffsets',
-                  'type': 'Long'
-              },
-              274: {
-                  'name': 'Orientation',
-                  'type': 'Short'
-              },
-              277: {
-                  'name': 'SamplesPerPixel',
-                  'type': 'Short'
-              },
-              278: {
-                  'name': 'RowsPerStrip',
-                  'type': 'Long'
-              },
-              279: {
-                  'name': 'StripByteCounts',
-                  'type': 'Long'
-              },
-              282: {
-                  'name': 'XResolution',
-                  'type': 'Rational'
-              },
-              283: {
-                  'name': 'YResolution',
-                  'type': 'Rational'
-              },
-              284: {
-                  'name': 'PlanarConfiguration',
-                  'type': 'Short'
-              },
-              290: {
-                  'name': 'GrayResponseUnit',
-                  'type': 'Short'
-              },
-              291: {
-                  'name': 'GrayResponseCurve',
-                  'type': 'Short'
-              },
-              292: {
-                  'name': 'T4Options',
-                  'type': 'Long'
-              },
-              293: {
-                  'name': 'T6Options',
-                  'type': 'Long'
-              },
-              296: {
-                  'name': 'ResolutionUnit',
-                  'type': 'Short'
-              },
-              301: {
-                  'name': 'TransferFunction',
-                  'type': 'Short'
-              },
-              305: {
-                  'name': 'Software',
-                  'type': 'Ascii'
-              },
-              306: {
-                  'name': 'DateTime',
-                  'type': 'Ascii'
-              },
-              315: {
-                  'name': 'Artist',
-                  'type': 'Ascii'
-              },
-              316: {
-                  'name': 'HostComputer',
-                  'type': 'Ascii'
-              },
-              317: {
-                  'name': 'Predictor',
-                  'type': 'Short'
-              },
-              318: {
-                  'name': 'WhitePoint',
-                  'type': 'Rational'
-              },
-              319: {
-                  'name': 'PrimaryChromaticities',
-                  'type': 'Rational'
-              },
-              320: {
-                  'name': 'ColorMap',
-                  'type': 'Short'
-              },
-              321: {
-                  'name': 'HalftoneHints',
-                  'type': 'Short'
-              },
-              322: {
-                  'name': 'TileWidth',
-                  'type': 'Short'
-              },
-              323: {
-                  'name': 'TileLength',
-                  'type': 'Short'
-              },
-              324: {
-                  'name': 'TileOffsets',
-                  'type': 'Short'
-              },
-              325: {
-                  'name': 'TileByteCounts',
-                  'type': 'Short'
-              },
-              330: {
-                  'name': 'SubIFDs',
-                  'type': 'Long'
-              },
-              332: {
-                  'name': 'InkSet',
-                  'type': 'Short'
-              },
-              333: {
-                  'name': 'InkNames',
-                  'type': 'Ascii'
-              },
-              334: {
-                  'name': 'NumberOfInks',
-                  'type': 'Short'
-              },
-              336: {
-                  'name': 'DotRange',
-                  'type': 'Byte'
-              },
-              337: {
-                  'name': 'TargetPrinter',
-                  'type': 'Ascii'
-              },
-              338: {
-                  'name': 'ExtraSamples',
-                  'type': 'Short'
-              },
-              339: {
-                  'name': 'SampleFormat',
-                  'type': 'Short'
-              },
-              340: {
-                  'name': 'SMinSampleValue',
-                  'type': 'Short'
-              },
-              341: {
-                  'name': 'SMaxSampleValue',
-                  'type': 'Short'
-              },
-              342: {
-                  'name': 'TransferRange',
-                  'type': 'Short'
-              },
-              343: {
-                  'name': 'ClipPath',
-                  'type': 'Byte'
-              },
-              344: {
-                  'name': 'XClipPathUnits',
-                  'type': 'Long'
-              },
-              345: {
-                  'name': 'YClipPathUnits',
-                  'type': 'Long'
-              },
-              346: {
-                  'name': 'Indexed',
-                  'type': 'Short'
-              },
-              347: {
-                  'name': 'JPEGTables',
-                  'type': 'Undefined'
-              },
-              351: {
-                  'name': 'OPIProxy',
-                  'type': 'Short'
-              },
-              512: {
-                  'name': 'JPEGProc',
-                  'type': 'Long'
-              },
-              513: {
-                  'name': 'JPEGInterchangeFormat',
-                  'type': 'Long'
-              },
-              514: {
-                  'name': 'JPEGInterchangeFormatLength',
-                  'type': 'Long'
-              },
-              515: {
-                  'name': 'JPEGRestartInterval',
-                  'type': 'Short'
-              },
-              517: {
-                  'name': 'JPEGLosslessPredictors',
-                  'type': 'Short'
-              },
-              518: {
-                  'name': 'JPEGPointTransforms',
-                  'type': 'Short'
-              },
-              519: {
-                  'name': 'JPEGQTables',
-                  'type': 'Long'
-              },
-              520: {
-                  'name': 'JPEGDCTables',
-                  'type': 'Long'
-              },
-              521: {
-                  'name': 'JPEGACTables',
-                  'type': 'Long'
-              },
-              529: {
-                  'name': 'YCbCrCoefficients',
-                  'type': 'Rational'
-              },
-              530: {
-                  'name': 'YCbCrSubSampling',
-                  'type': 'Short'
-              },
-              531: {
-                  'name': 'YCbCrPositioning',
-                  'type': 'Short'
-              },
-              532: {
-                  'name': 'ReferenceBlackWhite',
-                  'type': 'Rational'
-              },
-              700: {
-                  'name': 'XMLPacket',
-                  'type': 'Byte'
-              },
-              18246: {
-                  'name': 'Rating',
-                  'type': 'Short'
-              },
-              18249: {
-                  'name': 'RatingPercent',
-                  'type': 'Short'
-              },
-              32781: {
-                  'name': 'ImageID',
-                  'type': 'Ascii'
-              },
-              33421: {
-                  'name': 'CFARepeatPatternDim',
-                  'type': 'Short'
-              },
-              33422: {
-                  'name': 'CFAPattern',
-                  'type': 'Byte'
-              },
-              33423: {
-                  'name': 'BatteryLevel',
-                  'type': 'Rational'
-              },
-              33432: {
-                  'name': 'Copyright',
-                  'type': 'Ascii'
-              },
-              33434: {
-                  'name': 'ExposureTime',
-                  'type': 'Rational'
-              },
-              34377: {
-                  'name': 'ImageResources',
-                  'type': 'Byte'
-              },
-              34665: {
-                  'name': 'ExifTag',
-                  'type': 'Long'
-              },
-              34675: {
-                  'name': 'InterColorProfile',
-                  'type': 'Undefined'
-              },
-              34853: {
-                  'name': 'GPSTag',
-                  'type': 'Long'
-              },
-              34857: {
-                  'name': 'Interlace',
-                  'type': 'Short'
-              },
-              34858: {
-                  'name': 'TimeZoneOffset',
-                  'type': 'Long'
-              },
-              34859: {
-                  'name': 'SelfTimerMode',
-                  'type': 'Short'
-              },
-              37387: {
-                  'name': 'FlashEnergy',
-                  'type': 'Rational'
-              },
-              37388: {
-                  'name': 'SpatialFrequencyResponse',
-                  'type': 'Undefined'
-              },
-              37389: {
-                  'name': 'Noise',
-                  'type': 'Undefined'
-              },
-              37390: {
-                  'name': 'FocalPlaneXResolution',
-                  'type': 'Rational'
-              },
-              37391: {
-                  'name': 'FocalPlaneYResolution',
-                  'type': 'Rational'
-              },
-              37392: {
-                  'name': 'FocalPlaneResolutionUnit',
-                  'type': 'Short'
-              },
-              37393: {
-                  'name': 'ImageNumber',
-                  'type': 'Long'
-              },
-              37394: {
-                  'name': 'SecurityClassification',
-                  'type': 'Ascii'
-              },
-              37395: {
-                  'name': 'ImageHistory',
-                  'type': 'Ascii'
-              },
-              37397: {
-                  'name': 'ExposureIndex',
-                  'type': 'Rational'
-              },
-              37398: {
-                  'name': 'TIFFEPStandardID',
-                  'type': 'Byte'
-              },
-              37399: {
-                  'name': 'SensingMethod',
-                  'type': 'Short'
-              },
-              40091: {
-                  'name': 'XPTitle',
-                  'type': 'Byte'
-              },
-              40092: {
-                  'name': 'XPComment',
-                  'type': 'Byte'
-              },
-              40093: {
-                  'name': 'XPAuthor',
-                  'type': 'Byte'
-              },
-              40094: {
-                  'name': 'XPKeywords',
-                  'type': 'Byte'
-              },
-              40095: {
-                  'name': 'XPSubject',
-                  'type': 'Byte'
-              },
-              50341: {
-                  'name': 'PrintImageMatching',
-                  'type': 'Undefined'
-              },
-              50706: {
-                  'name': 'DNGVersion',
-                  'type': 'Byte'
-              },
-              50707: {
-                  'name': 'DNGBackwardVersion',
-                  'type': 'Byte'
-              },
-              50708: {
-                  'name': 'UniqueCameraModel',
-                  'type': 'Ascii'
-              },
-              50709: {
-                  'name': 'LocalizedCameraModel',
-                  'type': 'Byte'
-              },
-              50710: {
-                  'name': 'CFAPlaneColor',
-                  'type': 'Byte'
-              },
-              50711: {
-                  'name': 'CFALayout',
-                  'type': 'Short'
-              },
-              50712: {
-                  'name': 'LinearizationTable',
-                  'type': 'Short'
-              },
-              50713: {
-                  'name': 'BlackLevelRepeatDim',
-                  'type': 'Short'
-              },
-              50714: {
-                  'name': 'BlackLevel',
-                  'type': 'Rational'
-              },
-              50715: {
-                  'name': 'BlackLevelDeltaH',
-                  'type': 'SRational'
-              },
-              50716: {
-                  'name': 'BlackLevelDeltaV',
-                  'type': 'SRational'
-              },
-              50717: {
-                  'name': 'WhiteLevel',
-                  'type': 'Short'
-              },
-              50718: {
-                  'name': 'DefaultScale',
-                  'type': 'Rational'
-              },
-              50719: {
-                  'name': 'DefaultCropOrigin',
-                  'type': 'Short'
-              },
-              50720: {
-                  'name': 'DefaultCropSize',
-                  'type': 'Short'
-              },
-              50721: {
-                  'name': 'ColorMatrix1',
-                  'type': 'SRational'
-              },
-              50722: {
-                  'name': 'ColorMatrix2',
-                  'type': 'SRational'
-              },
-              50723: {
-                  'name': 'CameraCalibration1',
-                  'type': 'SRational'
-              },
-              50724: {
-                  'name': 'CameraCalibration2',
-                  'type': 'SRational'
-              },
-              50725: {
-                  'name': 'ReductionMatrix1',
-                  'type': 'SRational'
-              },
-              50726: {
-                  'name': 'ReductionMatrix2',
-                  'type': 'SRational'
-              },
-              50727: {
-                  'name': 'AnalogBalance',
-                  'type': 'Rational'
-              },
-              50728: {
-                  'name': 'AsShotNeutral',
-                  'type': 'Short'
-              },
-              50729: {
-                  'name': 'AsShotWhiteXY',
-                  'type': 'Rational'
-              },
-              50730: {
-                  'name': 'BaselineExposure',
-                  'type': 'SRational'
-              },
-              50731: {
-                  'name': 'BaselineNoise',
-                  'type': 'Rational'
-              },
-              50732: {
-                  'name': 'BaselineSharpness',
-                  'type': 'Rational'
-              },
-              50733: {
-                  'name': 'BayerGreenSplit',
-                  'type': 'Long'
-              },
-              50734: {
-                  'name': 'LinearResponseLimit',
-                  'type': 'Rational'
-              },
-              50735: {
-                  'name': 'CameraSerialNumber',
-                  'type': 'Ascii'
-              },
-              50736: {
-                  'name': 'LensInfo',
-                  'type': 'Rational'
-              },
-              50737: {
-                  'name': 'ChromaBlurRadius',
-                  'type': 'Rational'
-              },
-              50738: {
-                  'name': 'AntiAliasStrength',
-                  'type': 'Rational'
-              },
-              50739: {
-                  'name': 'ShadowScale',
-                  'type': 'SRational'
-              },
-              50740: {
-                  'name': 'DNGPrivateData',
-                  'type': 'Byte'
-              },
-              50741: {
-                  'name': 'MakerNoteSafety',
-                  'type': 'Short'
-              },
-              50778: {
-                  'name': 'CalibrationIlluminant1',
-                  'type': 'Short'
-              },
-              50779: {
-                  'name': 'CalibrationIlluminant2',
-                  'type': 'Short'
-              },
-              50780: {
-                  'name': 'BestQualityScale',
-                  'type': 'Rational'
-              },
-              50781: {
-                  'name': 'RawDataUniqueID',
-                  'type': 'Byte'
-              },
-              50827: {
-                  'name': 'OriginalRawFileName',
-                  'type': 'Byte'
-              },
-              50828: {
-                  'name': 'OriginalRawFileData',
-                  'type': 'Undefined'
-              },
-              50829: {
-                  'name': 'ActiveArea',
-                  'type': 'Short'
-              },
-              50830: {
-                  'name': 'MaskedAreas',
-                  'type': 'Short'
-              },
-              50831: {
-                  'name': 'AsShotICCProfile',
-                  'type': 'Undefined'
-              },
-              50832: {
-                  'name': 'AsShotPreProfileMatrix',
-                  'type': 'SRational'
-              },
-              50833: {
-                  'name': 'CurrentICCProfile',
-                  'type': 'Undefined'
-              },
-              50834: {
-                  'name': 'CurrentPreProfileMatrix',
-                  'type': 'SRational'
-              },
-              50879: {
-                  'name': 'ColorimetricReference',
-                  'type': 'Short'
-              },
-              50931: {
-                  'name': 'CameraCalibrationSignature',
-                  'type': 'Byte'
-              },
-              50932: {
-                  'name': 'ProfileCalibrationSignature',
-                  'type': 'Byte'
-              },
-              50934: {
-                  'name': 'AsShotProfileName',
-                  'type': 'Byte'
-              },
-              50935: {
-                  'name': 'NoiseReductionApplied',
-                  'type': 'Rational'
-              },
-              50936: {
-                  'name': 'ProfileName',
-                  'type': 'Byte'
-              },
-              50937: {
-                  'name': 'ProfileHueSatMapDims',
-                  'type': 'Long'
-              },
-              50938: {
-                  'name': 'ProfileHueSatMapData1',
-                  'type': 'Float'
-              },
-              50939: {
-                  'name': 'ProfileHueSatMapData2',
-                  'type': 'Float'
-              },
-              50940: {
-                  'name': 'ProfileToneCurve',
-                  'type': 'Float'
-              },
-              50941: {
-                  'name': 'ProfileEmbedPolicy',
-                  'type': 'Long'
-              },
-              50942: {
-                  'name': 'ProfileCopyright',
-                  'type': 'Byte'
-              },
-              50964: {
-                  'name': 'ForwardMatrix1',
-                  'type': 'SRational'
-              },
-              50965: {
-                  'name': 'ForwardMatrix2',
-                  'type': 'SRational'
-              },
-              50966: {
-                  'name': 'PreviewApplicationName',
-                  'type': 'Byte'
-              },
-              50967: {
-                  'name': 'PreviewApplicationVersion',
-                  'type': 'Byte'
-              },
-              50968: {
-                  'name': 'PreviewSettingsName',
-                  'type': 'Byte'
-              },
-              50969: {
-                  'name': 'PreviewSettingsDigest',
-                  'type': 'Byte'
-              },
-              50970: {
-                  'name': 'PreviewColorSpace',
-                  'type': 'Long'
-              },
-              50971: {
-                  'name': 'PreviewDateTime',
-                  'type': 'Ascii'
-              },
-              50972: {
-                  'name': 'RawImageDigest',
-                  'type': 'Undefined'
-              },
-              50973: {
-                  'name': 'OriginalRawFileDigest',
-                  'type': 'Undefined'
-              },
-              50974: {
-                  'name': 'SubTileBlockSize',
-                  'type': 'Long'
-              },
-              50975: {
-                  'name': 'RowInterleaveFactor',
-                  'type': 'Long'
-              },
-              50981: {
-                  'name': 'ProfileLookTableDims',
-                  'type': 'Long'
-              },
-              50982: {
-                  'name': 'ProfileLookTableData',
-                  'type': 'Float'
-              },
-              51008: {
-                  'name': 'OpcodeList1',
-                  'type': 'Undefined'
-              },
-              51009: {
-                  'name': 'OpcodeList2',
-                  'type': 'Undefined'
-              },
-              51022: {
-                  'name': 'OpcodeList3',
-                  'type': 'Undefined'
-              }
-          },
-          'Exif': {
-              33434: {
-                  'name': 'ExposureTime',
-                  'type': 'Rational'
-              },
-              33437: {
-                  'name': 'FNumber',
-                  'type': 'Rational'
-              },
-              34850: {
-                  'name': 'ExposureProgram',
-                  'type': 'Short'
-              },
-              34852: {
-                  'name': 'SpectralSensitivity',
-                  'type': 'Ascii'
-              },
-              34855: {
-                  'name': 'ISOSpeedRatings',
-                  'type': 'Short'
-              },
-              34856: {
-                  'name': 'OECF',
-                  'type': 'Undefined'
-              },
-              34864: {
-                  'name': 'SensitivityType',
-                  'type': 'Short'
-              },
-              34865: {
-                  'name': 'StandardOutputSensitivity',
-                  'type': 'Long'
-              },
-              34866: {
-                  'name': 'RecommendedExposureIndex',
-                  'type': 'Long'
-              },
-              34867: {
-                  'name': 'ISOSpeed',
-                  'type': 'Long'
-              },
-              34868: {
-                  'name': 'ISOSpeedLatitudeyyy',
-                  'type': 'Long'
-              },
-              34869: {
-                  'name': 'ISOSpeedLatitudezzz',
-                  'type': 'Long'
-              },
-              36864: {
-                  'name': 'ExifVersion',
-                  'type': 'Undefined'
-              },
-              36867: {
-                  'name': 'DateTimeOriginal',
-                  'type': 'Ascii'
-              },
-              36868: {
-                  'name': 'DateTimeDigitized',
-                  'type': 'Ascii'
-              },
-              37121: {
-                  'name': 'ComponentsConfiguration',
-                  'type': 'Undefined'
-              },
-              37122: {
-                  'name': 'CompressedBitsPerPixel',
-                  'type': 'Rational'
-              },
-              37377: {
-                  'name': 'ShutterSpeedValue',
-                  'type': 'SRational'
-              },
-              37378: {
-                  'name': 'ApertureValue',
-                  'type': 'Rational'
-              },
-              37379: {
-                  'name': 'BrightnessValue',
-                  'type': 'SRational'
-              },
-              37380: {
-                  'name': 'ExposureBiasValue',
-                  'type': 'SRational'
-              },
-              37381: {
-                  'name': 'MaxApertureValue',
-                  'type': 'Rational'
-              },
-              37382: {
-                  'name': 'SubjectDistance',
-                  'type': 'Rational'
-              },
-              37383: {
-                  'name': 'MeteringMode',
-                  'type': 'Short'
-              },
-              37384: {
-                  'name': 'LightSource',
-                  'type': 'Short'
-              },
-              37385: {
-                  'name': 'Flash',
-                  'type': 'Short'
-              },
-              37386: {
-                  'name': 'FocalLength',
-                  'type': 'Rational'
-              },
-              37396: {
-                  'name': 'SubjectArea',
-                  'type': 'Short'
-              },
-              37500: {
-                  'name': 'MakerNote',
-                  'type': 'Undefined'
-              },
-              37510: {
-                  'name': 'UserComment',
-                  'type': 'Ascii'
-              },
-              37520: {
-                  'name': 'SubSecTime',
-                  'type': 'Ascii'
-              },
-              37521: {
-                  'name': 'SubSecTimeOriginal',
-                  'type': 'Ascii'
-              },
-              37522: {
-                  'name': 'SubSecTimeDigitized',
-                  'type': 'Ascii'
-              },
-              40960: {
-                  'name': 'FlashpixVersion',
-                  'type': 'Undefined'
-              },
-              40961: {
-                  'name': 'ColorSpace',
-                  'type': 'Short'
-              },
-              40962: {
-                  'name': 'PixelXDimension',
-                  'type': 'Long'
-              },
-              40963: {
-                  'name': 'PixelYDimension',
-                  'type': 'Long'
-              },
-              40964: {
-                  'name': 'RelatedSoundFile',
-                  'type': 'Ascii'
-              },
-              40965: {
-                  'name': 'InteroperabilityTag',
-                  'type': 'Long'
-              },
-              41483: {
-                  'name': 'FlashEnergy',
-                  'type': 'Rational'
-              },
-              41484: {
-                  'name': 'SpatialFrequencyResponse',
-                  'type': 'Undefined'
-              },
-              41486: {
-                  'name': 'FocalPlaneXResolution',
-                  'type': 'Rational'
-              },
-              41487: {
-                  'name': 'FocalPlaneYResolution',
-                  'type': 'Rational'
-              },
-              41488: {
-                  'name': 'FocalPlaneResolutionUnit',
-                  'type': 'Short'
-              },
-              41492: {
-                  'name': 'SubjectLocation',
-                  'type': 'Short'
-              },
-              41493: {
-                  'name': 'ExposureIndex',
-                  'type': 'Rational'
-              },
-              41495: {
-                  'name': 'SensingMethod',
-                  'type': 'Short'
-              },
-              41728: {
-                  'name': 'FileSource',
-                  'type': 'Undefined'
-              },
-              41729: {
-                  'name': 'SceneType',
-                  'type': 'Undefined'
-              },
-              41730: {
-                  'name': 'CFAPattern',
-                  'type': 'Undefined'
-              },
-              41985: {
-                  'name': 'CustomRendered',
-                  'type': 'Short'
-              },
-              41986: {
-                  'name': 'ExposureMode',
-                  'type': 'Short'
-              },
-              41987: {
-                  'name': 'WhiteBalance',
-                  'type': 'Short'
-              },
-              41988: {
-                  'name': 'DigitalZoomRatio',
-                  'type': 'Rational'
-              },
-              41989: {
-                  'name': 'FocalLengthIn35mmFilm',
-                  'type': 'Short'
-              },
-              41990: {
-                  'name': 'SceneCaptureType',
-                  'type': 'Short'
-              },
-              41991: {
-                  'name': 'GainControl',
-                  'type': 'Short'
-              },
-              41992: {
-                  'name': 'Contrast',
-                  'type': 'Short'
-              },
-              41993: {
-                  'name': 'Saturation',
-                  'type': 'Short'
-              },
-              41994: {
-                  'name': 'Sharpness',
-                  'type': 'Short'
-              },
-              41995: {
-                  'name': 'DeviceSettingDescription',
-                  'type': 'Undefined'
-              },
-              41996: {
-                  'name': 'SubjectDistanceRange',
-                  'type': 'Short'
-              },
-              42016: {
-                  'name': 'ImageUniqueID',
-                  'type': 'Ascii'
-              },
-              42032: {
-                  'name': 'CameraOwnerName',
-                  'type': 'Ascii'
-              },
-              42033: {
-                  'name': 'BodySerialNumber',
-                  'type': 'Ascii'
-              },
-              42034: {
-                  'name': 'LensSpecification',
-                  'type': 'Rational'
-              },
-              42035: {
-                  'name': 'LensMake',
-                  'type': 'Ascii'
-              },
-              42036: {
-                  'name': 'LensModel',
-                  'type': 'Ascii'
-              },
-              42037: {
-                  'name': 'LensSerialNumber',
-                  'type': 'Ascii'
-              },
-              42240: {
-                  'name': 'Gamma',
-                  'type': 'Rational'
-              }
-          },
-          'GPS': {
-              0: {
-                  'name': 'GPSVersionID',
-                  'type': 'Byte'
-              },
-              1: {
-                  'name': 'GPSLatitudeRef',
-                  'type': 'Ascii'
-              },
-              2: {
-                  'name': 'GPSLatitude',
-                  'type': 'Rational'
-              },
-              3: {
-                  'name': 'GPSLongitudeRef',
-                  'type': 'Ascii'
-              },
-              4: {
-                  'name': 'GPSLongitude',
-                  'type': 'Rational'
-              },
-              5: {
-                  'name': 'GPSAltitudeRef',
-                  'type': 'Byte'
-              },
-              6: {
-                  'name': 'GPSAltitude',
-                  'type': 'Rational'
-              },
-              7: {
-                  'name': 'GPSTimeStamp',
-                  'type': 'Rational'
-              },
-              8: {
-                  'name': 'GPSSatellites',
-                  'type': 'Ascii'
-              },
-              9: {
-                  'name': 'GPSStatus',
-                  'type': 'Ascii'
-              },
-              10: {
-                  'name': 'GPSMeasureMode',
-                  'type': 'Ascii'
-              },
-              11: {
-                  'name': 'GPSDOP',
-                  'type': 'Rational'
-              },
-              12: {
-                  'name': 'GPSSpeedRef',
-                  'type': 'Ascii'
-              },
-              13: {
-                  'name': 'GPSSpeed',
-                  'type': 'Rational'
-              },
-              14: {
-                  'name': 'GPSTrackRef',
-                  'type': 'Ascii'
-              },
-              15: {
-                  'name': 'GPSTrack',
-                  'type': 'Rational'
-              },
-              16: {
-                  'name': 'GPSImgDirectionRef',
-                  'type': 'Ascii'
-              },
-              17: {
-                  'name': 'GPSImgDirection',
-                  'type': 'Rational'
-              },
-              18: {
-                  'name': 'GPSMapDatum',
-                  'type': 'Ascii'
-              },
-              19: {
-                  'name': 'GPSDestLatitudeRef',
-                  'type': 'Ascii'
-              },
-              20: {
-                  'name': 'GPSDestLatitude',
-                  'type': 'Rational'
-              },
-              21: {
-                  'name': 'GPSDestLongitudeRef',
-                  'type': 'Ascii'
-              },
-              22: {
-                  'name': 'GPSDestLongitude',
-                  'type': 'Rational'
-              },
-              23: {
-                  'name': 'GPSDestBearingRef',
-                  'type': 'Ascii'
-              },
-              24: {
-                  'name': 'GPSDestBearing',
-                  'type': 'Rational'
-              },
-              25: {
-                  'name': 'GPSDestDistanceRef',
-                  'type': 'Ascii'
-              },
-              26: {
-                  'name': 'GPSDestDistance',
-                  'type': 'Rational'
-              },
-              27: {
-                  'name': 'GPSProcessingMethod',
-                  'type': 'Undefined'
-              },
-              28: {
-                  'name': 'GPSAreaInformation',
-                  'type': 'Undefined'
-              },
-              29: {
-                  'name': 'GPSDateStamp',
-                  'type': 'Ascii'
-              },
-              30: {
-                  'name': 'GPSDifferential',
-                  'type': 'Short'
-              },
-              31: {
-                  'name': 'GPSHPositioningError',
-                  'type': 'Rational'
-              }
-          },
-          'Interop': {
-              1: {
-                  'name': 'InteroperabilityIndex',
-                  'type': 'Ascii'
-              }
-          },
-      };
-      TAGS["0th"] = TAGS["Image"];
-      TAGS["1st"] = TAGS["Image"];
-      that.TAGS = TAGS;
-
-      
-      that.ImageIFD = {
-          ProcessingSoftware:11,
-          NewSubfileType:254,
-          SubfileType:255,
-          ImageWidth:256,
-          ImageLength:257,
-          BitsPerSample:258,
-          Compression:259,
-          PhotometricInterpretation:262,
-          Threshholding:263,
-          CellWidth:264,
-          CellLength:265,
-          FillOrder:266,
-          DocumentName:269,
-          ImageDescription:270,
-          Make:271,
-          Model:272,
-          StripOffsets:273,
-          Orientation:274,
-          SamplesPerPixel:277,
-          RowsPerStrip:278,
-          StripByteCounts:279,
-          XResolution:282,
-          YResolution:283,
-          PlanarConfiguration:284,
-          GrayResponseUnit:290,
-          GrayResponseCurve:291,
-          T4Options:292,
-          T6Options:293,
-          ResolutionUnit:296,
-          TransferFunction:301,
-          Software:305,
-          DateTime:306,
-          Artist:315,
-          HostComputer:316,
-          Predictor:317,
-          WhitePoint:318,
-          PrimaryChromaticities:319,
-          ColorMap:320,
-          HalftoneHints:321,
-          TileWidth:322,
-          TileLength:323,
-          TileOffsets:324,
-          TileByteCounts:325,
-          SubIFDs:330,
-          InkSet:332,
-          InkNames:333,
-          NumberOfInks:334,
-          DotRange:336,
-          TargetPrinter:337,
-          ExtraSamples:338,
-          SampleFormat:339,
-          SMinSampleValue:340,
-          SMaxSampleValue:341,
-          TransferRange:342,
-          ClipPath:343,
-          XClipPathUnits:344,
-          YClipPathUnits:345,
-          Indexed:346,
-          JPEGTables:347,
-          OPIProxy:351,
-          JPEGProc:512,
-          JPEGInterchangeFormat:513,
-          JPEGInterchangeFormatLength:514,
-          JPEGRestartInterval:515,
-          JPEGLosslessPredictors:517,
-          JPEGPointTransforms:518,
-          JPEGQTables:519,
-          JPEGDCTables:520,
-          JPEGACTables:521,
-          YCbCrCoefficients:529,
-          YCbCrSubSampling:530,
-          YCbCrPositioning:531,
-          ReferenceBlackWhite:532,
-          XMLPacket:700,
-          Rating:18246,
-          RatingPercent:18249,
-          ImageID:32781,
-          CFARepeatPatternDim:33421,
-          CFAPattern:33422,
-          BatteryLevel:33423,
-          Copyright:33432,
-          ExposureTime:33434,
-          ImageResources:34377,
-          ExifTag:34665,
-          InterColorProfile:34675,
-          GPSTag:34853,
-          Interlace:34857,
-          TimeZoneOffset:34858,
-          SelfTimerMode:34859,
-          FlashEnergy:37387,
-          SpatialFrequencyResponse:37388,
-          Noise:37389,
-          FocalPlaneXResolution:37390,
-          FocalPlaneYResolution:37391,
-          FocalPlaneResolutionUnit:37392,
-          ImageNumber:37393,
-          SecurityClassification:37394,
-          ImageHistory:37395,
-          ExposureIndex:37397,
-          TIFFEPStandardID:37398,
-          SensingMethod:37399,
-          XPTitle:40091,
-          XPComment:40092,
-          XPAuthor:40093,
-          XPKeywords:40094,
-          XPSubject:40095,
-          PrintImageMatching:50341,
-          DNGVersion:50706,
-          DNGBackwardVersion:50707,
-          UniqueCameraModel:50708,
-          LocalizedCameraModel:50709,
-          CFAPlaneColor:50710,
-          CFALayout:50711,
-          LinearizationTable:50712,
-          BlackLevelRepeatDim:50713,
-          BlackLevel:50714,
-          BlackLevelDeltaH:50715,
-          BlackLevelDeltaV:50716,
-          WhiteLevel:50717,
-          DefaultScale:50718,
-          DefaultCropOrigin:50719,
-          DefaultCropSize:50720,
-          ColorMatrix1:50721,
-          ColorMatrix2:50722,
-          CameraCalibration1:50723,
-          CameraCalibration2:50724,
-          ReductionMatrix1:50725,
-          ReductionMatrix2:50726,
-          AnalogBalance:50727,
-          AsShotNeutral:50728,
-          AsShotWhiteXY:50729,
-          BaselineExposure:50730,
-          BaselineNoise:50731,
-          BaselineSharpness:50732,
-          BayerGreenSplit:50733,
-          LinearResponseLimit:50734,
-          CameraSerialNumber:50735,
-          LensInfo:50736,
-          ChromaBlurRadius:50737,
-          AntiAliasStrength:50738,
-          ShadowScale:50739,
-          DNGPrivateData:50740,
-          MakerNoteSafety:50741,
-          CalibrationIlluminant1:50778,
-          CalibrationIlluminant2:50779,
-          BestQualityScale:50780,
-          RawDataUniqueID:50781,
-          OriginalRawFileName:50827,
-          OriginalRawFileData:50828,
-          ActiveArea:50829,
-          MaskedAreas:50830,
-          AsShotICCProfile:50831,
-          AsShotPreProfileMatrix:50832,
-          CurrentICCProfile:50833,
-          CurrentPreProfileMatrix:50834,
-          ColorimetricReference:50879,
-          CameraCalibrationSignature:50931,
-          ProfileCalibrationSignature:50932,
-          AsShotProfileName:50934,
-          NoiseReductionApplied:50935,
-          ProfileName:50936,
-          ProfileHueSatMapDims:50937,
-          ProfileHueSatMapData1:50938,
-          ProfileHueSatMapData2:50939,
-          ProfileToneCurve:50940,
-          ProfileEmbedPolicy:50941,
-          ProfileCopyright:50942,
-          ForwardMatrix1:50964,
-          ForwardMatrix2:50965,
-          PreviewApplicationName:50966,
-          PreviewApplicationVersion:50967,
-          PreviewSettingsName:50968,
-          PreviewSettingsDigest:50969,
-          PreviewColorSpace:50970,
-          PreviewDateTime:50971,
-          RawImageDigest:50972,
-          OriginalRawFileDigest:50973,
-          SubTileBlockSize:50974,
-          RowInterleaveFactor:50975,
-          ProfileLookTableDims:50981,
-          ProfileLookTableData:50982,
-          OpcodeList1:51008,
-          OpcodeList2:51009,
-          OpcodeList3:51022,
-          NoiseProfile:51041,
-      };
-
-      
-      that.ExifIFD = {
-          ExposureTime:33434,
-          FNumber:33437,
-          ExposureProgram:34850,
-          SpectralSensitivity:34852,
-          ISOSpeedRatings:34855,
-          OECF:34856,
-          SensitivityType:34864,
-          StandardOutputSensitivity:34865,
-          RecommendedExposureIndex:34866,
-          ISOSpeed:34867,
-          ISOSpeedLatitudeyyy:34868,
-          ISOSpeedLatitudezzz:34869,
-          ExifVersion:36864,
-          DateTimeOriginal:36867,
-          DateTimeDigitized:36868,
-          ComponentsConfiguration:37121,
-          CompressedBitsPerPixel:37122,
-          ShutterSpeedValue:37377,
-          ApertureValue:37378,
-          BrightnessValue:37379,
-          ExposureBiasValue:37380,
-          MaxApertureValue:37381,
-          SubjectDistance:37382,
-          MeteringMode:37383,
-          LightSource:37384,
-          Flash:37385,
-          FocalLength:37386,
-          SubjectArea:37396,
-          MakerNote:37500,
-          UserComment:37510,
-          SubSecTime:37520,
-          SubSecTimeOriginal:37521,
-          SubSecTimeDigitized:37522,
-          FlashpixVersion:40960,
-          ColorSpace:40961,
-          PixelXDimension:40962,
-          PixelYDimension:40963,
-          RelatedSoundFile:40964,
-          InteroperabilityTag:40965,
-          FlashEnergy:41483,
-          SpatialFrequencyResponse:41484,
-          FocalPlaneXResolution:41486,
-          FocalPlaneYResolution:41487,
-          FocalPlaneResolutionUnit:41488,
-          SubjectLocation:41492,
-          ExposureIndex:41493,
-          SensingMethod:41495,
-          FileSource:41728,
-          SceneType:41729,
-          CFAPattern:41730,
-          CustomRendered:41985,
-          ExposureMode:41986,
-          WhiteBalance:41987,
-          DigitalZoomRatio:41988,
-          FocalLengthIn35mmFilm:41989,
-          SceneCaptureType:41990,
-          GainControl:41991,
-          Contrast:41992,
-          Saturation:41993,
-          Sharpness:41994,
-          DeviceSettingDescription:41995,
-          SubjectDistanceRange:41996,
-          ImageUniqueID:42016,
-          CameraOwnerName:42032,
-          BodySerialNumber:42033,
-          LensSpecification:42034,
-          LensMake:42035,
-          LensModel:42036,
-          LensSerialNumber:42037,
-          Gamma:42240,
-      };
-
-
-      that.GPSIFD = {
-          GPSVersionID:0,
-          GPSLatitudeRef:1,
-          GPSLatitude:2,
-          GPSLongitudeRef:3,
-          GPSLongitude:4,
-          GPSAltitudeRef:5,
-          GPSAltitude:6,
-          GPSTimeStamp:7,
-          GPSSatellites:8,
-          GPSStatus:9,
-          GPSMeasureMode:10,
-          GPSDOP:11,
-          GPSSpeedRef:12,
-          GPSSpeed:13,
-          GPSTrackRef:14,
-          GPSTrack:15,
-          GPSImgDirectionRef:16,
-          GPSImgDirection:17,
-          GPSMapDatum:18,
-          GPSDestLatitudeRef:19,
-          GPSDestLatitude:20,
-          GPSDestLongitudeRef:21,
-          GPSDestLongitude:22,
-          GPSDestBearingRef:23,
-          GPSDestBearing:24,
-          GPSDestDistanceRef:25,
-          GPSDestDistance:26,
-          GPSProcessingMethod:27,
-          GPSAreaInformation:28,
-          GPSDateStamp:29,
-          GPSDifferential:30,
-          GPSHPositioningError:31,
-      };
-
-
-      that.InteropIFD = {
-          InteroperabilityIndex:1,
-      };
-
-      that.GPSHelper = {
-          degToDmsRational:function (degFloat) {
-              var degAbs = Math.abs(degFloat);
-              var minFloat = degAbs % 1 * 60;
-              var secFloat = minFloat % 1 * 60;
-              var deg = Math.floor(degAbs);
-              var min = Math.floor(minFloat);
-              var sec = Math.round(secFloat * 100);
-
-              return [[deg, 1], [min, 1], [sec, 100]];
-          },
-
-          dmsRationalToDeg:function (dmsArray, ref) {
-              var sign = (ref === 'S' || ref === 'W') ? -1.0 : 1.0;
-              var deg = dmsArray[0][0] / dmsArray[0][1] +
-                        dmsArray[1][0] / dmsArray[1][1] / 60.0 +
-                        dmsArray[2][0] / dmsArray[2][1] / 3600.0;
-
-              return deg * sign;
-          }
-      };
-      
-      
-      {
-          if ( module.exports) {
-              exports = module.exports = that;
-          }
-          exports.piexif = that;
-      }
-
-  })();
-  });
-  var piexif_1 = piexif.piexif;
-
   var FileSaver_min = createCommonjsModule(function (module, exports) {
   (function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-
+  //# sourceMappingURL=FileSaver.min.js.map
   });
 
   const SIZE = 16;
@@ -3941,75 +1994,118 @@ var app = (function (Color, uuid, expr, twgl) {
 
   const load = (img) => {
     try {
-      const r = piexif.load(img);
-      return JSON.parse(r[`0th`][piexif.ImageIFD.Make])
+      const r = exif.load(img);
+      return JSON.parse(r[`0th`][exif.ImageIFD.Make])
     } catch (ex) {
       return false
     }
   };
 
+  const saved = write(false);
   const save = async (weave) => {
     const obj = {
       "0th": {
-        [piexif.ImageIFD.Make]: JSON.stringify(weave),
-        [piexif.ImageIFD.Software]: `isekai`
+        [exif.ImageIFD.Make]: JSON.stringify(weave),
+        [exif.ImageIFD.Software]: `isekai`
       },
       Exif: {},
       GPS: {}
     };
 
-    FileSaver_min.saveAs(piexif.insert(piexif.dump(obj), await image(weave)), `${weave.name.get()}.seed.jpg`);
+    FileSaver_min.saveAs(exif.insert(exif.dump(obj), await image(weave.name.get())), `${weave.name.get()}.jpg`);
+    saved.set(weave.name);
   };
 
-  const image = async (weave) => {
-    const tn = tile(`/${weave.name.get()}`);
-    const t = await Tile({
-      width: 4,
-      height: 4,
-      data: [
-        `18 19 19 20`,
-        `50 ${tn} 0 52`,
-        `50 0 ${tn} 52`,
-        `82 83 83 84`
-      ].join(` `)
+  const img_load = (data) => new Promise(async (resolve) => {
+    const image = new Image();
+    image.src = await Tile(data);
+    image.onload = () => resolve(image);
+  });
+
+  const garden = img_load({
+    width: 4,
+    height: 4,
+    data: [
+      `18 19 19 20`,
+      `50 0 0 52`,
+      `50 0 0 52`,
+      `82 83 83 84`
+    ].join(` `)
+  });
+
+  const image = async (name) => {
+    const tn = tile(`/${name}`);
+
+    const img_tile = img_load({
+      width: 1,
+      height: 1,
+      data: tn
     });
 
-    return new Promise((resolve) => {
-      const image = new Image();
-      image.src = t;
+    const canvas = document.createElement(`canvas`);
+    canvas.width = 64;
+    canvas.height = 64;
 
-      image.onload = () => {
-        const canvas = document.createElement(`canvas`);
-        canvas.width = 64;
-        canvas.height = 64;
+    const ctx = canvas.getContext(`2d`);
+    ctx.imageSmoothingEnabled = false;
+    ctx.filter = `sepia(1) hue-rotate(90deg)`;
 
-        const ctx = canvas.getContext(`2d`);
-        ctx.imageSmoothingEnabled = false;
-        ctx.filter = `sepia(1) hue-rotate(90deg)`;
-        ctx.drawImage(image, 0, 0, 64, 64, 0, 0, 64, 64);
-        ctx.lineWidth = 4;
-        ctx.lineCap = `round`;
-        // ctx.rect(0, 0, 64, 64)
-        // ctx.rect(4, 4, 56, 56)
-        ctx.stroke();
-        resolve(canvas.toDataURL(`image/jpeg`, 0.95));
-      };
+    ctx.drawImage(await garden, 0, 0, 64, 64, 0, 0, 64, 64);
+    ctx.drawImage(await img_tile, 0, 0, 16, 16, 16, 16, 32, 32);
+
+    return canvas.toDataURL(`image/jpeg`, 0.95)
+  };
+
+  const github = async ($path, autorun = false) => {
+    const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`;
+
+    const reader = new FileReader();
+    const blob = await fetch(url)
+      .then((r) => r.blob());
+
+    reader.readAsDataURL(blob);
+
+    return new Promise((resolve, reject) => {
+      reader.addEventListener(`load`, () => {
+        const data = load(reader.result);
+        if (!data) return reject(new Error(404))
+
+        Wheel.spawn({
+          [data.name]: data
+        });
+
+        const w = Wheel.get(data.name);
+
+        w.update({
+          info: {
+            knot: `stitch`,
+            value: {
+              from: $path.join(`/`),
+              url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`
+            }
+          }
+        });
+
+        if (autorun) {
+          Wheel.start(data.name);
+        }
+
+        resolve(data.name);
+      });
     })
   };
 
-  const VERSION = 3;
-  const HOUR_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60);
+  const VERSION = 1;
+  const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60);
   let db;
 
-  let load_res;
-  const loaded = new Promise((resolve) => { load_res = resolve; });
+  const loaded = write(false);
   const data = new Promise((resolve) => {
-    const req = window.indexedDB.open(`isekai`, VERSION);
+    const req = window.indexedDB.open(`turbo`, VERSION);
 
     req.onupgradeneeded = async (e) => {
       db = e.target.result;
-
-      db.createObjectStore(`wheel`, { keyPath: `date` });
+      db.createObjectStore(`wheel`, { keyPath: `name` });
 
       resolve(db);
     };
@@ -4042,26 +2138,27 @@ var app = (function (Color, uuid, expr, twgl) {
     // update current
     await query({
       action: `put`,
-      args: [wheel]
+      args: [wheel],
+      foronly: `readwrite`
     });
   };
 
-  const clean = () => query({
-    action: `delete`,
-    args: [HOUR_AGO]
-  });
-
   window.query = query;
 
-  const init = async () => {
+  const savewatch = async ($name) => {
+    loaded.set(false);
+
     const result = await query({
-      action: `getAll`
+      action: `get`,
+      args: [$name]
     }).catch((e) => console.warn(`DB`, e.target.error));
 
-    if (result && result.length > 0) {
-      const { weaves, running } = result.pop();
+    if (result) {
+      const { weaves, running } = result;
+      // protect system
       delete weaves[Wheel.SYSTEM];
 
+      Wheel.name.set($name);
       Wheel.spawn(weaves);
 
       Object.keys(running).forEach((id) => {
@@ -4071,42 +2168,47 @@ var app = (function (Color, uuid, expr, twgl) {
       });
     }
 
-    load_res(true);
+    loaded.set(true);
 
-    tick.listen((t) => {
+    const cancel = tick.listen((t) => {
       if (
         t % 10 !== 0 ||
         db === undefined ||
-        !loaded
+        !loaded.get()
       ) return
 
       save$1();
-      if (t % 100 === 0) clean();
     });
+
+    return () => {
+      Wheel.clear();
+      name.set(`loading`);
+      cancel();
+    }
   };
 
-  init();
+  // init()
 
+  let watch = false;
   path.listen(async ($path) => {
-    if ($path.length < 3) return
-    const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`;
+    // your watch has ended
+    if (watch) watch();
 
-    const reader = new FileReader();
-    const blob = await fetch(url)
-      .then((r) => r.blob());
+    if ($path.length === 1) {
+      Wheel.name.set($path[0]);
+      watch = savewatch($path[0]);
+    }
 
-    reader.readAsDataURL(blob);
+    if ($path.length === 3) {
+      await loaded;
 
-    reader.addEventListener(`load`, () => {
-      const data = load(reader.result);
-      if (!data) return
+      Wheel.name.set(`loading`);
 
-      Wheel.spawn({
-        [data.name]: data
-      });
+      await github($path, true);
 
-      Wheel.start(data.name);
-    });
+      Wheel.name.set($path.join(`/`));
+      watch = savewatch($path.join(`/`));
+    }
   });
 
   const tie = (items) =>
@@ -4128,7 +2230,7 @@ var app = (function (Color, uuid, expr, twgl) {
       time,
       screen,
       input,
-      key,
+      key: key$1,
       flag,
       camera: camera$1
     })
@@ -4267,7 +2369,7 @@ var app = (function (Color, uuid, expr, twgl) {
           while (dirty_components.length) {
               const component = dirty_components.shift();
               set_current_component(component);
-              update(component.$$);
+              update$1(component.$$);
           }
           while (binding_callbacks.length)
               binding_callbacks.pop()();
@@ -4289,7 +2391,7 @@ var app = (function (Color, uuid, expr, twgl) {
       }
       update_scheduled = false;
   }
-  function update($$) {
+  function update$1($$) {
       if ($$.fragment !== null) {
           $$.update($$.dirty);
           run_all($$.before_update);
@@ -4439,7 +2541,7 @@ var app = (function (Color, uuid, expr, twgl) {
       }
       component.$$.dirty[key] = true;
   }
-  function init$1(component, options, instance, create_fragment, not_equal, props) {
+  function init(component, options, instance, create_fragment, not_equal, props) {
       const parent_component = current_component;
       set_current_component(component);
       const prop_values = options.props || {};
@@ -4570,8 +2672,243 @@ var app = (function (Color, uuid, expr, twgl) {
       }
   }
 
+  /* src/ui/weave/explore/Omni.svelte generated by Svelte v3.14.1 */
+  const file = "src/ui/weave/explore/Omni.svelte";
+
+  function create_fragment(ctx) {
+  	let input;
+  	let focusd_action;
+  	let dispose;
+
+  	const block = {
+  		c: function create() {
+  			input = element("input");
+  			attr_dev(input, "type", "text");
+  			attr_dev(input, "class", "omni svelte-147gyvi");
+  			set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
+  			attr_dev(input, "placeholder", ctx.tru_placeholder);
+  			add_location(input, file, 61, 0, 1144);
+
+  			dispose = [
+  				listen_dev(input, "input", ctx.input_input_handler),
+  				listen_dev(input, "keydown", ctx.keydown_handler, false, false, false),
+  				listen_dev(input, "blur", ctx.execute, false, false, false)
+  			];
+  		},
+  		l: function claim(nodes) {
+  			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, input, anchor);
+  			set_input_value(input, ctx.omni);
+  			focusd_action = ctx.focusd.call(null, input, ctx.focus) || ({});
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.$THEME_BORDER) {
+  				set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
+  			}
+
+  			if (changed.tru_placeholder) {
+  				attr_dev(input, "placeholder", ctx.tru_placeholder);
+  			}
+
+  			if (changed.omni && input.value !== ctx.omni) {
+  				set_input_value(input, ctx.omni);
+  			}
+
+  			if (is_function(focusd_action.update) && changed.focus) focusd_action.update.call(null, ctx.focus);
+  		},
+  		i: noop,
+  		o: noop,
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(input);
+  			if (focusd_action && is_function(focusd_action.destroy)) focusd_action.destroy();
+  			run_all(dispose);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_fragment.name,
+  		type: "component",
+  		source: "",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  function instance($$self, $$props, $$invalidate) {
+  	let $tick;
+  	let $THEME_BORDER;
+  	validate_store(tick, "tick");
+  	component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
+  	validate_store(THEME_BORDER, "THEME_BORDER");
+  	component_subscribe($$self, THEME_BORDER, $$value => $$invalidate("$THEME_BORDER", $THEME_BORDER = $$value));
+
+  	let { command = () => {
+  		
+  	} } = $$props;
+
+  	let omni = ``;
+  	let { system = false } = $$props;
+  	let { focus = false } = $$props;
+  	const place_default = system ? `!` : `! > + -`;
+  	let placeholder = place_default;
+
+  	const calc_offset = ($t, $p) => {
+  		if ($p.length < 20) return placeholder;
+  		const offset = Math.floor($t / 2) % $p.length;
+  		return $p.slice(-offset) + $p.slice(0, -offset);
+  	};
+
+  	const focusd = (node, init) => {
+  		if (init) node.focus();
+
+  		return {
+  			update: val => {
+  				if (val) node.focus();
+  			}
+  		};
+  	};
+
+  	const commands = {
+  		"!": () => {
+  			if (system) {
+  				$$invalidate("placeholder", placeholder = `SYSTEM CAN ONLY FILTER!!! `);
+  				return;
+  			}
+
+  			$$invalidate("placeholder", placeholder = `[ADD]+Name [MOVE]~Name/Name [DELETE]-Name`);
+  		},
+  		undefined: () => {
+  			$$invalidate("placeholder", placeholder = place_default);
+  		}
+  	};
+
+  	const execute = () => {
+  		const data = [omni[0], ...omni.slice(1).split(`/`)];
+  		$$invalidate("omni", omni = ``);
+
+  		if (system) {
+  			return commands[`!`]();
+  		}
+
+  		if (commands[data[0]]) commands[data[0]](data);
+
+  		command(data, ph => {
+  			$$invalidate("placeholder", placeholder = ph);
+  		});
+  	};
+
+  	const writable_props = ["command", "system", "focus"];
+
+  	Object.keys($$props).forEach(key => {
+  		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Omni> was created with unknown prop '${key}'`);
+  	});
+
+  	function input_input_handler() {
+  		omni = this.value;
+  		$$invalidate("omni", omni);
+  	}
+
+  	const keydown_handler = e => {
+  		if (e.which !== 13) return;
+  		execute();
+  	};
+
+  	$$self.$set = $$props => {
+  		if ("command" in $$props) $$invalidate("command", command = $$props.command);
+  		if ("system" in $$props) $$invalidate("system", system = $$props.system);
+  		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
+  	};
+
+  	$$self.$capture_state = () => {
+  		return {
+  			command,
+  			omni,
+  			system,
+  			focus,
+  			placeholder,
+  			tru_placeholder,
+  			$tick,
+  			$THEME_BORDER
+  		};
+  	};
+
+  	$$self.$inject_state = $$props => {
+  		if ("command" in $$props) $$invalidate("command", command = $$props.command);
+  		if ("omni" in $$props) $$invalidate("omni", omni = $$props.omni);
+  		if ("system" in $$props) $$invalidate("system", system = $$props.system);
+  		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
+  		if ("placeholder" in $$props) $$invalidate("placeholder", placeholder = $$props.placeholder);
+  		if ("tru_placeholder" in $$props) $$invalidate("tru_placeholder", tru_placeholder = $$props.tru_placeholder);
+  		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
+  		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
+  	};
+
+  	let tru_placeholder;
+
+  	$$self.$$.update = (changed = { $tick: 1, placeholder: 1 }) => {
+  		if (changed.$tick || changed.placeholder) {
+  			 $$invalidate("tru_placeholder", tru_placeholder = calc_offset($tick, placeholder));
+  		}
+  	};
+
+  	return {
+  		command,
+  		omni,
+  		system,
+  		focus,
+  		focusd,
+  		execute,
+  		tru_placeholder,
+  		$THEME_BORDER,
+  		input_input_handler,
+  		keydown_handler
+  	};
+  }
+
+  class Omni extends SvelteComponentDev {
+  	constructor(options) {
+  		super(options);
+  		init(this, options, instance, create_fragment, safe_not_equal, { command: 0, system: 0, focus: 0 });
+
+  		dispatch_dev("SvelteRegisterComponent", {
+  			component: this,
+  			tagName: "Omni",
+  			options,
+  			id: create_fragment.name
+  		});
+  	}
+
+  	get command() {
+  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set command(value) {
+  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	get system() {
+  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set system(value) {
+  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	get focus() {
+  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set focus(value) {
+  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+  }
+
   /* src/ui/image/Tile.svelte generated by Svelte v3.14.1 */
-  const file = "src/ui/image/Tile.svelte";
+  const file$1 = "src/ui/image/Tile.svelte";
 
   // (1:0) <script> import { tile }
   function create_catch_block(ctx) {
@@ -4599,7 +2936,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			attr_dev(img, "class", "tileset svelte-1ifhj4a");
   			attr_dev(img, "alt", "tileset image");
   			if (img.src !== (img_src_value = ctx.src)) attr_dev(img, "src", img_src_value);
-  			add_location(img, file, 24, 0, 353);
+  			add_location(img, file$1, 24, 0, 353);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, img, anchor);
@@ -4640,7 +2977,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  function create_fragment(ctx) {
+  function create_fragment$1(ctx) {
   	let await_block_anchor;
   	let promise;
 
@@ -4691,7 +3028,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_fragment.name,
+  		id: create_fragment$1.name,
   		type: "component",
   		source: "",
   		ctx
@@ -4700,7 +3037,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  function instance($$self, $$props, $$invalidate) {
+  function instance$1($$self, $$props, $$invalidate) {
   	let { data = `` } = $$props;
   	let { width = 10 } = $$props;
   	let { height = 7 } = $$props;
@@ -4769,7 +3106,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	constructor(options) {
   		super(options);
 
-  		init$1(this, options, instance, create_fragment, safe_not_equal, {
+  		init(this, options, instance$1, create_fragment$1, safe_not_equal, {
   			data: 0,
   			width: 0,
   			height: 0,
@@ -4781,7 +3118,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			component: this,
   			tagName: "Tile_1",
   			options,
-  			id: create_fragment.name
+  			id: create_fragment$1.name
   		});
   	}
 
@@ -4827,9 +3164,9 @@ var app = (function (Color, uuid, expr, twgl) {
   }
 
   /* src/ui/weave/Postage.svelte generated by Svelte v3.14.1 */
-  const file$1 = "src/ui/weave/Postage.svelte";
+  const file$2 = "src/ui/weave/Postage.svelte";
 
-  function create_fragment$1(ctx) {
+  function create_fragment$2(ctx) {
   	let div;
   	let current;
 
@@ -4846,7 +3183,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			toggle_class(div, "running", ctx.running);
   			toggle_class(div, "rezed", ctx.rezed);
   			toggle_class(div, "system", ctx.system);
-  			add_location(div, file$1, 23, 0, 408);
+  			add_location(div, file$2, 23, 0, 408);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -4890,7 +3227,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_fragment$1.name,
+  		id: create_fragment$2.name,
   		type: "component",
   		source: "",
   		ctx
@@ -4899,7 +3236,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  function instance$1($$self, $$props, $$invalidate) {
+  function instance$2($$self, $$props, $$invalidate) {
   	let $runnings,
   		$$unsubscribe_runnings = noop,
   		$$subscribe_runnings = () => ($$unsubscribe_runnings(), $$unsubscribe_runnings = subscribe(runnings, $$value => $$invalidate("$runnings", $runnings = $$value)), runnings);
@@ -5015,13 +3352,13 @@ var app = (function (Color, uuid, expr, twgl) {
   class Postage extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, { address: 0 });
+  		init(this, options, instance$2, create_fragment$2, safe_not_equal, { address: 0 });
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
   			tagName: "Postage",
   			options,
-  			id: create_fragment$1.name
+  			id: create_fragment$2.name
   		});
   	}
 
@@ -5048,14 +3385,15 @@ var app = (function (Color, uuid, expr, twgl) {
   };
 
   /* src/ui/weave/Picker.svelte generated by Svelte v3.14.1 */
-  const file$2 = "src/ui/weave/Picker.svelte";
+  const file$3 = "src/ui/weave/Picker.svelte";
 
-  // (47:0) {#if nameit}
+  // (66:0) {#if nameit}
   function create_if_block(ctx) {
   	let div4;
   	let h2;
   	let t1;
   	let div0;
+  	let promise;
   	let t2;
   	let input;
   	let t3;
@@ -5064,13 +3402,20 @@ var app = (function (Color, uuid, expr, twgl) {
   	let t5;
   	let div2;
   	let color_action;
-  	let current;
   	let dispose;
 
-  	const postage = new Postage({
-  			props: { address: `/${ctx.name}` },
-  			$$inline: true
-  		});
+  	let info = {
+  		ctx,
+  		current: null,
+  		token: null,
+  		pending: create_pending_block$1,
+  		then: create_then_block$1,
+  		catch: create_catch_block$1,
+  		value: "src",
+  		error: "null"
+  	};
+
+  	handle_promise(promise = image(ctx.name), info);
 
   	const block = {
   		c: function create() {
@@ -5079,7 +3424,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			h2.textContent = "Name It!";
   			t1 = space();
   			div0 = element("div");
-  			create_component(postage.$$.fragment);
+  			info.block.c();
   			t2 = space();
   			input = element("input");
   			t3 = space();
@@ -5089,21 +3434,21 @@ var app = (function (Color, uuid, expr, twgl) {
   			t5 = space();
   			div2 = element("div");
   			div2.textContent = "Plant";
-  			add_location(h2, file$2, 51, 2, 959);
-  			attr_dev(div0, "class", "spirit svelte-1hnyn9v");
-  			add_location(div0, file$2, 53, 2, 980);
-  			attr_dev(input, "class", "nameit svelte-1hnyn9v");
+  			add_location(h2, file$3, 70, 2, 1213);
+  			attr_dev(div0, "class", "spirit svelte-qn01e5");
+  			add_location(div0, file$3, 72, 2, 1234);
+  			attr_dev(input, "class", "nameit svelte-qn01e5");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "Name it");
-  			add_location(input, file$2, 57, 2, 1049);
-  			attr_dev(div1, "class", "false svelte-1hnyn9v");
-  			add_location(div1, file$2, 68, 4, 1258);
-  			attr_dev(div2, "class", "true svelte-1hnyn9v");
-  			add_location(div2, file$2, 69, 4, 1330);
-  			attr_dev(div3, "class", "controls svelte-1hnyn9v");
-  			add_location(div3, file$2, 67, 2, 1231);
-  			attr_dev(div4, "class", "nameprompt svelte-1hnyn9v");
-  			add_location(div4, file$2, 47, 0, 903);
+  			add_location(input, file$3, 78, 2, 1362);
+  			attr_dev(div1, "class", "false svelte-qn01e5");
+  			add_location(div1, file$3, 89, 4, 1567);
+  			attr_dev(div2, "class", "true svelte-qn01e5");
+  			add_location(div2, file$3, 90, 4, 1639);
+  			attr_dev(div3, "class", "controls svelte-qn01e5");
+  			add_location(div3, file$3, 88, 2, 1540);
+  			attr_dev(div4, "class", "nameprompt svelte-qn01e5");
+  			add_location(div4, file$3, 66, 0, 1158);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -5117,7 +3462,9 @@ var app = (function (Color, uuid, expr, twgl) {
   			append_dev(div4, h2);
   			append_dev(div4, t1);
   			append_dev(div4, div0);
-  			mount_component(postage, div0, null);
+  			info.block.m(div0, info.anchor = null);
+  			info.mount = () => div0;
+  			info.anchor = null;
   			append_dev(div4, t2);
   			append_dev(div4, input);
   			set_input_value(input, ctx.name);
@@ -5127,12 +3474,14 @@ var app = (function (Color, uuid, expr, twgl) {
   			append_dev(div3, t5);
   			append_dev(div3, div2);
   			color_action = color$1.call(null, div4, `/${ctx.name}`) || ({});
-  			current = true;
   		},
-  		p: function update(changed, ctx) {
-  			const postage_changes = {};
-  			if (changed.name) postage_changes.address = `/${ctx.name}`;
-  			postage.$set(postage_changes);
+  		p: function update(changed, new_ctx) {
+  			ctx = new_ctx;
+  			info.ctx = ctx;
+
+  			if (changed.name && promise !== (promise = image(ctx.name)) && handle_promise(promise, info)) ; else {
+  				info.block.p(changed, assign(assign({}, ctx), info.resolved)); // nothing
+  			}
 
   			if (changed.name && input.value !== ctx.name) {
   				set_input_value(input, ctx.name);
@@ -5140,18 +3489,11 @@ var app = (function (Color, uuid, expr, twgl) {
 
   			if (is_function(color_action.update) && changed.name) color_action.update.call(null, `/${ctx.name}`);
   		},
-  		i: function intro(local) {
-  			if (current) return;
-  			transition_in(postage.$$.fragment, local);
-  			current = true;
-  		},
-  		o: function outro(local) {
-  			transition_out(postage.$$.fragment, local);
-  			current = false;
-  		},
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div4);
-  			destroy_component(postage);
+  			info.block.d();
+  			info.token = null;
+  			info = null;
   			if (color_action && is_function(color_action.destroy)) color_action.destroy();
   			run_all(dispose);
   		}
@@ -5161,19 +3503,85 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block.name,
   		type: "if",
-  		source: "(47:0) {#if nameit}",
+  		source: "(66:0) {#if nameit}",
   		ctx
   	});
 
   	return block;
   }
 
-  function create_fragment$2(ctx) {
+  // (1:0) <script> import { load, image }
+  function create_catch_block$1(ctx) {
+  	const block = { c: noop, m: noop, p: noop, d: noop };
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_catch_block$1.name,
+  		type: "catch",
+  		source: "(1:0) <script> import { load, image }",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (74:33)        <img  class="flex" {src}
+  function create_then_block$1(ctx) {
+  	let img;
+  	let img_src_value;
+
+  	const block = {
+  		c: function create() {
+  			img = element("img");
+  			attr_dev(img, "class", "flex svelte-qn01e5");
+  			if (img.src !== (img_src_value = ctx.src)) attr_dev(img, "src", img_src_value);
+  			attr_dev(img, "alt", "fileicon");
+  			add_location(img, file$3, 74, 6, 1295);
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, img, anchor);
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.name && img.src !== (img_src_value = ctx.src)) {
+  				attr_dev(img, "src", img_src_value);
+  			}
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(img);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_then_block$1.name,
+  		type: "then",
+  		source: "(74:33)        <img  class=\\\"flex\\\" {src}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (1:0) <script> import { load, image }
+  function create_pending_block$1(ctx) {
+  	const block = { c: noop, m: noop, p: noop, d: noop };
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_pending_block$1.name,
+  		type: "pending",
+  		source: "(1:0) <script> import { load, image }",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  function create_fragment$3(ctx) {
   	let t0;
   	let div;
   	let t1;
   	let input;
-  	let current;
   	let dispose;
   	let if_block = ctx.nameit && create_if_block(ctx);
 
@@ -5184,12 +3592,12 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			t1 = space();
   			input = element("input");
-  			attr_dev(div, "class", "picker svelte-1hnyn9v");
-  			add_location(div, file$2, 74, 0, 1402);
+  			attr_dev(div, "class", "picker svelte-qn01e5");
+  			add_location(div, file$3, 95, 0, 1711);
   			attr_dev(input, "type", "file");
-  			attr_dev(input, "class", "file svelte-1hnyn9v");
+  			attr_dev(input, "class", "file svelte-qn01e5");
   			input.multiple = "multiple";
-  			add_location(input, file$2, 82, 0, 1504);
+  			add_location(input, file$3, 103, 0, 1811);
 
   			dispose = [
   				listen_dev(div, "drop", ctx.drop, false, false, false),
@@ -5208,38 +3616,23 @@ var app = (function (Color, uuid, expr, twgl) {
   			insert_dev(target, t1, anchor);
   			insert_dev(target, input, anchor);
   			ctx.input_binding(input);
-  			current = true;
   		},
   		p: function update(changed, ctx) {
   			if (ctx.nameit) {
   				if (if_block) {
   					if_block.p(changed, ctx);
-  					transition_in(if_block, 1);
   				} else {
   					if_block = create_if_block(ctx);
   					if_block.c();
-  					transition_in(if_block, 1);
   					if_block.m(t0.parentNode, t0);
   				}
   			} else if (if_block) {
-  				group_outros();
-
-  				transition_out(if_block, 1, 1, () => {
-  					if_block = null;
-  				});
-
-  				check_outros();
+  				if_block.d(1);
+  				if_block = null;
   			}
   		},
-  		i: function intro(local) {
-  			if (current) return;
-  			transition_in(if_block);
-  			current = true;
-  		},
-  		o: function outro(local) {
-  			transition_out(if_block);
-  			current = false;
-  		},
+  		i: noop,
+  		o: noop,
   		d: function destroy(detaching) {
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(t0);
@@ -5253,7 +3646,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_fragment$2.name,
+  		id: create_fragment$3.name,
   		type: "component",
   		source: "",
   		ctx
@@ -5262,7 +3655,8 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  function instance$2($$self, $$props, $$invalidate) {
+  function instance$3($$self, $$props, $$invalidate) {
+  	let last = {};
   	let files;
   	let nameit = false;
 
@@ -5274,6 +3668,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			const reader = new FileReader();
 
   			reader.onloadend = e => {
+  				last = files[i];
   				$$invalidate("nameit", nameit = load(e.target.result));
   				if (!nameit) return;
   				$$invalidate("name", name = `${nameit.name}`);
@@ -5298,6 +3693,19 @@ var app = (function (Color, uuid, expr, twgl) {
   	const play_it = () => {
   		delete nameit.id;
   		Wheel.spawn({ [name]: nameit });
+  		const weave = Wheel.get(name);
+
+  		weave.update({
+  			info: {
+  				knot: `stitch`,
+  				value: {
+  					from: last.name,
+  					"save last": last.lastModified,
+  					size: last.size
+  				}
+  			}
+  		});
+
   		$$invalidate("nameit", nameit = false);
   	};
 
@@ -5332,6 +3740,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	};
 
   	$$self.$inject_state = $$props => {
+  		if ("last" in $$props) last = $$props.last;
   		if ("files" in $$props) $$invalidate("files", files = $$props.files);
   		if ("nameit" in $$props) $$invalidate("nameit", nameit = $$props.nameit);
   		if ("dragover" in $$props) dragover = $$props.dragover;
@@ -5360,21 +3769,21 @@ var app = (function (Color, uuid, expr, twgl) {
   class Picker extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$2, create_fragment$2, safe_not_equal, {});
+  		init(this, options, instance$3, create_fragment$3, safe_not_equal, {});
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
   			tagName: "Picker",
   			options,
-  			id: create_fragment$2.name
+  			id: create_fragment$3.name
   		});
   	}
   }
 
   /* src/ui/weave/MainScreen.svelte generated by Svelte v3.14.1 */
-  const file$3 = "src/ui/weave/MainScreen.svelte";
+  const file$4 = "src/ui/weave/MainScreen.svelte";
 
-  function create_fragment$3(ctx) {
+  function create_fragment$4(ctx) {
   	let div;
   	let insert_action;
   	let dispose;
@@ -5384,7 +3793,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			attr_dev(div, "class", "main svelte-ipuen4");
   			toggle_class(div, "full", ctx.full);
-  			add_location(div, file$3, 32, 0, 546);
+  			add_location(div, file$4, 32, 0, 546);
   			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -5410,7 +3819,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_fragment$3.name,
+  		id: create_fragment$4.name,
   		type: "component",
   		source: "",
   		ctx
@@ -5419,7 +3828,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  function instance$3($$self, $$props, $$invalidate) {
+  function instance$4($$self, $$props, $$invalidate) {
   	let { full = false } = $$props;
 
   	const toggle = () => {
@@ -5463,13 +3872,13 @@ var app = (function (Color, uuid, expr, twgl) {
   class MainScreen extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$3, create_fragment$3, safe_not_equal, { full: 0 });
+  		init(this, options, instance$4, create_fragment$4, safe_not_equal, { full: 0 });
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
   			tagName: "MainScreen",
   			options,
-  			id: create_fragment$3.name
+  			id: create_fragment$4.name
   		});
   	}
 
@@ -5479,233 +3888,6 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	set full(value) {
   		throw new Error("<MainScreen>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-  }
-
-  /* src/ui/weave/explore/Omni.svelte generated by Svelte v3.14.1 */
-  const file$4 = "src/ui/weave/explore/Omni.svelte";
-
-  function create_fragment$4(ctx) {
-  	let input;
-  	let focusd_action;
-  	let dispose;
-
-  	const block = {
-  		c: function create() {
-  			input = element("input");
-  			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "omni svelte-147gyvi");
-  			set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
-  			attr_dev(input, "placeholder", ctx.tru_placeholder);
-  			add_location(input, file$4, 54, 0, 1059);
-
-  			dispose = [
-  				listen_dev(input, "input", ctx.input_input_handler),
-  				listen_dev(input, "keydown", ctx.keydown_handler, false, false, false),
-  				listen_dev(input, "blur", ctx.execute, false, false, false)
-  			];
-  		},
-  		l: function claim(nodes) {
-  			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-  		},
-  		m: function mount(target, anchor) {
-  			insert_dev(target, input, anchor);
-  			set_input_value(input, ctx.omni);
-  			focusd_action = ctx.focusd.call(null, input, ctx.focus) || ({});
-  		},
-  		p: function update(changed, ctx) {
-  			if (changed.$THEME_BORDER) {
-  				set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
-  			}
-
-  			if (changed.tru_placeholder) {
-  				attr_dev(input, "placeholder", ctx.tru_placeholder);
-  			}
-
-  			if (changed.omni && input.value !== ctx.omni) {
-  				set_input_value(input, ctx.omni);
-  			}
-
-  			if (is_function(focusd_action.update) && changed.focus) focusd_action.update.call(null, ctx.focus);
-  		},
-  		i: noop,
-  		o: noop,
-  		d: function destroy(detaching) {
-  			if (detaching) detach_dev(input);
-  			if (focusd_action && is_function(focusd_action.destroy)) focusd_action.destroy();
-  			run_all(dispose);
-  		}
-  	};
-
-  	dispatch_dev("SvelteRegisterBlock", {
-  		block,
-  		id: create_fragment$4.name,
-  		type: "component",
-  		source: "",
-  		ctx
-  	});
-
-  	return block;
-  }
-
-  function instance$4($$self, $$props, $$invalidate) {
-  	let $tick;
-  	let $THEME_BORDER;
-  	validate_store(tick, "tick");
-  	component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
-  	validate_store(THEME_BORDER, "THEME_BORDER");
-  	component_subscribe($$self, THEME_BORDER, $$value => $$invalidate("$THEME_BORDER", $THEME_BORDER = $$value));
-
-  	let { command = () => {
-  		
-  	} } = $$props;
-
-  	let omni = ``;
-  	let { system = false } = $$props;
-  	let { focus = false } = $$props;
-  	const place_default = system ? `!` : `! > + -`;
-  	let placeholder = place_default;
-
-  	const calc_offset = ($t, $p) => {
-  		if ($p.length < 20) return placeholder;
-  		const offset = Math.floor($t / 2) % $p.length;
-  		return $p.slice(-offset) + $p.slice(0, -offset);
-  	};
-
-  	const focusd = (node, init) => {
-  		if (init) node.focus();
-
-  		return {
-  			update: val => {
-  				if (val) node.focus();
-  			}
-  		};
-  	};
-
-  	const commands = {
-  		"!": () => {
-  			if (system) {
-  				$$invalidate("placeholder", placeholder = `SYSTEM CAN ONLY FILTER!!! `);
-  				return;
-  			}
-
-  			$$invalidate("placeholder", placeholder = `[ADD]+Name [MOVE]~Name/Name [DELETE]-Name`);
-  		},
-  		undefined: () => {
-  			$$invalidate("placeholder", placeholder = place_default);
-  		}
-  	};
-
-  	const execute = () => {
-  		const data = [omni[0], ...omni.slice(1).split(`/`)];
-  		if (commands[data[0]]) commands[data[0]](data);
-  		command(data);
-  		$$invalidate("omni", omni = ``);
-  	};
-
-  	const writable_props = ["command", "system", "focus"];
-
-  	Object.keys($$props).forEach(key => {
-  		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Omni> was created with unknown prop '${key}'`);
-  	});
-
-  	function input_input_handler() {
-  		omni = this.value;
-  		$$invalidate("omni", omni);
-  	}
-
-  	const keydown_handler = e => {
-  		if (e.which !== 13) return;
-  		execute();
-  	};
-
-  	$$self.$set = $$props => {
-  		if ("command" in $$props) $$invalidate("command", command = $$props.command);
-  		if ("system" in $$props) $$invalidate("system", system = $$props.system);
-  		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
-  	};
-
-  	$$self.$capture_state = () => {
-  		return {
-  			command,
-  			omni,
-  			system,
-  			focus,
-  			placeholder,
-  			tru_placeholder,
-  			$tick,
-  			$THEME_BORDER
-  		};
-  	};
-
-  	$$self.$inject_state = $$props => {
-  		if ("command" in $$props) $$invalidate("command", command = $$props.command);
-  		if ("omni" in $$props) $$invalidate("omni", omni = $$props.omni);
-  		if ("system" in $$props) $$invalidate("system", system = $$props.system);
-  		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
-  		if ("placeholder" in $$props) $$invalidate("placeholder", placeholder = $$props.placeholder);
-  		if ("tru_placeholder" in $$props) $$invalidate("tru_placeholder", tru_placeholder = $$props.tru_placeholder);
-  		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
-  		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
-  	};
-
-  	let tru_placeholder;
-
-  	$$self.$$.update = (changed = { $tick: 1, placeholder: 1 }) => {
-  		if (changed.$tick || changed.placeholder) {
-  			 $$invalidate("tru_placeholder", tru_placeholder = calc_offset($tick, placeholder));
-  		}
-  	};
-
-  	return {
-  		command,
-  		omni,
-  		system,
-  		focus,
-  		focusd,
-  		execute,
-  		tru_placeholder,
-  		$THEME_BORDER,
-  		input_input_handler,
-  		keydown_handler
-  	};
-  }
-
-  class Omni extends SvelteComponentDev {
-  	constructor(options) {
-  		super(options);
-  		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, { command: 0, system: 0, focus: 0 });
-
-  		dispatch_dev("SvelteRegisterComponent", {
-  			component: this,
-  			tagName: "Omni",
-  			options,
-  			id: create_fragment$4.name
-  		});
-  	}
-
-  	get command() {
-  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-
-  	set command(value) {
-  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-
-  	get system() {
-  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-
-  	set system(value) {
-  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-
-  	get focus() {
-  		throw new Error("<Omni>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-  	}
-
-  	set focus(value) {
-  		throw new Error("<Omni>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
   }
 
@@ -5720,7 +3902,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return child_ctx;
   }
 
-  // (213:2) {:else}
+  // (214:2) {:else}
   function create_else_block_2(ctx) {
   	let textarea;
   	let textarea_style_value;
@@ -5730,10 +3912,10 @@ var app = (function (Color, uuid, expr, twgl) {
   	const block = {
   		c: function create() {
   			textarea = element("textarea");
-  			attr_dev(textarea, "class", "edit svelte-1ifqcjd");
+  			attr_dev(textarea, "class", "edit svelte-v2spep");
   			attr_dev(textarea, "type", "text");
   			attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
-  			add_location(textarea, file$5, 213, 4, 4070);
+  			add_location(textarea, file$5, 214, 4, 4078);
 
   			dispose = [
   				listen_dev(textarea, "input", ctx.textarea_input_handler),
@@ -5766,14 +3948,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block_2.name,
   		type: "else",
-  		source: "(213:2) {:else}",
+  		source: "(214:2) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (183:2) {#if !editing}
+  // (184:2) {#if !editing}
   function create_if_block$1(ctx) {
   	let each_1_anchor;
   	let each_value = ctx.tru_thread;
@@ -5855,14 +4037,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$1.name,
   		type: "if",
-  		source: "(183:2) {#if !editing}",
+  		source: "(184:2) {#if !editing}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (204:4) {:else}
+  // (205:4) {:else}
   function create_else_block_1(ctx) {
   	let div;
   	let t;
@@ -5871,9 +4053,9 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			t = text("+\n      ");
-  			attr_dev(div, "class", "cap svelte-1ifqcjd");
+  			attr_dev(div, "class", "cap svelte-v2spep");
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
-  			add_location(div, file$5, 204, 6, 3933);
+  			add_location(div, file$5, 205, 6, 3943);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5893,14 +4075,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block_1.name,
   		type: "else",
-  		source: "(204:4) {:else}",
+  		source: "(205:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (193:6) {:else}
+  // (194:6) {:else}
   function create_else_block(ctx) {
   	let div;
   	let t0_value = ctx.condense(ctx.link) + "";
@@ -5913,10 +4095,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-1ifqcjd");
+  			attr_dev(div, "class", "thread svelte-v2spep");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			add_location(div, file$5, 193, 8, 3690);
+  			add_location(div, file$5, 194, 8, 3702);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5948,14 +4130,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block.name,
   		type: "else",
-  		source: "(193:6) {:else}",
+  		source: "(194:6) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (185:6) {#if link[0] === `#`}
+  // (186:6) {#if link[0] === `#`}
   function create_if_block_1(ctx) {
   	let div;
   	let t0_value = ctx.link + "";
@@ -5967,10 +4149,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-1ifqcjd");
+  			attr_dev(div, "class", "thread svelte-v2spep");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
-  			add_location(div, file$5, 185, 0, 3481);
+  			add_location(div, file$5, 186, 0, 3495);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5997,14 +4179,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_1.name,
   		type: "if",
-  		source: "(185:6) {#if link[0] === `#`}",
+  		source: "(186:6) {#if link[0] === `#`}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (184:4) {#each tru_thread as link}
+  // (185:4) {#each tru_thread as link}
   function create_each_block(ctx) {
   	let if_block_anchor;
 
@@ -6048,7 +4230,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(184:4) {#each tru_thread as link}",
+  		source: "(185:4) {#each tru_thread as link}",
   		ctx
   	});
 
@@ -6071,9 +4253,9 @@ var app = (function (Color, uuid, expr, twgl) {
   		c: function create() {
   			div = element("div");
   			if_block.c();
-  			attr_dev(div, "class", "spot svelte-1ifqcjd");
+  			attr_dev(div, "class", "spot svelte-v2spep");
   			attr_dev(div, "data:super", ctx.super_open);
-  			add_location(div, file$5, 173, 0, 3262);
+  			add_location(div, file$5, 174, 0, 3278);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -6144,6 +4326,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let { channel } = $$props;
   	let { stitch } = $$props;
   	let { weave } = $$props;
+  	let { side } = $$props;
   	let { super_open = false } = $$props;
   	let editing = false;
 
@@ -6262,7 +4445,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		return t.length > 0 ? `#${t.length} ${v}` : v;
   	};
 
-  	const writable_props = ["channel", "stitch", "weave", "super_open"];
+  	const writable_props = ["channel", "stitch", "weave", "side", "super_open"];
 
   	Object_1.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Thread> was created with unknown prop '${key}'`);
@@ -6294,6 +4477,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("channel" in $$props) $$invalidate("channel", channel = $$props.channel);
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
   	};
 
@@ -6302,6 +4486,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			channel,
   			stitch,
   			weave,
+  			side,
   			super_open,
   			editing,
   			edit,
@@ -6325,6 +4510,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("channel" in $$props) $$invalidate("channel", channel = $$props.channel);
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
   		if ("editing" in $$props) $$invalidate("editing", editing = $$props.editing);
   		if ("edit" in $$props) $$invalidate("edit", edit = $$props.edit);
@@ -6388,6 +4574,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		channel,
   		stitch,
   		weave,
+  		side,
   		super_open,
   		editing,
   		edit,
@@ -6417,10 +4604,11 @@ var app = (function (Color, uuid, expr, twgl) {
   	constructor(options) {
   		super(options);
 
-  		init$1(this, options, instance$5, create_fragment$5, safe_not_equal, {
+  		init(this, options, instance$5, create_fragment$5, safe_not_equal, {
   			channel: 0,
   			stitch: 0,
   			weave: 0,
+  			side: 0,
   			super_open: 0
   		});
 
@@ -6444,6 +4632,10 @@ var app = (function (Color, uuid, expr, twgl) {
 
   		if (ctx.weave === undefined && !("weave" in props)) {
   			console.warn("<Thread> was created without expected prop 'weave'");
+  		}
+
+  		if (ctx.side === undefined && !("side" in props)) {
+  			console.warn("<Thread> was created without expected prop 'side'");
   		}
   	}
 
@@ -6471,6 +4663,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		throw new Error("<Thread>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
 
+  	get side() {
+  		throw new Error("<Thread>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set side(value) {
+  		throw new Error("<Thread>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
   	get super_open() {
   		throw new Error("<Thread>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
@@ -6483,7 +4683,7 @@ var app = (function (Color, uuid, expr, twgl) {
   /* src/ui/weave/explore/Channel.svelte generated by Svelte v3.14.1 */
   const file$6 = "src/ui/weave/explore/Channel.svelte";
 
-  // (34:0) {#if weave.id.get() !== Wheel.SYSTEM}
+  // (47:0) {#if weave.id.get() !== Wheel.SYSTEM}
   function create_if_block_1$1(ctx) {
   	let current;
 
@@ -6492,7 +4692,8 @@ var app = (function (Color, uuid, expr, twgl) {
   				channel: ctx.channel,
   				stitch: ctx.stitch,
   				weave: ctx.weave,
-  				super_open: ctx.super_open
+  				super_open: ctx.super_open,
+  				side: ctx.side
   			},
   			$$inline: true
   		});
@@ -6511,6 +4712,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (changed.stitch) thread_changes.stitch = ctx.stitch;
   			if (changed.weave) thread_changes.weave = ctx.weave;
   			if (changed.super_open) thread_changes.super_open = ctx.super_open;
+  			if (changed.side) thread_changes.side = ctx.side;
   			thread.$set(thread_changes);
   		},
   		i: function intro(local) {
@@ -6531,14 +4733,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_1$1.name,
   		type: "if",
-  		source: "(34:0) {#if weave.id.get() !== Wheel.SYSTEM}",
+  		source: "(47:0) {#if weave.id.get() !== Wheel.SYSTEM}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (54:0) {:else}
+  // (67:0) {:else}
   function create_else_block$1(ctx) {
   	let input;
   	let focusd_action;
@@ -6547,10 +4749,10 @@ var app = (function (Color, uuid, expr, twgl) {
   	const block = {
   		c: function create() {
   			input = element("input");
-  			attr_dev(input, "class", "edit svelte-w2moq1");
+  			attr_dev(input, "class", "edit svelte-1ktrc9a");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON PLZ");
-  			add_location(input, file$6, 54, 2, 924);
+  			add_location(input, file$6, 67, 2, 1170);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -6579,20 +4781,20 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_else_block$1.name,
   		type: "else",
-  		source: "(54:0) {:else}",
+  		source: "(67:0) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (47:0) {#if !editing}
+  // (60:0) {#if !editing}
   function create_if_block$2(ctx) {
   	let div0;
   	let t0;
   	let t1;
   	let div1;
-  	let t2_value = JSON.stringify(ctx.$value) + "";
+  	let t2_value = JSON.stringify(ctx.display) + "";
   	let t2;
 
   	const block = {
@@ -6602,10 +4804,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			t1 = space();
   			div1 = element("div");
   			t2 = text(t2_value);
-  			attr_dev(div0, "class", "key svelte-w2moq1");
-  			add_location(div0, file$6, 47, 2, 817);
-  			attr_dev(div1, "class", "value svelte-w2moq1");
-  			add_location(div1, file$6, 50, 2, 856);
+  			attr_dev(div0, "class", "key svelte-1ktrc9a");
+  			add_location(div0, file$6, 60, 2, 1062);
+  			attr_dev(div1, "class", "value svelte-1ktrc9a");
+  			add_location(div1, file$6, 63, 2, 1101);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div0, anchor);
@@ -6616,7 +4818,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		},
   		p: function update(changed, ctx) {
   			if (changed.key) set_data_dev(t0, ctx.key);
-  			if (changed.$value && t2_value !== (t2_value = JSON.stringify(ctx.$value) + "")) set_data_dev(t2, t2_value);
+  			if (changed.display && t2_value !== (t2_value = JSON.stringify(ctx.display) + "")) set_data_dev(t2, t2_value);
   		},
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div0);
@@ -6629,7 +4831,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$2.name,
   		type: "if",
-  		source: "(47:0) {#if !editing}",
+  		source: "(60:0) {#if !editing}",
   		ctx
   	});
 
@@ -6640,6 +4842,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let show_if = ctx.weave.id.get() !== Wheel.SYSTEM;
   	let t;
   	let div;
+  	let div_class_value;
   	let color_action;
   	let current;
   	let dispose;
@@ -6659,9 +4862,9 @@ var app = (function (Color, uuid, expr, twgl) {
   			t = space();
   			div = element("div");
   			if_block1.c();
-  			attr_dev(div, "class", "channel svelte-w2moq1");
+  			attr_dev(div, "class", div_class_value = "channel " + ctx.side + " svelte-1ktrc9a");
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
-  			add_location(div, file$6, 37, 0, 630);
+  			add_location(div, file$6, 50, 0, 869);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -6710,6 +4913,10 @@ var app = (function (Color, uuid, expr, twgl) {
   				}
   			}
 
+  			if (!current || changed.side && div_class_value !== (div_class_value = "channel " + ctx.side + " svelte-1ktrc9a")) {
+  				attr_dev(div, "class", div_class_value);
+  			}
+
   			if (!current || changed.$THEME_BORDER) {
   				set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			}
@@ -6747,18 +4954,22 @@ var app = (function (Color, uuid, expr, twgl) {
   }
 
   function instance$6($$self, $$props, $$invalidate) {
+  	let $tick;
   	let $THEME_BORDER;
 
   	let $value,
   		$$unsubscribe_value = noop,
   		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
+  	validate_store(tick, "tick");
+  	component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
   	validate_store(THEME_BORDER, "THEME_BORDER");
   	component_subscribe($$self, THEME_BORDER, $$value => $$invalidate("$THEME_BORDER", $THEME_BORDER = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
   	let { stitch } = $$props;
   	let { weave } = $$props;
   	let { channel } = $$props;
+  	let { side = `in` } = $$props;
   	let { focus = false } = $$props;
 
   	let { executed = () => {
@@ -6766,7 +4977,13 @@ var app = (function (Color, uuid, expr, twgl) {
   	} } = $$props;
 
   	let { super_open = false } = $$props;
+  	let display = null;
   	let val = ``;
+
+  	const update = t => {
+  		if (t % 2 !== 0 || display === value.get()) return;
+  		$$invalidate("display", display = value.get());
+  	};
 
   	const execute = () => {
   		$$invalidate("editing", editing = false);
@@ -6785,7 +5002,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		node.focus();
   	};
 
-  	const writable_props = ["stitch", "weave", "channel", "focus", "executed", "super_open"];
+  	const writable_props = ["stitch", "weave", "channel", "side", "focus", "executed", "super_open"];
 
   	Object.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Channel> was created with unknown prop '${key}'`);
@@ -6814,6 +5031,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
   		if ("channel" in $$props) $$invalidate("channel", channel = $$props.channel);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
   		if ("executed" in $$props) $$invalidate("executed", executed = $$props.executed);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
@@ -6824,13 +5042,16 @@ var app = (function (Color, uuid, expr, twgl) {
   			stitch,
   			weave,
   			channel,
+  			side,
   			focus,
   			executed,
   			super_open,
+  			display,
   			val,
   			key,
   			value,
   			editing,
+  			$tick,
   			$THEME_BORDER,
   			$value
   		};
@@ -6840,13 +5061,16 @@ var app = (function (Color, uuid, expr, twgl) {
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
   		if ("channel" in $$props) $$invalidate("channel", channel = $$props.channel);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
   		if ("executed" in $$props) $$invalidate("executed", executed = $$props.executed);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
+  		if ("display" in $$props) $$invalidate("display", display = $$props.display);
   		if ("val" in $$props) $$invalidate("val", val = $$props.val);
   		if ("key" in $$props) $$invalidate("key", key = $$props.key);
   		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
   		if ("editing" in $$props) $$invalidate("editing", editing = $$props.editing);
+  		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
   		if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
   		if ("$value" in $$props) value.set($value = $$props.$value);
   	};
@@ -6855,7 +5079,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let value;
   	let editing;
 
-  	$$self.$$.update = (changed = { channel: 1, focus: 1 }) => {
+  	$$self.$$.update = (changed = { channel: 1, focus: 1, $tick: 1 }) => {
   		if (changed.channel) {
   			 $$invalidate("key", [key, value] = channel, key, $$subscribe_value($$invalidate("value", value)));
   		}
@@ -6863,15 +5087,23 @@ var app = (function (Color, uuid, expr, twgl) {
   		if (changed.focus) {
   			 $$invalidate("editing", editing = focus);
   		}
+
+  		if (changed.$tick) {
+  			 {
+  				update($tick);
+  			}
+  		}
   	};
 
   	return {
   		stitch,
   		weave,
   		channel,
+  		side,
   		focus,
   		executed,
   		super_open,
+  		display,
   		val,
   		execute,
   		focusd,
@@ -6891,10 +5123,11 @@ var app = (function (Color, uuid, expr, twgl) {
   	constructor(options) {
   		super(options);
 
-  		init$1(this, options, instance$6, create_fragment$6, safe_not_equal, {
+  		init(this, options, instance$6, create_fragment$6, safe_not_equal, {
   			stitch: 0,
   			weave: 0,
   			channel: 0,
+  			side: 0,
   			focus: 0,
   			executed: 0,
   			super_open: 0
@@ -6947,6 +5180,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		throw new Error("<Channel>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
 
+  	get side() {
+  		throw new Error("<Channel>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set side(value) {
+  		throw new Error("<Channel>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
   	get focus() {
   		throw new Error("<Channel>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
@@ -6983,7 +5224,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return child_ctx;
   }
 
-  // (85:0) {#if open}
+  // (86:0) {#if open}
   function create_if_block$3(ctx) {
   	let div;
   	let t;
@@ -7010,8 +5251,8 @@ var app = (function (Color, uuid, expr, twgl) {
   				each_blocks[i].c();
   			}
 
-  			attr_dev(div, "class", "chans svelte-1cl6cnp");
-  			add_location(div, file$7, 85, 0, 1562);
+  			attr_dev(div, "class", "chans svelte-1hqxs8o");
+  			add_location(div, file$7, 86, 0, 1591);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -7045,7 +5286,7 @@ var app = (function (Color, uuid, expr, twgl) {
   				check_outros();
   			}
 
-  			if (changed.filter || changed.chans || changed.stitch || changed.weave || changed.super_open || changed.executed) {
+  			if (changed.filter || changed.chans || changed.stitch || changed.weave || changed.super_open || changed.executed || changed.side) {
   				each_value = ctx.chans;
   				let i;
 
@@ -7103,14 +5344,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block$3.name,
   		type: "if",
-  		source: "(85:0) {#if open}",
+  		source: "(86:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (88:0) {#if $w_name !== Wheel.SYSTEM}
+  // (89:0) {#if $w_name !== Wheel.SYSTEM}
   function create_if_block_2(ctx) {
   	let current;
 
@@ -7153,14 +5394,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_2.name,
   		type: "if",
-  		source: "(88:0) {#if $w_name !== Wheel.SYSTEM}",
+  		source: "(89:0) {#if $w_name !== Wheel.SYSTEM}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (93:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+  // (94:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
   function create_if_block_1$2(ctx) {
   	let current;
 
@@ -7170,7 +5411,8 @@ var app = (function (Color, uuid, expr, twgl) {
   				stitch: ctx.stitch,
   				weave: ctx.weave,
   				super_open: ctx.super_open,
-  				executed: ctx.executed
+  				executed: ctx.executed,
+  				side: ctx.side
   			},
   			$$inline: true
   		});
@@ -7189,6 +5431,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (changed.stitch) channel_changes.stitch = ctx.stitch;
   			if (changed.weave) channel_changes.weave = ctx.weave;
   			if (changed.super_open) channel_changes.super_open = ctx.super_open;
+  			if (changed.side) channel_changes.side = ctx.side;
   			channel.$set(channel_changes);
   		},
   		i: function intro(local) {
@@ -7209,14 +5452,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_1$2.name,
   		type: "if",
-  		source: "(93:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
+  		source: "(94:2) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (92:0) {#each chans as channel}
+  // (93:0) {#each chans as channel}
   function create_each_block$1(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.channel.name.indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
@@ -7275,7 +5518,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block$1.name,
   		type: "each",
-  		source: "(92:0) {#each chans as channel}",
+  		source: "(93:0) {#each chans as channel}",
   		ctx
   	});
 
@@ -7287,6 +5530,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let div0;
   	let t0;
   	let t1;
+  	let div1_class_value;
   	let color_action;
   	let t2;
   	let if_block_anchor;
@@ -7310,12 +5554,12 @@ var app = (function (Color, uuid, expr, twgl) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div0, "class", "postage svelte-1cl6cnp");
-  			add_location(div0, file$7, 78, 2, 1436);
-  			attr_dev(div1, "class", "stitch svelte-1cl6cnp");
+  			attr_dev(div0, "class", "postage svelte-1hqxs8o");
+  			add_location(div0, file$7, 79, 2, 1465);
+  			attr_dev(div1, "class", div1_class_value = "stitch " + ctx.side + " svelte-1hqxs8o");
   			attr_dev(div1, "style", ctx.$THEME_STYLE);
   			toggle_class(div1, "open", ctx.open);
-  			add_location(div1, file$7, 65, 0, 1236);
+  			add_location(div1, file$7, 66, 0, 1259);
 
   			dispose = [
   				listen_dev(div0, "click", ctx.toggle, false, false, false),
@@ -7343,13 +5587,17 @@ var app = (function (Color, uuid, expr, twgl) {
   			postage.$set(postage_changes);
   			if (!current || changed.$name) set_data_dev(t1, ctx.$name);
 
+  			if (!current || changed.side && div1_class_value !== (div1_class_value = "stitch " + ctx.side + " svelte-1hqxs8o")) {
+  				attr_dev(div1, "class", div1_class_value);
+  			}
+
   			if (!current || changed.$THEME_STYLE) {
   				attr_dev(div1, "style", ctx.$THEME_STYLE);
   			}
 
   			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
 
-  			if (changed.open) {
+  			if (changed.side || changed.open) {
   				toggle_class(div1, "open", ctx.open);
   			}
 
@@ -7440,6 +5688,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$$.on_destroy.push(() => $$unsubscribe_w_name());
   	let { filter = [] } = $$props;
   	let { stitch } = $$props;
+  	let { side = `in` } = $$props;
   	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
   	let { weave } = $$props;
   	let { super_open = $WEAVE_EXPLORE_OPEN } = $$props;
@@ -7480,7 +5729,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		rezed.set(r);
   	};
 
-  	const writable_props = ["filter", "stitch", "open", "weave", "super_open"];
+  	const writable_props = ["filter", "stitch", "side", "open", "weave", "super_open"];
 
   	Object_1$1.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Stitch> was created with unknown prop '${key}'`);
@@ -7498,6 +5747,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$set = $$props => {
   		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("open" in $$props) $$invalidate("open", open = $$props.open);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
@@ -7507,6 +5757,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		return {
   			filter,
   			stitch,
+  			side,
   			open,
   			weave,
   			super_open,
@@ -7530,6 +5781,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$inject_state = $$props => {
   		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
   		if ("stitch" in $$props) $$invalidate("stitch", stitch = $$props.stitch);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("open" in $$props) $$invalidate("open", open = $$props.open);
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
@@ -7584,6 +5836,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	return {
   		filter,
   		stitch,
+  		side,
   		open,
   		weave,
   		super_open,
@@ -7608,9 +5861,10 @@ var app = (function (Color, uuid, expr, twgl) {
   	constructor(options) {
   		super(options);
 
-  		init$1(this, options, instance$7, create_fragment$7, safe_not_equal, {
+  		init(this, options, instance$7, create_fragment$7, safe_not_equal, {
   			filter: 0,
   			stitch: 0,
+  			side: 0,
   			open: 0,
   			weave: 0,
   			super_open: 0
@@ -7651,6 +5905,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		throw new Error("<Stitch>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
 
+  	get side() {
+  		throw new Error("<Stitch>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set side(value) {
+  		throw new Error("<Stitch>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
   	get open() {
   		throw new Error("<Stitch>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
@@ -7679,13 +5941,79 @@ var app = (function (Color, uuid, expr, twgl) {
   /* src/ui/weave/Controls.svelte generated by Svelte v3.14.1 */
   const file$8 = "src/ui/weave/Controls.svelte";
 
+  // (43:2) {#if $name !== Wheel.SYSTEM}
+  function create_if_block$4(ctx) {
+  	let div;
+  	let promise;
+  	let dispose;
+
+  	let info = {
+  		ctx,
+  		current: null,
+  		token: null,
+  		pending: create_pending_block$2,
+  		then: create_then_block$2,
+  		catch: create_catch_block$2,
+  		value: "src",
+  		error: "null"
+  	};
+
+  	handle_promise(promise = image(ctx.weave.name.get()), info);
+
+  	const block = {
+  		c: function create() {
+  			div = element("div");
+  			info.block.c();
+  			attr_dev(div, "class", "save svelte-jdvdoa");
+  			set_style(div, "border", "0.5rem solid " + ctx.$THEME_BORDER);
+  			add_location(div, file$8, 43, 2, 780);
+  			dispose = listen_dev(div, "click", ctx.save_it, false, false, false);
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, div, anchor);
+  			info.block.m(div, info.anchor = null);
+  			info.mount = () => div;
+  			info.anchor = null;
+  		},
+  		p: function update(changed, new_ctx) {
+  			ctx = new_ctx;
+  			info.ctx = ctx;
+
+  			if (changed.weave && promise !== (promise = image(ctx.weave.name.get())) && handle_promise(promise, info)) ; else {
+  				info.block.p(changed, assign(assign({}, ctx), info.resolved)); // nothing
+  			}
+
+  			if (changed.$THEME_BORDER) {
+  				set_style(div, "border", "0.5rem solid " + ctx.$THEME_BORDER);
+  			}
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(div);
+  			info.block.d();
+  			info.token = null;
+  			info = null;
+  			dispose();
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_if_block$4.name,
+  		type: "if",
+  		source: "(43:2) {#if $name !== Wheel.SYSTEM}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
   // (1:0) <script> import { save, image }
-  function create_catch_block$1(ctx) {
+  function create_catch_block$2(ctx) {
   	const block = { c: noop, m: noop, p: noop, d: noop };
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_catch_block$1.name,
+  		id: create_catch_block$2.name,
   		type: "catch",
   		source: "(1:0) <script> import { save, image }",
   		ctx
@@ -7694,8 +6022,8 @@ var app = (function (Color, uuid, expr, twgl) {
   	return block;
   }
 
-  // (48:34)        <img {src}
-  function create_then_block$1(ctx) {
+  // (49:45)        <img {src}
+  function create_then_block$2(ctx) {
   	let img;
   	let img_src_value;
 
@@ -7704,8 +6032,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			img = element("img");
   			if (img.src !== (img_src_value = ctx.src)) attr_dev(img, "src", img_src_value);
   			attr_dev(img, "alt", "save");
-  			attr_dev(img, "class", "svelte-1pgeteq");
-  			add_location(img, file$8, 48, 6, 872);
+  			attr_dev(img, "class", "svelte-jdvdoa");
+  			add_location(img, file$8, 49, 6, 931);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, img, anchor);
@@ -7722,9 +6050,9 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_then_block$1.name,
+  		id: create_then_block$2.name,
   		type: "then",
-  		source: "(48:34)        <img {src}",
+  		source: "(49:45)        <img {src}",
   		ctx
   	});
 
@@ -7732,12 +6060,12 @@ var app = (function (Color, uuid, expr, twgl) {
   }
 
   // (1:0) <script> import { save, image }
-  function create_pending_block$1(ctx) {
+  function create_pending_block$2(ctx) {
   	const block = { c: noop, m: noop, p: noop, d: noop };
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_pending_block$1.name,
+  		id: create_pending_block$2.name,
   		type: "pending",
   		source: "(1:0) <script> import { save, image }",
   		ctx
@@ -7747,11 +6075,10 @@ var app = (function (Color, uuid, expr, twgl) {
   }
 
   function create_fragment$8(ctx) {
-  	let div2;
+  	let div1;
   	let div0;
   	let t;
-  	let div1;
-  	let promise;
+  	let div1_class_value;
   	let current;
   	let dispose;
 
@@ -7760,67 +6087,52 @@ var app = (function (Color, uuid, expr, twgl) {
   			$$inline: true
   		});
 
-  	let info = {
-  		ctx,
-  		current: null,
-  		token: null,
-  		pending: create_pending_block$1,
-  		then: create_then_block$1,
-  		catch: create_catch_block$1,
-  		value: "src",
-  		error: "null"
-  	};
-
-  	handle_promise(promise = image(ctx.weave), info);
+  	let if_block = ctx.$name !== Wheel.SYSTEM && create_if_block$4(ctx);
 
   	const block = {
   		c: function create() {
-  			div2 = element("div");
+  			div1 = element("div");
   			div0 = element("div");
   			create_component(postage.$$.fragment);
   			t = space();
-  			div1 = element("div");
-  			info.block.c();
-  			attr_dev(div0, "class", "postage svelte-1pgeteq");
-  			add_location(div0, file$8, 36, 1, 628);
-  			attr_dev(div1, "class", "save svelte-1pgeteq");
-  			set_style(div1, "border", "0.5rem solid " + ctx.$THEME_BORDER);
-  			add_location(div1, file$8, 42, 2, 730);
-  			attr_dev(div2, "class", "controls svelte-1pgeteq");
-  			add_location(div2, file$8, 33, 0, 600);
-
-  			dispose = [
-  				listen_dev(div0, "click", ctx.toggle, false, false, false),
-  				listen_dev(div1, "click", ctx.save_it, false, false, false)
-  			];
+  			if (if_block) if_block.c();
+  			attr_dev(div0, "class", "postage svelte-jdvdoa");
+  			add_location(div0, file$8, 37, 1, 650);
+  			attr_dev(div1, "class", div1_class_value = "controls " + ctx.side + " svelte-jdvdoa");
+  			add_location(div1, file$8, 34, 0, 616);
+  			dispose = listen_dev(div0, "click", ctx.toggle, false, false, false);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
   		},
   		m: function mount(target, anchor) {
-  			insert_dev(target, div2, anchor);
-  			append_dev(div2, div0);
+  			insert_dev(target, div1, anchor);
+  			append_dev(div1, div0);
   			mount_component(postage, div0, null);
-  			append_dev(div2, t);
-  			append_dev(div2, div1);
-  			info.block.m(div1, info.anchor = null);
-  			info.mount = () => div1;
-  			info.anchor = null;
+  			append_dev(div1, t);
+  			if (if_block) if_block.m(div1, null);
   			current = true;
   		},
-  		p: function update(changed, new_ctx) {
-  			ctx = new_ctx;
+  		p: function update(changed, ctx) {
   			const postage_changes = {};
   			if (changed.$name) postage_changes.address = `/${ctx.$name}`;
   			postage.$set(postage_changes);
-  			info.ctx = ctx;
 
-  			if (changed.weave && promise !== (promise = image(ctx.weave)) && handle_promise(promise, info)) ; else {
-  				info.block.p(changed, assign(assign({}, ctx), info.resolved)); // nothing
+  			if (ctx.$name !== Wheel.SYSTEM) {
+  				if (if_block) {
+  					if_block.p(changed, ctx);
+  				} else {
+  					if_block = create_if_block$4(ctx);
+  					if_block.c();
+  					if_block.m(div1, null);
+  				}
+  			} else if (if_block) {
+  				if_block.d(1);
+  				if_block = null;
   			}
 
-  			if (!current || changed.$THEME_BORDER) {
-  				set_style(div1, "border", "0.5rem solid " + ctx.$THEME_BORDER);
+  			if (!current || changed.side && div1_class_value !== (div1_class_value = "controls " + ctx.side + " svelte-jdvdoa")) {
+  				attr_dev(div1, "class", div1_class_value);
   			}
   		},
   		i: function intro(local) {
@@ -7833,12 +6145,10 @@ var app = (function (Color, uuid, expr, twgl) {
   			current = false;
   		},
   		d: function destroy(detaching) {
-  			if (detaching) detach_dev(div2);
+  			if (detaching) detach_dev(div1);
   			destroy_component(postage);
-  			info.block.d();
-  			info.token = null;
-  			info = null;
-  			run_all(dispose);
+  			if (if_block) if_block.d();
+  			dispose();
   		}
   	};
 
@@ -7871,6 +6181,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$$.on_destroy.push(() => $$unsubscribe_running());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
   	let { weave } = $$props;
+  	let { side } = $$props;
 
   	const toggle = e => {
   		e.stopPropagation();
@@ -7891,7 +6202,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		save(weave);
   	};
 
-  	const writable_props = ["weave"];
+  	const writable_props = ["weave", "side"];
 
   	Object.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Controls> was created with unknown prop '${key}'`);
@@ -7899,11 +6210,13 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	$$self.$set = $$props => {
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   	};
 
   	$$self.$capture_state = () => {
   		return {
   			weave,
+  			side,
   			name,
   			running,
   			runs,
@@ -7917,6 +6230,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	$$self.$inject_state = $$props => {
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("name" in $$props) $$subscribe_name($$invalidate("name", name = $$props.name));
   		if ("running" in $$props) $$subscribe_running($$invalidate("running", running = $$props.running));
   		if ("runs" in $$props) runs = $$props.runs;
@@ -7950,6 +6264,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	return {
   		weave,
+  		side,
   		toggle,
   		save_it,
   		name,
@@ -7962,7 +6277,7 @@ var app = (function (Color, uuid, expr, twgl) {
   class Controls extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$8, create_fragment$8, safe_not_equal, { weave: 0 });
+  		init(this, options, instance$8, create_fragment$8, safe_not_equal, { weave: 0, side: 0 });
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
@@ -7977,6 +6292,10 @@ var app = (function (Color, uuid, expr, twgl) {
   		if (ctx.weave === undefined && !("weave" in props)) {
   			console.warn("<Controls> was created without expected prop 'weave'");
   		}
+
+  		if (ctx.side === undefined && !("side" in props)) {
+  			console.warn("<Controls> was created without expected prop 'side'");
+  		}
   	}
 
   	get weave() {
@@ -7984,6 +6303,14 @@ var app = (function (Color, uuid, expr, twgl) {
   	}
 
   	set weave(value) {
+  		throw new Error("<Controls>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	get side() {
+  		throw new Error("<Controls>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set side(value) {
   		throw new Error("<Controls>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
   }
@@ -8000,8 +6327,8 @@ var app = (function (Color, uuid, expr, twgl) {
   	return child_ctx;
   }
 
-  // (82:0) {#if open}
-  function create_if_block$4(ctx) {
+  // (90:0) {#if open}
+  function create_if_block$5(ctx) {
   	let div;
   	let t;
   	let current;
@@ -8036,7 +6363,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			}
 
   			attr_dev(div, "class", "stitches");
-  			add_location(div, file$9, 82, 2, 1520);
+  			add_location(div, file$9, 90, 2, 1779);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -8054,7 +6381,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (changed.$name) omni_changes.system = ctx.$name === Wheel.SYSTEM;
   			omni.$set(omni_changes);
 
-  			if (changed.filter || changed.stitches || changed.super_open || changed.super_duper_open || changed.weave) {
+  			if (changed.filter || changed.stitches || changed.super_open || changed.super_duper_open || changed.weave || changed.side) {
   				each_value = ctx.stitches;
   				let i;
 
@@ -8110,16 +6437,16 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block$4.name,
+  		id: create_if_block$5.name,
   		type: "if",
-  		source: "(82:0) {#if open}",
+  		source: "(90:0) {#if open}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (88:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }
+  // (96:6) {#if         filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }
   function create_if_block_1$3(ctx) {
   	let current;
 
@@ -8129,7 +6456,8 @@ var app = (function (Color, uuid, expr, twgl) {
   				filter: ctx.filter.slice(1),
   				open: ctx.super_open,
   				super_open: ctx.super_duper_open,
-  				weave: ctx.weave
+  				weave: ctx.weave,
+  				side: ctx.side
   			},
   			$$inline: true
   		});
@@ -8149,6 +6477,7 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (changed.super_open) stitch_changes.open = ctx.super_open;
   			if (changed.super_duper_open) stitch_changes.super_open = ctx.super_duper_open;
   			if (changed.weave) stitch_changes.weave = ctx.weave;
+  			if (changed.side) stitch_changes.side = ctx.side;
   			stitch.$set(stitch_changes);
   		},
   		i: function intro(local) {
@@ -8169,14 +6498,14 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_if_block_1$3.name,
   		type: "if",
-  		source: "(88:6) {#if          filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }",
+  		source: "(96:6) {#if         filter.length === 0 ||         s_name.indexOf(filter[0]) !== -1       }",
   		ctx
   	});
 
   	return block;
   }
 
-  // (87:4) {#each stitches as [s_name,stitch]}
+  // (95:4) {#each stitches as [s_name,stitch]}
   function create_each_block$2(ctx) {
   	let show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
   	let if_block_anchor;
@@ -8235,7 +6564,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		block,
   		id: create_each_block$2.name,
   		type: "each",
-  		source: "(87:4) {#each stitches as [s_name,stitch]}",
+  		source: "(95:4) {#each stitches as [s_name,stitch]}",
   		ctx
   	});
 
@@ -8246,6 +6575,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	let div;
   	let t0;
   	let t1;
+  	let div_class_value;
   	let color_action;
   	let t2;
   	let if_block_anchor;
@@ -8253,11 +6583,11 @@ var app = (function (Color, uuid, expr, twgl) {
   	let dispose;
 
   	const controls = new Controls({
-  			props: { weave: ctx.weave },
+  			props: { weave: ctx.weave, side: ctx.side },
   			$$inline: true
   		});
 
-  	let if_block = ctx.open && create_if_block$4(ctx);
+  	let if_block = ctx.open && create_if_block$5(ctx);
 
   	const block = {
   		c: function create() {
@@ -8268,11 +6598,11 @@ var app = (function (Color, uuid, expr, twgl) {
   			t2 = space();
   			if (if_block) if_block.c();
   			if_block_anchor = empty();
-  			attr_dev(div, "class", "weave svelte-296y2q");
+  			attr_dev(div, "class", div_class_value = "weave " + ctx.side + " svelte-1kl1ncz");
   			set_style(div, "background-color", ctx.$THEME_BG);
   			set_style(div, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			toggle_class(div, "open", ctx.open);
-  			add_location(div, file$9, 53, 0, 992);
+  			add_location(div, file$9, 61, 0, 1238);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -8292,8 +6622,13 @@ var app = (function (Color, uuid, expr, twgl) {
   		p: function update(changed, ctx) {
   			const controls_changes = {};
   			if (changed.weave) controls_changes.weave = ctx.weave;
+  			if (changed.side) controls_changes.side = ctx.side;
   			controls.$set(controls_changes);
   			if (!current || changed.$name) set_data_dev(t1, ctx.$name);
+
+  			if (!current || changed.side && div_class_value !== (div_class_value = "weave " + ctx.side + " svelte-1kl1ncz")) {
+  				attr_dev(div, "class", div_class_value);
+  			}
 
   			if (!current || changed.$THEME_BG) {
   				set_style(div, "background-color", ctx.$THEME_BG);
@@ -8305,7 +6640,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   			if (is_function(color_action.update) && changed.$name) color_action.update.call(null, ctx.$name);
 
-  			if (changed.open) {
+  			if (changed.side || changed.open) {
   				toggle_class(div, "open", ctx.open);
   			}
 
@@ -8314,7 +6649,7 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block.p(changed, ctx);
   					transition_in(if_block, 1);
   				} else {
-  					if_block = create_if_block$4(ctx);
+  					if_block = create_if_block$5(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -8387,14 +6722,21 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$$.on_destroy.push(() => $$unsubscribe_names());
   	$$self.$$.on_destroy.push(() => $$unsubscribe_name());
   	let { weave } = $$props;
+  	let { side = `in` } = $$props;
   	let { filter = [] } = $$props;
   	let { open = $WEAVE_EXPLORE_OPEN } = $$props;
   	$$invalidate("open", open = open && weave.name.get() !== Wheel.SYSTEM);
   	let super_open = open;
   	let super_duper_open = false;
 
-  	const command = ([command, detail, detail2]) => {
+  	const command = ([command, detail, detail2], msg) => {
   		switch (command) {
+  			case `>`:
+  				const knot = $names[detail];
+  				if (!knot) return msg(`Couldn't find ${detail}`);
+  				if ($names[detail2]) return msg(`${detail2} already exists`);
+  				knot.knot.name.set(detail2);
+  				return;
   			case `~`:
   				const k = $names[detail];
   				if (!k) return;
@@ -8408,7 +6750,7 @@ var app = (function (Color, uuid, expr, twgl) {
   		}
   	};
 
-  	const writable_props = ["weave", "filter", "open"];
+  	const writable_props = ["weave", "side", "filter", "open"];
 
   	Object_1$2.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Weave> was created with unknown prop '${key}'`);
@@ -8438,6 +6780,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	$$self.$set = $$props => {
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
   		if ("open" in $$props) $$invalidate("open", open = $$props.open);
   	};
@@ -8445,6 +6788,7 @@ var app = (function (Color, uuid, expr, twgl) {
   	$$self.$capture_state = () => {
   		return {
   			weave,
+  			side,
   			filter,
   			open,
   			super_open,
@@ -8464,6 +6808,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	$$self.$inject_state = $$props => {
   		if ("weave" in $$props) $$invalidate("weave", weave = $$props.weave);
+  		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
   		if ("open" in $$props) $$invalidate("open", open = $$props.open);
   		if ("super_open" in $$props) $$invalidate("super_open", super_open = $$props.super_open);
@@ -8509,6 +6854,7 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	return {
   		weave,
+  		side,
   		filter,
   		open,
   		super_open,
@@ -8528,7 +6874,7 @@ var app = (function (Color, uuid, expr, twgl) {
   class Weave$1 extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$9, create_fragment$9, safe_not_equal, { weave: 0, filter: 0, open: 0 });
+  		init(this, options, instance$9, create_fragment$9, safe_not_equal, { weave: 0, side: 0, filter: 0, open: 0 });
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
@@ -8550,6 +6896,14 @@ var app = (function (Color, uuid, expr, twgl) {
   	}
 
   	set weave(value) {
+  		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	get side() {
+  		throw new Error("<Weave>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+  	}
+
+  	set side(value) {
   		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
   	}
 
@@ -8575,20 +6929,27 @@ var app = (function (Color, uuid, expr, twgl) {
   const { Object: Object_1$3 } = globals;
   const file$a = "src/ui/weave/Explore.svelte";
 
-  function get_each_context$3(ctx, list, i) {
+  function get_each_context_1(ctx, list, i) {
   	const child_ctx = Object_1$3.create(ctx);
   	child_ctx.weave = list[i];
   	return child_ctx;
   }
 
-  // (64:4) {#if        filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }
-  function create_if_block$5(ctx) {
+  function get_each_context$3(ctx, list, i) {
+  	const child_ctx = Object_1$3.create(ctx);
+  	child_ctx.side = list[i];
+  	return child_ctx;
+  }
+
+  // (72:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }
+  function create_if_block$6(ctx) {
   	let current;
 
   	const weave = new Weave$1({
   			props: {
   				weave: ctx.weave,
-  				filter: ctx.parts.slice(1)
+  				filter: ctx.parts.slice(1),
+  				side: ctx.side
   			},
   			$$inline: true
   		});
@@ -8623,21 +6984,21 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block$5.name,
+  		id: create_if_block$6.name,
   		type: "if",
-  		source: "(64:4) {#if        filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }",
+  		source: "(72:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }",
   		ctx
   	});
 
   	return block;
   }
 
-  // (63:2) {#each ws as weave}
-  function create_each_block$3(ctx) {
+  // (71:2) {#each ws as weave}
+  function create_each_block_1(ctx) {
   	let show_if = ctx.filter === `` || ctx.weave.name.get().indexOf(ctx.parts[0]) !== -1;
   	let if_block_anchor;
   	let current;
-  	let if_block = show_if && create_if_block$5(ctx);
+  	let if_block = show_if && create_if_block$6(ctx);
 
   	const block = {
   		c: function create() {
@@ -8657,7 +7018,7 @@ var app = (function (Color, uuid, expr, twgl) {
   					if_block.p(changed, ctx);
   					transition_in(if_block, 1);
   				} else {
-  					if_block = create_if_block$5(ctx);
+  					if_block = create_if_block$6(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -8689,9 +7050,156 @@ var app = (function (Color, uuid, expr, twgl) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
+  		id: create_each_block_1.name,
+  		type: "each",
+  		source: "(71:2) {#each ws as weave}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (56:0) {#each sides as side}
+  function create_each_block$3(ctx) {
+  	let div3;
+  	let div0;
+  	let t0;
+  	let t1;
+  	let div1;
+  	let t2;
+  	let div2;
+  	let t3;
+  	let div3_class_value;
+  	let current;
+
+  	const omni = new Omni({
+  			props: { command: ctx.command },
+  			$$inline: true
+  		});
+
+  	let each_value_1 = ctx.ws;
+  	let each_blocks = [];
+
+  	for (let i = 0; i < each_value_1.length; i += 1) {
+  		each_blocks[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
+  	}
+
+  	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+  		each_blocks[i] = null;
+  	});
+
+  	const block = {
+  		c: function create() {
+  			div3 = element("div");
+  			div0 = element("div");
+  			t0 = text("[ I S E K A I ]");
+  			t1 = space();
+  			div1 = element("div");
+  			create_component(omni.$$.fragment);
+  			t2 = space();
+  			div2 = element("div");
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].c();
+  			}
+
+  			t3 = space();
+  			attr_dev(div0, "class", "logo svelte-p7lmc7");
+  			attr_dev(div0, "style", ctx.$THEME_STYLE);
+  			add_location(div0, file$a, 60, 2, 1209);
+  			attr_dev(div1, "class", "events svelte-p7lmc7");
+  			add_location(div1, file$a, 65, 2, 1284);
+  			attr_dev(div2, "class", "weaves svelte-p7lmc7");
+  			add_location(div2, file$a, 69, 2, 1340);
+  			attr_dev(div3, "class", div3_class_value = "explore " + ctx.side + " svelte-p7lmc7");
+  			toggle_class(div3, "hidden", ctx.hidden);
+  			add_location(div3, file$a, 56, 0, 1160);
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, div3, anchor);
+  			append_dev(div3, div0);
+  			append_dev(div0, t0);
+  			append_dev(div3, t1);
+  			append_dev(div3, div1);
+  			mount_component(omni, div1, null);
+  			append_dev(div3, t2);
+  			append_dev(div3, div2);
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].m(div2, null);
+  			}
+
+  			append_dev(div3, t3);
+  			current = true;
+  		},
+  		p: function update(changed, ctx) {
+  			if (!current || changed.$THEME_STYLE) {
+  				attr_dev(div0, "style", ctx.$THEME_STYLE);
+  			}
+
+  			if (changed.filter || changed.ws || changed.parts || changed.sides) {
+  				each_value_1 = ctx.ws;
+  				let i;
+
+  				for (i = 0; i < each_value_1.length; i += 1) {
+  					const child_ctx = get_each_context_1(ctx, each_value_1, i);
+
+  					if (each_blocks[i]) {
+  						each_blocks[i].p(changed, child_ctx);
+  						transition_in(each_blocks[i], 1);
+  					} else {
+  						each_blocks[i] = create_each_block_1(child_ctx);
+  						each_blocks[i].c();
+  						transition_in(each_blocks[i], 1);
+  						each_blocks[i].m(div2, null);
+  					}
+  				}
+
+  				group_outros();
+
+  				for (i = each_value_1.length; i < each_blocks.length; i += 1) {
+  					out(i);
+  				}
+
+  				check_outros();
+  			}
+
+  			if (changed.hidden) {
+  				toggle_class(div3, "hidden", ctx.hidden);
+  			}
+  		},
+  		i: function intro(local) {
+  			if (current) return;
+  			transition_in(omni.$$.fragment, local);
+
+  			for (let i = 0; i < each_value_1.length; i += 1) {
+  				transition_in(each_blocks[i]);
+  			}
+
+  			current = true;
+  		},
+  		o: function outro(local) {
+  			transition_out(omni.$$.fragment, local);
+  			each_blocks = each_blocks.filter(Boolean);
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				transition_out(each_blocks[i]);
+  			}
+
+  			current = false;
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(div3);
+  			destroy_component(omni);
+  			destroy_each(each_blocks, detaching);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
   		id: create_each_block$3.name,
   		type: "each",
-  		source: "(63:2) {#each ws as weave}",
+  		source: "(56:0) {#each sides as side}",
   		ctx
   	});
 
@@ -8701,18 +7209,11 @@ var app = (function (Color, uuid, expr, twgl) {
   function create_fragment$a(ctx) {
   	let t0;
   	let t1;
-  	let div2;
-  	let div0;
-  	let t2;
-  	let t3;
-  	let input;
-  	let t4;
-  	let div1;
+  	let each_1_anchor;
   	let current;
-  	let dispose;
   	const mainscreen = new MainScreen({ $$inline: true });
   	const picker = new Picker({ $$inline: true });
-  	let each_value = ctx.ws;
+  	let each_value = ctx.sides;
   	let each_blocks = [];
 
   	for (let i = 0; i < each_value.length; i += 1) {
@@ -8729,35 +7230,12 @@ var app = (function (Color, uuid, expr, twgl) {
   			t0 = space();
   			create_component(picker.$$.fragment);
   			t1 = space();
-  			div2 = element("div");
-  			div0 = element("div");
-  			t2 = text("[ I S E K A I ]");
-  			t3 = space();
-  			input = element("input");
-  			t4 = space();
-  			div1 = element("div");
 
   			for (let i = 0; i < each_blocks.length; i += 1) {
   				each_blocks[i].c();
   			}
 
-  			attr_dev(div0, "class", "logo svelte-otl23e");
-  			attr_dev(div0, "style", ctx.$THEME_STYLE);
-  			add_location(div0, file$a, 48, 2, 810);
-  			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "filter svelte-otl23e");
-  			attr_dev(input, "placeholder", "!/~/+/-");
-  			add_location(input, file$a, 53, 2, 886);
-  			attr_dev(div1, "class", "weaves svelte-otl23e");
-  			add_location(div1, file$a, 61, 2, 1046);
-  			attr_dev(div2, "class", "explore svelte-otl23e");
-  			toggle_class(div2, "hidden", ctx.hidden);
-  			add_location(div2, file$a, 44, 0, 767);
-
-  			dispose = [
-  				listen_dev(input, "input", ctx.input_input_handler),
-  				listen_dev(input, "keydown", ctx.keydown_handler, false, false, false)
-  			];
+  			each_1_anchor = empty();
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -8767,32 +7245,17 @@ var app = (function (Color, uuid, expr, twgl) {
   			insert_dev(target, t0, anchor);
   			mount_component(picker, target, anchor);
   			insert_dev(target, t1, anchor);
-  			insert_dev(target, div2, anchor);
-  			append_dev(div2, div0);
-  			append_dev(div0, t2);
-  			append_dev(div2, t3);
-  			append_dev(div2, input);
-  			set_input_value(input, ctx.filter);
-  			append_dev(div2, t4);
-  			append_dev(div2, div1);
 
   			for (let i = 0; i < each_blocks.length; i += 1) {
-  				each_blocks[i].m(div1, null);
+  				each_blocks[i].m(target, anchor);
   			}
 
+  			insert_dev(target, each_1_anchor, anchor);
   			current = true;
   		},
   		p: function update(changed, ctx) {
-  			if (!current || changed.$THEME_STYLE) {
-  				attr_dev(div0, "style", ctx.$THEME_STYLE);
-  			}
-
-  			if (changed.filter && input.value !== ctx.filter) {
-  				set_input_value(input, ctx.filter);
-  			}
-
-  			if (changed.filter || changed.ws || changed.parts) {
-  				each_value = ctx.ws;
+  			if (changed.sides || changed.hidden || changed.ws || changed.filter || changed.parts || changed.command || changed.$THEME_STYLE) {
+  				each_value = ctx.sides;
   				let i;
 
   				for (i = 0; i < each_value.length; i += 1) {
@@ -8805,7 +7268,7 @@ var app = (function (Color, uuid, expr, twgl) {
   						each_blocks[i] = create_each_block$3(child_ctx);
   						each_blocks[i].c();
   						transition_in(each_blocks[i], 1);
-  						each_blocks[i].m(div1, null);
+  						each_blocks[i].m(each_1_anchor.parentNode, each_1_anchor);
   					}
   				}
 
@@ -8816,10 +7279,6 @@ var app = (function (Color, uuid, expr, twgl) {
   				}
 
   				check_outros();
-  			}
-
-  			if (changed.hidden) {
-  				toggle_class(div2, "hidden", ctx.hidden);
   			}
   		},
   		i: function intro(local) {
@@ -8849,9 +7308,8 @@ var app = (function (Color, uuid, expr, twgl) {
   			if (detaching) detach_dev(t0);
   			destroy_component(picker, detaching);
   			if (detaching) detach_dev(t1);
-  			if (detaching) detach_dev(div2);
   			destroy_each(each_blocks, detaching);
-  			run_all(dispose);
+  			if (detaching) detach_dev(each_1_anchor);
   		}
   	};
 
@@ -8876,38 +7334,41 @@ var app = (function (Color, uuid, expr, twgl) {
   	component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_weaves());
 
-  	down.listen(key => {
-  		if (key !== `\``) return;
+  	key.listen(char => {
+  		if (char !== `\``) return;
   		$$invalidate("hidden", hidden = !hidden);
   	});
 
   	let filter = ``;
   	let { hidden = false } = $$props;
 
-  	const do_add = () => {
-  		switch (filter[0]) {
+  	const command = ([action, ...details], msg) => {
+  		switch (action) {
   			case `-`:
-  				Wheel.del({ [filter.slice(1)]: true });
+  				Wheel.del({ [details[0]]: true });
   				$$invalidate("filter", filter = ``);
   				return;
   			case `+`:
-  				Wheel.spawn({ [filter.slice(1)]: {} });
+  				if (details.length === 1) {
+  					Wheel.spawn({ [details[0]]: {} });
+  				}
+  				if (details.length === 3) {
+  					github(details).then(name => {
+  						msg(`Added ${name} from Github. `);
+  					}).catch(ex => {
+  						msg(`Couldn't add ${details.join(`/`)}. `);
+  					});
+  				}
   				$$invalidate("filter", filter = ``);
   		}
   	};
 
+  	const sides = [`in`];
   	const writable_props = ["hidden"];
 
   	Object_1$3.keys($$props).forEach(key => {
   		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Explore> was created with unknown prop '${key}'`);
   	});
-
-  	function input_input_handler() {
-  		filter = this.value;
-  		$$invalidate("filter", filter);
-  	}
-
-  	const keydown_handler = ({ which }) => which === 13 && do_add();
 
   	$$self.$set = $$props => {
   		if ("hidden" in $$props) $$invalidate("hidden", hidden = $$props.hidden);
@@ -8956,20 +7417,19 @@ var app = (function (Color, uuid, expr, twgl) {
   	return {
   		filter,
   		hidden,
-  		do_add,
+  		command,
+  		sides,
   		weaves,
   		ws,
   		parts,
-  		$THEME_STYLE,
-  		input_input_handler,
-  		keydown_handler
+  		$THEME_STYLE
   	};
   }
 
   class Explore extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, instance$a, create_fragment$a, safe_not_equal, { hidden: 0 });
+  		init(this, options, instance$a, create_fragment$a, safe_not_equal, { hidden: 0 });
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
@@ -9034,7 +7494,7 @@ var app = (function (Color, uuid, expr, twgl) {
   class App extends SvelteComponentDev {
   	constructor(options) {
   		super(options);
-  		init$1(this, options, null, create_fragment$b, safe_not_equal, {});
+  		init(this, options, null, create_fragment$b, safe_not_equal, {});
 
   		dispatch_dev("SvelteRegisterComponent", {
   			component: this,
@@ -9057,5 +7517,5 @@ var app = (function (Color, uuid, expr, twgl) {
 
   return app;
 
-}(Color, cuid, exprEval, twgl));
+}(Color, cuid, exprEval, twgl, EXT.piexifjs));
 //# sourceMappingURL=bundle.js.map

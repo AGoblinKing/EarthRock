@@ -23,6 +23,7 @@ export default ({
     const matches = expression.match(Wheel.REG_ID)
     const vs = {}
     const s = weave.to_address(weave.chain(id, true).pop())
+
     new Set(matches).forEach((item) => {
       const shh = item[0] === `$`
       const gette = item
@@ -33,6 +34,10 @@ export default ({
 
       const k = Wheel.get(gette)
       const name = gette.replace(whitespace, ``).replace(re_var, ``)
+      expression = expression.replace(
+        new RegExp(escape(item), `g`),
+        name
+      )
 
       if (!k) {
         vs[name] = {
@@ -44,10 +49,6 @@ export default ({
         return
       }
 
-      expression = expression.replace(
-        new RegExp(escape(item), `g`),
-        name
-      )
       vs[name] = {
         k,
         shh

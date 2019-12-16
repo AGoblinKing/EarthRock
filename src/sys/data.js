@@ -1,20 +1,19 @@
 import { tick } from "/sys/time.js"
 import { path } from "/sys/path.js"
-import { load } from "/sys/file.js"
+import { github } from "/sys/file.js"
+import { write } from "/util/store.js"
 
-const VERSION = 3
-const HOUR_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60)
+const VERSION = 1
+const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60)
 let db
 
-let load_res
-export const loaded = new Promise((resolve) => { load_res = resolve })
+export const loaded = write(false)
 export const data = new Promise((resolve) => {
-  const req = window.indexedDB.open(`isekai`, VERSION)
+  const req = window.indexedDB.open(`turbo`, VERSION)
 
   req.onupgradeneeded = async (e) => {
     db = e.target.result
-
-    db.createObjectStore(`wheel`, { keyPath: `date` })
+    db.createObjectStore(`wheel`, { keyPath: `name` })
 
     resolve(db)
   }
@@ -47,26 +46,32 @@ export const save = async () => {
   // update current
   await query({
     action: `put`,
-    args: [wheel]
+    args: [wheel],
+    foronly: `readwrite`
   })
 }
 
 export const clean = () => query({
-  action: `delete`,
-  args: [HOUR_AGO]
+  action: `clear`,
+  args: [TIME_AGO]
 })
 
 window.query = query
 
-const init = async () => {
+const savewatch = async ($name) => {
+  loaded.set(false)
+
   const result = await query({
-    action: `getAll`
+    action: `get`,
+    args: [$name]
   }).catch((e) => console.warn(`DB`, e.target.error))
 
-  if (result && result.length > 0) {
-    const { weaves, running } = result.pop()
+  if (result) {
+    const { weaves, running } = result
+    // protect system
     delete weaves[Wheel.SYSTEM]
 
+    Wheel.name.set($name)
     Wheel.spawn(weaves)
 
     Object.keys(running).forEach((id) => {
@@ -76,40 +81,45 @@ const init = async () => {
     })
   }
 
-  load_res(true)
+  loaded.set(true)
 
-  tick.listen((t) => {
+  const cancel = tick.listen((t) => {
     if (
       t % 10 !== 0 ||
       db === undefined ||
-      !loaded
+      !loaded.get()
     ) return
 
     save()
-    if (t % 100 === 0) clean()
   })
+
+  return () => {
+    Wheel.clear()
+    name.set(`loading`)
+    cancel()
+  }
 }
 
-init()
+// init()
 
+let watch = false
 path.listen(async ($path) => {
-  if ($path.length < 3) return
-  const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`
+  // your watch has ended
+  if (watch) watch()
 
-  const reader = new FileReader()
-  const blob = await fetch(url)
-    .then((r) => r.blob())
+  if ($path.length === 1) {
+    Wheel.name.set($path[0])
+    watch = savewatch($path[0])
+  }
 
-  reader.readAsDataURL(blob)
+  if ($path.length === 3) {
+    await loaded
 
-  reader.addEventListener(`load`, () => {
-    const data = load(reader.result)
-    if (!data) return
+    Wheel.name.set(`loading`)
 
-    Wheel.spawn({
-      [data.name]: data
-    })
+    await github($path, true)
 
-    Wheel.start(data.name)
-  })
+    Wheel.name.set($path.join(`/`))
+    watch = savewatch($path.join(`/`))
+  }
 })

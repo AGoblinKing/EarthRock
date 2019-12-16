@@ -6,6 +6,7 @@ import rootImport from 'rollup-plugin-root-import'
 import resolve from 'rollup-plugin-node-resolve'
 import glsl from 'rollup-plugin-glsl'
 
+import visualizer from 'rollup-plugin-visualizer'
 const production = false && !process.env.ROLLUP_WATCH
 
 const output = `docs`
@@ -18,7 +19,8 @@ export default {
     `expr-eval`,
     `color`,
     `tone`,
-    `twgl`
+    `twgl`,
+    `piexifjs`
   ],
   output: {
     sourcemap: !production,
@@ -31,14 +33,14 @@ export default {
       tone: `Tone`,
       "expr-eval": `exprEval`,
       twgl: `twgl`,
-      Wheel: `Wheel`
+      piexifjs: `EXT.piexifjs`
     }
   },
 
   plugins: [
-    // stats && visualizer({
-    //   filename: `docs/stats.html`
-    // }),
+    visualizer({
+      filename: `docs/stats.html`
+    }),
 
     rootImport({
       root: `${__dirname}/src`,
@@ -49,6 +51,10 @@ export default {
       dev: !production,
       css: css => {
         css.write(`${output}/bundle.css`)
+      },
+      onwarn: (warning, handler) => {
+        if (warning.message.indexOf(`Wheel`) !== -1) return
+        handler(warning)
       }
     }),
 

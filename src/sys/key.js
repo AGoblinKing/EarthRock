@@ -1,6 +1,6 @@
 import { read } from "/util/store.js"
 
-export const up = read(``, (set) =>
+export const key = read(``, (set) => {
   window.addEventListener(`keyup`, (e) => {
     if (
       e.target.tagName === `INPUT` ||
@@ -11,11 +11,9 @@ export const up = read(``, (set) =>
 
     e.preventDefault()
 
-    set(e.key.toLowerCase())
+    set(`${e.key.toLowerCase()}!`)
   })
-)
 
-export const down = read(``, (set) =>
   window.addEventListener(`keydown`, (e) => {
     if (
       e.target.tagName === `INPUT` ||
@@ -28,18 +26,18 @@ export const down = read(``, (set) =>
 
     set(e.key.toLowerCase())
   })
-)
+})
 
 export const keys = read({}, (set) => {
   const value = {}
 
-  down.listen((char) => {
+  key.listen((char) => {
     value[char] = true
-    set(value)
-  })
-
-  up.listen((char) => {
-    delete value[char]
+    if (char.length > 1 && char[char.length - 1] === `!`) {
+      value[char.slice(0, -1)] = false
+    } else {
+      value[`${char}!`] = false
+    }
     set(value)
   })
 })

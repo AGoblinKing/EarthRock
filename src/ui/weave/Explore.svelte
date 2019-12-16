@@ -1,12 +1,15 @@
 <script>
+import { github } from "/sys/file.js"
+
+import Omni from "./explore/Omni.svelte"
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
 import Weave from "./explore/Weave.svelte"
 import { THEME_STYLE } from "/sys/flag.js"
-import { down } from "/sys/key.js"
+import { key } from "/sys/key.js"
 
-down.listen((key) => {
-  if (key !== `\``) return
+key.listen((char) => {
+  if (char !== `\``) return
   hidden = !hidden
 })
 
@@ -20,57 +23,62 @@ $: parts = filter[0] === `-` || filter[0] === `+`
 
 export let hidden = false
 
-const do_add = () => {
-  switch (filter[0]) {
+const command = ([action, ...details], msg) => {
+  switch (action) {
     case `-`:
       Wheel.del({
-        [filter.slice(1)]: true
+        [details[0]]: true
       })
       filter = ``
       return
     case `+`:
-      Wheel.spawn({
-        [filter.slice(1)]: {
-
-        }
-      })
+      if (details.length === 1) {
+        Wheel.spawn({
+          [details[0]]: {}
+        })
+      }
+      if (details.length === 3) {
+        github(details).then((name) => {
+          msg(`Added ${name} from Github. `)
+        }).catch((ex) => {
+          msg(`Couldn't add ${details.join(`/`)}. `)
+        })
+      }
       filter = ``
   }
 }
+const sides = [`in`]
 </script>
 
 <MainScreen />
 <Picker />
 
-<div 
-  class="explore"
+{#each sides as side}
+<div
+  class="explore {side}"
   class:hidden
 >
-  <div 
+  <div
     class="logo"
     style={$THEME_STYLE}
   >[ I S E K A I ]</div>
 
-  <input 
-    type="text" 
-    class="filter" 
-    placeholder="!/~/+/-"
-    bind:value={filter}
-    on:keydown={({ which }) => which === 13 && do_add()}
-  />
+  <div class="events">
+    <Omni {command} />
+  </div>
 
   <div class="weaves">
   {#each ws as weave}
-    {#if 
+    {#if
       filter === `` ||
       weave.name.get().indexOf(parts[0]) !== -1
     }
-      <Weave {weave} filter={parts.slice(1)} />
+      <Weave {weave} filter={parts.slice(1)} {side} />
     {/if}
   {/each}
   </div>
 </div>
-
+{/each}
 <style>
 
 .logo {
@@ -79,6 +87,15 @@ const do_add = () => {
   text-align: center;
   color: rgba(60, 255, 0, 0.123);
   transition: all 250ms cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.out {
+  right: auto;
+  left: 0;
+}
+
+.out.hidden {
+  left: -20%;
 }
 .logo:hover {
   color: rgba(60, 255, 0, 0.8);
@@ -93,12 +110,11 @@ const do_add = () => {
   top: 0;
   width: 20%;
   height: 100%;
-  border-right: 0.25rem solid black;
   display: flex;
   flex-direction: column;
   z-index: 1001;
   opacity: 1;
-  transition: all 50ms linear;
+  transition: all 250ms cubic-bezier(.31,-1.02,.56,1.99);
 }
 
 .hidden {
@@ -107,16 +123,13 @@ const do_add = () => {
   pointer-events: none;
 }
 
-.filter {
-  pointer-events: all;
-  background-color: #111;
-  border: 0.25rem solid #333;
-  padding: 1rem;
-}
-
 .weaves {
   display: flex;
   pointer-events: all;
   flex-direction: column;
+}
+.events {
+  pointer-events:all;
+  display:flex;
 }
 </style>

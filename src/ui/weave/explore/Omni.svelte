@@ -61,7 +61,7 @@ const execute = () => {
 
 <input type="text"
   class="omni"
-  style="border: 0.25rem solid {$THEME_BORDER}"
+  style="border: 0.25rem solid {$THEME_BORDER};"
   bind:value={omni}
   on:keydown={(e) => {
     if (e.which !== 13) return
@@ -76,9 +76,11 @@ const execute = () => {
 .omni {
   width: 100%;
   padding: 0.5rem;
-  border: 0.25rem solid #333;
+  overflow: hidden;
   margin-top: -0.25rem;
   background-color: #111;
+  display: block;
+  margin-left: 1rem;
 }
 .omni:hover {
   background-color: #222;

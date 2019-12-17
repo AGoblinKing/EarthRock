@@ -1,6 +1,6 @@
 <script>
 import Thread from "./Thread.svelte"
-import { THEME_BORDER } from "/sys/flag.js"
+import { THEME_STYLE } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 import { tick } from "/sys/time.js"
 export let stitch
@@ -9,7 +9,6 @@ export let channel
 export let side = `in`
 export let focus = false
 export let executed = () => {}
-export let super_open = false
 $: [key, value] = channel
 
 let display = null
@@ -44,19 +43,18 @@ const focusd = (node) => {
 }
 </script>
 
-{#if weave.id.get() !== Wheel.SYSTEM}
-  <Thread {channel} {stitch} {weave} {super_open} {side} />
-{/if}
+
 
 <div
   class="channel {side}"
-  style="border: 0.25rem solid {$THEME_BORDER};"
+  style={$THEME_STYLE}
   use:color={key}
   on:click={() => {
     editing = true
     val = JSON.stringify($value)
   }}
 >
+  <Thread {channel} {stitch} {weave} {side} />
 {#if !editing}
   <div class="key">
     {key}
@@ -95,6 +93,7 @@ const focusd = (node) => {
   overflow: hidden;
   margin-left: 1rem;
   border-top: none !important;
+
 }
 
 .channel.out {
@@ -110,7 +109,7 @@ const focusd = (node) => {
 
 .out .key {
   border-right: none;
-  border-left: 0.25rem solid rgba(0,0, 0,0.5);
+  border-right: 0.25rem solid rgba(0,0, 0,0.5);
 }
 
 .value {
@@ -119,7 +118,6 @@ const focusd = (node) => {
   user-select: all;
   padding: 0.5rem;
   overflow: hidden;
-  height: 0.75rem;
   text-align: left;
 }
 

@@ -1,6 +1,6 @@
 <script>
 import color from "/ui/action/color.js"
-import { WEAVE_EXPLORE_OPEN, THEME_BG, THEME_BORDER } from "/sys/flag.js"
+import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
 import { keys } from "/sys/key.js"
 
 import Omni from "./Omni.svelte"
@@ -15,8 +15,6 @@ export let side = `in`
 export let filter = []
 export let open = $WEAVE_EXPLORE_OPEN
 
-open = open && weave.name.get() !== Wheel.SYSTEM
-
 $: stitches = Object.entries($names).sort(([a], [b]) => {
   if (a > b) return 1
   if (b > a) return -1
@@ -25,8 +23,6 @@ $: stitches = Object.entries($names).sort(([a], [b]) => {
 
 $: knots = weave.knots
 
-let super_open = open
-let super_duper_open = false
 const command = ([
   command,
   detail,
@@ -47,6 +43,17 @@ const command = ([
 
       break
     case `+`:
+      if (detail2) {
+        return weave.update({
+          [detail]: {
+            knot: `stitch`,
+            value: {
+              [detail2]: ``
+            }
+          }
+        })
+      }
+
       weave.add({
         knot: `stitch`,
         name: detail
@@ -54,6 +61,14 @@ const command = ([
 
       break
     case `-`:
+      if (detail2) {
+        const s = weave.get_name(detail)
+        if (!s) return
+
+        s.value.remove(detail2)
+        return
+      }
+
       weave.remove_name(detail)
   }
 }
@@ -63,28 +78,15 @@ const command = ([
   class="weave {side}"
   class:open
   use:color={$name}
-  style="background-color: {$THEME_BG}; border: 0.25rem solid {$THEME_BORDER};"
+  style={$THEME_STYLE}
   on:click={() => {
-    if ($keys.shift) {
-      open = true
-      if (super_open === false) {
-        super_open = true
-        return
-      }
-      if (super_duper_open === false) {
-        super_duper_open = true
-        return
-      }
-      super_open = false
-      super_duper_open = false
-      return
-    }
-
     open = !open
   }}
 >
   <Controls {weave} {side} />
-  {$name}
+  <div class="namezor">
+    {$name}
+  </div>
 </div>
 
 {#if open}
@@ -100,8 +102,6 @@ const command = ([
         <Stitch
           {stitch}
           filter={filter.slice(1)}
-          open={super_open}
-          super_open={super_duper_open}
           {weave}
           {side}
         />
@@ -114,10 +114,13 @@ const command = ([
 
 .weave {
   align-items:center;
+  text-align: left;
+  flex-direction: row-reverse;
   display: flex;
   padding: 1rem;
   margin-top: -0.25rem;
   border-right: none;
+  border-radius: 0.25rem;
 }
 
 .out {
@@ -127,4 +130,7 @@ const command = ([
   color: white;
 }
 
+.namezor {
+  flex: 1;
+}
 </style>

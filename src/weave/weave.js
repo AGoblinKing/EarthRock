@@ -43,17 +43,18 @@ export default ({
         const first = chain[0].split(`/`)[0]
         const k_last = ks[last]
         const k_first = ks[first]
+
         if ((k_last && k_last.knot.get() === `stitch`) ||
           (k_first && k_first.knot.get() === `stitch`)
         ) return
+
         delete ks[k.id.get()]
         deletes += 1
       })
 
       if (deletes > 0) {
         console.warn(`Deleted ${deletes} orphans on validation.`)
-        console.log(deletes)
-        //w.knots.set(ks)
+        w.knots.set(ks)
       }
 
       Object.entries(t).forEach(([r, w]) => {
@@ -123,9 +124,18 @@ export default ({
 
     return `/${w.name.get()}/${k.name.get()}`
   }
-  w.remove_name = (name) => {
+
+  w.get_name = (name) => {
     const k = w.names.get()[name]
     if (!k) return
+
+    return k
+  }
+
+  w.remove_name = (name) => {
+    const k = w.get_name(name)
+    if (!k) return
+
     const id = k.id.get()
     return w.remove(id)
   }
@@ -203,6 +213,7 @@ export default ({
       const k = $names[key]
 
       if (!k) {
+        console.log(`adding`, key, data)
         data.name = key
         w.add(data)
         return

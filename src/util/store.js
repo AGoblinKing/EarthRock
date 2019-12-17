@@ -8,7 +8,10 @@ const writable = (val) => {
       return w
     },
     set: (val_new) => {
-      val = val_new
+      val = val_new === undefined
+        ? null
+        : val_new
+
       subs.forEach((fn) => fn(val))
       return w
     },
@@ -93,6 +96,7 @@ export const map = (init = {}) => {
     delete $m[channel]
     set_m($m)
   }
+
   m.set(init)
 
   return m

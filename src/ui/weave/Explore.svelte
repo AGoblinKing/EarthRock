@@ -73,7 +73,7 @@ const sides = [`in`]
       filter === `` ||
       weave.name.get().indexOf(parts[0]) !== -1
     }
-      <Weave {weave} filter={parts.slice(1)} {side} />
+      <Weave {weave} filter={parts.slice(1)} {side} open={weave.name.get() !== Wheel.SYSTEM} />
     {/if}
   {/each}
   </div>
@@ -114,7 +114,7 @@ const sides = [`in`]
   flex-direction: column;
   z-index: 1001;
   opacity: 1;
-  transition: all 250ms cubic-bezier(.31,-1.02,.56,1.99);
+  transition: all 50ms linear;
 }
 
 .hidden {

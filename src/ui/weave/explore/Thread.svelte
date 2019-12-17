@@ -5,12 +5,9 @@ import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 export let channel
 export let stitch
 export let weave
-export let side
 
 $: feed = Wheel.feed
 
-// math 2+2 => /sys/foo => tile 55 => {} "" 10 [] =>
-export let super_open = false
 let editing = false
 $: address = `${stitch.id.get()}/${channel[0]}`
 $: threads = weave.threads
@@ -86,9 +83,7 @@ $: boxes = chain
   .join(` => `)
 $: time_cut = $tick && Date.now() - 1000
 
-$: tru_thread = !super_open
-  ? chain
-  : [`#${chain.length}`]
+$: tru_thread = chain
 let edit = ``
 
 const focus = (node) => node.focus()
@@ -169,22 +164,29 @@ const condense = (link) => {
     ? `#${t.length} ${v}`
     : v
 }
-$:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER};`
+$:style = [
+  `border: 0.25rem solid ${$THEME_BORDER};`,
+  `background-color: ${$THEME_BG};`
+].join(``)
+
+const do_edit = (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+
+  if (editing) return
+  editing = true
+  edit = format(boxes)
+}
 </script>
 
 <div
   class="spot"
-  data:super={super_open}
-  on:click={() => {
-    if (editing) return
-    editing = true
-    edit = format(boxes)
-  }}
+  on:click={do_edit}
 >
   {#if !editing}
     {#each tru_thread as link}
       {#if link[0] === `#`}
-<div
+        <div
           class="thread"
           {style}
           class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
@@ -201,18 +203,11 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
           {condense(link)}
         </div>
       {/if}
-
-    {:else}
-      <div
-        class="cap"
-        style="border: 0.25rem solid {$THEME_BORDER}"
-      >
-      +
-      </div>
     {/each}
 
   {:else}
     <textarea
+      spellcheck="false"
       class="edit"
       type="text"
       style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
@@ -231,7 +226,10 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
     />
   {/if}
 </div>
-
+<div
+  class="cap"
+  on:click={do_edit}
+></div>
 <style>
 .spot {
   display: flex;
@@ -239,17 +237,18 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
   justify-content: flex-end;
   position: absolute;
   right: 100%;
-  margin-right: -2.00rem;
+  margin-right: -2rem;
   width: auto;
   font-size: 0.75rem;
   margin-top: -0.25rem;
 }
 
+
 .thread {
   padding: 0.5rem;
   white-space: nowrap;
   transition: all 100ms linear;
-  margin-right: -0.25rem;
+  margin-right: -0.2rem;
 }
 
 .thread.active {
@@ -271,15 +270,14 @@ $:style = `background-color: ${$THEME_BG}; border:0.25rem solid ${$THEME_BORDER}
 }
 
 .cap {
+  border-right: 0.25rem solid black;
   padding: 0.5rem;
-  margin-right: -0.25rem;
-  margin-top: 0.125rem;
-  position: relative;
   z-index: 2;
-  background-color: rgba(0,0,0, 0.25);
+  background-color: rgba(0,0,0,0.5);
 }
 .cap:hover {
-  color: white !important;
+  background-color: rgba(255, 255, 255, 0.5);
 }
+
 </style>
 

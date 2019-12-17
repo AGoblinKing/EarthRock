@@ -44,7 +44,6 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
   <div
     class="save"
     on:click={save_it}
-    style="border: 0.5rem solid {$THEME_BORDER};"
   >
     {#await image(weave.name.get()) then src}
       <img {src} alt="save" />
@@ -56,8 +55,8 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 
 <style>
 .postage {
-  width: 3rem;
-  height: 3rem;
+  width: 2rem;
+  height: 2rem;
   display: flex;
 }
 
@@ -74,12 +73,6 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 
 .postage, .save {
   margin: 0 0.5rem;
-}
-
-.save {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
 }
 
 .save:hover {

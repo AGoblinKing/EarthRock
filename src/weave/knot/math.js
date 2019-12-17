@@ -74,6 +74,7 @@ export default ({
   })
 
   const set = m.value.set
+  let last_val = null
   m.value.set = (val) => {
     const vs = values.get()
     val = val === undefined
@@ -91,6 +92,7 @@ export default ({
         v: val
       })
       set(result)
+      last_val = val
       return m.value
     } catch (ex) {
 
@@ -111,8 +113,6 @@ export default ({
         cancels.add(k.listen(m.value.poke))
       })
     })
-
-    set(m.value.get())
 
     return () => {
       cancel_vs()

@@ -26,17 +26,20 @@ export const THEME_BORDER = read(``, (set) =>
     .toCSS()
   ))
 )
-
 export const THEME_STYLE = read(``, (set) => {
   let $THEME_BG = ``
   let $THEME_BORDER = ``
 
-  const update = () => set(`background-color: ${$THEME_BG}; border: 0.25rem solid ${$THEME_BORDER};`)
+  const update = () => set([
+    `background-color: ${$THEME_BG};`,
+    `border: 0.25rem solid ${$THEME_BORDER};`
+  ].join(``))
 
   THEME_BORDER.listen(($val) => {
     $THEME_BORDER = $val
     update()
   })
+
   THEME_BG.listen(($val) => {
     $THEME_BG = $val
     update()

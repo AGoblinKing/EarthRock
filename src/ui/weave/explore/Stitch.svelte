@@ -1,9 +1,7 @@
 <script>
 import color from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
-import { keys } from "/sys/key.js"
 
-import Omni from "./Omni.svelte"
 import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
@@ -25,32 +23,6 @@ $: chans = Object.entries($value).sort(([a], [b]) => {
   return 0
 })
 
-let omni_focus = false
-
-let focus = ``
-
-const executed = () => {
-  omni_focus = true
-}
-
-const command = ([
-  action,
-  chan = ``
-]) => {
-  chan = chan.trim()
-  switch (action) {
-    case `+`:
-      value.add({ [chan]: `` })
-      focus = chan
-      return
-    case `-`:
-      value.remove(chan)
-      weave.chain(`${stitch.id.get()}/${chan}`).forEach((id) => {
-        weave.remove(id)
-      })
-  }
-}
-
 const toggle = (e) => {
   e.preventDefault()
   e.stopPropagation()
@@ -68,27 +40,19 @@ const toggle = (e) => {
   class="stitch {side}"
   class:open
   use:color={$name}
-  on:click={() => {
-    if ($keys.shift) {
-      super_open = !super_open
-      return
-    }
-    open = !open
-  }}
-  style="{$THEME_STYLE}"
+  style={$THEME_STYLE}
 >
+  <div class="name">
+  {$name}
+  </div>
   <div class="postage" on:click={toggle}>
     <Postage address={`/${$w_name}/${$name}`}/>
   </div>
-  {$name}
+
 </div>
 
 {#if open}
 <div class="chans">
-
-{#if $w_name !== Wheel.SYSTEM}
-  <Omni {command} focus={omni_focus} />
-{/if}
 
 {#each chans as channel}
   {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
@@ -97,7 +61,6 @@ const toggle = (e) => {
       {stitch}
       {weave}
       {super_open}
-      {executed}
       {side}
     />
   {/if}
@@ -121,13 +84,18 @@ const toggle = (e) => {
 .stitch {
   display: flex;
   align-items: center;
-  padding: 1rem;
+  padding: 0.5rem;
   margin-left: 1rem;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   border-right: none;
+  border-radius: 0.25rem;
+  padding-right: 1rem;
   margin-top:-0.25rem;
 }
 
+.name {
+  flex: 1;
+}
 .stitch.out {
   margin-left: 0;
   margin-right: 1rem;

@@ -10,10 +10,6 @@ export default (node, txt_init) => {
       const col = Color(color(JSON.stringify(txt)))
         .blend(bg, 0.8)
 
-      // if (col.getLightness() > 0.4) {
-      //   col = col.darkenByAmount(0.3).darkenByRatio(0.2)
-      // }
-
       node.style.backgroundColor = col
         .toCSS()
     }
@@ -21,4 +17,18 @@ export default (node, txt_init) => {
 
   handler.update(txt_init)
   return handler
+}
+
+export const dark = (node, txt) => {
+  const update = () => {
+    node.style.backgroundColor = Color(color(JSON.stringify(txt)))
+      .blend(Color(THEME_BG.get()), 0.8)
+      .darkenByRatio(0.5)
+  }
+
+  update()
+
+  return {
+    update
+  }
 }

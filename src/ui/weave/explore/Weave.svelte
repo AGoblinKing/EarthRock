@@ -1,5 +1,5 @@
 <script>
-import color from "/ui/action/color.js"
+import { dark } from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
 
 import Omni from "./Omni.svelte"
@@ -75,7 +75,7 @@ const command = ([
 <div
   class="weave"
   class:open
-  use:color={$name}
+  use:dark={$name}
   style={$THEME_STYLE}
   on:click={() => {
     open = !open

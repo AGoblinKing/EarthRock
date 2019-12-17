@@ -219,7 +219,17 @@ export default ({
         return
       }
 
+      const type = k.knot.get()
+
       Object.entries(data).forEach(([key_sub, data_sub]) => {
+        if (key_sub === `value` && type === `stitch`) {
+          k[key_sub].set({
+            ...k[key_sub].get(),
+            ...data_sub
+          })
+          return
+        }
+
         k[key_sub].set(data_sub)
       })
     })

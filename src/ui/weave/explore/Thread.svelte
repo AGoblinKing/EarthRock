@@ -239,7 +239,7 @@ const do_edit = (e) => {
   align-items: center;
   justify-content: flex-end;
   position: absolute;
-  right: 100%;
+  right: 20%;
   margin-right: -2rem;
   width: auto;
   margin-top: -0.2rem;
@@ -256,9 +256,10 @@ const do_edit = (e) => {
 .thread.active {
   text-decoration: underline;
 }
+
 .edit {
   position: absolute;
-  left: -250%;
+  left: 25%;
   top: 20%;
   width: 60rem;
   height: 60rem;

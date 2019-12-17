@@ -7,12 +7,6 @@ import { v3 } from "twgl.js"
 
 const { length, add, mulScalar } = v3
 
-import {
-  INPUT_SCROLL_STRENGTH,
-  INPUT_ZOOM_STRENGTH,
-  INPUT_ZOOM_MIN
-} from "/sys/flag.js"
-
 import { read, write, transformer } from "/util/store.js"
 
 export const zoom = write(0.75)
@@ -39,10 +33,6 @@ export const translate = read([0, 0, 0], (set) => {
 
     set(b_key)
   })
-
-  // Mouse.scroll.listen((value_new) => {
-  //   buffer = add(buffer, value_new)
-  // })
 })
 
 let scroll_velocity = [0, 0, 0]
@@ -65,32 +55,8 @@ Time.tick.listen(() => {
   )
 })
 
-translate.listen((t) => {
-  scroll_velocity = add(
-    scroll_velocity,
-    mulScalar(
-      t,
-      INPUT_SCROLL_STRENGTH.get()
-    )
-  )
-})
-
-let zoom_velocity = 0
-
-Mouse.scroll.listen(([, t]) => {
-  zoom_velocity += t
-})
-
-Time.tick.listen(() => {
-  if (Math.abs(zoom_velocity) < 0.01) return
-  zoom.set(
-    Math.max(
-      Math.round(
-        (zoom.get() + zoom_velocity * INPUT_ZOOM_STRENGTH.get()) * 100
-      ) / 100
-      , INPUT_ZOOM_MIN.get())
-  )
-  zoom_velocity *= 0.5
+Mouse.scroll.listen((vel) => {
+  scroll_velocity = add(scroll_velocity, vel)
 })
 
 export const focus = write(``)

@@ -1,6 +1,6 @@
 <script>
 import color from "/ui/action/color.js"
-import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
+import { WEAVE_EXPLORE_OPEN, THEME_BORDER } from "/sys/flag.js"
 
 import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
@@ -38,11 +38,12 @@ const toggle = (e) => {
   class="stitch"
   class:open
   use:color={$name}
-  style={$THEME_STYLE}
+  style="border: 0.25rem solid {$THEME_BORDER};"
 >
   <div class="name">
   {$name}
   </div>
+
   <div class="postage" on:click={toggle}>
     <Postage address={`/${$w_name}/${$name}`}/>
   </div>
@@ -50,18 +51,17 @@ const toggle = (e) => {
 </div>
 
 {#if open}
-<div class="chans">
-
-{#each chans as channel}
-  {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
-    <Channel
-      {channel}
-      {stitch}
-      {weave}
-    />
-  {/if}
-{/each}
-</div>
+  <div class="chans">
+  {#each chans as channel}
+    {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+      <Channel
+        {channel}
+        {stitch}
+        {weave}
+      />
+    {/if}
+  {/each}
+  </div>
 {/if}
 
 <style>

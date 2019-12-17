@@ -1,5 +1,6 @@
 <script>
 import { github } from "/sys/file.js"
+import { scroll } from "/sys/input.js"
 
 import Omni from "./explore/Omni.svelte"
 import Picker from "./Picker.svelte"
@@ -48,6 +49,15 @@ const command = ([action, ...details], msg) => {
   }
 }
 const sides = [`in`]
+
+const scrollto = (node, offset) => {
+  const update = (val) => {
+    console.log(val)
+    node.scrollTop = `${val}px`
+  }
+  update(offset)
+  return { update }
+}
 </script>
 
 <MainScreen />
@@ -59,6 +69,7 @@ const sides = [`in`]
   style="color: {$THEME_COLOR};"
   class:hidden
 >
+  <div class="partial">
   <div
     class="logo"
     style={$THEME_STYLE}
@@ -77,6 +88,7 @@ const sides = [`in`]
       <Weave {weave} filter={parts.slice(1)} open={weave.name.get() !== Wheel.SYSTEM} />
     {/if}
   {/each}
+  </div>
   </div>
 </div>
 {/each}
@@ -101,20 +113,28 @@ const sides = [`in`]
 .logo:hover {
   color: rgba(60, 255, 0, 0.8);
 }
+.partial {
+  width: 20%;
+  display: flex;
+  flex-direction: column;
 
+}
 .explore {
+  scrollbar-color: #333;
+  scrollbar-width: 1rem;
   pointer-events: none;
-  font-size: 1rem;
   position: absolute;
+  align-items: flex-end;
   font-size: 1.5rem;
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  left: 0;
   right: 0;
   top: 0;
-  width: 20%;
-  height: 100%;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   z-index: 1001;
-  opacity: 1;
   transition: all 50ms linear;
 }
 

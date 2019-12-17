@@ -48,7 +48,7 @@ const focusd = (node) => {
 <div
   class="channel {side}"
   style={$THEME_STYLE}
-  use:color={key}
+  use:color={stitch.name.get()}
   on:click={() => {
     editing = true
     val = JSON.stringify($value)

@@ -54,7 +54,7 @@ const focusd = (node) => {
     val = JSON.stringify($value)
   }}
 >
-  <Thread {channel} {stitch} {weave} {side} />
+  <Thread {channel} {stitch} {weave}/>
 {#if !editing}
   <div class="key">
     {key}
@@ -89,7 +89,6 @@ const focusd = (node) => {
 
 .channel {
   display: flex;
-  font-size: 0.75rem;
   overflow: hidden;
   margin-left: 1rem;
   border-top: none !important;

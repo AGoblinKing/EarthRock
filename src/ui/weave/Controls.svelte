@@ -5,7 +5,6 @@ import Postage from "/ui/weave/Postage.svelte"
 import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 
 export let weave
-export let side
 
 $: name = weave.name
 $: running = Wheel.running
@@ -33,7 +32,7 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 </script>
 
 <div
-  class="controls {side}"
+  class="controls"
 >
  <div class="postage" on:click={toggle}>
     <Postage
@@ -66,11 +65,6 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
   margin: 0 0.5rem;
 }
 
-.controls.out {
-  flex-direction: row-reverse;
-}
-
-
 .postage, .save {
   margin: 0 0.5rem;
 }
@@ -83,7 +77,9 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 }
 .save img {
   flex: 1;
+  margin-top: 0.25rem;
   width: 2rem;
+  border: 0.25rem solid rgba(0,0,0,0.5);
   height: 2rem;
 }
 

@@ -5,7 +5,7 @@ import Omni from "./explore/Omni.svelte"
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
 import Weave from "./explore/Weave.svelte"
-import { THEME_STYLE } from "/sys/flag.js"
+import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 import { key } from "/sys/key.js"
 
 key.listen((char) => {
@@ -56,6 +56,7 @@ const sides = [`in`]
 {#each sides as side}
 <div
   class="explore {side}"
+  style="color: {$THEME_COLOR};"
   class:hidden
 >
   <div
@@ -73,7 +74,7 @@ const sides = [`in`]
       filter === `` ||
       weave.name.get().indexOf(parts[0]) !== -1
     }
-      <Weave {weave} filter={parts.slice(1)} {side} open={weave.name.get() !== Wheel.SYSTEM} />
+      <Weave {weave} filter={parts.slice(1)} open={weave.name.get() !== Wheel.SYSTEM} />
     {/if}
   {/each}
   </div>
@@ -103,9 +104,9 @@ const sides = [`in`]
 
 .explore {
   pointer-events: none;
-  color: rgb(224, 168, 83);
   font-size: 1rem;
   position: absolute;
+  font-size: 1.5rem;
   right: 0;
   top: 0;
   width: 20%;

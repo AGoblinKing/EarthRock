@@ -7,11 +7,9 @@ import Postage from "/ui/weave/Postage.svelte"
 
 export let filter = []
 export let stitch
-export let side = `in`
+
 export let open = $WEAVE_EXPLORE_OPEN
 export let weave
-
-export let super_open = $WEAVE_EXPLORE_OPEN
 
 $: w_name = weave.name
 $: name = stitch.name
@@ -37,7 +35,7 @@ const toggle = (e) => {
 </script>
 
 <div
-  class="stitch {side}"
+  class="stitch"
   class:open
   use:color={$name}
   style={$THEME_STYLE}
@@ -60,8 +58,6 @@ const toggle = (e) => {
       {channel}
       {stitch}
       {weave}
-      {super_open}
-      {side}
     />
   {/if}
 {/each}
@@ -86,7 +82,6 @@ const toggle = (e) => {
   align-items: center;
   padding: 0.5rem;
   margin-left: 1rem;
-  font-size: 0.75rem;
   border-right: none;
   border-radius: 0.25rem;
   padding-right: 1rem;

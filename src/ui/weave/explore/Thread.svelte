@@ -179,57 +179,60 @@ const do_edit = (e) => {
 }
 </script>
 
+{#if editing}
+<textarea
+    spellcheck="false"
+    class="edit"
+    type="text"
+    style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
+    use:focus
+    bind:value={edit}
+    on:click={(e) => e.stopPropagation()}
+    on:blur={(e) => {
+      execute()
+    }}
+    on:keydown={({ which, shiftKey }) => {
+      if (
+        which !== 13 ||
+        !shiftKey
+      ) return
+      execute()
+    }}
+  />
+{/if}
+
 <div
   class="spot"
   on:click={do_edit}
 >
-  {#if !editing}
-    {#each tru_thread as link}
-      {#if link[0] === `#`}
-        <div
-          class="thread"
-          {style}
-          class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
-        >
-          {link}
-        </div>
-      {:else}
-        <div
-          class="thread"
-          {style}
-          use:color={condense(link)}
-          class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
-        >
-          {condense(link)}
-        </div>
-      {/if}
-    {/each}
+  {#each tru_thread as link}
+    {#if link[0] === `#`}
+      <div
+        class="thread"
+        {style}
+        class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
+      >
+        {link}
+      </div>
+    {:else}
+      <div
+        class="thread"
+        {style}
+        use:color={condense(link)}
+        class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
+      >
+        {condense(link)}
+      </div>
+    {/if}
+  {/each}
 
-  {:else}
-    <textarea
-      spellcheck="false"
-      class="edit"
-      type="text"
-      style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
-      use:focus
-      bind:value={edit}
-      on:blur={(e) => {
-        execute()
-      }}
-      on:keydown={({ which, shiftKey }) => {
-        if (
-          which !== 13 ||
-          !shiftKey
-        ) return
-        execute()
-      }}
-    />
-  {/if}
 </div>
+
 <div
   class="cap"
   on:click={do_edit}
-></div>
+/>
+
 <style>
 .spot {
   display: flex;
@@ -239,8 +242,7 @@ const do_edit = (e) => {
   right: 100%;
   margin-right: -2rem;
   width: auto;
-  font-size: 0.75rem;
-  margin-top: -0.25rem;
+  margin-top: -0.2rem;
 }
 
 
@@ -255,11 +257,13 @@ const do_edit = (e) => {
   text-decoration: underline;
 }
 .edit {
-  position: relative;
+  position: absolute;
+  left: -250%;
+  top: 20%;
   width: 60rem;
   height: 60rem;
   z-index: 3;
-  font-size: 1rem;
+
   margin: 0;
   padding: 1rem;
   color: rgb(224, 168, 83);
@@ -270,13 +274,14 @@ const do_edit = (e) => {
 }
 
 .cap {
-  border-right: 0.25rem solid black;
+  background-color: rgba(0,0,0,0.5);
+  border-right: 0.25rem solid rgba(255,255,255,0.0.5);
   padding: 0.5rem;
   z-index: 2;
-  background-color: rgba(0,0,0,0.5);
+
 }
 .cap:hover {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 255, 0.25);
 }
 
 </style>

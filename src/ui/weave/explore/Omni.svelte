@@ -5,7 +5,7 @@ export let command = () => {}
 let omni = ``
 
 export let system = false
-export let focus = false
+
 const place_default = system
   ? `!`
   : `! > + -`
@@ -19,15 +19,6 @@ const calc_offset = ($t, $p) => {
 }
 
 $: tru_placeholder = calc_offset($tick, placeholder)
-
-const focusd = (node, init) => {
-  if (init) node.focus()
-  return {
-    update: (val) => {
-      if (val) node.focus()
-    }
-  }
-}
 
 const commands = {
   "!": () => {
@@ -67,7 +58,7 @@ const execute = () => {
     if (e.which !== 13) return
     execute()
   }}
-  use:focusd={focus}
+
   on:blur={execute}
   placeholder={tru_placeholder}
 />

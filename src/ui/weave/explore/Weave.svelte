@@ -1,7 +1,6 @@
 <script>
 import color from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
-import { keys } from "/sys/key.js"
 
 import Omni from "./Omni.svelte"
 import Stitch from "./Stitch.svelte"
@@ -11,7 +10,6 @@ export let weave
 $: name = weave.name
 $: names = weave.names
 
-export let side = `in`
 export let filter = []
 export let open = $WEAVE_EXPLORE_OPEN
 
@@ -75,7 +73,7 @@ const command = ([
 </script>
 
 <div
-  class="weave {side}"
+  class="weave"
   class:open
   use:color={$name}
   style={$THEME_STYLE}
@@ -83,7 +81,7 @@ const command = ([
     open = !open
   }}
 >
-  <Controls {weave} {side} />
+  <Controls {weave} />
   <div class="namezor">
     {$name}
   </div>
@@ -103,7 +101,6 @@ const command = ([
           {stitch}
           filter={filter.slice(1)}
           {weave}
-          {side}
         />
       {/if}
     {/each}
@@ -120,6 +117,7 @@ const command = ([
   padding: 1rem;
   margin-top: -0.25rem;
   border-right: none;
+  font-size: 2rem;
   border-radius: 0.25rem;
 }
 

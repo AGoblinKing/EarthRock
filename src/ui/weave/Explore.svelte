@@ -1,6 +1,5 @@
 <script>
 import { github } from "/sys/file.js"
-import { scroll } from "/sys/input.js"
 
 import Omni from "./explore/Omni.svelte"
 import Picker from "./Picker.svelte"
@@ -49,15 +48,6 @@ const command = ([action, ...details], msg) => {
   }
 }
 const sides = [`in`]
-
-const scrollto = (node, offset) => {
-  const update = (val) => {
-    console.log(val)
-    node.scrollTop = `${val}px`
-  }
-  update(offset)
-  return { update }
-}
 </script>
 
 <MainScreen />

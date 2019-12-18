@@ -1,6 +1,6 @@
 import * as twgl from "twgl"
 import { write } from "/util/store.js"
-import { frame, tick } from "/sys/time.js"
+import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
 
@@ -53,16 +53,14 @@ export default () => {
     for (let x = 0; x < s; x++) {
       for (let y = 0; y < s; y++) {
         for (let z = 0; z < s; z++) {
-          for (let a = 0; a < s; a++) {
-            const idx = (x + y * s + z * s * s + a * s * s * s) * 4
-            arr[idx] = (x - half)
-            arr[idx + 1] = (y - half)
-            arr[idx + 2] = (z - half)
-            arr[idx + 3] = 0.5
-          }
+          const idx = (x + y * s + z * s * s) * 3
+          arr[idx] = (x - half)
+          arr[idx + 1] = (y - half) * 16
+          arr[idx + 2] = (z - half)
         }
       }
     }
+
     return arr
   }
 
@@ -80,7 +78,7 @@ export default () => {
     translate: {
       divisor: 1,
       data: pos_ordered(),
-      numComponents: 4
+      numComponents: 3
     },
     sprite: {
       numComponents: 1,
@@ -106,7 +104,6 @@ export default () => {
 
   canvas.snap = write(snapshot())
 
-  const color_clear = [0, 0, 0, 0]
   const view = m4.identity()
   const view_projection = m4.identity()
 
@@ -139,7 +136,7 @@ export default () => {
       ...uniforms,
       u_map: textures.map,
       u_time: t * 0.001,
-      u_sprite_size: 1,
+      u_sprite_size: 16,
       u_sprite_columns: 32,
       u_view_projection: view_projection
     }

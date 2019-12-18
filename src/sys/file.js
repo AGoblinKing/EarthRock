@@ -89,7 +89,7 @@ export const github = async ($path, autorun = false) => {
       const w = Wheel.get(data.name)
 
       w.update({
-        info: {
+        INFO: {
           knot: `stitch`,
           value: {
             from: $path.join(`/`),

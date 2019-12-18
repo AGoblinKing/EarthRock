@@ -1,5 +1,7 @@
 precision highp float;
+
 uniform mat4 u_view_projection;
+uniform float u_sprite_size;
 uniform float u_sprite_columns;
 
 attribute vec4 translate;
@@ -12,9 +14,12 @@ varying vec2 v_sprite;
 
 void main() {
   v_color = color;
-  v_sprite = vec2(
-    1.0, 1.0
-  );
+
+  float x = mod(sprite, u_sprite_columns);
+  float y = floor(sprite / u_sprite_columns);
+
+  vec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;
+  v_sprite = coords;
 
   mat4 mv = u_view_projection;
   vec3 pos = vec3(position * translate.w, 0.0) + translate.xzy;

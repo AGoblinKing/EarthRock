@@ -22,8 +22,8 @@ export const translate = read([0, 0, 0], (set) => {
     b_key[1] = 0
     b_key[2] = 0
 
-    if (w) b_key[1] += 1
-    if (s) b_key[1] -= 1
+    if (w) b_key[1] -= 1
+    if (s) b_key[1] += 1
     if (a) b_key[0] -= 1
     if (d) b_key[0] += 1
     if (q) b_key[2] += 1

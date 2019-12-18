@@ -91,11 +91,6 @@ const toggle = (e) => {
 .name {
   flex: 1;
 }
-.stitch.out {
-  margin-left: 0;
-  margin-right: 1rem;
-  flex-direction: row-reverse;
-}
 
 .stitch:hover {
   color: white;

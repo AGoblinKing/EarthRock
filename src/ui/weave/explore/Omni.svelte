@@ -71,6 +71,7 @@ const execute = () => {
   margin-top: -0.25rem;
   background-color: #111;
   display: block;
+  border-radius: 0.25rem;
 }
 .omni:hover {
   background-color: #222;

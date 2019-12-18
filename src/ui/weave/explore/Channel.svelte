@@ -3,12 +3,14 @@ import Thread from "./Thread.svelte"
 import { THEME_STYLE } from "/sys/flag.js"
 import color from "/ui/action/color.js"
 import { tick } from "/sys/time.js"
+
 export let stitch
 export let weave
 export let channel
 export let side = `in`
 export let focus = false
 export let executed = () => {}
+
 $: [key, value] = channel
 
 let display = null
@@ -60,7 +62,9 @@ const focusd = (node) => {
     {key}
   </div>
   <div class="value">
-    {JSON.stringify(display)}
+    {
+     JSON.stringify(display)
+    }
   </div>
 {:else}
   <input
@@ -91,7 +95,7 @@ const focusd = (node) => {
   display: flex;
   overflow: hidden;
   margin-left: 1rem;
-  border-top: none !important;
+border-top: none !important;
 
 }
 
@@ -114,6 +118,7 @@ const focusd = (node) => {
 .value {
   display: flex;
   flex: 1;
+  max-height: 1rem;
   user-select: all;
   padding: 0.5rem;
   overflow: hidden;

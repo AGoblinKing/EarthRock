@@ -118,7 +118,8 @@ export const spawn = (pattern = {}) => Object.fromEntries(
 
 export const start = (weave_name) => {
   if (weave_name === SYSTEM) {
-    throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
+    console.warn(`CaN NoT StArT or StOp /${SYSTEM}`)
+    return
   }
   const w = get(weave_name)
   if (!w) return false

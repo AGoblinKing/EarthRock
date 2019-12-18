@@ -164,6 +164,7 @@ const condense = (link) => {
     ? `#${t.length} ${v}`
     : v
 }
+
 $:style = [
   `border: 0.25rem solid ${$THEME_BORDER};`,
   `background-color: ${$THEME_BG};`
@@ -172,7 +173,7 @@ $:style = [
 const do_edit = (e) => {
   e.preventDefault()
   e.stopPropagation()
-
+  if (weave.name.get() === Wheel.SYSTEM) return
   if (editing) return
   editing = true
   edit = format(boxes)
@@ -181,24 +182,24 @@ const do_edit = (e) => {
 
 {#if editing}
 <textarea
-    spellcheck="false"
-    class="edit"
-    type="text"
-    style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
-    use:focus
-    bind:value={edit}
-    on:click={(e) => e.stopPropagation()}
-    on:blur={(e) => {
-      execute()
-    }}
-    on:keydown={({ which, shiftKey }) => {
-      if (
-        which !== 13 ||
-        !shiftKey
-      ) return
-      execute()
-    }}
-  />
+  spellcheck="false"
+  class="edit"
+  type="text"
+  style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
+  use:focus
+  bind:value={edit}
+  on:click={(e) => e.stopPropagation()}
+  on:blur={(e) => {
+    execute()
+  }}
+  on:keydown={({ which, shiftKey }) => {
+    if (
+      which !== 13 ||
+      !shiftKey
+    ) return
+    execute()
+  }}
+/>
 {/if}
 
 <div
@@ -251,6 +252,7 @@ const do_edit = (e) => {
   white-space: nowrap;
   transition: all 100ms linear;
   margin-right: -0.2rem;
+  border-radius: 0.25rem;
 }
 
 .thread.active {
@@ -258,7 +260,7 @@ const do_edit = (e) => {
 }
 
 .edit {
-  position: absolute;
+  position: fixed;
   left: 25%;
   top: 20%;
   width: 60rem;

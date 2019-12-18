@@ -858,7 +858,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   const start = (weave_name) => {
     if (weave_name === SYSTEM) {
-      throw new Error(`CaN NoT StArT or StOp /${SYSTEM}`)
+      console.warn(`CaN NoT StArT or StOp /${SYSTEM}`);
+      return
     }
     const w = get(weave_name);
     if (!w) return false
@@ -1057,20 +1058,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     frame: frame
   });
 
-  var test_frag = "precision mediump float;uniform vec2 resolution;uniform float time;void main(){vec2 uv=gl_FragCoord.xy/resolution;float color=0.0;color+=sin(uv.x*cos(time/3.0)*60.0)+cos(uv.y*cos(time/2.80)*10.0);color+=sin(uv.y*sin(time/2.0)*40.0)+cos(uv.x*sin(time/1.70)*40.0);color+=sin(uv.x*sin(time/1.0)*10.0)+sin(uv.y*sin(time/3.50)*80.0);color*=sin(time/10.0)*0.5;gl_FragColor=vec4(vec3(color*0.5,sin(color+time/2.5)*0.75,color),1.0);}";
+  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=v_color*texture2D(u_map,v_sprite);}";
 
-  var test_vert = "attribute vec4 position;void main(){gl_Position=position;}";
-
-  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=v_color;}";
-
-  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_columns;attribute vec4 translate;attribute float sprite;attribute vec4 color;attribute vec2 position;varying vec4 v_color;varying vec2 v_sprite;void main(){v_color=color;v_sprite=vec2(0.0,0.0);mat4 mv=u_view_projection;vec3 pos=vec3(position*translate.w,0.0)+translate.xzy;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
+  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_columns;attribute vec4 translate;attribute float sprite;attribute vec4 color;attribute vec2 position;varying vec4 v_color;varying vec2 v_sprite;void main(){v_color=color;v_sprite=vec2(1.0,1.0);mat4 mv=u_view_projection;vec3 pos=vec3(position*translate.w,0.0)+translate.xzy;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
 
   const breaker = (a) => a.map(i => `\r\n${i}`);
-
-  const test = read(breaker([
-    test_vert,
-    test_frag
-  ]));
 
   const sprite = read(breaker([
     sprite_vert,
@@ -2678,7 +2670,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		c: function create() {
   			input = element("input");
   			attr_dev(input, "type", "text");
-  			attr_dev(input, "class", "omni svelte-uuf6o");
+  			attr_dev(input, "class", "omni svelte-1cku1nd");
   			set_style(input, "border", "0.25rem solid " + ctx.$THEME_BORDER);
   			attr_dev(input, "placeholder", ctx.tru_placeholder);
   			add_location(input, file, 52, 0, 987);
@@ -3885,7 +3877,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	return child_ctx;
   }
 
-  // (182:0) {#if editing}
+  // (183:0) {#if editing}
   function create_if_block_1(ctx) {
   	let textarea;
   	let textarea_style_value;
@@ -3896,10 +3888,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		c: function create() {
   			textarea = element("textarea");
   			attr_dev(textarea, "spellcheck", "false");
-  			attr_dev(textarea, "class", "edit svelte-10zj8i5");
+  			attr_dev(textarea, "class", "edit svelte-1onczz3");
   			attr_dev(textarea, "type", "text");
   			attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
-  			add_location(textarea, file$5, 182, 0, 3307);
+  			add_location(textarea, file$5, 183, 0, 3355);
 
   			dispose = [
   				listen_dev(textarea, "input", ctx.textarea_input_handler),
@@ -3933,14 +3925,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_if_block_1.name,
   		type: "if",
-  		source: "(182:0) {#if editing}",
+  		source: "(183:0) {#if editing}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (217:4) {:else}
+  // (218:4) {:else}
   function create_else_block(ctx) {
   	let div;
   	let t0_value = ctx.condense(ctx.link) + "";
@@ -3953,10 +3945,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-10zj8i5");
+  			attr_dev(div, "class", "thread svelte-1onczz3");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			add_location(div, file$5, 217, 6, 4021);
+  			add_location(div, file$5, 218, 6, 4033);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -3988,14 +3980,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_else_block.name,
   		type: "else",
-  		source: "(217:4) {:else}",
+  		source: "(218:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (209:4) {#if link[0] === `#`}
+  // (210:4) {#if link[0] === `#`}
   function create_if_block$1(ctx) {
   	let div;
   	let t0_value = ctx.link + "";
@@ -4007,10 +3999,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-10zj8i5");
+  			attr_dev(div, "class", "thread svelte-1onczz3");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
-  			add_location(div, file$5, 209, 6, 3830);
+  			add_location(div, file$5, 210, 6, 3842);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -4037,14 +4029,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_if_block$1.name,
   		type: "if",
-  		source: "(209:4) {#if link[0] === `#`}",
+  		source: "(210:4) {#if link[0] === `#`}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (208:2) {#each tru_thread as link}
+  // (209:2) {#each tru_thread as link}
   function create_each_block(ctx) {
   	let if_block_anchor;
 
@@ -4088,7 +4080,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(208:2) {#each tru_thread as link}",
+  		source: "(209:2) {#each tru_thread as link}",
   		ctx
   	});
 
@@ -4121,10 +4113,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   			t1 = space();
   			div1 = element("div");
-  			attr_dev(div0, "class", "spot svelte-10zj8i5");
-  			add_location(div0, file$5, 203, 0, 3726);
-  			attr_dev(div1, "class", "cap svelte-10zj8i5");
-  			add_location(div1, file$5, 230, 0, 4246);
+  			attr_dev(div0, "class", "spot svelte-1onczz3");
+  			add_location(div0, file$5, 204, 0, 3738);
+  			attr_dev(div1, "class", "cap svelte-1onczz3");
+  			add_location(div1, file$5, 231, 0, 4258);
 
   			dispose = [
   				listen_dev(div0, "click", ctx.do_edit, false, false, false),
@@ -4353,6 +4345,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	const do_edit = e => {
   		e.preventDefault();
   		e.stopPropagation();
+  		if (weave.name.get() === Wheel.SYSTEM) return;
   		if (editing) return;
   		$$invalidate("editing", editing = true);
   		$$invalidate("edit", edit = format(boxes));
@@ -4556,7 +4549,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   /* src/ui/weave/explore/Channel.svelte generated by Svelte v3.14.1 */
   const file$6 = "src/ui/weave/explore/Channel.svelte";
 
-  // (65:0) {:else}
+  // (69:0) {:else}
   function create_else_block$1(ctx) {
   	let input;
   	let focusd_action;
@@ -4565,10 +4558,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	const block = {
   		c: function create() {
   			input = element("input");
-  			attr_dev(input, "class", "edit svelte-wwdbt");
+  			attr_dev(input, "class", "edit svelte-sdzbj1");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON PLZ");
-  			add_location(input, file$6, 65, 2, 1063);
+  			add_location(input, file$6, 69, 2, 1076);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -4597,14 +4590,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_else_block$1.name,
   		type: "else",
-  		source: "(65:0) {:else}",
+  		source: "(69:0) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (58:0) {#if !editing}
+  // (60:0) {#if !editing}
   function create_if_block$2(ctx) {
   	let div0;
   	let t0;
@@ -4620,10 +4613,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			t1 = space();
   			div1 = element("div");
   			t2 = text(t2_value);
-  			attr_dev(div0, "class", "key svelte-wwdbt");
-  			add_location(div0, file$6, 58, 2, 955);
-  			attr_dev(div1, "class", "value svelte-wwdbt");
-  			add_location(div1, file$6, 61, 2, 994);
+  			attr_dev(div0, "class", "key svelte-sdzbj1");
+  			add_location(div0, file$6, 60, 2, 957);
+  			attr_dev(div1, "class", "value svelte-sdzbj1");
+  			add_location(div1, file$6, 63, 2, 996);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div0, anchor);
@@ -4647,7 +4640,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_if_block$2.name,
   		type: "if",
-  		source: "(58:0) {#if !editing}",
+  		source: "(60:0) {#if !editing}",
   		ctx
   	});
 
@@ -4685,9 +4678,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			create_component(thread.$$.fragment);
   			t = space();
   			if_block.c();
-  			attr_dev(div, "class", div_class_value = "channel " + ctx.side + " svelte-wwdbt");
+  			attr_dev(div, "class", div_class_value = "channel " + ctx.side + " svelte-sdzbj1");
   			attr_dev(div, "style", ctx.$THEME_STYLE);
-  			add_location(div, file$6, 47, 0, 735);
+  			add_location(div, file$6, 49, 0, 737);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -4720,7 +4713,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   				}
   			}
 
-  			if (!current || changed.side && div_class_value !== (div_class_value = "channel " + ctx.side + " svelte-wwdbt")) {
+  			if (!current || changed.side && div_class_value !== (div_class_value = "channel " + ctx.side + " svelte-sdzbj1")) {
   				attr_dev(div, "class", div_class_value);
   			}
 

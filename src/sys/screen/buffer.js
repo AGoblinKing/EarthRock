@@ -68,8 +68,11 @@ export const snapshot = () => ({
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
   const buffs = blank()
+  const running = Wheel.running.get()
 
-  Object.values(Wheel.weaves.get()).forEach((weave) =>
+  Object.values(Wheel.weaves.get()).forEach((weave) => {
+    if (!running[weave.name.get()]) return
+
     Object.keys(weave.rezed.get()).forEach((id) => {
       const knot = weave.get_id(id)
 
@@ -97,7 +100,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
         const result = []
         for (let i = 0; i < def.length; i++) {
-          if (typeof value[i] !== `number`) {
+          if (typeof value[i] !== `number` || i >= value.length) {
             result.push(def[i])
             return
           }
@@ -115,7 +118,7 @@ tick.listen(() => requestAnimationFrame(() => {
       scale_last[id] = buffs.scale.slice(-1)
       buffs.scale_last.push(s_last)
     })
-  )
+  })
 
   Object.entries(buffs).forEach(([key, buff]) => {
     if (key === `position`) {

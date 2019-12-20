@@ -5,14 +5,10 @@ import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
 import { SPRITES } from "/sys/flag.js"
 
+import { snapshot } from "./buffer.js"
+
 const { m4 } = twgl
 const up = [0, 1, 0]
-
-const BUFFER_DEFAULTS = {
-  position: [-2, 3, 1],
-  sprite: [66],
-  scale: [1]
-}
 
 export default () => {
   const canvas = document.createElement(`canvas`)
@@ -34,39 +30,6 @@ export default () => {
     gl,
     sprite.get()
   )
-
-  const verts = twgl.primitives.createXYQuadVertices(1)
-
-  const buffer = {
-    ...Object.fromEntries(Object.entries(verts).map(
-      ([key, val]) => {
-        val.divisor = 0
-        return [key, val]
-      }
-    )),
-    translate: {
-      divisor: 1,
-      data: [],
-      numComponents: 3
-    },
-    sprite: {
-      numComponents: 1,
-      data: [],
-      divisor: 1
-    },
-    scale: {
-      numComponents: 1,
-      data: [],
-      divisor: 1
-    }
-  }
-
-  const snapshot = () => {
-    return {
-      count: 0,
-      buffer
-    }
-  }
 
   canvas.snap = write(snapshot())
 
@@ -94,16 +57,13 @@ export default () => {
     camera.set(c)
     m4.multiply(projection, view, view_projection)
 
-    const { buffer, count } = snapshot()
+    const snap = snapshot()
 
-    canvas.snap.set({
-      buffer,
-      count
-    })
+    if (snap.count < 1) return
 
     const u = {
       u_map: textures.map,
-      u_time: t * 0.001,
+      u_time: snap.time,
       u_sprite_size: 16,
       u_sprite_columns: 32,
       u_view_projection: view_projection
@@ -112,7 +72,7 @@ export default () => {
     try {
       const buffer_info = twgl.createBufferInfoFromArrays(
         gl,
-        buffer
+        snap.buffer
       )
 
       const vertex_info = twgl.createVertexArrayInfo(gl, program_info, buffer_info)
@@ -125,7 +85,7 @@ export default () => {
         programInfo: program_info,
         vertexArrayInfo: vertex_info,
         uniforms: u,
-        instanceCount: count
+        instanceCount: snap.count
       }])
     } catch (ex) {
       console.warn(`GPU ERROR ${ex}`)

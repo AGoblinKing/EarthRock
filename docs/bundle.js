@@ -1069,7 +1069,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;void main(){gl_FragColor=texture2D(u_map,v_sprite);}";
 
-  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;attribute vec3 translate;attribute float scale;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;void main(){float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);vec2 pos_scale=position*scale;vec2 coords=(pos_scale+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+translate.xzy;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
+  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;void main(){float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
 
   const breaker = (a) => a.map(i => `\r\n${i}`);
 
@@ -1109,6 +1109,132 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     look: look
   });
 
+  const blank = () => ({
+    position: [],
+    sprite: [],
+    scale: [],
+    translate_last: [],
+    scale_last: []
+  });
+  const defaults = Object.entries({
+    position: [0, 0, 0],
+    sprite: [66],
+    scale: [1]
+  });
+
+  const verts = twgl.primitives.createXYQuadVertices(1);
+
+  let count = 0;
+
+  const buffer = {
+    ...Object.fromEntries(Object.entries(verts).map(
+      ([key, val]) => {
+        val.divisor = 0;
+        return [key, val]
+      }
+    )),
+    translate_last: {
+      divisor: 1,
+      data: [],
+      numComponents: 3
+    },
+    translate: {
+      divisor: 1,
+      data: [],
+      numComponents: 3
+    },
+    sprite: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    scale: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    scale_last: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    }
+  };
+
+  const translate_last = {};
+  const scale_last = {};
+
+  let last_snap = Date.now();
+
+  const snapshot = () => ({
+    count,
+    buffer,
+    time: (Date.now() - last_snap) / TIME_TICK_RATE.get()
+  });
+
+  // RAF so it happens at end of frame
+  tick.listen(() => requestAnimationFrame(() => {
+    const buffs = blank();
+
+    Object.values(Wheel.weaves.get()).forEach((weave) =>
+      Object.keys(weave.rezed.get()).forEach((id) => {
+        const knot = weave.get_id(id);
+
+        // wtf a nonstitch is rezed
+        if (knot.knot.get() !== `stitch`) {
+          console.warn(`non stitch rezed`, weave, knot);
+          return
+        }
+        const vs = knot.value.get();
+
+        defaults.forEach(([key, def]) => {
+          if (!vs[key]) {
+            return buffs[key].push(...def)
+          }
+
+          let value = vs[key].get();
+
+          if (typeof value === `number`) {
+            value = [value];
+          }
+
+          if (!Array.isArray(value)) {
+            return buffs[key].push(...def)
+          }
+
+          const result = [];
+          for (let i = 0; i < def.length; i++) {
+            if (typeof value[i] !== `number`) {
+              result.push(def[i]);
+              return
+            }
+            result.push(value[i]);
+          }
+
+          buffs[key].push(...result);
+        });
+
+        const t_last = translate_last[id] || buffs.position.slice(-3);
+        translate_last[id] = buffs.position.slice(-3);
+        buffs.translate_last.push(...t_last);
+
+        const s_last = scale_last[id] || buffs.scale.slice(-1);
+        scale_last[id] = buffs.scale.slice(-1);
+        buffs.scale_last.push(s_last);
+      })
+    );
+
+    Object.entries(buffs).forEach(([key, buff]) => {
+      if (key === `position`) {
+        buffer.translate.data = buff;
+        return
+      }
+      buffer[key].data = buff;
+    });
+
+    count = buffer.sprite.data.length;
+    last_snap = Date.now();
+  }));
+
   const { m4 } = twgl;
   const up = [0, 1, 0];
 
@@ -1132,39 +1258,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
       gl,
       sprite$1.get()
     );
-
-    const verts = twgl.primitives.createXYQuadVertices(1);
-
-    const buffer = {
-      ...Object.fromEntries(Object.entries(verts).map(
-        ([key, val]) => {
-          val.divisor = 0;
-          return [key, val]
-        }
-      )),
-      translate: {
-        divisor: 1,
-        data: [],
-        numComponents: 3
-      },
-      sprite: {
-        numComponents: 1,
-        data: [],
-        divisor: 1
-      },
-      scale: {
-        numComponents: 1,
-        data: [],
-        divisor: 1
-      }
-    };
-
-    const snapshot = () => {
-      return {
-        count: 0,
-        buffer
-      }
-    };
 
     canvas.snap = write(snapshot());
 
@@ -1192,16 +1285,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
       camera.set(c);
       m4.multiply(projection, view, view_projection);
 
-      const { buffer, count } = snapshot();
+      const snap = snapshot();
 
-      canvas.snap.set({
-        buffer,
-        count
-      });
+      if (snap.count < 1) return
 
       const u = {
         u_map: textures.map,
-        u_time: t * 0.001,
+        u_time: snap.time,
         u_sprite_size: 16,
         u_sprite_columns: 32,
         u_view_projection: view_projection
@@ -1210,7 +1300,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
       try {
         const buffer_info = twgl.createBufferInfoFromArrays(
           gl,
-          buffer
+          snap.buffer
         );
 
         const vertex_info = twgl.createVertexArrayInfo(gl, program_info, buffer_info);
@@ -1223,7 +1313,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
           programInfo: program_info,
           vertexArrayInfo: vertex_info,
           uniforms: u,
-          instanceCount: count
+          instanceCount: snap.count
         }]);
       } catch (ex) {
         console.warn(`GPU ERROR ${ex}`);

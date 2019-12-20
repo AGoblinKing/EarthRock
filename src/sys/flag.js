@@ -1,6 +1,8 @@
 import { write, read } from "/util/store.js"
 import Color from "color"
 
+export const SPRITES = read(`/sheets/default_2.png`)
+
 export const IS_DEV = read(window.location.host === `localhost:5000`)
 export const SOUND_ON = write(false)
 

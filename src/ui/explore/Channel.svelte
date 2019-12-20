@@ -1,8 +1,8 @@
 <script>
+import SpriteEditor from "/ui/editor/SpriteEditor.svelte"
 import Thread from "./Thread.svelte"
 import { THEME_STYLE } from "/sys/flag.js"
 import color from "/ui/action/color.js"
-import { tick } from "/sys/time.js"
 
 export let stitch
 export let weave
@@ -13,20 +13,8 @@ export let executed = () => {}
 
 $: [key, value] = channel
 
-let display = null
-
 $: editing = focus
 let val = ``
-
-// avoid massive updates
-const update = (t) => {
-  if (t % 2 !== 0 || display === value.get()) return
-  display = value.get()
-}
-
-$: {
-  update($tick)
-}
 
 const execute = () => {
   editing = false
@@ -45,8 +33,6 @@ const focusd = (node) => {
 }
 </script>
 
-
-
 <div
   class="channel {side}"
   style={$THEME_STYLE}
@@ -61,11 +47,16 @@ const focusd = (node) => {
   <div class="key">
     {key}
   </div>
+
+  {#if key === `sprite`}
+    <SpriteEditor {value} />
+  {:else}
   <div class="value">
     {
-     JSON.stringify(display)
+     JSON.stringify($value)
     }
-  </div>
+    </div>
+  {/if}
 {:else}
   <input
     class="edit"
@@ -128,4 +119,5 @@ border-top: none !important;
 .channel:hover {
   color: white;
 }
+
 </style>

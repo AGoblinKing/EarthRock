@@ -1,9 +1,12 @@
 <script>
 import color from "/ui/action/color.js"
+import ThreadEditor from "/ui/editor/ThreadEditor.svelte"
+import Knot from "/ui/thread/Knot.svelte"
+
 import { tick } from "/sys/time.js"
 import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 
-import { translate, format, compile, condense } from "/weave/thread.js"
+import { translate, format, condense } from "/thread/thread.js"
 
 export let channel
 export let stitch
@@ -26,12 +29,9 @@ $: time_cut = $tick && Date.now() - 1000
 $: tru_thread = chain
 let edit = ``
 
-const focus = (node) => node.focus()
-
 const execute = () => {
   if (!editing) return
   editing = false
-  compile(edit, weave, address)
 }
 
 $:style = [
@@ -45,23 +45,13 @@ const do_edit = (e) => {
   if (weave.name.get() === Wheel.SYSTEM) return
   if (editing) return
   editing = true
-  edit = format(boxes)
+  edit = format(weave.chain(address).slice(0, -1).map((i) => translate(i, weave))
+    .join(` => `))
 }
 </script>
 
 {#if editing}
-<textarea
-  spellcheck="false"
-  class="edit"
-  type="text"
-  style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
-  use:focus
-  bind:value={edit}
-  on:click={(e) => e.stopPropagation()}
-  on:blur={(e) => {
-    execute()
-  }}
-/>
+  <ThreadEditor code={edit} ondone={execute} {weave} {address}/>
 {/if}
 
 <div
@@ -78,14 +68,14 @@ const do_edit = (e) => {
         {link}
       </div>
     {:else}
-      <div
-        class="thread"
-        {style}
-        use:color={condense(link, weave)}
-        class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
-      >
-        {condense(link, weave)}
-      </div>
+    <div
+      class="thread"
+      {style}
+      use:color={condense(link, weave)}
+      class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
+    >
+      <Knot {weave} id={link} />
+    </div>
     {/if}
   {/each}
 
@@ -110,7 +100,6 @@ const do_edit = (e) => {
 
 
 .thread {
-  padding: 0.5rem;
   white-space: nowrap;
   transition: all 100ms linear;
   margin-right: -0.2rem;
@@ -119,18 +108,6 @@ const do_edit = (e) => {
 
 .thread.active {
   text-decoration: underline;
-}
-
-.edit {
-  position: fixed;
-  left: 25%;
-  top: 20%;
-  width: 60rem;
-  height: 60rem;
-  z-index: 3;
-  margin: 0;
-  padding: 1rem;
-  color: rgb(224, 168, 83);
 }
 
 .thread:hover {

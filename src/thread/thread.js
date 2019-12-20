@@ -1,12 +1,18 @@
+// a textual representation of a WEAVE chain
+
 const knots = {
   stream: (k) => JSON.stringify(k.value.get()),
   math: (k) => k.math.get().trim(),
   mail: (k) => k.whom.get().trim(),
   default: (k) => k.knot.get(),
-  stitch: (k) => `./${k.name.get()}`
+  stitch: (k) => `./${k.name.get()}`,
+  sprite: (k) => `@${k.value.get()}`
 }
 
 const knots_is = {
+  sprite: (data) => {
+    return data[0] === `@`
+  },
   mail: (data) => {
     const ms = data.match(Wheel.REG_ID)
     if (!ms || ms.length !== 1) return false
@@ -35,7 +41,19 @@ const knots_create = {
   stream: (data) => ({
     knot: `stream`,
     value: JSON.parse(data)
-  })
+  }),
+  sprite: (data) => {
+    let i = parseInt(data.slice(1))
+
+    if (isNaN(i)) {
+      i = 66
+    }
+
+    return {
+      knot: `sprite`,
+      value: i
+    }
+  }
 }
 
 const what_is = (data) => {
@@ -44,11 +62,14 @@ const what_is = (data) => {
     const [type, fn] = entries[i]
     if (fn(data)) return type
   }
+
   return `math`
 }
 
-const knot_create = (data) =>
-  knots_create[what_is(data)](data)
+const knot_create = (data) => {
+  const what = what_is(data)
+  return knots_create[what](data)
+}
 
 export const translate = (k, weave) => {
   if (k[0] === `#`) return k
@@ -81,7 +102,7 @@ export const compile = (code, weave, address) => {
 
   let connection = address
 
-  // lets make a bunch of math knots
+  // lets create these knots
   parts.forEach((part) => {
     part = part.trim()
 
@@ -132,6 +153,7 @@ export const format = (txt) => {
 export const condense = (link, weave) => {
   const t = translate(link, weave).split(`;`)
   const v = t.pop().trim()
+
   return t.length > 0
     ? `#${t.length} ${v}`
     : v

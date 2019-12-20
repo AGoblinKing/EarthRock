@@ -1,10 +1,10 @@
 <script>
 import { github } from "/sys/file.js"
 
-import Omni from "./explore/Omni.svelte"
+import Omni from "/ui/explore/Omni.svelte"
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
-import Weave from "./explore/Weave.svelte"
+import Weave from "/ui/explore/Weave.svelte"
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 import { key } from "/sys/key.js"
 

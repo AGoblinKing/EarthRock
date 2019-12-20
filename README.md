@@ -3,6 +3,30 @@
 # Quick Start
 Navigate to [https://earthrock.run](https://earthrock.run) and have fun.
 
+## Spaces
+Paths beyond the URL https://earthrock.run make a unique SPACE. SPACE sticks around between reloads by storing in a local database.
+
+```
+https://earthrock.run/this is a SPACE
+https://earthrock.run/?this is also a SPACE
+```
+
+The default space is "" nothing.
+
+## Github Cloning
+Paths comprised of three / deliminated sections will be considered a Github path.
+
+```
+https://earthrock.run/agoblin/s/camera
+```
+
+This clones the SEED file from https://github.com/agoblin/s/master/camera.jpg and is a SPACE itself. You can also clone a  github repository into any SPACE by typing +agoblin/s/camera into the top most OMNI box. This doesn't keep it in sync automatically like the direct link does.
+
+## Seeds
+You can download a SEED from any WEAVE by pressing the icon on the right most on the WEAVE name banner.
+
+If you store these on a github repository you can then link them as detailed above.
+
 # EarthRock
   EarthRock is the first Isekai realm. It takes place 2000 years in the future on Venus after Mars and Earth destroy each other. The debris have collected into a thick net around Venus preventing space travel. Three species remain. Asgardian survivors from Mars, Midgardians from Earth, and the first settlers of Venus the self-aware quantum AI Dwarves.
 

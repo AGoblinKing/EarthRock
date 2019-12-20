@@ -23,7 +23,7 @@ $: image_src = Tile({
 
 {#await image_src then src }
 <img
-    class="tileset" 
+    class="tileset"
     alt="tileset image"
     {src}
 />

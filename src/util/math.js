@@ -27,5 +27,3 @@ export const math = (formula) => {
 
   return (variables) => p.evaluate(variables)
 }
-
-// math m = /sys/mouse/position; i = ./something/position; i[0] + m[0]

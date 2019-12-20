@@ -3,9 +3,17 @@ import { write } from "/util/store.js"
 import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
+import { SPRITES } from "/sys/flag.js"
 
 const { m4 } = twgl
 const up = [0, 1, 0]
+
+const BUFFER_DEFAULTS = {
+  position: [-2, 3, 1],
+  sprite: [66],
+  scale: [1]
+}
+
 export default () => {
   const canvas = document.createElement(`canvas`)
   canvas.width = 16 * 100
@@ -13,61 +21,22 @@ export default () => {
 
   const gl = canvas.getContext(`webgl`)
   twgl.addExtensionsToContext(gl)
+
   const textures = twgl.createTextures(gl, {
     map: {
-      src: `/sheets/default_2.png`,
+      src: SPRITES.get(),
       mag: gl.NEAREST,
       min: gl.LINEAR
     }
   })
-
-  const buffer_defaults = {
-    position: [-2, 3, 1],
-    sprite: [66],
-    color: [1.0, 1, 1, 1.0]
-  }
 
   const program_info = twgl.createProgramInfo(
     gl,
     sprite.get()
   )
 
-  const random = (min, max) => min + Math.random() * (max - min)
-  const set_random = (count, min = 0) => {
-    const result = []
-    for (let i = 0; i < count; i++) {
-      if (i % 4 === 0) {
-        result.push(1)
-      } else {
-        result.push(random(0, 0.5))
-      }
-    }
-    return result
-  }
-  const count = 8 * 8 * 8
-  const pos_ordered = () => {
-    const s = Math.cbrt(count)
-    const arr = [...Array(count * 3)].fill(0)
-    const half = s / 2
-
-    for (let x = 0; x < s; x++) {
-      for (let y = 0; y < s; y++) {
-        for (let z = 0; z < s; z++) {
-          const idx = (x + y * s + z * s * s) * 3
-          arr[idx] = (x - half)
-          arr[idx + 1] = (y - half) * 16
-          arr[idx + 2] = (z - half)
-        }
-      }
-    }
-
-    return arr
-  }
-
-  const set_count = () => [...Array(count)]
-    .map((_, idx) => idx)
-
   const verts = twgl.primitives.createXYQuadVertices(1)
+
   const buffer = {
     ...Object.fromEntries(Object.entries(verts).map(
       ([key, val]) => {
@@ -77,28 +46,25 @@ export default () => {
     )),
     translate: {
       divisor: 1,
-      data: pos_ordered(),
+      data: [],
       numComponents: 3
     },
     sprite: {
       numComponents: 1,
-      data: set_count(),
+      data: [],
       divisor: 1
     },
-    color: {
-      numComponents: 4,
-      data: set_random(4 * count),
+    scale: {
+      numComponents: 1,
+      data: [],
       divisor: 1
     }
   }
 
-  console.log(buffer)
   const snapshot = () => {
-    const uniforms = {}
-
     return {
-      buffer,
-      uniforms
+      count: 0,
+      buffer
     }
   }
 
@@ -110,6 +76,8 @@ export default () => {
   // lifecycle on knot
   canvas.cancel = frame.subscribe(([time, t]) => {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+
+    // see what these are about
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -126,14 +94,14 @@ export default () => {
     camera.set(c)
     m4.multiply(projection, view, view_projection)
 
-    const { buffer, uniforms } = snapshot()
+    const { buffer, count } = snapshot()
+
     canvas.snap.set({
       buffer,
-      uniforms
+      count
     })
 
     const u = {
-      ...uniforms,
       u_map: textures.map,
       u_time: t * 0.001,
       u_sprite_size: 16,

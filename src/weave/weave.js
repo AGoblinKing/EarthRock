@@ -115,11 +115,11 @@ export default ({
     })
   })
 
-  w.get_knot = (id) => w.knots.get()[id]
+  w.get_id = (id) => w.knots.get()[id]
   w.to_address = (id_path) => {
     const [knot] = id_path.split(`/`)
 
-    const k = w.get_knot(knot)
+    const k = w.get_id(knot)
     if (!k || !k.name) return `/sys/void`
 
     return `/${w.name.get()}/${k.name.get()}`

@@ -4964,7 +4964,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			create_component(knot.$$.fragment);
   			t = space();
-  			attr_dev(div, "class", "thread svelte-6ybmyv");
+  			attr_dev(div, "class", "thread svelte-ecbq6y");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
   			add_location(div, file$8, 70, 4, 1506);
@@ -5032,7 +5032,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-6ybmyv");
+  			attr_dev(div, "class", "thread svelte-ecbq6y");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
   			add_location(div, file$8, 62, 6, 1317);
@@ -5180,9 +5180,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   			t1 = space();
   			div1 = element("div");
-  			attr_dev(div0, "class", "spot svelte-6ybmyv");
+  			attr_dev(div0, "class", "spot svelte-ecbq6y");
   			add_location(div0, file$8, 56, 0, 1213);
-  			attr_dev(div1, "class", "cap svelte-6ybmyv");
+  			attr_dev(div1, "class", "cap svelte-ecbq6y");
   			add_location(div1, file$8, 83, 0, 1734);
 
   			dispose = [

@@ -101,13 +101,14 @@ const do_edit = (e) => {
 
 .thread {
   white-space: nowrap;
-  transition: all 100ms linear;
+  transition: all 250ms ease-in-out;
   margin-right: -0.2rem;
   border-radius: 0.25rem;
+   outline: 0.25rem solid rgba(0, 217, 255, 0);
 }
 
 .thread.active {
-  text-decoration: underline;
+  outline: 0.25rem solid rgba(255, 115, 0, 0.25);
 }
 
 .thread:hover {

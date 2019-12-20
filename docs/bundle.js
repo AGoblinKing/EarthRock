@@ -256,6 +256,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     value: write(value)
   });
 
+  twgl.v3.setDefaultType(Array);
+
   const parser = new expr.Parser({
     in: true,
     assignment: true
@@ -304,13 +306,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     const math_run = (expression) => requestAnimationFrame(() => {
       const matches = expression.match(Wheel.REG_ID);
       const vs = {};
-      const s = weave.to_address(weave.chain(id, true).pop());
+      const leaf = weave.chain(id, true).shift();
+      const s = weave.to_address(leaf);
 
       new Set(matches).forEach((item) => {
         const shh = item[0] === `$`;
         const gette = item
-          .replace(`.`, s)
-          .replace(`~`, `/${weave.name.get()}`)
+          .replace(`./`, `${s}/`)
+          .replace(`~/`, `/${weave.name.get()}/`)
           .replace(`$`, ``)
           .trim();
 
@@ -356,7 +359,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     });
 
     const set = m.value.set;
-    let last_val = null;
     m.value.set = (val) => {
       const vs = values.get();
       val = val === undefined
@@ -374,13 +376,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
           v: val
         });
         set(result);
-        last_val = val;
         return m.value
       } catch (ex) {
 
       }
     };
     m.math.set(math$1);
+
     life(() => {
       math_run(m.math.get());
       const cancels = new Set();
@@ -401,6 +403,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
         cancels.forEach((cancel) => cancel());
       }
     });
+
     return m
   };
 
@@ -1116,9 +1119,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     translate_last: [],
     scale_last: []
   });
+
   const defaults = Object.entries({
     position: [0, 0, 0],
-    sprite: [66],
+    sprite: [335],
     scale: [1]
   });
 
@@ -1287,7 +1291,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
       const snap = snapshot();
 
-      if (snap.count < 1) return
+      if (snap.count < 1) {
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        return
+      }
 
       const u = {
         u_map: textures.map,

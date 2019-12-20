@@ -9,9 +9,10 @@ const blank = () => ({
   translate_last: [],
   scale_last: []
 })
+
 const defaults = Object.entries({
   position: [0, 0, 0],
-  sprite: [66],
+  sprite: [335],
   scale: [1]
 })
 

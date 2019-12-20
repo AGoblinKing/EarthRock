@@ -59,7 +59,11 @@ export default () => {
 
     const snap = snapshot()
 
-    if (snap.count < 1) return
+    if (snap.count < 1) {
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      return
+    }
 
     const u = {
       u_map: textures.map,

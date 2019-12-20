@@ -1,6 +1,8 @@
 import expr from "expr-eval"
 import { v3, m4 } from "twgl"
 
+v3.setDefaultType(Array)
+
 export const parser = new expr.Parser({
   in: true,
   assignment: true

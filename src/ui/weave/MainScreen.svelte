@@ -7,11 +7,11 @@ const toggle = () => {
   full = !full
 }
 
+let c
 const insert = (node) => ({
   destroy: main.subscribe((canvas) => {
     if (!canvas || !canvas.style) return
-    canvas.style.flex = 1
-
+    c = canvas
     while (node.firstChild) {
       node.removeChild(node.firstChild)
     }
@@ -19,30 +19,32 @@ const insert = (node) => ({
     node.appendChild(canvas)
   })
 })
+
 const sizer = (node) => ({
   destroy: size.listen(([w, h]) => {
-    const s = w > h
-      ? h
-      : w
+    const s = w < h
+      ? w
+      : h
 
-    node.style.width = node.style.height = `${s}px`
+    if (c) {
+      c.width = w
+      c.height = h
+    }
   })
 })
 </script>
 
-<div 
-  class="main" 
-  class:full 
+<div
+  class="main"
+  class:full
   use:insert
+  use:sizer
   on:click={toggle}
-> 
+>
 
 </div>
 
 <style>
-.resize {
-  display: flex;
-}
 
 .main {
   z-index: 1;
@@ -56,9 +58,5 @@ const sizer = (node) => ({
   align-items: center;
   justify-content: center;
   display: flex;
-}
-
-.main canvas {
-  flex: 1;
 }
 </style>

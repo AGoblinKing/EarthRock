@@ -3,17 +3,31 @@ import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 
 const blank = () => ({
-  position: [],
   sprite: [],
+
+  position: [],
+  position_last: [],
+
   scale: [],
-  translate_last: [],
-  scale_last: []
+  scale_last: [],
+
+  color: [],
+  color_last: [],
+
+  alpha: [],
+  alpha_last: [],
+
+  rotation: [],
+  rotation_last: []
 })
 
 const defaults = Object.entries({
   position: [0, 0, 0],
   sprite: [335],
-  scale: [1]
+  scale: [1],
+  color: [0xFFFFFF],
+  rotation: [0],
+  alpha: [1]
 })
 
 const verts = twgl.primitives.createXYQuadVertices(1)
@@ -37,6 +51,36 @@ const buffer = {
     data: [],
     numComponents: 3
   },
+  rotation: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
+  rotation_last: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
+  alpha: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
+  alpha_last: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
+  color: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
+  color_last: {
+    numComponents: 1,
+    data: [],
+    divisor: 1
+  },
   sprite: {
     numComponents: 1,
     data: [],
@@ -54,8 +98,13 @@ const buffer = {
   }
 }
 
-const translate_last = {}
-const scale_last = {}
+const last = {
+  position: {},
+  scale: {},
+  alpha: {},
+  color: {},
+  rotation: {}
+}
 
 let last_snap = Date.now()
 
@@ -69,6 +118,12 @@ export const snapshot = () => ({
 tick.listen(() => requestAnimationFrame(() => {
   const buffs = blank()
   const running = Wheel.running.get()
+
+  const set_last = (key, id, count = 1) => {
+    const key_last = last[key][id] || buffs[key].slice(-count)
+    last[key][id] = buffs[key].slice(-count)
+    buffs[`${key}_last`].push(...key_last)
+  }
 
   Object.values(Wheel.weaves.get()).forEach((weave) => {
     if (!running[weave.name.get()]) return
@@ -110,13 +165,11 @@ tick.listen(() => requestAnimationFrame(() => {
         buffs[key].push(...result)
       })
 
-      const t_last = translate_last[id] || buffs.position.slice(-3)
-      translate_last[id] = buffs.position.slice(-3)
-      buffs.translate_last.push(...t_last)
-
-      const s_last = scale_last[id] || buffs.scale.slice(-1)
-      scale_last[id] = buffs.scale.slice(-1)
-      buffs.scale_last.push(s_last)
+      set_last(`position`, id, 3)
+      set_last(`scale`, id)
+      set_last(`alpha`, id)
+      set_last(`rotation`, id)
+      set_last(`color`, id)
     })
   })
 
@@ -125,6 +178,11 @@ tick.listen(() => requestAnimationFrame(() => {
       buffer.translate.data = buff
       return
     }
+    if (key === `position_last`) {
+      buffer.translate_last.data = buff
+      return
+    }
+
     buffer[key].data = buff
   })
 

@@ -23,7 +23,7 @@ export const dark = (node, txt) => {
   const update = () => {
     node.style.backgroundColor = Color(color(JSON.stringify(txt)))
       .blend(Color(THEME_BG.get()), 0.8)
-      .darkenByRatio(0.5)
+      .darkenByRatio(0.2)
   }
 
   update()

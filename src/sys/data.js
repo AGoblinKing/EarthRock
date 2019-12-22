@@ -3,7 +3,7 @@ import { path } from "/sys/path.js"
 import { github } from "/sys/file.js"
 import { write } from "/util/store.js"
 
-const VERSION = 1
+const VERSION = 2
 const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60)
 let db
 
@@ -13,9 +13,7 @@ export const data = new Promise((resolve) => {
 
   req.onupgradeneeded = async (e) => {
     db = e.target.result
-    db.createObjectStore(`wheel`, { keyPath: `name` })
-
-    resolve(db)
+    await db.createObjectStore(`wheel`, { keyPath: `name` })
   }
 
   req.onsuccess = (e) => {

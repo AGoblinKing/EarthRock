@@ -6,7 +6,6 @@ import * as knots from "./knots.js"
 export default ({
   id = uuid(),
   knot,
-
   ...rest
 } = false) => {
   const k = {
@@ -15,7 +14,7 @@ export default ({
         ...rest,
         id
       })
-      : { knot: read(knot) }
+      : { knot: read(knot || `unknown`) }
     ),
 
     id: read(id),

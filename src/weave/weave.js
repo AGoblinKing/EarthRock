@@ -213,7 +213,6 @@ export default ({
       const k = $names[key]
 
       if (!k) {
-        console.log(`adding`, key, data)
         data.name = key
         w.add(data)
         return

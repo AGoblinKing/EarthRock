@@ -8,10 +8,19 @@ import Weave from "/ui/explore/Weave.svelte"
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 import { key } from "/sys/key.js"
 
+let do_hide
 key.listen((char) => {
   if (char !== `\``) return
   hidden = !hidden
+  do_hide && clearTimeout(do_hide)
+
+  do_hide = setTimeout(() => {
+    hide = hidden
+    do_hide = false
+  })
 })
+
+let hide = false
 
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
@@ -51,8 +60,9 @@ const sides = [`in`]
 </script>
 
 <MainScreen />
-<Picker />
+<Picker>
 
+{#if !hide}
 {#each sides as side}
 <div
   class="explore {side}"
@@ -82,6 +92,8 @@ const sides = [`in`]
   </div>
 </div>
 {/each}
+{/if}
+</Picker>
 <style>
 
 .logo {
@@ -107,15 +119,14 @@ const sides = [`in`]
   width: 20%;
   display: flex;
   flex-direction: column;
-
 }
+
 .explore {
-  scrollbar-color: #333;
-  scrollbar-width: 1rem;
-  pointer-events: none;
   position: absolute;
   align-items: flex-end;
   font-size: 1.5rem;
+   scrollbar-color: #333;
+  scrollbar-width: 1rem;
   scroll-behavior: smooth;
   overflow-y: auto;
   left: 0;
@@ -124,7 +135,7 @@ const sides = [`in`]
   bottom: 0;
   display: flex;
   flex-direction: column;
-  z-index: 1001;
+  z-index: 5;
   transition: all 50ms linear;
 }
 

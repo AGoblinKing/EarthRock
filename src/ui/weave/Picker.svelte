@@ -99,7 +99,7 @@ let name
   on:drop={drop}
   on:dragover={over(true)}
   on:dragleave={over(false)}
-/>
+><slot/></div>
 
 <input
   type="file"
@@ -117,6 +117,7 @@ let name
   height: 10rem;
   display: flex;
   width: 10rem;
+  border: 0.2rem solid black;
 }
 .nameit {
   background-color: #111;
@@ -132,13 +133,11 @@ let name
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 6;
+  z-index: 4;
   width: 100%;
   color: #0c4213;
   height: 100%;
-  transition: all 250ms cubic-bezier(0.075, 0.82, 0.165, 1);
 }
-
 
 .controls {
   display: flex;

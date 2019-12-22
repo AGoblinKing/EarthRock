@@ -72,7 +72,7 @@ const knot_create = (data) => {
 }
 
 export const translate = (k, weave) => {
-  if (k[0] === `#`) return k
+  if (k[0] === `{`) return k
 
   const knot = weave.knots.get()[k]
   if (!knot) return `stitch`
@@ -155,6 +155,6 @@ export const condense = (link, weave) => {
   const v = t.pop().trim()
 
   return t.length > 0
-    ? `#${t.length} ${v}`
+    ? `{${t.length}} ${v}`
     : v
 }

@@ -12,6 +12,12 @@ import * as camera from "/sys/camera.js"
 // private sytems
 import "/sys/data.js"
 
+const normalize = (sys) => Object.fromEntries(Object.entries(flag).map(
+  ([key, entry]) => [
+    key.replace(/_/g, ` `).toLowerCase(),
+    entry
+  ]
+))
 const tie = (items) =>
   Object.entries(items)
     .reduce((result, [key, value]) => ({
@@ -32,7 +38,7 @@ export default Weave({
     screen,
     input,
     key,
-    flag,
+    flag: normalize(flag),
     camera
   })
 })

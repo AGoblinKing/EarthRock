@@ -1,17 +1,27 @@
 import * as twgl from "twgl"
+import Color from "color"
+
 import { write } from "/util/store.js"
 import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
-import { SPRITES } from "/sys/flag.js"
+import { SPRITES, CLEAR_COLOR } from "/sys/flag.js"
 
 import { snapshot } from "./buffer.js"
+
+let clear_color = [0, 0, 0, 1]
+
+CLEAR_COLOR.listen((txt) => {
+  const { red, green, blue } = Color(txt).toRGB()
+  clear_color = [red, green, blue, 1]
+})
 
 const { m4 } = twgl
 const up = [0, 1, 0]
 
 export default () => {
   const canvas = document.createElement(`canvas`)
+
   canvas.width = 16 * 100
   canvas.height = 16 * 100
 
@@ -37,16 +47,17 @@ export default () => {
   const view_projection = m4.identity()
 
   // lifecycle on knot
-  canvas.cancel = frame.subscribe(([time, t]) => {
+  canvas.cancel = frame.listen(([time, t]) => {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
     // see what these are about
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    const r = canvas.width / canvas.height
 
     const projection = twgl.m4.ortho(
-      -10, 10, 10, -10, -100, 50
+      -10 * r, 10 * r, 10, -10, -100, 50
     )
 
     const c = camera.get()
@@ -59,9 +70,10 @@ export default () => {
 
     const snap = snapshot()
 
+    gl.clearColor(...clear_color)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
     if (snap.count < 1) {
-      gl.clearColor(0, 0, 0, 0)
-      gl.clear(gl.COLOR_BUFFER_BIT)
       return
     }
 

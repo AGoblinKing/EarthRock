@@ -54,12 +54,13 @@ const do_edit = (e) => {
   <ThreadEditor code={edit} ondone={execute} {weave} {address}/>
 {/if}
 
+{#if tru_thread.length > 0}
 <div
   class="spot"
   on:click={do_edit}
 >
   {#each tru_thread as link}
-    {#if link[0] === `#`}
+    {#if link[0] === `{`}
       <div
         class="thread"
         {style}
@@ -78,9 +79,8 @@ const do_edit = (e) => {
     </div>
     {/if}
   {/each}
-
 </div>
-
+{/if}
 <div
   class="cap"
   on:click={do_edit}
@@ -104,11 +104,13 @@ const do_edit = (e) => {
   transition: all 250ms ease-in-out;
   margin-right: -0.2rem;
   border-radius: 0.25rem;
-   outline: 0.25rem solid rgba(0, 217, 255, 0);
+  box-shadow: 0.25rem 0.25rem 0 rgba(0, 217, 255, 0),
+  -0.25rem -0.25rem 0 rgba(0, 217, 255, 0);
 }
 
 .thread.active {
-  outline: 0.25rem solid rgba(255, 115, 0, 0.25);
+  box-shadow: 0.25rem 0.25rem 0 rgba(255, 115, 0, 0.25),
+  -0.25rem -0.25rem 0 rgba(255, 115, 0, 0.25);
 }
 
 .thread:hover {
@@ -120,7 +122,6 @@ const do_edit = (e) => {
   border-right: 0.25rem solid rgba(255,255,255,0.0.5);
   padding: 0.5rem;
   z-index: 2;
-
 }
 .cap:hover {
   background-color: rgba(255, 255, 255, 0.25);

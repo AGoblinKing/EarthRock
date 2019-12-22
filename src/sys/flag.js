@@ -22,6 +22,7 @@ export const TILE_COLUMNS = read(32)
 export const THEME_COLOR = write(`rgb(224, 168, 83)`)
 export const THEME_BG = write(`#033`)
 export const THEME_GLOW = write(`green`)
+export const CLEAR_COLOR = write(`#023d55`)
 
 export const THEME_BORDER = read(``, (set) =>
   THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
@@ -33,7 +34,7 @@ export const THEME_STYLE = read(``, (set) => {
   let $THEME_BORDER = ``
 
   const update = () => set([
-    `border: 0.25rem solid ${$THEME_BORDER};`
+    `border: 0.2rem solid ${$THEME_BORDER};`
   ].join(``))
 
   THEME_BORDER.listen(($val) => {

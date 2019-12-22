@@ -130,6 +130,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   const THEME_COLOR = write(`rgb(224, 168, 83)`);
   const THEME_BG = write(`#033`);
   const THEME_GLOW = write(`green`);
+  const CLEAR_COLOR = write(`#023d55`);
 
   const THEME_BORDER = read(``, (set) =>
     THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
@@ -141,7 +142,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     let $THEME_BORDER = ``;
 
     const update = () => set([
-      `border: 0.25rem solid ${$THEME_BORDER};`
+      `border: 0.2rem solid ${$THEME_BORDER};`
     ].join(``));
 
     THEME_BORDER.listen(($val) => {
@@ -166,6 +167,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     THEME_COLOR: THEME_COLOR,
     THEME_BG: THEME_BG,
     THEME_GLOW: THEME_GLOW,
+    CLEAR_COLOR: CLEAR_COLOR,
     THEME_BORDER: THEME_BORDER,
     THEME_STYLE: THEME_STYLE
   });
@@ -229,6 +231,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     }).set(name)
   });
 
+  const json = (v) => {
+    if (v.indexOf(`.`) === -1) {
+      const n = parseInt(v);
+      if (typeof n === `number` && !isNaN(n)) {
+        return n
+      }
+    }
+
+    return JSON.parse(v)
+  };
+
   var stream = ({
     value = null
   }) => {
@@ -237,11 +250,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
     v.set = (val) => {
       try {
-        set(JSON.parse(val));
+        set(json(val));
       } catch (ex) {
         set(val);
       }
     };
+
     v.set(value);
     return ({
       knot: read(`stream`),
@@ -502,7 +516,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   var Knot = ({
     id = uuid(),
     knot,
-
     ...rest
   } = false) => {
     const k = {
@@ -511,7 +524,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
           ...rest,
           id
         })
-        : { knot: read(knot) }
+        : { knot: read(knot || `unknown`) }
       ),
 
       id: read(id),
@@ -728,7 +741,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
         const k = $names[key];
 
         if (!k) {
-          console.log(`adding`, key, data);
           data.name = key;
           w.add(data);
           return
@@ -1070,9 +1082,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     frame: frame
   });
 
-  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;void main(){gl_FragColor=texture2D(u_map,v_sprite);}";
+  var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite)*v_color;}";
 
-  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;void main(){float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
+  var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float rotation;attribute float rotation_last;attribute float alpha;attribute float alpha_last;attribute float color;attribute float color_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;varying vec4 v_color;void main(){v_color=mix(vec4(color_last/256.0/256.0,mod(color_last/256.0,256.0),mod(color_last,256.0),alpha_last),vec4(color/256.0/256.0,mod(color/256.0,256.0),mod(color,256.0),alpha),u_time);float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
 
   const breaker = (a) => a.map(i => `\r\n${i}`);
 
@@ -1113,17 +1125,31 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   });
 
   const blank = () => ({
-    position: [],
     sprite: [],
+
+    position: [],
+    position_last: [],
+
     scale: [],
-    translate_last: [],
-    scale_last: []
+    scale_last: [],
+
+    color: [],
+    color_last: [],
+
+    alpha: [],
+    alpha_last: [],
+
+    rotation: [],
+    rotation_last: []
   });
 
   const defaults = Object.entries({
     position: [0, 0, 0],
     sprite: [335],
-    scale: [1]
+    scale: [1],
+    color: [0xFFFFFF],
+    rotation: [0],
+    alpha: [1]
   });
 
   const verts = twgl.primitives.createXYQuadVertices(1);
@@ -1147,6 +1173,36 @@ var app = (function (Color, uuid, expr, twgl, exif) {
       data: [],
       numComponents: 3
     },
+    rotation: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    rotation_last: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    alpha: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    alpha_last: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    color: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
+    color_last: {
+      numComponents: 1,
+      data: [],
+      divisor: 1
+    },
     sprite: {
       numComponents: 1,
       data: [],
@@ -1164,8 +1220,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     }
   };
 
-  const translate_last = {};
-  const scale_last = {};
+  const last = {
+    position: {},
+    scale: {},
+    alpha: {},
+    color: {},
+    rotation: {}
+  };
 
   let last_snap = Date.now();
 
@@ -1179,6 +1240,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   tick.listen(() => requestAnimationFrame(() => {
     const buffs = blank();
     const running = Wheel.running.get();
+
+    const set_last = (key, id, count = 1) => {
+      const key_last = last[key][id] || buffs[key].slice(-count);
+      last[key][id] = buffs[key].slice(-count);
+      buffs[`${key}_last`].push(...key_last);
+    };
 
     Object.values(Wheel.weaves.get()).forEach((weave) => {
       if (!running[weave.name.get()]) return
@@ -1220,13 +1287,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
           buffs[key].push(...result);
         });
 
-        const t_last = translate_last[id] || buffs.position.slice(-3);
-        translate_last[id] = buffs.position.slice(-3);
-        buffs.translate_last.push(...t_last);
-
-        const s_last = scale_last[id] || buffs.scale.slice(-1);
-        scale_last[id] = buffs.scale.slice(-1);
-        buffs.scale_last.push(s_last);
+        set_last(`position`, id, 3);
+        set_last(`scale`, id);
+        set_last(`alpha`, id);
+        set_last(`rotation`, id);
+        set_last(`color`, id);
       });
     });
 
@@ -1235,6 +1300,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
         buffer.translate.data = buff;
         return
       }
+      if (key === `position_last`) {
+        buffer.translate_last.data = buff;
+        return
+      }
+
       buffer[key].data = buff;
     });
 
@@ -1242,11 +1312,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     last_snap = Date.now();
   }));
 
+  let clear_color = [0, 0, 0, 1];
+
+  CLEAR_COLOR.listen((txt) => {
+    const { red, green, blue } = Color(txt).toRGB();
+    clear_color = [red, green, blue, 1];
+  });
+
   const { m4 } = twgl;
   const up = [0, 1, 0];
 
   var webgl = () => {
     const canvas = document.createElement(`canvas`);
+
     canvas.width = 16 * 100;
     canvas.height = 16 * 100;
 
@@ -1272,16 +1350,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     const view_projection = m4.identity();
 
     // lifecycle on knot
-    canvas.cancel = frame.subscribe(([time, t]) => {
+    canvas.cancel = frame.listen(([time, t]) => {
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
       // see what these are about
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      const r = canvas.width / canvas.height;
 
       const projection = twgl.m4.ortho(
-        -10, 10, 10, -10, -100, 50
+        -10 * r, 10 * r, 10, -10, -100, 50
       );
 
       const c = camera.get();
@@ -1294,9 +1373,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
       const snap = snapshot();
 
+      gl.clearColor(...clear_color);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
       if (snap.count < 1) {
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
         return
       }
 
@@ -1967,7 +2047,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   var FileSaver_min = createCommonjsModule(function (module, exports) {
   (function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-
+  //# sourceMappingURL=FileSaver.min.js.map
   });
 
   const SIZE = 16;
@@ -2170,7 +2250,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     })
   };
 
-  const VERSION = 1;
+  const VERSION = 2;
   const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60);
   let db;
 
@@ -2180,9 +2260,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
     req.onupgradeneeded = async (e) => {
       db = e.target.result;
-      db.createObjectStore(`wheel`, { keyPath: `name` });
-
-      resolve(db);
+      await db.createObjectStore(`wheel`, { keyPath: `name` });
     };
 
     req.onsuccess = (e) => {
@@ -2286,6 +2364,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     }
   });
 
+  const normalize$1 = (sys) => Object.fromEntries(Object.entries(flag).map(
+    ([key, entry]) => [
+      key.replace(/_/g, ` `).toLowerCase(),
+      entry
+    ]
+  ));
   const tie = (items) =>
     Object.entries(items)
       .reduce((result, [key, value]) => ({
@@ -2306,7 +2390,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
       screen,
       input,
       key: key$1,
-      flag,
+      flag: normalize$1(),
       camera: camera$1
     })
   });
@@ -2352,6 +2436,22 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   }
   function component_subscribe(component, store, callback) {
       component.$$.on_destroy.push(subscribe(store, callback));
+  }
+  function create_slot(definition, ctx, fn) {
+      if (definition) {
+          const slot_ctx = get_slot_context(definition, ctx, fn);
+          return definition[0](slot_ctx);
+      }
+  }
+  function get_slot_context(definition, ctx, fn) {
+      return definition[1]
+          ? assign({}, assign(ctx.$$scope.ctx, definition[1](fn ? fn(ctx) : {})))
+          : ctx.$$scope.ctx;
+  }
+  function get_slot_changes(definition, ctx, changed, fn) {
+      return definition[1]
+          ? assign({}, assign(ctx.$$scope.changed || {}, definition[1](fn ? fn(changed) : {})))
+          : ctx.$$scope.changed || {};
   }
 
   function append(target, node) {
@@ -3437,7 +3537,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     const update = () => {
       node.style.backgroundColor = Color(color(JSON.stringify(txt)))
         .blend(Color(THEME_BG.get()), 0.8)
-        .darkenByRatio(0.5);
+        .darkenByRatio(0.2);
     };
 
     update();
@@ -3498,19 +3598,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div2 = element("div");
   			div2.textContent = "Plant";
   			add_location(h2, file$3, 70, 2, 1213);
-  			attr_dev(div0, "class", "spirit svelte-qn01e5");
+  			attr_dev(div0, "class", "spirit svelte-5xych8");
   			add_location(div0, file$3, 72, 2, 1234);
-  			attr_dev(input, "class", "nameit svelte-qn01e5");
+  			attr_dev(input, "class", "nameit svelte-5xych8");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "Name it");
   			add_location(input, file$3, 78, 2, 1362);
-  			attr_dev(div1, "class", "false svelte-qn01e5");
+  			attr_dev(div1, "class", "false svelte-5xych8");
   			add_location(div1, file$3, 89, 4, 1567);
-  			attr_dev(div2, "class", "true svelte-qn01e5");
+  			attr_dev(div2, "class", "true svelte-5xych8");
   			add_location(div2, file$3, 90, 4, 1639);
-  			attr_dev(div3, "class", "controls svelte-qn01e5");
+  			attr_dev(div3, "class", "controls svelte-5xych8");
   			add_location(div3, file$3, 88, 2, 1540);
-  			attr_dev(div4, "class", "nameprompt svelte-qn01e5");
+  			attr_dev(div4, "class", "nameprompt svelte-5xych8");
   			add_location(div4, file$3, 66, 0, 1158);
 
   			dispose = [
@@ -3596,7 +3696,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	const block = {
   		c: function create() {
   			img = element("img");
-  			attr_dev(img, "class", "flex svelte-qn01e5");
+  			attr_dev(img, "class", "flex svelte-5xych8");
   			if (img.src !== (img_src_value = ctx.src)) attr_dev(img, "src", img_src_value);
   			attr_dev(img, "alt", "fileicon");
   			add_location(img, file$3, 74, 6, 1295);
@@ -3645,22 +3745,26 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	let div;
   	let t1;
   	let input;
+  	let current;
   	let dispose;
   	let if_block = ctx.nameit && create_if_block(ctx);
+  	const default_slot_template = ctx.$$slots.default;
+  	const default_slot = create_slot(default_slot_template, ctx, null);
 
   	const block = {
   		c: function create() {
   			if (if_block) if_block.c();
   			t0 = space();
   			div = element("div");
+  			if (default_slot) default_slot.c();
   			t1 = space();
   			input = element("input");
-  			attr_dev(div, "class", "picker svelte-qn01e5");
+  			attr_dev(div, "class", "picker svelte-5xych8");
   			add_location(div, file$3, 95, 0, 1711);
   			attr_dev(input, "type", "file");
-  			attr_dev(input, "class", "file svelte-qn01e5");
+  			attr_dev(input, "class", "file svelte-5xych8");
   			input.multiple = "multiple";
-  			add_location(input, file$3, 103, 0, 1811);
+  			add_location(input, file$3, 103, 0, 1823);
 
   			dispose = [
   				listen_dev(div, "drop", ctx.drop, false, false, false),
@@ -3676,9 +3780,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			if (if_block) if_block.m(target, anchor);
   			insert_dev(target, t0, anchor);
   			insert_dev(target, div, anchor);
+
+  			if (default_slot) {
+  				default_slot.m(div, null);
+  			}
+
   			insert_dev(target, t1, anchor);
   			insert_dev(target, input, anchor);
   			ctx.input_binding(input);
+  			current = true;
   		},
   		p: function update(changed, ctx) {
   			if (ctx.nameit) {
@@ -3693,13 +3803,25 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   				if_block.d(1);
   				if_block = null;
   			}
+
+  			if (default_slot && default_slot.p && changed.$$scope) {
+  				default_slot.p(get_slot_changes(default_slot_template, ctx, changed, null), get_slot_context(default_slot_template, ctx, null));
+  			}
   		},
-  		i: noop,
-  		o: noop,
+  		i: function intro(local) {
+  			if (current) return;
+  			transition_in(default_slot, local);
+  			current = true;
+  		},
+  		o: function outro(local) {
+  			transition_out(default_slot, local);
+  			current = false;
+  		},
   		d: function destroy(detaching) {
   			if (if_block) if_block.d(detaching);
   			if (detaching) detach_dev(t0);
   			if (detaching) detach_dev(div);
+  			if (default_slot) default_slot.d(detaching);
   			if (detaching) detach_dev(t1);
   			if (detaching) detach_dev(input);
   			ctx.input_binding(null);
@@ -3773,6 +3895,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	};
 
   	let name;
+  	let { $$slots = {}, $$scope } = $$props;
 
   	function input_input_handler() {
   		name = this.value;
@@ -3796,6 +3919,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   	const change_handler = e => {
   		console.log(e.dataTransfer, e.target);
+  	};
+
+  	$$self.$set = $$props => {
+  		if ("$$scope" in $$props) $$invalidate("$$scope", $$scope = $$props.$$scope);
   	};
 
   	$$self.$capture_state = () => {
@@ -3825,7 +3952,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		keydown_handler,
   		click_handler,
   		input_binding,
-  		change_handler
+  		change_handler,
+  		$$slots,
+  		$$scope
   	};
   }
 
@@ -3849,14 +3978,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   function create_fragment$4(ctx) {
   	let div;
   	let insert_action;
+  	let sizer_action;
   	let dispose;
 
   	const block = {
   		c: function create() {
   			div = element("div");
-  			attr_dev(div, "class", "main svelte-ipuen4");
+  			attr_dev(div, "class", "main svelte-cng64o");
   			toggle_class(div, "full", ctx.full);
-  			add_location(div, file$4, 32, 0, 546);
+  			add_location(div, file$4, 36, 0, 545);
   			dispose = listen_dev(div, "click", ctx.toggle, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -3865,6 +3995,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
   			insert_action = ctx.insert.call(null, div) || ({});
+  			sizer_action = ctx.sizer.call(null, div) || ({});
   		},
   		p: function update(changed, ctx) {
   			if (changed.full) {
@@ -3876,6 +4007,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		d: function destroy(detaching) {
   			if (detaching) detach_dev(div);
   			if (insert_action && is_function(insert_action.destroy)) insert_action.destroy();
+  			if (sizer_action && is_function(sizer_action.destroy)) sizer_action.destroy();
   			dispose();
   		}
   	};
@@ -3898,16 +4030,28 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		$$invalidate("full", full = !full);
   	};
 
+  	let c;
+
   	const insert = node => ({
   		destroy: main.subscribe(canvas => {
   			if (!canvas || !canvas.style) return;
-  			canvas.style.flex = 1;
+  			c = canvas;
 
   			while (node.firstChild) {
   				node.removeChild(node.firstChild);
   			}
 
   			node.appendChild(canvas);
+  		})
+  	});
+
+  	const sizer = node => ({
+  		destroy: size.listen(([w, h]) => {
+
+  			if (c) {
+  				c.width = w;
+  				c.height = h;
+  			}
   		})
   	});
 
@@ -3922,14 +4066,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	};
 
   	$$self.$capture_state = () => {
-  		return { full };
+  		return { full, c };
   	};
 
   	$$self.$inject_state = $$props => {
   		if ("full" in $$props) $$invalidate("full", full = $$props.full);
+  		if ("c" in $$props) c = $$props.c;
   	};
 
-  	return { full, toggle, insert };
+  	return { full, toggle, insert, sizer };
   }
 
   class MainScreen extends SvelteComponentDev {
@@ -4392,7 +4537,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   };
 
   const translate$1 = (k, weave) => {
-    if (k[0] === `#`) return k
+    if (k[0] === `{`) return k
 
     const knot = weave.knots.get()[k];
     if (!knot) return `stitch`
@@ -4475,7 +4620,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
     const v = t.pop().trim();
 
     return t.length > 0
-      ? `#${t.length} ${v}`
+      ? `{${t.length}} ${v}`
       : v
   };
 
@@ -4995,7 +5140,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   }
 
   // (53:0) {#if editing}
-  function create_if_block_1$1(ctx) {
+  function create_if_block_2(ctx) {
   	let current;
 
   	const threadeditor = new ThreadEditor({
@@ -5039,7 +5184,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block_1$1.name,
+  		id: create_if_block_2.name,
   		type: "if",
   		source: "(53:0) {#if editing}",
   		ctx
@@ -5048,7 +5193,108 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	return block;
   }
 
-  // (70:4) {:else}
+  // (57:0) {#if tru_thread.length > 0}
+  function create_if_block$3(ctx) {
+  	let div;
+  	let current;
+  	let dispose;
+  	let each_value = ctx.tru_thread;
+  	let each_blocks = [];
+
+  	for (let i = 0; i < each_value.length; i += 1) {
+  		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+  	}
+
+  	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+  		each_blocks[i] = null;
+  	});
+
+  	const block = {
+  		c: function create() {
+  			div = element("div");
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].c();
+  			}
+
+  			attr_dev(div, "class", "spot svelte-1hrdh4m");
+  			add_location(div, file$8, 57, 0, 1241);
+  			dispose = listen_dev(div, "click", ctx.do_edit, false, false, false);
+  		},
+  		m: function mount(target, anchor) {
+  			insert_dev(target, div, anchor);
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].m(div, null);
+  			}
+
+  			current = true;
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.tru_thread || changed.style || changed.chain || changed.$feed || changed.weave || changed.time_cut || changed.condense) {
+  				each_value = ctx.tru_thread;
+  				let i;
+
+  				for (i = 0; i < each_value.length; i += 1) {
+  					const child_ctx = get_each_context(ctx, each_value, i);
+
+  					if (each_blocks[i]) {
+  						each_blocks[i].p(changed, child_ctx);
+  						transition_in(each_blocks[i], 1);
+  					} else {
+  						each_blocks[i] = create_each_block(child_ctx);
+  						each_blocks[i].c();
+  						transition_in(each_blocks[i], 1);
+  						each_blocks[i].m(div, null);
+  					}
+  				}
+
+  				group_outros();
+
+  				for (i = each_value.length; i < each_blocks.length; i += 1) {
+  					out(i);
+  				}
+
+  				check_outros();
+  			}
+  		},
+  		i: function intro(local) {
+  			if (current) return;
+
+  			for (let i = 0; i < each_value.length; i += 1) {
+  				transition_in(each_blocks[i]);
+  			}
+
+  			current = true;
+  		},
+  		o: function outro(local) {
+  			each_blocks = each_blocks.filter(Boolean);
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				transition_out(each_blocks[i]);
+  			}
+
+  			current = false;
+  		},
+  		d: function destroy(detaching) {
+  			if (detaching) detach_dev(div);
+  			destroy_each(each_blocks, detaching);
+  			dispose();
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_if_block$3.name,
+  		type: "if",
+  		source: "(57:0) {#if tru_thread.length > 0}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (71:4) {:else}
   function create_else_block$1(ctx) {
   	let div;
   	let t;
@@ -5065,10 +5311,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			create_component(knot.$$.fragment);
   			t = space();
-  			attr_dev(div, "class", "thread svelte-ecbq6y");
+  			attr_dev(div, "class", "thread svelte-1hrdh4m");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.$feed[`${ctx.weave.name.get()}/${ctx.link}`] > ctx.time_cut);
-  			add_location(div, file$8, 70, 4, 1506);
+  			add_location(div, file$8, 71, 4, 1534);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5114,15 +5360,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_else_block$1.name,
   		type: "else",
-  		source: "(70:4) {:else}",
+  		source: "(71:4) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (62:4) {#if link[0] === `#`}
-  function create_if_block$3(ctx) {
+  // (63:4) {#if link[0] === `{`}
+  function create_if_block_1$1(ctx) {
   	let div;
   	let t0_value = ctx.link + "";
   	let t0;
@@ -5133,10 +5379,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			t0 = text(t0_value);
   			t1 = space();
-  			attr_dev(div, "class", "thread svelte-ecbq6y");
+  			attr_dev(div, "class", "thread svelte-1hrdh4m");
   			attr_dev(div, "style", ctx.style);
   			toggle_class(div, "active", ctx.chain.some(ctx.func));
-  			add_location(div, file$8, 62, 6, 1317);
+  			add_location(div, file$8, 63, 6, 1345);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5163,26 +5409,26 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block$3.name,
+  		id: create_if_block_1$1.name,
   		type: "if",
-  		source: "(62:4) {#if link[0] === `#`}",
+  		source: "(63:4) {#if link[0] === `{`}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (61:2) {#each tru_thread as link}
+  // (62:2) {#each tru_thread as link}
   function create_each_block(ctx) {
   	let current_block_type_index;
   	let if_block;
   	let if_block_anchor;
   	let current;
-  	const if_block_creators = [create_if_block$3, create_else_block$1];
+  	const if_block_creators = [create_if_block_1$1, create_else_block$1];
   	const if_blocks = [];
 
   	function select_block_type(changed, ctx) {
-  		if (ctx.link[0] === `#`) return 0;
+  		if (ctx.link[0] === `{`) return 0;
   		return 1;
   	}
 
@@ -5243,7 +5489,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_each_block.name,
   		type: "each",
-  		source: "(61:2) {#each tru_thread as link}",
+  		source: "(62:2) {#each tru_thread as link}",
   		ctx
   	});
 
@@ -5252,137 +5498,94 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   function create_fragment$8(ctx) {
   	let t0;
-  	let div0;
   	let t1;
-  	let div1;
+  	let div;
   	let current;
   	let dispose;
-  	let if_block = ctx.editing && create_if_block_1$1(ctx);
-  	let each_value = ctx.tru_thread;
-  	let each_blocks = [];
-
-  	for (let i = 0; i < each_value.length; i += 1) {
-  		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
-  	}
-
-  	const out = i => transition_out(each_blocks[i], 1, 1, () => {
-  		each_blocks[i] = null;
-  	});
+  	let if_block0 = ctx.editing && create_if_block_2(ctx);
+  	let if_block1 = ctx.tru_thread.length > 0 && create_if_block$3(ctx);
 
   	const block = {
   		c: function create() {
-  			if (if_block) if_block.c();
+  			if (if_block0) if_block0.c();
   			t0 = space();
-  			div0 = element("div");
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				each_blocks[i].c();
-  			}
-
+  			if (if_block1) if_block1.c();
   			t1 = space();
-  			div1 = element("div");
-  			attr_dev(div0, "class", "spot svelte-ecbq6y");
-  			add_location(div0, file$8, 56, 0, 1213);
-  			attr_dev(div1, "class", "cap svelte-ecbq6y");
-  			add_location(div1, file$8, 83, 0, 1734);
-
-  			dispose = [
-  				listen_dev(div0, "click", ctx.do_edit, false, false, false),
-  				listen_dev(div1, "click", ctx.do_edit, false, false, false)
-  			];
+  			div = element("div");
+  			attr_dev(div, "class", "cap svelte-1hrdh4m");
+  			add_location(div, file$8, 83, 0, 1766);
+  			dispose = listen_dev(div, "click", ctx.do_edit, false, false, false);
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
   		},
   		m: function mount(target, anchor) {
-  			if (if_block) if_block.m(target, anchor);
+  			if (if_block0) if_block0.m(target, anchor);
   			insert_dev(target, t0, anchor);
-  			insert_dev(target, div0, anchor);
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				each_blocks[i].m(div0, null);
-  			}
-
+  			if (if_block1) if_block1.m(target, anchor);
   			insert_dev(target, t1, anchor);
-  			insert_dev(target, div1, anchor);
+  			insert_dev(target, div, anchor);
   			current = true;
   		},
   		p: function update(changed, ctx) {
   			if (ctx.editing) {
-  				if (if_block) {
-  					if_block.p(changed, ctx);
-  					transition_in(if_block, 1);
+  				if (if_block0) {
+  					if_block0.p(changed, ctx);
+  					transition_in(if_block0, 1);
   				} else {
-  					if_block = create_if_block_1$1(ctx);
-  					if_block.c();
-  					transition_in(if_block, 1);
-  					if_block.m(t0.parentNode, t0);
+  					if_block0 = create_if_block_2(ctx);
+  					if_block0.c();
+  					transition_in(if_block0, 1);
+  					if_block0.m(t0.parentNode, t0);
   				}
-  			} else if (if_block) {
+  			} else if (if_block0) {
   				group_outros();
 
-  				transition_out(if_block, 1, 1, () => {
-  					if_block = null;
+  				transition_out(if_block0, 1, 1, () => {
+  					if_block0 = null;
   				});
 
   				check_outros();
   			}
 
-  			if (changed.tru_thread || changed.style || changed.chain || changed.$feed || changed.weave || changed.time_cut || changed.condense) {
-  				each_value = ctx.tru_thread;
-  				let i;
-
-  				for (i = 0; i < each_value.length; i += 1) {
-  					const child_ctx = get_each_context(ctx, each_value, i);
-
-  					if (each_blocks[i]) {
-  						each_blocks[i].p(changed, child_ctx);
-  						transition_in(each_blocks[i], 1);
-  					} else {
-  						each_blocks[i] = create_each_block(child_ctx);
-  						each_blocks[i].c();
-  						transition_in(each_blocks[i], 1);
-  						each_blocks[i].m(div0, null);
-  					}
+  			if (ctx.tru_thread.length > 0) {
+  				if (if_block1) {
+  					if_block1.p(changed, ctx);
+  					transition_in(if_block1, 1);
+  				} else {
+  					if_block1 = create_if_block$3(ctx);
+  					if_block1.c();
+  					transition_in(if_block1, 1);
+  					if_block1.m(t1.parentNode, t1);
   				}
-
+  			} else if (if_block1) {
   				group_outros();
 
-  				for (i = each_value.length; i < each_blocks.length; i += 1) {
-  					out(i);
-  				}
+  				transition_out(if_block1, 1, 1, () => {
+  					if_block1 = null;
+  				});
 
   				check_outros();
   			}
   		},
   		i: function intro(local) {
   			if (current) return;
-  			transition_in(if_block);
-
-  			for (let i = 0; i < each_value.length; i += 1) {
-  				transition_in(each_blocks[i]);
-  			}
-
+  			transition_in(if_block0);
+  			transition_in(if_block1);
   			current = true;
   		},
   		o: function outro(local) {
-  			transition_out(if_block);
-  			each_blocks = each_blocks.filter(Boolean);
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				transition_out(each_blocks[i]);
-  			}
-
+  			transition_out(if_block0);
+  			transition_out(if_block1);
   			current = false;
   		},
   		d: function destroy(detaching) {
-  			if (if_block) if_block.d(detaching);
+  			if (if_block0) if_block0.d(detaching);
   			if (detaching) detach_dev(t0);
-  			if (detaching) detach_dev(div0);
-  			destroy_each(each_blocks, detaching);
+  			if (if_block1) if_block1.d(detaching);
   			if (detaching) detach_dev(t1);
-  			if (detaching) detach_dev(div1);
-  			run_all(dispose);
+  			if (detaching) detach_dev(div);
+  			dispose();
   		}
   	};
 
@@ -5616,7 +5819,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   /* src/ui/explore/Channel.svelte generated by Svelte v3.14.1 */
   const file$9 = "src/ui/explore/Channel.svelte";
 
-  // (60:0) {:else}
+  // (69:0) {:else}
   function create_else_block_1(ctx) {
   	let input;
   	let focusd_action;
@@ -5628,7 +5831,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			attr_dev(input, "class", "edit svelte-hnppq9");
   			attr_dev(input, "type", "text");
   			attr_dev(input, "placeholder", "JSON PLZ");
-  			add_location(input, file$9, 60, 2, 997);
+  			add_location(input, file$9, 69, 2, 1132);
 
   			dispose = [
   				listen_dev(input, "input", ctx.input_input_handler),
@@ -5659,14 +5862,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_else_block_1.name,
   		type: "else",
-  		source: "(60:0) {:else}",
+  		source: "(69:0) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (46:0) {#if !editing}
+  // (55:0) {#if !editing}
   function create_if_block$4(ctx) {
   	let div;
   	let t0;
@@ -5694,7 +5897,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			if_block.c();
   			if_block_anchor = empty();
   			attr_dev(div, "class", "key svelte-hnppq9");
-  			add_location(div, file$9, 46, 2, 804);
+  			add_location(div, file$9, 55, 2, 941);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
@@ -5751,17 +5954,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_if_block$4.name,
   		type: "if",
-  		source: "(46:0) {#if !editing}",
+  		source: "(55:0) {#if !editing}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (53:2) {:else}
+  // (62:2) {:else}
   function create_else_block$2(ctx) {
   	let div;
-  	let t_value = JSON.stringify(ctx.$value) + "";
+  	let t_value = JSON.stringify(ctx.edit) + "";
   	let t;
 
   	const block = {
@@ -5769,14 +5972,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			div = element("div");
   			t = text(t_value);
   			attr_dev(div, "class", "value svelte-hnppq9");
-  			add_location(div, file$9, 53, 2, 908);
+  			add_location(div, file$9, 62, 2, 1045);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div, anchor);
   			append_dev(div, t);
   		},
   		p: function update(changed, ctx) {
-  			if (changed.$value && t_value !== (t_value = JSON.stringify(ctx.$value) + "")) set_data_dev(t, t_value);
+  			if (changed.edit && t_value !== (t_value = JSON.stringify(ctx.edit) + "")) set_data_dev(t, t_value);
   		},
   		i: noop,
   		o: noop,
@@ -5789,14 +5992,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_else_block$2.name,
   		type: "else",
-  		source: "(53:2) {:else}",
+  		source: "(62:2) {:else}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (51:2) {#if key === `sprite`}
+  // (60:2) {#if key === `sprite`}
   function create_if_block_1$2(ctx) {
   	let current;
 
@@ -5836,7 +6039,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_if_block_1$2.name,
   		type: "if",
-  		source: "(51:2) {#if key === `sprite`}",
+  		source: "(60:2) {#if key === `sprite`}",
   		ctx
   	});
 
@@ -5881,7 +6084,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			if_block.c();
   			attr_dev(div, "class", div_class_value = "channel " + ctx.side + " svelte-hnppq9");
   			attr_dev(div, "style", ctx.$THEME_STYLE);
-  			add_location(div, file$9, 35, 0, 584);
+  			add_location(div, file$9, 44, 0, 721);
   			dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
   		},
   		l: function claim(nodes) {
@@ -5967,12 +6170,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   }
 
   function instance$9($$self, $$props, $$invalidate) {
-  	let $THEME_STYLE;
+  	let $tick;
 
   	let $value,
   		$$unsubscribe_value = noop,
   		$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
+  	let $THEME_STYLE;
+  	validate_store(tick, "tick");
+  	component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
   	validate_store(THEME_STYLE, "THEME_STYLE");
   	component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_value());
@@ -5986,13 +6192,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		
   	} } = $$props;
 
+  	let edit = ``;
   	let val = ``;
 
   	const execute = () => {
   		$$invalidate("editing", editing = false);
 
   		try {
-  			value.set(JSON.parse(val));
+  			value.set(json(val));
   		} catch(ex) {
   			
   		}
@@ -6047,12 +6254,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			side,
   			focus,
   			executed,
+  			edit,
   			val,
   			key,
   			value,
+  			$tick,
+  			$value,
   			editing,
-  			$THEME_STYLE,
-  			$value
+  			$THEME_STYLE
   		};
   	};
 
@@ -6063,21 +6272,31 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		if ("side" in $$props) $$invalidate("side", side = $$props.side);
   		if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
   		if ("executed" in $$props) $$invalidate("executed", executed = $$props.executed);
+  		if ("edit" in $$props) $$invalidate("edit", edit = $$props.edit);
   		if ("val" in $$props) $$invalidate("val", val = $$props.val);
   		if ("key" in $$props) $$invalidate("key", key = $$props.key);
   		if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
+  		if ("$tick" in $$props) tick.set($tick = $$props.$tick);
+  		if ("$value" in $$props) value.set($value = $$props.$value);
   		if ("editing" in $$props) $$invalidate("editing", editing = $$props.editing);
   		if ("$THEME_STYLE" in $$props) THEME_STYLE.set($THEME_STYLE = $$props.$THEME_STYLE);
-  		if ("$value" in $$props) value.set($value = $$props.$value);
   	};
 
   	let key;
   	let value;
   	let editing;
 
-  	$$self.$$.update = (changed = { channel: 1, focus: 1 }) => {
+  	$$self.$$.update = (changed = { channel: 1, $tick: 1, $value: 1, focus: 1 }) => {
   		if (changed.channel) {
   			 $$invalidate("key", [key, value] = channel, key, $$subscribe_value($$invalidate("value", value)));
+  		}
+
+  		if (changed.$tick || changed.$value) {
+  			 {
+  				if ($tick % 4 === 0) {
+  					$$invalidate("edit", edit = $value);
+  				}
+  			}
   		}
 
   		if (changed.focus) {
@@ -6092,14 +6311,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		side,
   		focus,
   		executed,
+  		edit,
   		val,
   		execute,
   		focusd,
   		key,
   		value,
+  		$value,
   		editing,
   		$THEME_STYLE,
-  		$value,
   		input_input_handler,
   		keydown_handler,
   		blur_handler,
@@ -7672,8 +7892,102 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	return child_ctx;
   }
 
-  // (74:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }
+  // (65:0) {#if !hide}
   function create_if_block$8(ctx) {
+  	let each_1_anchor;
+  	let current;
+  	let each_value = ctx.sides;
+  	let each_blocks = [];
+
+  	for (let i = 0; i < each_value.length; i += 1) {
+  		each_blocks[i] = create_each_block$3(get_each_context$3(ctx, each_value, i));
+  	}
+
+  	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+  		each_blocks[i] = null;
+  	});
+
+  	const block = {
+  		c: function create() {
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].c();
+  			}
+
+  			each_1_anchor = empty();
+  		},
+  		m: function mount(target, anchor) {
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				each_blocks[i].m(target, anchor);
+  			}
+
+  			insert_dev(target, each_1_anchor, anchor);
+  			current = true;
+  		},
+  		p: function update(changed, ctx) {
+  			if (changed.sides || changed.$THEME_COLOR || changed.hidden || changed.ws || changed.filter || changed.parts || changed.Wheel || changed.command || changed.$THEME_STYLE) {
+  				each_value = ctx.sides;
+  				let i;
+
+  				for (i = 0; i < each_value.length; i += 1) {
+  					const child_ctx = get_each_context$3(ctx, each_value, i);
+
+  					if (each_blocks[i]) {
+  						each_blocks[i].p(changed, child_ctx);
+  						transition_in(each_blocks[i], 1);
+  					} else {
+  						each_blocks[i] = create_each_block$3(child_ctx);
+  						each_blocks[i].c();
+  						transition_in(each_blocks[i], 1);
+  						each_blocks[i].m(each_1_anchor.parentNode, each_1_anchor);
+  					}
+  				}
+
+  				group_outros();
+
+  				for (i = each_value.length; i < each_blocks.length; i += 1) {
+  					out(i);
+  				}
+
+  				check_outros();
+  			}
+  		},
+  		i: function intro(local) {
+  			if (current) return;
+
+  			for (let i = 0; i < each_value.length; i += 1) {
+  				transition_in(each_blocks[i]);
+  			}
+
+  			current = true;
+  		},
+  		o: function outro(local) {
+  			each_blocks = each_blocks.filter(Boolean);
+
+  			for (let i = 0; i < each_blocks.length; i += 1) {
+  				transition_out(each_blocks[i]);
+  			}
+
+  			current = false;
+  		},
+  		d: function destroy(detaching) {
+  			destroy_each(each_blocks, detaching);
+  			if (detaching) detach_dev(each_1_anchor);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_if_block$8.name,
+  		type: "if",
+  		source: "(65:0) {#if !hide}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (84:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }
+  function create_if_block_1$5(ctx) {
   	let current;
 
   	const weave = new Weave$1({
@@ -7716,21 +8030,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   	dispatch_dev("SvelteRegisterBlock", {
   		block,
-  		id: create_if_block$8.name,
+  		id: create_if_block_1$5.name,
   		type: "if",
-  		source: "(74:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }",
+  		source: "(84:4) {#if       filter === `` ||       weave.name.get().indexOf(parts[0]) !== -1     }",
   		ctx
   	});
 
   	return block;
   }
 
-  // (73:2) {#each ws as weave}
+  // (83:2) {#each ws as weave}
   function create_each_block_1(ctx) {
   	let show_if = ctx.filter === `` || ctx.weave.name.get().indexOf(ctx.parts[0]) !== -1;
   	let if_block_anchor;
   	let current;
-  	let if_block = show_if && create_if_block$8(ctx);
+  	let if_block = show_if && create_if_block_1$5(ctx);
 
   	const block = {
   		c: function create() {
@@ -7750,7 +8064,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   					if_block.p(changed, ctx);
   					transition_in(if_block, 1);
   				} else {
-  					if_block = create_if_block$8(ctx);
+  					if_block = create_if_block_1$5(ctx);
   					if_block.c();
   					transition_in(if_block, 1);
   					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -7784,14 +8098,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_each_block_1.name,
   		type: "each",
-  		source: "(73:2) {#each ws as weave}",
+  		source: "(83:2) {#each ws as weave}",
   		ctx
   	});
 
   	return block;
   }
 
-  // (56:0) {#each sides as side}
+  // (66:0) {#each sides as side}
   function create_each_block$3(ctx) {
   	let div4;
   	let div3;
@@ -7838,19 +8152,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   			}
 
   			t3 = space();
-  			attr_dev(div0, "class", "logo svelte-1hz8bol");
+  			attr_dev(div0, "class", "logo svelte-oceeow");
   			attr_dev(div0, "style", ctx.$THEME_STYLE);
-  			add_location(div0, file$d, 62, 2, 1283);
-  			attr_dev(div1, "class", "events svelte-1hz8bol");
-  			add_location(div1, file$d, 67, 2, 1358);
-  			attr_dev(div2, "class", "weaves svelte-1hz8bol");
-  			add_location(div2, file$d, 71, 2, 1414);
-  			attr_dev(div3, "class", "partial svelte-1hz8bol");
-  			add_location(div3, file$d, 61, 2, 1259);
-  			attr_dev(div4, "class", div4_class_value = "explore " + ctx.side + " svelte-1hz8bol");
+  			add_location(div0, file$d, 72, 2, 1433);
+  			attr_dev(div1, "class", "events svelte-oceeow");
+  			add_location(div1, file$d, 77, 2, 1508);
+  			attr_dev(div2, "class", "weaves svelte-oceeow");
+  			add_location(div2, file$d, 81, 2, 1564);
+  			attr_dev(div3, "class", "partial svelte-oceeow");
+  			add_location(div3, file$d, 71, 2, 1409);
+  			attr_dev(div4, "class", div4_class_value = "explore " + ctx.side + " svelte-oceeow");
   			set_style(div4, "color", ctx.$THEME_COLOR);
   			toggle_class(div4, "hidden", ctx.hidden);
-  			add_location(div4, file$d, 56, 0, 1177);
+  			add_location(div4, file$d, 66, 0, 1327);
   		},
   		m: function mount(target, anchor) {
   			insert_dev(target, div4, anchor);
@@ -7941,7 +8255,70 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   		block,
   		id: create_each_block$3.name,
   		type: "each",
-  		source: "(56:0) {#each sides as side}",
+  		source: "(66:0) {#each sides as side}",
+  		ctx
+  	});
+
+  	return block;
+  }
+
+  // (63:0) <Picker>
+  function create_default_slot(ctx) {
+  	let if_block_anchor;
+  	let current;
+  	let if_block = !ctx.hide && create_if_block$8(ctx);
+
+  	const block = {
+  		c: function create() {
+  			if (if_block) if_block.c();
+  			if_block_anchor = empty();
+  		},
+  		m: function mount(target, anchor) {
+  			if (if_block) if_block.m(target, anchor);
+  			insert_dev(target, if_block_anchor, anchor);
+  			current = true;
+  		},
+  		p: function update(changed, ctx) {
+  			if (!ctx.hide) {
+  				if (if_block) {
+  					if_block.p(changed, ctx);
+  					transition_in(if_block, 1);
+  				} else {
+  					if_block = create_if_block$8(ctx);
+  					if_block.c();
+  					transition_in(if_block, 1);
+  					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+  				}
+  			} else if (if_block) {
+  				group_outros();
+
+  				transition_out(if_block, 1, 1, () => {
+  					if_block = null;
+  				});
+
+  				check_outros();
+  			}
+  		},
+  		i: function intro(local) {
+  			if (current) return;
+  			transition_in(if_block);
+  			current = true;
+  		},
+  		o: function outro(local) {
+  			transition_out(if_block);
+  			current = false;
+  		},
+  		d: function destroy(detaching) {
+  			if (if_block) if_block.d(detaching);
+  			if (detaching) detach_dev(if_block_anchor);
+  		}
+  	};
+
+  	dispatch_dev("SvelteRegisterBlock", {
+  		block,
+  		id: create_default_slot.name,
+  		type: "slot",
+  		source: "(63:0) <Picker>",
   		ctx
   	});
 
@@ -7949,109 +8326,57 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   }
 
   function create_fragment$d(ctx) {
-  	let t0;
-  	let t1;
-  	let each_1_anchor;
+  	let t;
   	let current;
   	const mainscreen = new MainScreen({ $$inline: true });
-  	const picker = new Picker({ $$inline: true });
-  	let each_value = ctx.sides;
-  	let each_blocks = [];
 
-  	for (let i = 0; i < each_value.length; i += 1) {
-  		each_blocks[i] = create_each_block$3(get_each_context$3(ctx, each_value, i));
-  	}
-
-  	const out = i => transition_out(each_blocks[i], 1, 1, () => {
-  		each_blocks[i] = null;
-  	});
+  	const picker = new Picker({
+  			props: {
+  				$$slots: { default: [create_default_slot] },
+  				$$scope: { ctx }
+  			},
+  			$$inline: true
+  		});
 
   	const block = {
   		c: function create() {
   			create_component(mainscreen.$$.fragment);
-  			t0 = space();
+  			t = space();
   			create_component(picker.$$.fragment);
-  			t1 = space();
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				each_blocks[i].c();
-  			}
-
-  			each_1_anchor = empty();
   		},
   		l: function claim(nodes) {
   			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
   		},
   		m: function mount(target, anchor) {
   			mount_component(mainscreen, target, anchor);
-  			insert_dev(target, t0, anchor);
+  			insert_dev(target, t, anchor);
   			mount_component(picker, target, anchor);
-  			insert_dev(target, t1, anchor);
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				each_blocks[i].m(target, anchor);
-  			}
-
-  			insert_dev(target, each_1_anchor, anchor);
   			current = true;
   		},
   		p: function update(changed, ctx) {
-  			if (changed.sides || changed.$THEME_COLOR || changed.hidden || changed.ws || changed.filter || changed.parts || changed.Wheel || changed.command || changed.$THEME_STYLE) {
-  				each_value = ctx.sides;
-  				let i;
+  			const picker_changes = {};
 
-  				for (i = 0; i < each_value.length; i += 1) {
-  					const child_ctx = get_each_context$3(ctx, each_value, i);
-
-  					if (each_blocks[i]) {
-  						each_blocks[i].p(changed, child_ctx);
-  						transition_in(each_blocks[i], 1);
-  					} else {
-  						each_blocks[i] = create_each_block$3(child_ctx);
-  						each_blocks[i].c();
-  						transition_in(each_blocks[i], 1);
-  						each_blocks[i].m(each_1_anchor.parentNode, each_1_anchor);
-  					}
-  				}
-
-  				group_outros();
-
-  				for (i = each_value.length; i < each_blocks.length; i += 1) {
-  					out(i);
-  				}
-
-  				check_outros();
+  			if (changed.$$scope || changed.hide || changed.$THEME_COLOR || changed.hidden || changed.ws || changed.filter || changed.parts || changed.$THEME_STYLE) {
+  				picker_changes.$$scope = { changed, ctx };
   			}
+
+  			picker.$set(picker_changes);
   		},
   		i: function intro(local) {
   			if (current) return;
   			transition_in(mainscreen.$$.fragment, local);
   			transition_in(picker.$$.fragment, local);
-
-  			for (let i = 0; i < each_value.length; i += 1) {
-  				transition_in(each_blocks[i]);
-  			}
-
   			current = true;
   		},
   		o: function outro(local) {
   			transition_out(mainscreen.$$.fragment, local);
   			transition_out(picker.$$.fragment, local);
-  			each_blocks = each_blocks.filter(Boolean);
-
-  			for (let i = 0; i < each_blocks.length; i += 1) {
-  				transition_out(each_blocks[i]);
-  			}
-
   			current = false;
   		},
   		d: function destroy(detaching) {
   			destroy_component(mainscreen, detaching);
-  			if (detaching) detach_dev(t0);
+  			if (detaching) detach_dev(t);
   			destroy_component(picker, detaching);
-  			if (detaching) detach_dev(t1);
-  			destroy_each(each_blocks, detaching);
-  			if (detaching) detach_dev(each_1_anchor);
   		}
   	};
 
@@ -8078,12 +8403,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	validate_store(THEME_STYLE, "THEME_STYLE");
   	component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
   	$$self.$$.on_destroy.push(() => $$unsubscribe_weaves());
+  	let do_hide;
 
   	key.listen(char => {
   		if (char !== `\``) return;
   		$$invalidate("hidden", hidden = !hidden);
+  		do_hide && clearTimeout(do_hide);
+
+  		do_hide = setTimeout(() => {
+  			$$invalidate("hide", hide = hidden);
+  			do_hide = false;
+  		});
   	});
 
+  	let hide = false;
   	let filter = ``;
   	let { hidden = false } = $$props;
 
@@ -8121,6 +8454,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
   	$$self.$capture_state = () => {
   		return {
+  			do_hide,
+  			hide,
   			filter,
   			hidden,
   			weaves,
@@ -8133,6 +8468,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	};
 
   	$$self.$inject_state = $$props => {
+  		if ("do_hide" in $$props) do_hide = $$props.do_hide;
+  		if ("hide" in $$props) $$invalidate("hide", hide = $$props.hide);
   		if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
   		if ("hidden" in $$props) $$invalidate("hidden", hidden = $$props.hidden);
   		if ("weaves" in $$props) $$subscribe_weaves($$invalidate("weaves", weaves = $$props.weaves));
@@ -8162,6 +8499,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
   	 $$subscribe_weaves($$invalidate("weaves", weaves = Wheel.weaves));
 
   	return {
+  		hide,
   		filter,
   		hidden,
   		command,

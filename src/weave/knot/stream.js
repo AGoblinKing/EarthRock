@@ -1,4 +1,5 @@
 import { write, read } from "/util/store.js"
+import { json } from "/util/parse.js"
 
 export default ({
   value = null
@@ -8,11 +9,12 @@ export default ({
 
   v.set = (val) => {
     try {
-      set(JSON.parse(val))
+      set(json(val))
     } catch (ex) {
       set(val)
     }
   }
+
   v.set(value)
   return ({
     knot: read(`stream`),

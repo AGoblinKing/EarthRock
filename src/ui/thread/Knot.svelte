@@ -1,6 +1,7 @@
 <script>
 import { condense } from "/thread/thread.js"
 
+import ColorEditor from "/ui/editor/ColorEditor.svelte"
 import SpriteEditor from "/ui/editor/SpriteEditor.svelte"
 
 export let id
@@ -10,7 +11,8 @@ $: k = weave.get_id(id)
 $: type = k.knot
 
 const knot_view = {
-  sprite: SpriteEditor
+  sprite: SpriteEditor,
+  color: ColorEditor
 }
 </script>
 

@@ -1,5 +1,6 @@
 import expr from "expr-eval"
 import { v3, m4 } from "twgl"
+import Color from "color"
 
 v3.setDefaultType(Array)
 
@@ -23,6 +24,8 @@ Object.entries(m4).forEach(([key, fn]) => {
     return fn(...args)
   }
 })
+
+parser.functions.Color = Color
 
 export const math = (formula) => {
   const p = parser.parse(formula)

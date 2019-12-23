@@ -11,8 +11,8 @@ export let ondone = () => {}
 const focus = (node) => node.focus()
 
 const execute = () => {
-  ondone()
   compile(code, weave, address)
+  ondone()
 }
 </script>
 

@@ -6,13 +6,13 @@ const knots = {
   mail: (k) => k.whom.get().trim(),
   default: (k) => k.knot.get(),
   stitch: (k) => `./${k.name.get()}`,
-  sprite: (k) => `@${k.value.get()}`
+  sprite: (k) => `@${k.value.get()}`,
+  color: (k) => `#${k.value.get()}`
 }
 
 const knots_is = {
-  sprite: (data) => {
-    return data[0] === `@`
-  },
+  color: (data) => data[0] === `#`,
+  sprite: (data) => data[0] === `@`,
   mail: (data) => {
     const ms = data.match(Wheel.REG_ID)
     if (!ms || ms.length !== 1) return false
@@ -41,6 +41,10 @@ const knots_create = {
   stream: (data) => ({
     knot: `stream`,
     value: JSON.parse(data)
+  }),
+  color: (data) => ({
+    knot: `color`,
+    value: data.slice(1)
   }),
   sprite: (data) => {
     let i = parseInt(data.slice(1))

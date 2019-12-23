@@ -70,7 +70,7 @@ export const listen = (subs, fn) => {
   return () => cancels.forEach(fn => fn())
 }
 
-export const map = (init = {}) => {
+export const map = (init = {}, fn = false) => {
   const m = write()
   const set_m = m.set
 
@@ -80,7 +80,9 @@ export const map = (init = {}) => {
         key,
         (val && typeof val.subscribe === `function`)
           ? val
-          : write(val)
+          : fn
+            ? write(fn(val))
+            : write(val)
       ])
   ))
 

@@ -92,7 +92,7 @@ export default ({
 			flock: 0
 
 		}
-		// console.log(`math`, val, vs, params)
+
 		try {
 			const result = math_fn(params)
 			set(result)

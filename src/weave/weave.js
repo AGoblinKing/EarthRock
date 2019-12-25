@@ -133,6 +133,7 @@ export default ({
 			value: v[chan_name]
 		}
 	}
+
 	w.get_name = (name) => {
 		const k = w.names.get()[name]
 		if (!k) return
@@ -157,31 +158,32 @@ export default ({
 		return w.remove(id)
 	}
 
-	w.remove = (id) => {
-		const k = w.knots.get()[id]
-		if (!k) return
-
-		const $t = w.threads.get()
-		const t_o = $t[id]
-		if (t_o) {
-			delete $t[id]
-			w.threads.set($t)
-		}
-
-		w.derez(id)
+	w.remove = (...ids) => {
+		// don't  derez/dethread
+		// they'll get picked up
+		// next loop
+		ids = ids.filter((id) => {
+			const k = w.knots.get()[id]
+			if (!k) return false
+			return true
+		})
 
 		w.knots.update(($knots) => {
-			delete $knots[id]
+			ids.forEach((id) => {
+				delete $knots[id]
+			})
 
 			return $knots
 		})
 	}
 
 	w.add = (properties) => {
+		properties.id = properties.id || uuid()
+
 		const k = Knot({
 			...properties,
 			weave: w,
-			life: life_add
+			life: life_add(properties.id)
 		})
 
 		w.knots.update(($knots) => {

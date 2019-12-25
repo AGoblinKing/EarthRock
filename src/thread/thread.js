@@ -105,13 +105,6 @@ export const compile = (code, weave, address) => {
 	weave.knots.set(knots)
 
 	let connection = address
-	const n = weave.name.get()
-
-	const is_running = Wheel.running.get()[n]
-
-	if (is_running) {
-		Wheel.stop(n)
-	}
 
 	// lets create these knots
 	parts.forEach((part) => {
@@ -132,10 +125,6 @@ export const compile = (code, weave, address) => {
 	)
 
 	weave.validate()
-
-	if (Wheel.running.get()[n]) {
-		Wheel.restart(n)
-	}
 }
 
 export const format = (txt) => {

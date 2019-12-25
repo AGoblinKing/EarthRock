@@ -32,9 +32,6 @@ const toggle = (e) => {
 		r[stitch.id.get()] = true
 	}
 	rezed.set(r)
-	if (Wheel.running.get()[$w_name]) {
-		Wheel.restart($w_name)
-	}
 }
 </script>
 

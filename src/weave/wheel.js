@@ -111,6 +111,7 @@ const start_threads = (weave) => {
 		let dirty = false
 		const connected = new Set()
 
+		// TODO: partial updates like lives
 		// tear down existing highways
 		if (threads) threads.forEach((d) => d())
 
@@ -166,41 +167,64 @@ const start_threads = (weave) => {
 }
 
 const start_lives = (weave) => {
-	const $lives = weave.lives.get()
-	const $rezed = weave.rezed.get()
-	const on = {
-		...$rezed
+	const enders = {}
+	const cancel_lives = () => {
+		Object.values(enders).forEach((d) => d())
 	}
 
-	// initial rez
-	const lives = Object.fromEntries(
+	const cancel = any(weave.lives, weave.rezed)(($lives, $rezed) => {
+		const on = {}
+
+		// new lives
 		Object.keys($lives)
 			.filter((id) => {
-				if (on[id]) return true
-
 				// chain to right
 				const c = weave.chain(id, true)
-				const last = weave.get_id(c[0])
+				const last_id = c[0].split(`/`)[0]
+				const isrez = $rezed[last_id]
+				const last = weave.get_id(last_id)
 
-				// no knot means channel
-				if (!last || (last.knot && last.knot.get() !== `stitch`)) {
-					// no channel
+				// already living
+				if (enders[id]) {
+					const k = weave.get_id(id)
+
+					if (!k || !isrez) {
+						enders[id]()
+						delete enders[id]
+						return false
+					}
+
+					on[id] = true
 					return false
 				}
 
-				// inform on about our success
-				c.forEach((c_id) => {
-					on[c_id] = true
-				})
+				// not rezed
+				if (
+					!isrez ||
+					last.knot.get() !== `stitch`
+				) {
+					return false
+				}
 
+				on[id] = true
 				return true
 			})
-			.map((id) => [id, $lives[id]()])
-	)
-	const len = (o) => Object.keys(o).length
-	console.log(len(lives), len($lives))
+			.forEach((id) => {
+				enders[id] = $lives[id]()
+			})
 
-	return () => Object.values(lives).forEach((d) => d())
+		// old lives
+		Object.entries(enders).forEach(([id, end]) => {
+			if ($lives[id] && on[id]) return
+			end()
+			delete enders[id]
+		})
+	})
+
+	return () => {
+		cancel()
+		cancel_lives()
+	}
 }
 
 export const start = (weave_name) => {

@@ -42,7 +42,9 @@ export default ({
 			})
 			.filter((d) => d)
 
-		return () => destroys.forEach((destroy) => destroy())
+		return () => {
+			destroys.forEach((destroy) => destroy())
+		}
 	})
 
 	return stitch

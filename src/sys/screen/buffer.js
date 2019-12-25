@@ -175,6 +175,7 @@ tick.listen(() => requestAnimationFrame(() => {
 			set_last(`rotation`, id)
 			set_last(`color`, id)
 		})
+
 		// clean up bad rezes
 		if (dirty) weave.rezed.set(rezed)
 	})

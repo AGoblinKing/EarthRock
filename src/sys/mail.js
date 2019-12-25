@@ -3,21 +3,21 @@ import { transformer } from "/util/store.js"
 
 // try to keep mail safe
 export const send = transformer(({
-  whom,
-  value
+	whom,
+	value
 }) => {
-  let s = get(whom)
+	let s = get(whom)
 
-  // stitch special case
-  if (s.knot && s.knot.get() === `stitch`) {
-    // forward stitch mail to a mail channel
-    s = get(`${whom}/mail`)
-  }
+	// stitch special case
+	if (s.knot && s.knot.get() === `stitch`) {
+		// forward stitch mail to a mail channel
+		s = get(`${whom}/mail`)
+	}
 
-  s.set(value)
+	s.set(value)
 
-  return {
-    whom,
-    value
-  }
+	return {
+		whom,
+		value
+	}
 })

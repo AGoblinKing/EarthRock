@@ -6,6 +6,8 @@ import Omni from "./Omni.svelte"
 import Stitch from "./Stitch.svelte"
 import Controls from "/ui/weave/Controls.svelte"
 
+import Command from "/omni/omni_weave.js"
+
 export let weave
 $: name = weave.name
 $: names = weave.names
@@ -13,63 +15,14 @@ $: names = weave.names
 export let filter = []
 export let open = $WEAVE_EXPLORE_OPEN
 
+$: command = Command(weave)
 $: stitches = Object.entries($names).sort(([a], [b]) => {
-  if (a > b) return 1
-  if (b > a) return -1
-  return 0
+	if (a > b) return 1
+	if (b > a) return -1
+	return 0
 })
 
 $: knots = weave.knots
-
-const command = ([
-  command,
-  detail,
-  detail2
-], msg) => {
-  switch (command) {
-    case `>`:
-      const knot = $names[detail]
-      if (!knot) return msg(`Couldn't find ${detail}`)
-      if ($names[detail2]) return msg(`${detail2} already exists`)
-      knot.knot.name.set(detail2)
-      return
-    case `~`:
-      const k = $names[detail]
-
-      if (!k) return
-      k.name.set(detail2)
-
-      break
-    case `+`:
-      if (detail2) {
-        return weave.update({
-          [detail]: {
-            knot: `stitch`,
-            value: {
-              [detail2]: ``
-            }
-          }
-        })
-      }
-
-      weave.add({
-        knot: `stitch`,
-        name: detail
-      })
-
-      break
-    case `-`:
-      if (detail2) {
-        const s = weave.get_name(detail)
-        if (!s) return
-
-        s.value.remove(detail2)
-        return
-      }
-
-      weave.remove_name(detail)
-  }
-}
 </script>
 
 <div
@@ -78,32 +31,32 @@ const command = ([
   use:dark={$name}
   style={$THEME_STYLE}
   on:click={() => {
-    open = !open
+	open = !open
   }}
 >
   <Controls {weave} />
   <div class="namezor">
-    {$name}
+	{$name}
   </div>
 </div>
 
 {#if open}
   <div class="stitches">
 
-    <Omni {command} system={$name === Wheel.SYSTEM}/>
+	<Omni {command} system={$name === Wheel.SYSTEM}/>
 
-    {#each stitches as [s_name,stitch]}
-      {#if
-        filter.length === 0 ||
-        s_name.indexOf(filter[0]) !== -1
-      }
-        <Stitch
-          {stitch}
-          filter={filter.slice(1)}
-          {weave}
-        />
-      {/if}
-    {/each}
+	{#each stitches as [s_name,stitch] (s_name)}
+	  {#if
+		filter.length === 0 ||
+		s_name.indexOf(filter[0]) !== -1
+	  }
+		<Stitch
+		  {stitch}
+		  filter={filter.slice(1)}
+		  {weave}
+		/>
+	  {/if}
+	{/each}
   </div>
 {/if}
 

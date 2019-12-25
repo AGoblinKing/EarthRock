@@ -28,6 +28,7 @@
     "rollup-plugin-svelte": "^5.1.1",
     "rollup-plugin-terser": "^4.0.4",
     "rollup-plugin-visualizer": "^2.7.2",
+    "run-script-os": "^1.0.7",
     "scribbletune": "^3.4.1",
     "svelte": "^3.14.1",
     "tone": "^13.8.25",
@@ -38,8 +39,10 @@
     "build": "rollup -c",
     "build:ext": "rollup -c ./ext/rollup.config.js",
     "autobuild": "rollup -c -w",
-    "dev": "run-p start:dev autobuild",
-    "start": "./bin/bifrost",
-    "start:dev": "./bin/bifrost"
+    "dev": "run-p start autobuild",
+    "start": "run-script-os",
+    "start:windows": ".\\bin\\bifrost.exe",
+    "start:macos": "bin/bifrost",
+    "start:default": "echo 'No platform found'"
   }
 }

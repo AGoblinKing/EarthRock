@@ -6,13 +6,13 @@ audio.volume = 0.5
 let audo_playing = false
 
 const toggle = () => {
-  if (audo_playing) {
-    audio.pause()
-  } else {
-    audio.play()
-  }
+	if (audo_playing) {
+		audio.pause()
+	} else {
+		audio.play()
+	}
 
-  audo_playing = !audo_playing
+	audo_playing = !audo_playing
 }
 </script>
 

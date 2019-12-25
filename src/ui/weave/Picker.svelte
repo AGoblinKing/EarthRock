@@ -13,53 +13,53 @@ let last = {
 let files
 let nameit = false
 const drop = (e) => {
-  dragover = false
+	dragover = false
 
-  const files = e.dataTransfer.files
-  for (let i = 0; i < files.length; i++) {
-    const reader = new FileReader()
+	const files = e.dataTransfer.files
+	for (let i = 0; i < files.length; i++) {
+		const reader = new FileReader()
 
-    reader.onloadend = (e) => {
-      last = files[i]
-      nameit = load(e.target.result)
-      if (!nameit) return
-      name = `${nameit.name}`
-    }
-    reader.readAsDataURL(files[i])
-  }
-  e.preventDefault()
-  e.stopPropagation()
+		reader.onloadend = (e) => {
+			last = files[i]
+			nameit = load(e.target.result)
+			if (!nameit) return
+			name = `${nameit.name}`
+		}
+		reader.readAsDataURL(files[i])
+	}
+	e.preventDefault()
+	e.stopPropagation()
 }
 let dragover
 
 const over = (whether) => (e) => {
-  e.dataTransfer.dropEffect = `copy`
-  dragover = whether
-  e.preventDefault()
-  e.stopPropagation()
+	e.dataTransfer.dropEffect = `copy`
+	dragover = whether
+	e.preventDefault()
+	e.stopPropagation()
 }
 
 const play_it = () => {
-  delete nameit.id
+	delete nameit.id
 
-  Wheel.spawn({
-    [name]: nameit
-  })
+	Wheel.spawn({
+		[name]: nameit
+	})
 
-  const weave = Wheel.get(name)
+	const weave = Wheel.get(name)
 
-  weave.update({
-    INFO: {
-      knot: `stitch`,
-      value: {
-        from: last.name,
-        "save last": last.lastModified,
-        size: last.size
-      }
-    }
-  })
+	weave.update({
+		"!info": {
+			knot: `stitch`,
+			value: {
+				from: last.name,
+				"save last": last.lastModified,
+				size: last.size
+			}
+		}
+	})
 
-  nameit = false
+	nameit = false
 }
 let name
 </script>

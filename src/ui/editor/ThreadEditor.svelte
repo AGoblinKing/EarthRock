@@ -10,9 +10,14 @@ export let ondone = () => {}
 
 const focus = (node) => node.focus()
 
+let editing = true
+
 const execute = () => {
-  compile(code, weave, address)
-  ondone()
+	// prevent back to back compiles
+	if (!editing) return
+	editing = false
+	compile(code, weave, address)
+	ondone()
 }
 </script>
 

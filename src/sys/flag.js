@@ -12,6 +12,8 @@ export const TIME_TICK_RATE = write(100)
 
 export const WEAVE_EXPLORE_OPEN = write(true)
 
+export const OMNI_LAST = write(false)
+
 export const INPUT_SCROLL_STRENGTH = write(10)
 export const INPUT_ZOOM_STRENGTH = write(0.01)
 export const INPUT_ZOOM_MIN = write(0.1)
@@ -25,20 +27,20 @@ export const THEME_GLOW = write(`green`)
 export const CLEAR_COLOR = write(`#023d55`)
 
 export const THEME_BORDER = read(``, (set) =>
-  THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
-    .darkenByRatio(0.5)
-    .toCSS()
-  ))
+	THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
+		.darkenByRatio(0.5)
+		.toCSS()
+	))
 )
 export const THEME_STYLE = read(``, (set) => {
-  let $THEME_BORDER = ``
+	let $THEME_BORDER = ``
 
-  const update = () => set([
-    `border: 0.2rem solid ${$THEME_BORDER};`
-  ].join(``))
+	const update = () => set([
+		`border: 0.2rem solid ${$THEME_BORDER};`
+	].join(``))
 
-  THEME_BORDER.listen(($val) => {
-    $THEME_BORDER = $val
-    update()
-  })
+	THEME_BORDER.listen(($val) => {
+		$THEME_BORDER = $val
+		update()
+	})
 })

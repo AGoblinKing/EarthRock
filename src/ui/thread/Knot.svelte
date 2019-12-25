@@ -11,15 +11,15 @@ $: k = weave.get_id(id)
 $: type = k.knot
 
 const knot_view = {
-  sprite: SpriteEditor,
-  color: ColorEditor
+	sprite: SpriteEditor,
+	color: ColorEditor
 }
 </script>
 
 {#if knot_view[$type]}
   <svelte:component this={knot_view[$type]} value={k.value} />
 {:else}
-  <div class="pad">{condense(id, weave)}</div>
+  <div data:type={$type} class="pad">{condense(id, weave)}</div>
 {/if}
 
 <style>

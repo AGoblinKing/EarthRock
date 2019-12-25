@@ -13,32 +13,32 @@ import * as camera from "/sys/camera.js"
 import "/sys/data.js"
 
 const normalize = (sys) => Object.fromEntries(Object.entries(flag).map(
-  ([key, entry]) => [
-    key.replace(/_/g, ` `).toLowerCase(),
-    entry
-  ]
+	([key, entry]) => [
+		key.replace(/_/g, ` `).toLowerCase(),
+		entry
+	]
 ))
 const tie = (items) =>
-  Object.entries(items)
-    .reduce((result, [key, value]) => ({
-      ...result,
-      [key]: {
-        name: key,
-        knot: `stitch`,
-        value
-      }
-    }), {})
+	Object.entries(items)
+		.reduce((result, [key, value]) => ({
+			...result,
+			[key]: {
+				name: key,
+				knot: `stitch`,
+				value
+			}
+		}), {})
 
 export default Weave({
-  name: `sys`,
-  id: `sys`,
-  knots: tie({
-    mouse,
-    time,
-    screen,
-    input,
-    key,
-    flag: normalize(flag),
-    camera
-  })
+	name: `sys`,
+	id: `sys`,
+	knots: tie({
+		mouse,
+		time,
+		screen,
+		input,
+		key,
+		flag: normalize(flag),
+		camera
+	})
 })

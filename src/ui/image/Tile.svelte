@@ -10,14 +10,14 @@ export let random = false
 export let text = false
 
 $: tru_data = text
-  ? tile(text)
-  : data
+	? tile(text)
+	: data
 
 $: image_src = Tile({
-  width,
-  height,
-  data: tru_data,
-  random
+	width,
+	height,
+	data: tru_data,
+	random
 })
 </script>
 

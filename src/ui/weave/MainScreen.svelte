@@ -4,33 +4,33 @@ import { main, size } from "/sys/screen.js"
 export let full = false
 
 const toggle = () => {
-  full = !full
+	full = !full
 }
 
 let c
 const insert = (node) => ({
-  destroy: main.subscribe((canvas) => {
-    if (!canvas || !canvas.style) return
-    c = canvas
-    while (node.firstChild) {
-      node.removeChild(node.firstChild)
-    }
+	destroy: main.subscribe((canvas) => {
+		if (!canvas || !canvas.style) return
+		c = canvas
+		while (node.firstChild) {
+			node.removeChild(node.firstChild)
+		}
 
-    node.appendChild(canvas)
-  })
+		node.appendChild(canvas)
+	})
 })
 
 const sizer = (node) => ({
-  destroy: size.listen(([w, h]) => {
-    const s = w < h
-      ? w
-      : h
+	destroy: size.listen(([w, h]) => {
+		const s = w < h
+			? w
+			: h
 
-    if (c) {
-      c.width = w
-      c.height = h
-    }
-  })
+		if (c) {
+			c.width = w
+			c.height = h
+		}
+	})
 })
 </script>
 

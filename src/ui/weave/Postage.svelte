@@ -3,33 +3,36 @@ import Tile from "/ui/image/Tile.svelte"
 
 export let address = ``
 
-$: runnings = Wheel.running
+$: running = Wheel.running
 
 const [, w_id, k_id] = address.split(`/`)
 
 $: weave = Wheel.get(w_id) || Wheel.get(Wheel.SYSTEM)
 $: names = weave.names
 
-$: r = weave.rezed
-$: running = $runnings[w_id] === true
-$: knot = $names[k_id]
-$: id = knot
-  ? knot.id.get()
-  : ``
+$: rezed = weave.rezed
 
-$: system = w_id === Wheel.SYSTEM
-$: rezed = $r[id]
+$: knot = $names[k_id]
+
+// TODO: sometimes use postage for bad reasons
+$: id = knot
+	? knot.id.get()
+	: ``
+
+$: isrunning = $running[w_id] === true
+$: issystem = w_id === Wheel.SYSTEM
+$: isrezed = $rezed[id]
 </script>
 
-<div 
+<div
   class="postage"
-  class:running
-  class:rezed
-  class:system
+  class:isrunning
+  class:isrezed
+  class:issystem
 >
-  <Tile 
-    width={1} 
-    height={1} 
+  <Tile
+    width={1}
+    height={1}
     text={address}
   />
 </div>
@@ -39,7 +42,7 @@ $: rezed = $r[id]
   flex: 1;
   display: flex;
   background-color: #111;
-  filter: sepia(1) hue-rotate(-50deg)    
+  filter: sepia(1) hue-rotate(-50deg)
     drop-shadow(-0.25rem 0.25rem 0 rgba(0,0,0,0.75))
     drop-shadow(0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 
@@ -51,31 +54,31 @@ $: rezed = $r[id]
 }
 .postage:active {
   background-color: rgba(0,0,0,0.75);
-  filter: sepia(1) hue-rotate(180deg)    
+  filter: sepia(1) hue-rotate(180deg)
     drop-shadow(0.25rem 0.25rem 0 rgba(0,0,0,0.75))
     drop-shadow(-0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
 
-.postage.running {
-  filter: sepia(1) hue-rotate(90deg) 
+.postage.isrunning {
+  filter: sepia(1) hue-rotate(90deg)
     drop-shadow(-0.25rem 0.25rem 0 rgba(0,0,0,0.75))
     drop-shadow(0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
-.postage.running:active {
+.postage.isrunning:active {
   background-color: rgba(0,0,0,0.75);
-  filter: sepia(1) hue-rotate(90deg)    
+  filter: sepia(1) hue-rotate(90deg)
     drop-shadow(0.25rem 0.25rem 0 rgba(0,0,0,0.75))
     drop-shadow(-0.25rem -0.25rem 0 rgba(0,0,0,0.75));
 }
-.postage.rezed {
+.postage.isrezed {
   box-shadow: -0.25rem 0.25rem 0  rgba(255, 255, 255, 0.5),
    0.25rem 0.25rem 0  rgba(255, 255, 255, 0.5),
     0.25rem 0.25rem 0 rgba(0, 255, 0, 0.5),
     -0.25rem 0.25rem 0 rgba(0, 255, 0, 0.5);
 }
 
-.postage.system, .postage.system:active {
-  filter: sepia(1) hue-rotate(200deg)    
+.postage.issystem, .postage.issystem:active {
+  filter: sepia(1) hue-rotate(200deg)
     drop-shadow(0.25rem 0.25rem 0 rgba(255, 255, 255, 0.404))
     drop-shadow(-0.25rem -0.25rem 0 rgba(255, 255, 255, 0.404));
 }

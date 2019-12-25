@@ -4,21 +4,21 @@ import * as knots from "./knots.js"
 
 // the basic knot
 export default ({
-  id = uuid(),
-  knot,
-  ...rest
+	id = uuid(),
+	knot,
+	...rest
 } = false) => {
-  const k = {
-    ...(knots[knot]
-      ? knots[knot]({
-        ...rest,
-        id
-      })
-      : { knot: read(knot || `unknown`) }
-    ),
+	const k = {
+		...(knots[knot]
+			? knots[knot]({
+				...rest,
+				id
+			})
+			: { knot: read(knot || `unknown`) }
+		),
 
-    id: read(id),
-    toJSON: () => k
-  }
-  return k
+		id: read(id),
+		toJSON: () => k
+	}
+	return k
 }

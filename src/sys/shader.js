@@ -6,6 +6,6 @@ import sprite_vert from "./shader/sprite.vert"
 const breaker = (a) => a.map(i => `\r\n${i}`)
 
 export const sprite = read(breaker([
-  sprite_vert,
-  sprite_frag
+	sprite_vert,
+	sprite_frag
 ]))

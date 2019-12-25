@@ -2,22 +2,22 @@ import { write, read } from "/util/store.js"
 import { json } from "/util/parse.js"
 
 export default ({
-  value = null
+	value = null
 }) => {
-  const v = write()
-  const set = v.set
+	const v = write()
+	const set = v.set
 
-  v.set = (val) => {
-    try {
-      set(json(val))
-    } catch (ex) {
-      set(val)
-    }
-  }
+	v.set = (val) => {
+		try {
+			set(json(val))
+		} catch (ex) {
+			set(val)
+		}
+	}
 
-  v.set(value)
-  return ({
-    knot: read(`stream`),
-    value: v
-  })
+	v.set(value)
+	return ({
+		knot: read(`stream`),
+		value: v
+	})
 }

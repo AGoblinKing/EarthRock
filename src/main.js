@@ -6,10 +6,10 @@ const ws = Wheel.weaves.get()
 ws[Wheel.SYSTEM] = system
 
 const app = new App({
-  target: document.body,
-  props: {
-    name: `stage`
-  }
+	target: document.body,
+	props: {
+		name: `stage`
+	}
 })
 
 export default app

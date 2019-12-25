@@ -12,21 +12,21 @@ $: running = Wheel.running
 $: runs = $running[weave.name.get()]
 
 const toggle = (e) => {
-  e.stopPropagation()
-  e.preventDefault()
+	e.stopPropagation()
+	e.preventDefault()
 
-  if (runs) {
-    Wheel.stop($name)
-  } else {
-    Wheel.start($name)
-  }
+	if (runs) {
+		Wheel.stop($name)
+	} else {
+		Wheel.start($name)
+	}
 
-  runs = !runs
+	runs = !runs
 }
 const save_it = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  save(weave)
+	e.preventDefault()
+	e.stopPropagation()
+	save(weave)
 }
 $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_BG};`
 </script>

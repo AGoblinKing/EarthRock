@@ -10,27 +10,27 @@ let x = 0
 let y = 0
 
 const to_grid = (num, ratio) => {
-  const v = Math.round((num - ratio) / ratio)
-  return Math.max(0, Math.min(v, $TILE_COLUMNS - 1))
+	const v = Math.round((num - ratio) / ratio)
+	return Math.max(0, Math.min(v, $TILE_COLUMNS - 1))
 }
 
 const track = (e) => {
-  const ratio = e.target.clientWidth / $TILE_COLUMNS
+	const ratio = e.target.clientWidth / $TILE_COLUMNS
 
-  x = to_grid(e.layerX, ratio) * ratio
-  y = to_grid(e.layerY, ratio) * ratio
+	x = to_grid(e.layerX, ratio) * ratio
+	y = to_grid(e.layerY, ratio) * ratio
 }
 
 const select = (e) => {
-  const ratio = e.target.clientWidth / $TILE_COLUMNS
-  value.set(to_grid(e.layerX, ratio) + to_grid(e.layerY, ratio) * $TILE_COLUMNS)
-  editing = false
+	const ratio = e.target.clientWidth / $TILE_COLUMNS
+	value.set(to_grid(e.layerX, ratio) + to_grid(e.layerY, ratio) * $TILE_COLUMNS)
+	editing = false
 }
 
 const blur = () => {
-  if (editing) {
-    editing = false
-  }
+	if (editing) {
+		editing = false
+	}
 }
 </script>
 

@@ -18,27 +18,27 @@ $: [key, value] = channel
 
 let edit = ``
 $: {
-  if ($tick % 4 === 0) {
-    edit = $value
-  }
+	if ($tick % 3 === 0) {
+		edit = $value
+	}
 }
 $: editing = focus
 let val = ``
 
 const execute = () => {
-  editing = false
+	editing = false
 
-  try {
-    value.set(json(val))
-  } catch (ex) {
-    // no boggie
-  }
-  val = ``
-  executed()
+	try {
+		value.set(json(val))
+	} catch (ex) {
+		// no boggie
+	}
+	val = ``
+	executed()
 }
 
 const focusd = (node) => {
-  node.focus()
+	node.focus()
 }
 </script>
 

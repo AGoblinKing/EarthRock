@@ -15,22 +15,26 @@ $: w_name = weave.name
 $: name = stitch.name
 $: rezed = weave.rezed
 $: value = stitch.value
+
 $: chans = Object.entries($value).sort(([a], [b]) => {
-  if (a > b) return 1
-  if (b > a) return -1
-  return 0
+	if (a > b) return 1
+	if (b > a) return -1
+	return 0
 })
 
 const toggle = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  const r = $rezed
-  if (r[stitch.id.get()]) {
-    delete r[stitch.id.get()]
-  } else {
-    r[stitch.id.get()] = true
-  }
-  rezed.set(r)
+	e.preventDefault()
+	e.stopPropagation()
+	const r = $rezed
+	if (r[stitch.id.get()]) {
+		delete r[stitch.id.get()]
+	} else {
+		r[stitch.id.get()] = true
+	}
+	rezed.set(r)
+	if (Wheel.running.get()[$w_name]) {
+		Wheel.restart($w_name)
+	}
 }
 </script>
 
@@ -45,21 +49,21 @@ const toggle = (e) => {
   </div>
 
   <div class="postage" on:click={toggle}>
-    <Postage address={`/${$w_name}/${$name}`}/>
+	<Postage address={`/${$w_name}/${$name}`}/>
   </div>
 
 </div>
 
 {#if open}
   <div class="chans">
-  {#each chans as channel}
-    {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
-      <Channel
-        {channel}
-        {stitch}
-        {weave}
-      />
-    {/if}
+  {#each chans as channel (channel[0])}
+	{#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+	  <Channel
+		{channel}
+		{stitch}
+		{weave}
+	  />
+	{/if}
   {/each}
   </div>
 {/if}

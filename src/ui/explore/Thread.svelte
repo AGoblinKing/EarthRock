@@ -12,8 +12,6 @@ export let channel
 export let stitch
 export let weave
 
-$: feed = Wheel.feed
-
 let editing = false
 $: address = `${stitch.id.get()}/${channel[0]}`
 $: threads = weave.threads
@@ -21,8 +19,8 @@ $: threads = weave.threads
 $: chain = $threads && weave.chain(address).slice(0, -1)
 
 $: boxes = chain
-  .map((i) => translate(i, weave))
-  .join(` => `)
+	.map((i) => translate(i, weave))
+	.join(` => `)
 
 $: time_cut = $tick && Date.now() - 1000
 
@@ -30,24 +28,29 @@ $: tru_thread = chain
 let edit = ``
 
 const execute = () => {
-  if (!editing) return
-  editing = false
+	if (!editing) return
+	editing = false
 }
 
 $:style = [
-  `border: 0.25rem solid ${$THEME_BORDER};`,
-  `background-color: ${$THEME_BG};`
+	`border: 0.25rem solid ${$THEME_BORDER};`,
+	`background-color: ${$THEME_BG};`
 ].join(``)
 
 const do_edit = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  if (weave.name.get() === Wheel.SYSTEM) return
-  if (editing) return
-  editing = true
-  edit = format(weave.chain(address).slice(0, -1).map((i) => translate(i, weave))
-    .join(` => `))
+	e.preventDefault()
+	e.stopPropagation()
+	if (weave.name.get() === Wheel.SYSTEM) return
+	if (editing) return
+	editing = true
+	edit = format(weave.chain(address).slice(0, -1).map((i) => translate(i, weave))
+		.join(` => `))
 }
+
+// TODO: light up on value changes
+// can light up based on value changes instead!
+// $feed[`${weave.name.get()}/${link}`] > time_cut}
+$:active = false
 </script>
 
 {#if editing}
@@ -64,7 +67,7 @@ const do_edit = (e) => {
       <div
         class="thread"
         {style}
-        class:active={chain.some((item) => $feed[`${weave.name.get()}/${item}`] > time_cut)}
+        class:active
       >
         {link}
       </div>
@@ -73,7 +76,7 @@ const do_edit = (e) => {
       class="thread"
       {style}
       use:color={condense(link, weave)}
-      class:active={$feed[`${weave.name.get()}/${link}`] > time_cut}
+      class:active
     >
       <Knot {weave} id={link} />
     </div>

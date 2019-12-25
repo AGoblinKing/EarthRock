@@ -1,5 +1,5 @@
 <script>
-import { THEME_BORDER } from "/sys/flag.js"
+import { THEME_BORDER, OMNI_LAST } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 export let command = () => {}
 let omni = ``
@@ -7,46 +7,46 @@ let omni = ``
 export let system = false
 
 const place_default = system
-  ? `!`
-  : `! > + -`
+	? `!`
+	: `! > + -`
 
 let placeholder = place_default
 
 const calc_offset = ($t, $p) => {
-  if ($p.length < 20) return placeholder
-  const offset = Math.floor($t / 2) % $p.length
-  return $p.slice(-offset) + $p.slice(0, -offset)
+	if ($p.length < 20) return placeholder
+	const offset = Math.floor($t / 2) % $p.length
+	return $p.slice(-offset) + $p.slice(0, -offset)
 }
 
 $: tru_placeholder = calc_offset($tick, placeholder)
 
 const commands = {
-  "!": () => {
-    if (system) {
-      placeholder = `SYSTEM CAN ONLY FILTER!!! `
-      return
-    }
-    placeholder = `[ADD]+Name [MOVE]~Name/Name [DELETE]-Name`
-  },
-  undefined: () => {
-    placeholder = place_default
-  }
+	"!": () => {
+		if (system) {
+			placeholder = `SYSTEM CAN ONLY FILTER!!! `
+			return
+		}
+		placeholder = `[ADD]+Name [MOVE]~Name/Name [DELETE]-Name`
+	},
+	undefined: () => {
+		placeholder = place_default
+	}
 }
 const execute = () => {
-  const data = [
-    omni[0],
-    ...omni.slice(1).split(`/`)
-  ]
-  omni = ``
+	const data = [
+		omni[0],
+		...omni.slice(1).split(`/`)
+	]
+	omni = ``
 
-  if (system) {
-    return commands[`!`]()
-  }
+	if (system) {
+		return commands[`!`]()
+	}
 
-  if (commands[data[0]]) commands[data[0]](data)
-  command(data, (ph) => {
-    placeholder = ph
-  })
+	if (commands[data[0]]) commands[data[0]](data)
+	command(data, (ph) => {
+		placeholder = ph
+	})
 }
 </script>
 

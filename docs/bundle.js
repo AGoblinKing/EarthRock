@@ -448,6 +448,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	twgl.v3.setDefaultType(Array);
 
+	const maths = {};
+
 	const parser = new expr.Parser({
 		in: true,
 		assignment: true
@@ -472,7 +474,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	parser.functions.Color = Color;
 
 	const math = (formula) => {
-		const p = parser.parse(formula);
+		let p = maths[formula];
+
+		if (!p) {
+			p = parser.parse(formula);
+			maths[formula] = p;
+		}
 
 		return (variables) => p.evaluate(variables)
 	};
@@ -1010,6 +1017,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const highways = new Map();
 
 	let running_set;
+
 	// run the system weave by default (safe idle)
 	const running = read({
 		[SYSTEM]: true

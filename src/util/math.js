@@ -4,6 +4,8 @@ import Color from "color"
 
 v3.setDefaultType(Array)
 
+const maths = {}
+
 export const parser = new expr.Parser({
 	in: true,
 	assignment: true
@@ -28,7 +30,12 @@ Object.entries(m4).forEach(([key, fn]) => {
 parser.functions.Color = Color
 
 export const math = (formula) => {
-	const p = parser.parse(formula)
+	let p = maths[formula]
+
+	if (!p) {
+		p = parser.parse(formula)
+		maths[formula] = p
+	}
 
 	return (variables) => p.evaluate(variables)
 }

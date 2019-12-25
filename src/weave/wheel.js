@@ -14,6 +14,7 @@ export const weaves = write({
 const highways = new Map()
 
 let running_set
+
 // run the system weave by default (safe idle)
 export const running = read({
 	[SYSTEM]: true

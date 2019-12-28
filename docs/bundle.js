@@ -8,6 +8,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const speed_check = new Set();
 
+	// clear the speed check every frame
+	const enforcer = () => {
+		requestAnimationFrame(enforcer);
+		speed_check.clear();
+	};
+
+	enforcer();
+
 	let i = 0;
 
 	const writable = (val) => {
@@ -1866,6 +1874,22 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const { m4 } = twgl;
 	const up = [0, 1, 0];
 
+	const smooth_position = {
+		last: [0, 0, 0],
+		next: [0, 0, 0],
+		get: (t) =>
+			twgl.v3.lerp(
+				smooth_position.last,
+				smooth_position.next,
+				t
+			)
+	};
+
+	tick.listen(() => {
+		smooth_position.last = smooth_position.next;
+		smooth_position.next = position$1.get();
+	});
+
 	var webgl = () => {
 		const canvas = document.createElement(`canvas`);
 
@@ -1895,6 +1919,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		// lifecycle on knot
 		canvas.cancel = frame.listen(([time, t]) => {
+			const snap = snapshot();
+
 			gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
 			// see what these are about
@@ -1908,14 +1934,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			);
 
 			const c = camera.get();
-			const $pos = position$1.get();
+			const $pos = smooth_position.get(snap.time);
 
 			m4.lookAt($pos, twgl.v3.add($pos, look.get()), up, c);
 			m4.inverse(c, view);
-			camera.set(c);
-			m4.multiply(projection, view, view_projection);
 
-			const snap = snapshot();
+			m4.multiply(projection, view, view_projection);
 
 			gl.clearColor(...clear_color);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
@@ -8441,7 +8465,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return child_ctx;
 	}
 
-	// (64:0) {#if !hide}
+	// (55:0) {#if !hidden}
 	function create_if_block$8(ctx) {
 		let div4;
 		let div3;
@@ -8487,17 +8511,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 				attr_dev(div0, "class", "logo svelte-e39f2m");
 				attr_dev(div0, "style", ctx.$THEME_STYLE);
-				add_location(div0, file$e, 70, 2, 1350);
+				add_location(div0, file$e, 61, 2, 1247);
 				attr_dev(div1, "class", "events svelte-e39f2m");
-				add_location(div1, file$e, 75, 2, 1430);
+				add_location(div1, file$e, 66, 2, 1327);
 				attr_dev(div2, "class", "weaves svelte-e39f2m");
-				add_location(div2, file$e, 79, 2, 1490);
+				add_location(div2, file$e, 70, 2, 1387);
 				attr_dev(div3, "class", "partial svelte-e39f2m");
-				add_location(div3, file$e, 69, 2, 1325);
+				add_location(div3, file$e, 60, 2, 1222);
 				attr_dev(div4, "class", "explore svelte-e39f2m");
 				set_style(div4, "color", ctx.$THEME_COLOR);
 				toggle_class(div4, "hidden", ctx.hidden);
-				add_location(div4, file$e, 64, 0, 1245);
+				add_location(div4, file$e, 55, 0, 1142);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div4, anchor);
@@ -8567,14 +8591,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$8.name,
 			type: "if",
-			source: "(64:0) {#if !hide}",
+			source: "(55:0) {#if !hidden}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (82:4) {#if        filter === `` ||        weave.name.get().indexOf(parts[0]) !== -1      }
+	// (73:4) {#if        filter === `` ||        weave.name.get().indexOf(parts[0]) !== -1      }
 	function create_if_block_1$5(ctx) {
 		let current;
 
@@ -8620,14 +8644,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$5.name,
 			type: "if",
-			source: "(82:4) {#if        filter === `` ||        weave.name.get().indexOf(parts[0]) !== -1      }",
+			source: "(73:4) {#if        filter === `` ||        weave.name.get().indexOf(parts[0]) !== -1      }",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (81:2) {#each ws as weave (weave.id.get())}
+	// (72:2) {#each ws as weave (weave.id.get())}
 	function create_each_block$3(key_2, ctx) {
 		let first;
 		let show_if = ctx.filter === `` || ctx.weave.name.get().indexOf(ctx.parts[0]) !== -1;
@@ -8693,18 +8717,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block$3.name,
 			type: "each",
-			source: "(81:2) {#each ws as weave (weave.id.get())}",
+			source: "(72:2) {#each ws as weave (weave.id.get())}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (62:0) <Picker>
+	// (53:0) <Picker>
 	function create_default_slot(ctx) {
 		let if_block_anchor;
 		let current;
-		let if_block = !ctx.hide && create_if_block$8(ctx);
+		let if_block = !ctx.hidden && create_if_block$8(ctx);
 
 		const block = {
 			c: function create() {
@@ -8717,7 +8741,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(changed, ctx) {
-				if (!ctx.hide) {
+				if (!ctx.hidden) {
 					if (if_block) {
 						if_block.p(changed, ctx);
 						transition_in(if_block, 1);
@@ -8756,7 +8780,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_default_slot.name,
 			type: "slot",
-			source: "(62:0) <Picker>",
+			source: "(53:0) <Picker>",
 			ctx
 		});
 
@@ -8794,7 +8818,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			p: function update(changed, ctx) {
 				const picker_changes = {};
 
-				if (changed.$$scope || changed.hide || changed.$THEME_COLOR || changed.hidden || changed.ws || changed.filter || changed.parts || changed.$THEME_STYLE) {
+				if (changed.$$scope || changed.hidden || changed.$THEME_COLOR || changed.ws || changed.filter || changed.parts || changed.$THEME_STYLE) {
 					picker_changes.$$scope = { changed, ctx };
 				}
 
@@ -8841,22 +8865,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		validate_store(THEME_STYLE, "THEME_STYLE");
 		component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_weaves());
-		let do_hide;
 
 		key.listen(char => {
 			if (char !== `\``) return;
 			$$invalidate("hidden", hidden = !hidden);
-			do_hide && clearTimeout(do_hide);
-
-			do_hide = setTimeout(() => {
-				$$invalidate("hide", hide = hidden);
-				do_hide = false;
-			});
 		});
 
-		let hide = false;
 		let filter = ``;
-		let { hidden = false } = $$props;
+		let { hidden = window.location.hash.indexOf(`dev`) === -1 } = $$props;
 
 		const command = ([action, ...details], msg) => {
 			switch (action) {
@@ -8891,8 +8907,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		$$self.$capture_state = () => {
 			return {
-				do_hide,
-				hide,
 				filter,
 				hidden,
 				weaves,
@@ -8905,8 +8919,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		};
 
 		$$self.$inject_state = $$props => {
-			if ("do_hide" in $$props) do_hide = $$props.do_hide;
-			if ("hide" in $$props) $$invalidate("hide", hide = $$props.hide);
 			if ("filter" in $$props) $$invalidate("filter", filter = $$props.filter);
 			if ("hidden" in $$props) $$invalidate("hidden", hidden = $$props.hidden);
 			if ("weaves" in $$props) $$subscribe_weaves($$invalidate("weaves", weaves = $$props.weaves));
@@ -8936,7 +8948,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		 $$subscribe_weaves($$invalidate("weaves", weaves = Wheel.weaves));
 
 		return {
-			hide,
 			filter,
 			hidden,
 			command,

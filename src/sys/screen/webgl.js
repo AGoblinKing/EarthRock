@@ -2,7 +2,7 @@ import * as twgl from "twgl"
 import Color from "color"
 
 import { write } from "/util/store.js"
-import { frame } from "/sys/time.js"
+import { frame, tick } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
 import { SPRITES, CLEAR_COLOR } from "/sys/flag.js"
@@ -18,6 +18,22 @@ CLEAR_COLOR.listen((txt) => {
 
 const { m4 } = twgl
 const up = [0, 1, 0]
+
+const smooth_position = {
+	last: [0, 0, 0],
+	next: [0, 0, 0],
+	get: (t) =>
+		twgl.v3.lerp(
+			smooth_position.last,
+			smooth_position.next,
+			t
+		)
+}
+
+tick.listen(() => {
+	smooth_position.last = smooth_position.next
+	smooth_position.next = position.get()
+})
 
 export default () => {
 	const canvas = document.createElement(`canvas`)
@@ -48,6 +64,8 @@ export default () => {
 
 	// lifecycle on knot
 	canvas.cancel = frame.listen(([time, t]) => {
+		const snap = snapshot()
+
 		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
 		// see what these are about
@@ -61,14 +79,12 @@ export default () => {
 		)
 
 		const c = camera.get()
-		const $pos = position.get()
+		const $pos = smooth_position.get(snap.time)
 
 		m4.lookAt($pos, twgl.v3.add($pos, look.get()), up, c)
 		m4.inverse(c, view)
-		camera.set(c)
-		m4.multiply(projection, view, view_projection)
 
-		const snap = snapshot()
+		m4.multiply(projection, view, view_projection)
 
 		gl.clearColor(...clear_color)
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)

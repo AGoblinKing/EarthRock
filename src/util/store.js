@@ -6,6 +6,8 @@ const enforcer = () => {
 	speed_check.clear()
 }
 
+enforcer()
+
 let i = 0
 
 const writable = (val) => {

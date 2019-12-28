@@ -8,19 +8,10 @@ import Weave from "/ui/explore/Weave.svelte"
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 import { key } from "/sys/key.js"
 
-let do_hide
 key.listen((char) => {
 	if (char !== `\``) return
 	hidden = !hidden
-	do_hide && clearTimeout(do_hide)
-
-	do_hide = setTimeout(() => {
-		hide = hidden
-		do_hide = false
-	})
 })
-
-let hide = false
 
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
@@ -30,7 +21,7 @@ $: parts = filter[0] === `-` || filter[0] === `+`
 	? [``, ``]
 	: filter.split(`/`)
 
-export let hidden = false
+export let hidden = window.location.hash.indexOf(`dev`) === -1
 
 const command = ([action, ...details], msg) => {
 	switch (action) {
@@ -61,7 +52,7 @@ const command = ([action, ...details], msg) => {
 <MainScreen />
 <Picker>
 
-{#if !hide}
+{#if !hidden}
 <div
   class="explore"
   style="color: {$THEME_COLOR};"

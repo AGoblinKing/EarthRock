@@ -30,10 +30,10 @@ const smooth_position = {
 		)
 }
 
-tick.listen(() => {
+tick.listen(() => requestAnimationFrame(() => {
 	smooth_position.last = smooth_position.next
 	smooth_position.next = position.get()
-})
+}))
 
 export default () => {
 	const canvas = document.createElement(`canvas`)
@@ -79,6 +79,7 @@ export default () => {
 		)
 
 		const c = camera.get()
+
 		const $pos = smooth_position.get(snap.time)
 
 		m4.lookAt($pos, twgl.v3.add($pos, look.get()), up, c)

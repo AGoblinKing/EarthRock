@@ -13,6 +13,3 @@ export const scroll = read([0, 0, 0], set => window
 		set([-e.deltaX, -e.deltaY, 0])
 	})
 )
-
-window.addEventListener(`touchmove`, (e) => e.preventDefault())
-window.addEventListener(`pointermove`, (e) => e.preventDefault())

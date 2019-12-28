@@ -53,5 +53,6 @@ const execute = () => {
   margin: 0;
   padding: 1rem;
   color: rgb(224, 168, 83);
+  user-select: all !important;
 }
 </style>

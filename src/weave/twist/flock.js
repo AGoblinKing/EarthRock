@@ -26,8 +26,8 @@ export default ({
 					knot: `stitch`,
 					value: {
 						"!clone": $value,
-						"!leader": `~/${stitch.name.get()}`,
-						"!flock index": i
+						"!leader": `${stitch.name.get()}`,
+						"!bird": i
 					}
 				}
 			}

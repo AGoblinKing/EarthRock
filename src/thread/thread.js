@@ -75,10 +75,15 @@ const knot_create = (data) => {
 	return knots_create[what](data)
 }
 
-export const translate = (k, weave) => {
-	if (k[0] === `{`) return k
+export const decompile = (address, weave) =>
+	weave.chain(address).slice(0, -1)
+		.map((i) => translate(i, weave))
+		.join(` => `)
 
-	const knot = weave.knots.get()[k]
+export const translate = (id, weave) => {
+	if (id[0] === `{`) return id
+
+	const knot = weave.knots.get()[id]
 	if (!knot) return `stitch`
 
 	const type = knot.knot.get()

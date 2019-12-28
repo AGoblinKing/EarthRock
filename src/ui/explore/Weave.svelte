@@ -47,8 +47,9 @@ $: knots = weave.knots
 
 	{#each stitches as [s_name,stitch] (s_name)}
 	  {#if
-		filter.length === 0 ||
-		s_name.indexOf(filter[0]) !== -1
+		(filter.length === 0 ||
+		s_name.indexOf(filter[0]) !== -1) &&
+		s_name[0] !== `&`
 	  }
 		<Stitch
 		  {stitch}

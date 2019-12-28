@@ -202,7 +202,7 @@ const start_lives = (weave) => {
 				// not rezed
 				if (
 					!isrez ||
-					last.knot.get() !== `stitch`
+					(last && last.knot.get() !== `stitch`)
 				) {
 					return false
 				}
@@ -296,4 +296,4 @@ export const toJSON = () => ({
 	running: bump(running)
 })
 
-export const REG_ID = /\$?[~\.]?\/[a-zA-Z \/]+/g
+export const REG_ID = /\$?[~.]?\/[a-zA-Z !%&/]+/g

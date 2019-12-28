@@ -52,9 +52,4 @@ void main() {
     pos,
     1.0
   );
-
-  gl_Position -= vec4(
-    (gl_Position.xy) * gl_Position.z,
-    0.0, 0.0
-  );
 }

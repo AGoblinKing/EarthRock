@@ -6,10 +6,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	expr = expr && expr.hasOwnProperty('default') ? expr['default'] : expr;
 	exif = exif && exif.hasOwnProperty('default') ? exif['default'] : exif;
 
+	const speed_check = new Set();
+
+	let i = 0;
+
 	const writable = (val) => {
 		const subs = new Set();
 
 		const w = {
+			i: i++,
 			// not stored
 			type: `JSON`,
 			get: () => val,
@@ -22,7 +27,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					? null
 					: val_new;
 
-				if (!silent) subs.forEach((fn) => fn(val));
+				if (!silent) {
+					// delay if already set this frame
+					if (speed_check.has(w.i)) {
+						requestAnimationFrame(() =>
+							subs.forEach((fn) => fn(val))
+						);
+					} else {
+						speed_check.add(w.i);
+						subs.forEach((fn) => fn(val));
+					}
+				}
 				return w
 			},
 			update: (fn) => {
@@ -275,8 +290,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 						knot: `stitch`,
 						value: {
 							"!clone": $value,
-							"!leader": `~/${stitch.name.get()}`,
-							"!flock index": i
+							"!leader": `${stitch.name.get()}`,
+							"!bird": i
 						}
 					};
 				}
@@ -292,6 +307,172 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return async () => {
 			weave.remove(...await birds);
 		}
+	};
+
+	// a textual representation of a WEAVE chain
+
+	const knots = {
+		stream: (k) => JSON.stringify(k.value.get()),
+		math: (k) => k.math.get().trim(),
+		mail: (k) => k.whom.get().trim(),
+		default: (k) => k.knot.get(),
+		stitch: (k) => `./${k.name.get()}`,
+		sprite: (k) => `@${k.value.get()}`,
+		color: (k) => `#${k.value.get()}`
+	};
+
+	const knots_is = {
+		color: (data) => data[0] === `#`,
+		sprite: (data) => data[0] === `@`,
+		mail: (data) => {
+			const ms = data.match(Wheel.REG_ID);
+			if (!ms || ms.length !== 1) return false
+			if (ms[0] !== data) return false
+			return true
+		},
+		stream: (data) => {
+			try {
+				JSON.parse(data);
+				return true
+			} catch (ex) {
+				return false
+			}
+		}
+	};
+
+	const knots_create = {
+		math: (data) => ({
+			knot: `math`,
+			math: data
+		}),
+		mail: (data) => ({
+			knot: `mail`,
+			whom: data
+		}),
+		stream: (data) => ({
+			knot: `stream`,
+			value: JSON.parse(data)
+		}),
+		color: (data) => ({
+			knot: `color`,
+			value: data.slice(1)
+		}),
+		sprite: (data) => {
+			let i = parseInt(data.slice(1));
+
+			if (isNaN(i)) {
+				i = 66;
+			}
+
+			return {
+				knot: `sprite`,
+				value: i
+			}
+		}
+	};
+
+	const what_is = (data) => {
+		const entries = Object.entries(knots_is);
+		for (let i = 0; i < entries.length; i++) {
+			const [type, fn] = entries[i];
+			if (fn(data)) return type
+		}
+
+		return `math`
+	};
+
+	const knot_create = (data) => {
+		const what = what_is(data);
+		return knots_create[what](data)
+	};
+
+	const decompile = (address, weave) =>
+		weave.chain(address).slice(0, -1)
+			.map((i) => translate(i, weave))
+			.join(` => `);
+
+	const translate = (id, weave) => {
+		if (id[0] === `{`) return id
+
+		const knot = weave.knots.get()[id];
+		if (!knot) return `stitch`
+
+		const type = knot.knot.get();
+
+		return knots[type]
+			? knots[type](knot)
+			: type
+	};
+
+	const compile = (code, weave, address) => {
+		const parts = code
+			.replace(/[\r\n]/g, ``)
+			.split(`=>`)
+			.reverse();
+
+		const threads_update = weave.threads.get();
+		const knots = weave.knots.get();
+
+		weave.chain(address).forEach((id) => {
+			delete knots[id];
+			delete threads_update[id];
+		});
+
+		weave.knots.set(knots);
+
+		let connection = address;
+
+		// lets create these knots
+		parts.forEach((part) => {
+			part = part.trim();
+
+			if (part === ``) return
+
+			const w_data = knot_create(part);
+
+			const k = weave.add(w_data);
+
+			threads_update[k.id.get()] = connection;
+			connection = k.id.get();
+		});
+
+		weave.threads.set(
+			threads_update
+		);
+
+		weave.validate();
+	};
+
+	const format = (txt) => {
+		txt = txt.split(`;`);
+
+		txt = txt
+			.map((i, k) => {
+				i = i.trim();
+				if (k !== txt.length - 1) {
+					i += `;`;
+				}
+				if (k === txt.length - 2) {
+					i += `\r\n`;
+				}
+				return i
+			})
+			.join(`\r\n`);
+
+		txt = txt
+			.split(`=>`)
+			.join(`\r\n\r\n=>`);
+
+		return txt
+	};
+
+	const condense = (link, weave) => {
+		const t = translate(link, weave).split(`;`);
+		const v = t.pop().trim();
+
+		return t.length > 0
+			? `{${t.length}} ${v}`
+			: v
 	};
 
 	var clone = ({
@@ -310,8 +491,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			if (stop_other) stop_other();
 			stop_other = false;
 
-			const other = Wheel.get(weave.resolve($value, id));
+			const addr_o = weave.resolve($value, id);
+			const split = addr_o.split(`/`);
+
+			const other = Wheel.get(addr_o);
 			if (!other) return
+
+			const weave_other = Wheel.get(split[0]);
 
 			stop_other = other.value.listen((vs_o) => {
 				clean();
@@ -323,6 +509,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 						});
 					}))
 				);
+
+				// going to cause flap
+				requestAnimationFrame(() => {
+					// basic values added, we can now attach scripts
+					Object.keys(vs_o).forEach((key) => {
+						const other_id = `${other.id.get()}/${key}`;
+						const c_o = weave_other.chain(other_id).slice(0, -1);
+						if (c_o.length === 0) return
+
+						//  we got a chain to clone!
+						const code = decompile(other_id, weave_other);
+						compile(code, weave, `${id}/${key}`);
+					});
+				});
 			});
 		});
 
@@ -334,8 +534,43 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	};
 
 	// Who to follow
-	var leader = () => {
+	var leader = ({
+		value,
+		weave,
+		id
+	}) => {
+		const cancel = value.listen((leader) => {
+			const l = weave.get_name(leader);
+			if (!l) return
 
+			const vs = l.value.get();
+			if (!vs[`!birds`]) {
+				vs[`!birds`] = write([id]);
+				l.value.set(vs);
+				return
+			}
+
+			let v = vs[`!birds`].get();
+			if (!Array.isArray(v)) v = [];
+			if (v.indexOf(id) !== -1) return
+
+			v.push(id);
+			vs[`!birds`].set(v);
+		});
+
+		return () => {
+			cancel();
+			const l = weave.get_name(value.get());
+			if (!l) return
+
+			const vs = l.value.get();
+			if (!vs) return
+
+			const bs = vs[`!birds`].get();
+			bs.splice(bs.indexOf(id), 1);
+
+			vs[`!birds`].set(bs);
+		}
 	};
 
 
@@ -484,12 +719,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return (variables) => p.evaluate(variables)
 	};
 
-	const whitespace = /[ .~]/g;
+	const bad_variable_characters = /[ .~%!&/^]/g;
+	const regexcape = /[.*+?^${}()|[\]\\]/g;
+
+	const path_stitch = /\.\//g;
+	const path_weave = /~\//g;
+	const path_ssh = /\$/g;
 
 	const escape = (str) =>
-		str.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`); // $& means the whole matched string
-
-	const re_var = /\//g;
+		str.replace(regexcape, `\\$&`); // $& means the whole matched string
 
 	var math$1 = ({
 		math: math$1 = `2+2`,
@@ -511,13 +749,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			new Set(matches).forEach((item) => {
 				const shh = item[0] === `$`;
 				const gette = item
-					.replace(`./`, `${s}/`)
-					.replace(`~/`, `/${weave.name.get()}/`)
-					.replace(`$`, ``)
+					.replace(path_stitch, `${s}/`)
+					.replace(path_weave, `/${weave.name.get()}/`)
+					.replace(path_ssh, ``)
 					.trim();
 
 				const k = Wheel.get(gette);
-				const name = gette.replace(whitespace, ``).replace(re_var, ``);
+				const name = gette.replace(bad_variable_characters, `z`);
+
 				expression = expression.replace(
 					new RegExp(escape(item), `g`),
 					name
@@ -539,7 +778,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				};
 			});
 
-			// also wtf dont recompile expression each time
 			try {
 				math_fn = math(expression);
 				values.set(vs);
@@ -638,7 +876,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			}
 
 			v.set(value_new);
-
 			set(value_new);
 		};
 
@@ -692,7 +929,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 
 
-	var knots = /*#__PURE__*/Object.freeze({
+	var knots$1 = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		stitch: stitch,
 		stream: stream,
@@ -709,8 +946,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		...rest
 	} = false) => {
 		const k = {
-			...(knots[knot]
-				? knots[knot]({
+			...(knots$1[knot]
+				? knots$1[knot]({
 					...rest,
 					id
 				})
@@ -1205,7 +1442,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					// not rezed
 					if (
 						!isrez ||
-						last.knot.get() !== `stitch`
+						(last && last.knot.get() !== `stitch`)
 					) {
 						return false
 					}
@@ -1299,7 +1536,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		running: bump(running)
 	});
 
-	const REG_ID = /\$?[~\.]?\/[a-zA-Z \/]+/g;
+	const REG_ID = /\$?[~.]?\/[a-zA-Z !%&/]+/g;
 
 	var Wheel$1 = /*#__PURE__*/Object.freeze({
 		__proto__: null,
@@ -1382,9 +1619,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		frame: frame
 	});
 
-	var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite)*v_color;gl_FragColor.rgb*=gl_FragColor.a;if(gl_FragColor.a<0.1)discard;}";
+	var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite);float gray=dot(gl_FragColor.rgb,vec3(0.299,0.587,0.114));gl_FragColor=vec4(vec3(gray)*v_color.rgb,v_color.a*gl_FragColor.a);if(gl_FragColor.a<0.1)discard;}";
 
-	var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float rotation;attribute float rotation_last;attribute float alpha;attribute float alpha_last;attribute float color;attribute float color_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;varying vec4 v_color;void main(){v_color=mix(vec4(color_last/256.0/256.0,mod(color_last/256.0,256.0),mod(color_last,256.0),alpha_last),vec4(color/256.0/256.0,mod(color/256.0,256.0),mod(color,256.0),alpha),u_time);float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);gl_Position-=vec4((gl_Position.xy)*gl_Position.z,0.0,0.0);}";
+	var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float rotation;attribute float rotation_last;attribute float alpha;attribute float alpha_last;attribute float color;attribute float color_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;varying vec4 v_color;void main(){v_color=mix(vec4(color_last/256.0/256.0,mod(color_last/256.0,256.0),mod(color_last,256.0),alpha_last),vec4(color/256.0/256.0,mod(color/256.0,256.0),mod(color,256.0),alpha),u_time);float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);}";
 
 	const breaker = (a) => a.map(i => `\r\n${i}`);
 
@@ -2255,7 +2492,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const zoom = write(0.75);
 
 	// raw translate commands
-	const translate = read([0, 0, 0], (set) => {
+	const translate$1 = read([0, 0, 0], (set) => {
 		const b_key = [0, 0, 0];
 		// frame stuff has to be fast :/
 		frame.listen(() => {
@@ -2307,7 +2544,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	var input = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		zoom: zoom,
-		translate: translate,
+		translate: translate$1,
 		scroll: scroll$1,
 		focus: focus
 	});
@@ -2354,7 +2591,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	var FileSaver_min = createCommonjsModule(function (module, exports) {
 	(function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-	//# sourceMappingURL=FileSaver.min.js.map
+
 	});
 
 	const SIZE = 16;
@@ -4326,7 +4563,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		};
 
 		let arr_knots;
-		 arr_knots = Object.entries(knots);
+		 arr_knots = Object.entries(knots$1);
 
 		return {
 			files,
@@ -4850,167 +5087,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	}
 
-	// a textual representation of a WEAVE chain
-
-	const knots$1 = {
-		stream: (k) => JSON.stringify(k.value.get()),
-		math: (k) => k.math.get().trim(),
-		mail: (k) => k.whom.get().trim(),
-		default: (k) => k.knot.get(),
-		stitch: (k) => `./${k.name.get()}`,
-		sprite: (k) => `@${k.value.get()}`,
-		color: (k) => `#${k.value.get()}`
-	};
-
-	const knots_is = {
-		color: (data) => data[0] === `#`,
-		sprite: (data) => data[0] === `@`,
-		mail: (data) => {
-			const ms = data.match(Wheel.REG_ID);
-			if (!ms || ms.length !== 1) return false
-			if (ms[0] !== data) return false
-			return true
-		},
-		stream: (data) => {
-			try {
-				JSON.parse(data);
-				return true
-			} catch (ex) {
-				return false
-			}
-		}
-	};
-
-	const knots_create = {
-		math: (data) => ({
-			knot: `math`,
-			math: data
-		}),
-		mail: (data) => ({
-			knot: `mail`,
-			whom: data
-		}),
-		stream: (data) => ({
-			knot: `stream`,
-			value: JSON.parse(data)
-		}),
-		color: (data) => ({
-			knot: `color`,
-			value: data.slice(1)
-		}),
-		sprite: (data) => {
-			let i = parseInt(data.slice(1));
-
-			if (isNaN(i)) {
-				i = 66;
-			}
-
-			return {
-				knot: `sprite`,
-				value: i
-			}
-		}
-	};
-
-	const what_is = (data) => {
-		const entries = Object.entries(knots_is);
-		for (let i = 0; i < entries.length; i++) {
-			const [type, fn] = entries[i];
-			if (fn(data)) return type
-		}
-
-		return `math`
-	};
-
-	const knot_create = (data) => {
-		const what = what_is(data);
-		return knots_create[what](data)
-	};
-
-	const translate$1 = (k, weave) => {
-		if (k[0] === `{`) return k
-
-		const knot = weave.knots.get()[k];
-		if (!knot) return `stitch`
-
-		const type = knot.knot.get();
-
-		return knots$1[type]
-			? knots$1[type](knot)
-			: type
-	};
-
-	const compile = (code, weave, address) => {
-		const parts = code
-			.replace(/[\r\n]/g, ``)
-			.split(`=>`)
-			.reverse();
-
-		const threads_update = weave.threads.get();
-		const knots = weave.knots.get();
-
-		weave.chain(address).forEach((id) => {
-			delete knots[id];
-			delete threads_update[id];
-		});
-
-		weave.knots.set(knots);
-
-		let connection = address;
-
-		// lets create these knots
-		parts.forEach((part) => {
-			part = part.trim();
-
-			if (part === ``) return
-
-			const w_data = knot_create(part);
-
-			const k = weave.add(w_data);
-
-			threads_update[k.id.get()] = connection;
-			connection = k.id.get();
-		});
-
-		weave.threads.set(
-			threads_update
-		);
-
-		weave.validate();
-	};
-
-	const format = (txt) => {
-		txt = txt.split(`;`);
-
-		txt = txt
-			.map((i, k) => {
-				i = i.trim();
-				if (k !== txt.length - 1) {
-					i += `;`;
-				}
-				if (k === txt.length - 2) {
-					i += `\r\n`;
-				}
-				return i
-			})
-			.join(`\r\n`);
-
-		txt = txt
-			.split(`=>`)
-			.join(`\r\n\r\n=>`);
-
-		return txt
-	};
-
-	const condense = (link, weave) => {
-		const t = translate$1(link, weave).split(`;`);
-		const v = t.pop().trim();
-
-		return t.length > 0
-			? `{${t.length}} ${v}`
-			: v
-	};
-
 	/* src\ui\editor\ThreadEditor.svelte generated by Svelte v3.14.1 */
 	const file$6 = "src\\ui\\editor\\ThreadEditor.svelte";
 
@@ -5024,7 +5100,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			c: function create() {
 				textarea = element("textarea");
 				attr_dev(textarea, "spellcheck", "false");
-				attr_dev(textarea, "class", "edit svelte-it8au4");
+				attr_dev(textarea, "class", "edit svelte-18o22ik");
 				attr_dev(textarea, "type", "text");
 				attr_dev(textarea, "style", textarea_style_value = `background-color: ${ctx.$THEME_BG}; border:0.5rem solid ${ctx.$THEME_BORDER};`);
 				add_location(textarea, file$6, 24, 0, 425);
@@ -6125,7 +6201,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			if (weave.name.get() === Wheel.SYSTEM) return;
 			if (editing) return;
 			$$invalidate("editing", editing = true);
-			$$invalidate("edit", edit = format(weave.chain(address).slice(0, -1).map(i => translate$1(i, weave)).join(` => `)));
+			$$invalidate("edit", edit = format(weave.chain(address).slice(0, -1).map(i => translate(i, weave)).join(` => `)));
 		};
 
 		const writable_props = ["channel", "stitch", "weave"];
@@ -6205,7 +6281,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			}
 
 			if (changed.chain || changed.weave) {
-				 boxes = chain.map(i => translate$1(i, weave)).join(` => `);
+				 boxes = chain.map(i => translate(i, weave)).join(` => `);
 			}
 
 			if (changed.$tick) {
@@ -7948,7 +8024,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return block;
 	}
 
-	// (49:3) {#if    filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1     }
+	// (49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1) &&    s_name[0] !== `&`     }
 	function create_if_block_1$4(ctx) {
 		let current;
 
@@ -7994,7 +8070,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$4.name,
 			type: "if",
-			source: "(49:3) {#if    filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1     }",
+			source: "(49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1) &&    s_name[0] !== `&`     }",
 			ctx
 		});
 
@@ -8004,7 +8080,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	// (48:1) {#each stitches as [s_name,stitch] (s_name)}
 	function create_each_block$2(key_1, ctx) {
 		let first;
-		let show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
+		let show_if = (ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1) && ctx.s_name[0] !== `&`;
 		let if_block_anchor;
 		let current;
 		let if_block = show_if && create_if_block_1$4(ctx);
@@ -8025,7 +8101,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(changed, ctx) {
-				if (changed.filter || changed.stitches) show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
+				if (changed.filter || changed.stitches) show_if = (ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1) && ctx.s_name[0] !== `&`;
 
 				if (show_if) {
 					if (if_block) {

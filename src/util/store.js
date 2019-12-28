@@ -1,7 +1,18 @@
+const speed_check = new Set()
+
+// clear the speed check every frame
+const enforcer = () => {
+	requestAnimationFrame(enforcer)
+	speed_check.clear()
+}
+
+let i = 0
+
 const writable = (val) => {
 	const subs = new Set()
 
 	const w = {
+		i: i++,
 		// not stored
 		type: `JSON`,
 		get: () => val,
@@ -14,7 +25,17 @@ const writable = (val) => {
 				? null
 				: val_new
 
-			if (!silent) subs.forEach((fn) => fn(val))
+			if (!silent) {
+				// delay if already set this frame
+				if (speed_check.has(w.i)) {
+					requestAnimationFrame(() =>
+						subs.forEach((fn) => fn(val))
+					)
+				} else {
+					speed_check.add(w.i)
+					subs.forEach((fn) => fn(val))
+				}
+			}
 			return w
 		},
 		update: (fn) => {

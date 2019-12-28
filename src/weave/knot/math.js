@@ -1,12 +1,15 @@
 import { math as math_js } from "/util/math.js"
 import { write, read, transformer } from "/util/store.js"
 
-const whitespace = /[ .~]/g
+const bad_variable_characters = /[ .~%!&/^]/g
+const regexcape = /[.*+?^${}()|[\]\\]/g
+
+const path_stitch = /\.\//g
+const path_weave = /~\//g
+const path_ssh = /\$/g
 
 const escape = (str) =>
-	str.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`) // $& means the whole matched string
-
-const re_var = /\//g
+	str.replace(regexcape, `\\$&`) // $& means the whole matched string
 
 export default ({
 	math = `2+2`,
@@ -28,13 +31,14 @@ export default ({
 		new Set(matches).forEach((item) => {
 			const shh = item[0] === `$`
 			const gette = item
-				.replace(`./`, `${s}/`)
-				.replace(`~/`, `/${weave.name.get()}/`)
-				.replace(`$`, ``)
+				.replace(path_stitch, `${s}/`)
+				.replace(path_weave, `/${weave.name.get()}/`)
+				.replace(path_ssh, ``)
 				.trim()
 
 			const k = Wheel.get(gette)
-			const name = gette.replace(whitespace, ``).replace(re_var, ``)
+			const name = gette.replace(bad_variable_characters, `z`)
+
 			expression = expression.replace(
 				new RegExp(escape(item), `g`),
 				name
@@ -56,7 +60,6 @@ export default ({
 			}
 		})
 
-		// also wtf dont recompile expression each time
 		try {
 			math_fn = math_js(expression)
 			values.set(vs)

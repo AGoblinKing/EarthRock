@@ -26,7 +26,6 @@ export default ({
 		}
 
 		v.set(value_new)
-
 		set(value_new)
 	}
 

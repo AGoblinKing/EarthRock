@@ -6,6 +6,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	expr = expr && expr.hasOwnProperty('default') ? expr['default'] : expr;
 	exif = exif && exif.hasOwnProperty('default') ? exif['default'] : exif;
 
+	// extend an object, allows currying
+	const extend = (proto, assign = false) => assign
+		? Object.assign(
+			Object.create(proto),
+			assign
+		)
+		: (next_assign) => extend(proto, next_assign);
+
 	const speed_check = new Set();
 
 	// clear the speed check every frame
@@ -18,138 +26,148 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	let i = 0;
 
-	const writable = (val) => {
-		const subs = new Set();
+	const proto_write = {
+		set (value_new, silent = false) {
+			this._value = value_new === undefined
+				? null
+				: value_new;
 
-		const w = {
-			i: i++,
-			// not stored
-			type: `JSON`,
-			get: () => val,
-			poke: () => {
-				w.set(w.get());
-				return w
-			},
-			set: (val_new, silent = false) => {
-				val = val_new === undefined
-					? null
-					: val_new;
-
-				if (!silent) {
-					// delay if already set this frame
-					if (speed_check.has(w.i)) {
-						requestAnimationFrame(() =>
-							subs.forEach((fn) => fn(val))
-						);
-					} else {
-						speed_check.add(w.i);
-						subs.forEach((fn) => fn(val));
-					}
+			if (!silent) {
+				// delay if already set this frame
+				if (speed_check.has(this._i)) {
+					requestAnimationFrame(() =>
+						this._subs.forEach((fn) => fn(this._value))
+					);
+				} else {
+					speed_check.add(this._i);
+					this._subs.forEach((fn) => fn(this._value));
 				}
-				return w
-			},
-			update: (fn) => {
-				w.set(fn(val));
-				return w
-			},
-			subscribe: (fn) => {
-				subs.add(fn);
-				fn(val);
-				return () => subs.delete(fn)
 			}
-		};
 
-		w.toJSON = w.get;
-		w.listen = w.subscribe;
+			return this
+		},
 
-		return w
+		update (fn) { this.set(fn(this._value)); },
+
+		poke () { return this.set(this.get()) },
+
+		get () { return this._value },
+		toJSON () { return this._value },
+
+		subscribe (fn) {
+			this._subs.add(fn);
+			fn(this._value);
+
+			return () => this._subs.delete(fn)
+		},
+
+		listen (fn) { return this.subscribe(fn) }
 	};
+
+	const writable = (val) => extend(proto_write, {
+		_i: i++,
+		_subs: new Set(),
+		_value: val
+	});
+
+	const proto_read = extend(proto_write, {
+		set () {
+			throw new Error(`tried to write to readable`)
+		},
+		readonly: true
+	});
 
 	const readable = (val, handler) => {
-		const w = writable(val);
-		const { set } = w;
-		w.set = () => console.warn(`tried to write to readable`);
-		w.readonly = true;
+		const w = extend(proto_read, writable(val));
+		const set = proto_write.set.bind(w);
 		if (handler) handler(set);
+
 		return w
 	};
 
-	const write = (thing) => writable(thing);
+	const write = writable;
+
 	const read = (thing, handler) => readable(thing, handler);
 
-	const transformer = (transform) => {
-		const store = write();
+	const proto_transformer = extend(proto_write, {
+		set (value) {
+			proto_write.set.call(this, this._transform(value));
+			return this
+		}
+	});
 
-		const set = store.set;
-		store.set = (update) => {
-			set(transform(update));
-			return store
-		};
+	const transformer = (transform) => extend(proto_transformer, {
+		...write(),
+		_transform: transform
+	});
 
-		return store
-	};
+	const proto_map = Object.assign(
+		Object.create(proto_write),
+		{
+			set (data) {
+				proto_write.set.call(this, Object.fromEntries(
+					Object.entries(data)
+						.map(([key, val]) => [
+							key,
+							(val && typeof val.subscribe === `function`)
+								? val
+								: this._fn
+									? write(this._fn(val))
+									: write(val)
+						])
+				));
+			},
+
+			add (channels) {
+				this.set({
+					...this.get(),
+					...channels
+				});
+
+				return this
+			},
+
+			// no stores only values
+			update (data) {
+				Object.entries(data).forEach(([key, value]) => {
+					const v = this.get();
+
+					const vs = v[key];
+
+					if (!vs) {
+						v[key] = this._fn
+							? write(this._fn(value))
+							: write(value);
+
+						proto_write.set.call(this, v);
+						return
+					}
+
+					vs.set(value);
+				});
+			},
+
+			remove (channel) {
+				const $m = this.get();
+				delete $m[channel];
+				proto_write.set.call(this, $m);
+			}
+		}
+	);
 
 	const map = (init = {}, fn = false) => {
-		const m = write();
-		const set_m = m.set;
-
-		m.set = (data) => set_m(Object.fromEntries(
-			Object.entries(data)
-				.map(([key, val]) => [
-					key,
-					(val && typeof val.subscribe === `function`)
-						? val
-						: fn
-							? write(fn(val))
-							: write(val)
-				])
-		));
-
-		m.add = (channels) => {
-			m.set({
-				...m.get(),
-				...channels
-			});
-		};
-
-		// no stores only values
-		m.update = (data) =>
-			Object.entries(data).forEach(([key, value]) => {
-				const v = m.get();
-				const vs = v[key];
-				if (!vs) {
-					v[key] = write(value);
-					m.set(v);
-					return
-				}
-				vs.set(value);
-			});
-
-		m.remove = (channel) => {
-			const $m = m.get();
-			delete $m[channel];
-			set_m($m);
-		};
+		const m = Object.assign(
+			Object.create(proto_map),
+			{
+				...writable({}),
+				_fn: fn
+			}
+		);
 
 		m.set(init);
 
 		return m
 	};
-
-	// TODO: delete
-	const derived = (stores, fn) => readable(undefined, (set) => {
-		stores = Array.isArray(stores)
-			? stores
-			: [stores];
-
-		const cancels = stores.map(
-			(store) =>
-				store.listen(() =>
-					set(fn(stores.map((s) => s.get())))
-				)
-		);
-		return cancels
-	});
 
 	const any = (...stores) => (fn) => {
 		const values = stores.map((s) => s.get());
@@ -304,7 +322,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					};
 				}
 
-				const birds = Object.values(weave.update(w_update)).map((bird) => bird.id.get());
+				const birds = Object.values(weave.write(w_update)).map((bird) => bird.id.get());
 
 				weave.rez(...birds);
 
@@ -419,14 +437,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			.reverse();
 
 		const threads_update = weave.threads.get();
-		const knots = weave.knots.get();
+
+		const deletes = [];
 
 		weave.chain(address).forEach((id) => {
-			delete knots[id];
-			delete threads_update[id];
+			deletes.push(id);
 		});
 
-		weave.knots.set(knots);
+		weave.remove(...deletes);
 
 		let connection = address;
 
@@ -541,43 +559,74 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	};
 
-	// Who to follow
-	var leader = ({
-		value,
-		weave,
-		id
-	}) => {
-		const cancel = value.listen((leader) => {
-			const l = weave.get_name(leader);
-			if (!l) return
-
-			const vs = l.value.get();
-			if (!vs[`!birds`]) {
-				vs[`!birds`] = write([id]);
-				l.value.set(vs);
-				return
-			}
-
-			let v = vs[`!birds`].get();
-			if (!Array.isArray(v)) v = [];
-			if (v.indexOf(id) !== -1) return
-
-			v.push(id);
-			vs[`!birds`].set(v);
-		});
-
-		return () => {
-			cancel();
-			const l = weave.get_name(value.get());
+	var leader = extend({
+		derez () {
+			this._cancel();
+			const l = this.weave.get_name(this.value.get());
 			if (!l) return
 
 			const vs = l.value.get();
 			if (!vs) return
 
 			const bs = vs[`!birds`].get();
-			bs.splice(bs.indexOf(id), 1);
+			bs.splice(bs.indexOf(this.id), 1);
 
 			vs[`!birds`].set(bs);
+		},
+
+		rez () {
+			this._cancel = this.value.listen((leader) => {
+				const l = this.weave.get_name(leader);
+				if (!l) return
+
+				const vs = l.value.get();
+				if (!vs[`!birds`]) {
+					vs[`!birds`] = write([this.id]);
+					l.value.set(vs);
+					return
+				}
+
+				let v = vs[`!birds`].get();
+				if (!Array.isArray(v)) v = [];
+				if (v.indexOf(this.id) !== -1) return
+
+				v.push(this.id);
+				vs[`!birds`].set(v);
+			});
+		}
+	});
+
+	var name$1 = ({
+		value,
+		weave,
+		stitch
+	}) => {
+		let name_last;
+		const update = ($name) => ($ns) => {
+			$ns[$name] = stitch;
+
+			if (name_last) {
+				delete $ns[name_last];
+			}
+
+			name_last = $name;
+
+			return $ns
+		};
+
+		const cancel = value.listen(($name) =>
+			weave.names.update(update($name))
+		);
+
+		return {
+			destroy: () => {
+				cancel();
+
+				weave.names.update(($ns) => {
+					delete $ns[name_last];
+					return $ns
+				});
+			}
 		}
 	};
 
@@ -587,56 +636,62 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		__proto__: null,
 		flock: flock,
 		clone: clone,
-		leader: leader
+		leader: leader,
+		name: name$1
 	});
 
-	var stitch = ({
-		value = {},
-		name = random(2),
-		weave,
-		id,
-		life
-	}) => {
-		const stitch = {
-			knot: read(`stitch`),
+	const knot = read(`stitch`);
 
-			value: map(value),
+	const proto_stitch = {
+		destroy () {
+			twist.destroy && twist.destroy();
+		},
 
-			name: transformer((name_new) => {
-				// tell weave it update its knots
-				// probably should be on a channel instead
-				weave && weave.knots && weave.knots.poke();
-				return name_new
-			}).set(name)
-		};
+		rez () {
+			const $id = this.id.get();
 
-		life(() => {
-			// don't execute commands if not rezed
-			if (!weave.rezed.get()[id]) return () => {}
+			// already rezed
+			if (!this.weave.rezed.get()[$id]) return
 
-			const values = stitch.value.get();
+			const values = this.value.get();
 
-			const destroys = Object.entries(twists)
+			this.twists = Object.entries(twists)
 				.map(([key, command]) => {
 					const v = values[`!${key}`];
 					if (v === undefined) return
 
 					return command({
-						weave,
+						weave: this.weave,
 						value: v,
-						stitch,
-						id
+						stitch: this,
+						id: this.id.get()
 					})
-				})
-				.filter((d) => d);
+				});
+		},
 
-			return () => {
-				destroys.forEach((destroy) => destroy());
+		derez () {
+			this.twists.forEach((twist) => {
+				twist.derez && twist.derez();
+			});
+		},
+
+		toJSON () {
+			return {
+				id: this.id.get(),
+				knot: this.knot.get(),
+				value: this.value.get()
 			}
-		});
-
-		return stitch
+		}
 	};
+
+	var stitch = ({
+		value = {},
+		weave
+	}) => extend(proto_stitch, {
+		knot,
+		value: map(value),
+		weave
+	});
 
 	const json = (v) => {
 		if (v.indexOf(`.`) === -1) {
@@ -649,44 +704,50 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return JSON.parse(v)
 	};
 
+	const knot$1 = read(`stream`);
+
+	const proto_stream = extend(proto_write, {
+		set (val) {
+			try {
+				proto_write.set.call(this, json(val));
+			} catch (ex) {
+				proto_write.set.call(this, val);
+			}
+
+			return this
+		}
+	});
+
 	var stream = ({
 		value = null
-	}) => {
-		const v = write();
-		const set = v.set;
+	}) => ({
+		knot: knot$1,
+		value: extend(proto_stream, write()).set(value)
+	});
 
-		v.set = (val) => {
-			try {
-				set(json(val));
-			} catch (ex) {
-				set(val);
-			}
-		};
-
-		v.set(value);
-		return ({
-			knot: read(`stream`),
-			value: v
-		})
-	};
+	const knot$2 = read(`sprite`);
 
 	var sprite = ({
 		value = 0
 	}) => ({
-		knot: read(`sprite`),
+		knot: knot$2,
 		value: write(value)
 	});
+
+	const update_color = (val_n) => {
+		const c = Color(val_n);
+		if (c.red === undefined) return 0xFFFFFF
+
+		return c.red + c.green * 255 + c.blue * 255
+	};
+
+	const knot$3 = read(`color`);
 
 	var color$1 = ({
 		value = `#FFFFFF`
 	}) => ({
-		knot: read(`color`),
-		value: transformer((val_n) => {
-			const c = Color(val_n);
-			if (c.red === undefined) return 0xFFFFFF
-
-			return c.red + c.green * 255 + c.blue * 255
-		}).set(value)
+		knot: knot$3,
+		value: transformer(update_color).set(value)
 	});
 
 	twgl.v3.setDefaultType(Array);
@@ -727,6 +788,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return (variables) => p.evaluate(variables)
 	};
 
+	const noop = () => {};
+
 	const bad_variable_characters = /[ .~%!&/^]/g;
 	const regexcape = /[.*+?^${}()|[\]\\]/g;
 
@@ -737,28 +800,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const escape = (str) =>
 		str.replace(regexcape, `\\$&`); // $& means the whole matched string
 
-	var math$1 = ({
-		math: math$1 = `2+2`,
-		value,
-		weave,
-		life,
-		id
-	} = false) => {
-		let math_fn = () => {};
+	const knot$4 = read(`math`);
 
-		const values = write({});
-
-		const math_run = (expression) => requestAnimationFrame(() => {
+	const proto_math = {
+		_math_run (expression) {
 			const matches = expression.match(Wheel.REG_ID);
 			const vs = {};
-			const leaf = weave.chain(id, true).shift();
-			const s = weave.to_address(leaf);
+			const leaf = this.weave.chain(this.id.get(), true).shift();
+			const s = this.weave.to_address(leaf);
 
 			new Set(matches).forEach((item) => {
 				const shh = item[0] === `$`;
 				const gette = item
 					.replace(path_stitch, `${s}/`)
-					.replace(path_weave, `/${weave.name.get()}/`)
+					.replace(path_weave, `/${this.weave.name.get()}/`)
 					.replace(path_ssh, ``)
 					.trim();
 
@@ -787,25 +842,57 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			});
 
 			try {
-				math_fn = math(expression);
-				values.set(vs);
+				this._math_fn = math(expression);
+				this._values.set(vs);
 			} catch (ex) {
 				return console.warn(`MATH`, ex)
 			}
-		});
+		},
 
-		const m = ({
-			knot: read(`math`),
-			math: transformer((expression) => {
-				math_run(expression);
-				return expression
-			}),
-			value: write(value)
-		});
+		rez () {
+			this._math_run(this.math.get());
+			this._cancels = new Set();
 
-		const set = m.value.set;
-		m.value.set = (val) => {
-			const vs = values.get();
+			this._cancel_vs = this._values.listen((vs) => {
+				this._cancels.forEach((cancel) => cancel());
+				this._cancels.clear();
+
+				Object.entries(vs).forEach(([key, { k, shh }]) => {
+					if (shh) return
+
+					this._cancels.add(k.listen(() => this.value.poke()));
+				});
+			});
+
+			this.value.set(null);
+		},
+
+		derez () {
+			this._cancel_vs();
+			this._cancels.forEach((cancel) => cancel());
+		},
+
+		toJSON () {
+			return {
+				id: this.id.get(),
+				knot: this.knot.get(),
+				value: this.value.get(),
+
+				math: this.math.get()
+			}
+		}
+	};
+
+	const proto_math_parse = extend(proto_write, {
+		set (expression) {
+			this.math._math_run(expression);
+			return expression
+		}
+	});
+
+	const proto_value_math = extend(proto_write, {
+		set (val) {
+			const vs = this._math.values.get();
 			val = val === undefined
 				? null
 				: val;
@@ -823,59 +910,104 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			};
 
 			try {
-				const result = math_fn(params);
-				set(result);
-				return m.value
+				const result = this._math.math_fn(params);
+				proto_write.set.call(this, result);
 			} catch (ex) {
 				console.warn(`math error`, ex);
 			}
-		};
-		m.math.set(math$1);
 
-		life(() => {
-			math_run(m.math.get());
-			const cancels = new Set();
+			return this
+		}
+	});
 
-			const cancel_vs = values.listen((vs) => {
-				cancels.forEach((cancel) => cancel());
-				cancels.clear();
-
-				Object.entries(vs).forEach(([key, { k, shh }]) => {
-					if (shh) return
-
-					cancels.add(k.listen(m.value.poke));
-				});
-			});
-
-			m.value.set(null);
-
-			return () => {
-				cancel_vs();
-				cancels.forEach((cancel) => cancel());
-			}
+	var math$1 = ({
+		math = `2+2`,
+		value,
+		weave
+	} = false) => {
+		const m = extend(proto_math, {
+			knot: knot$4,
+			weave,
+			_math_fn: noop,
+			_values: write({})
 		});
+
+		m.value = extend(proto_value_math, {
+			...write({}),
+			math: m
+		}).set(value);
+
+		m.math = extend(proto_math_parse, {
+			...write(``),
+			math: m
+		}).set(math);
 
 		return m
 	};
 
-	// instead use the weave messaging channel
-	var mail = ({
-		whom = `/sys/mouse/position`,
-		weave,
-		id,
-		life
-	}) => {
-		const value = write();
-		const { set } = value;
+	const knot$5 = read(`mail`);
 
-		const fix = (address) => address
-			.replace(`$`, ``)
-			.replace(`~`, `/${weave.name.get()}`)
-			.replace(`.`, weave.to_address(weave.chain(id, true).shift()));
+	const proto_mail = {
+		_fix (address) {
+			return address
+				.replace(`$`, ``)
+				.replace(`~`, `/${this.weave.name.get()}`)
+				.replace(`.`, this.weave.to_address(this.weave.chain(this.id.get(), true).shift()))
+		},
 
-		// when set hit up the remote
-		value.set = (value_new) => {
-			const $whom = fix(m.whom.get());
+		_clear () {
+			this.cancels.forEach((fn) => fn());
+			this.cancels.clear();
+		},
+
+		derez () {
+			this.cancel_value();
+			this.cancel_whom();
+			this._clear();
+		},
+
+		rez () {
+			this.cancels = new Set();
+
+			this.cancel_whom = this.whom.listen(($whom) => {
+				this._clear();
+
+				$whom = this.weave.resolve($whom, this.id);
+
+				if ($whom[0] === `$`) {
+					$whom = $whom.replace(`$`, ``);
+					const thing = Wheel.get($whom);
+					if (!thing) return this.set(null)
+
+					this.set(thing.get());
+					return
+				}
+
+				let thing = Wheel.get($whom);
+				if (!thing) return this.set(null)
+				thing = thing.value
+					? thing.value
+					: thing;
+
+				this.cancels.add(thing.listen(($thing) => {
+					this.set($thing);
+				}));
+			});
+		},
+		toJSON () {
+			return {
+				id: this.id.get(),
+				knot: this.knot.get(),
+				value: this.value.get(),
+
+				whom: this.whom.get()
+			}
+		}
+	};
+
+	const proto_remote = extend(proto_write, {
+		set (value) {
+			const $whom = this.mail._fix(this.mail.whom.get());
 
 			const v = Wheel.get($whom);
 
@@ -883,56 +1015,28 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				return
 			}
 
-			v.set(value_new);
-			set(value_new);
-		};
+			v.set(value);
+			proto_write.set.call(this, value);
+		}
+	});
 
-		// Subscribe to remote
-		const m = ({
-			knot: read(`mail`),
+	// instead use the weave messaging channel
+	var mail = ({
+		whom = `/sys/mouse/position`,
+		weave
+	}) => {
+		const mail = extend(proto_mail, {
+			knot: knot$5,
 			whom: write(whom),
-			value,
-			set
+			weave
 		});
 
-		life(() => {
-			const cancels = new Set();
-			const clear = () => {
-				cancels.forEach((fn) => fn());
-				cancels.clear();
-			};
-
-			const cancel_whom = m.whom.listen(($whom) => {
-				clear();
-
-				$whom = weave.resolve($whom, id);
-
-				if ($whom[0] === `$`) {
-					$whom = $whom.replace(`$`, ``);
-					const thing = Wheel.get($whom);
-					if (!thing) return set(null)
-
-					set(thing.get());
-					return
-				}
-
-				let thing = Wheel.get($whom);
-				if (!thing) return set(null)
-				thing = thing.value
-					? thing.value
-					: thing;
-
-				cancels.add(thing.listen(($thing) => {
-					set($thing);
-				}));
-			});
-
-			return () => {
-				cancel_whom();
-				clear();
-			}
+		mail.value = extend(proto_remote, {
+			...write(),
+			mail
 		});
-		return m
+
+		return mail
 	};
 
 
@@ -952,266 +1056,77 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		id = uuid(),
 		knot,
 		...rest
-	} = false) => {
-		const k = {
-			...(knots$1[knot]
-				? knots$1[knot]({
-					...rest,
-					id
-				})
-				: { knot: read(knot || `unknown`) }
-			),
+	} = false) => ({
+		...(knots$1[knot]
+			? knots$1[knot]({
+				...rest,
+				id
+			})
+			: { knot: read(knot || `unknown`) }
+		),
 
-			id: read(id),
-			toJSON: () => k
-		};
-		return k
-	};
+		id: read(id)
+	});
 
-	// Weave of holes connected with threads
-	var Weave = ({
-		name = random(2),
-		id = uuid(),
-		knots = {},
-		threads = {},
-		rezed = {}
-	} = false) => {
-		const exists = (id) => {
-			const [knot, channel] = id.split(`/`);
-
-			const k = w.knots.get()[knot];
-			if (!k) return false
-			if (channel === undefined) return true
-
-			return Object.keys(k.value.get()).indexOf(channel) !== -1
-		};
-
-		const w = {
-			id: read(id),
-			name: write(name),
-			threads: write(threads),
-			lives: write({}),
-			rezed: write(rezed),
-
-			validate: () => {
-				let dirty = false;
-				let deletes = 0;
-				const t = w.threads.get();
-				const ks = w.knots.get();
-
-				Object.values(ks).forEach((k) => {
-					if (k.knot.get() === `stitch`) return
-
-					const chain = w.chain(k.id.get(), true);
-					const last = chain[chain.length - 1].split(`/`)[0];
-					const first = chain[0].split(`/`)[0];
-					const k_last = ks[last];
-					const k_first = ks[first];
-
-					if (
-						(k_last && k_last.knot.get() === `stitch`) ||
-	                    (k_first && k_first.knot.get() === `stitch`)
-					) return
-
-					delete ks[k.id.get()];
-					deletes += 1;
-				});
-
-				if (deletes > 0) {
-					console.warn(`Deleted ${deletes} orphans on validation.`);
-					w.knots.set(ks);
-				}
-
-				Object.entries(t).forEach(([r, w]) => {
-					if (exists(r) && exists(w)) return
-
-					dirty = true;
-					delete (t[r]);
-				});
-
-				if (!dirty) return
-
-				w.threads.set(t);
-			},
-
-			chain: (address, right = false) => {
-				const other = right
-					? w.threads.get()[address]
-					: w.threads_r.get()[address];
-
-				if (!other) return [address]
-				return [...w.chain(other, right), address]
-			},
-
-			toJSON: () => {
-				const {
-					id,
-					knot,
-					name,
-					threads,
-					knots,
-					rezed
-				} = w;
-
-				return JSON.parse(JSON.stringify({
-					id,
-					knot,
-					name,
-					threads,
-					knots,
-					rezed
-				}))
-			}
-		};
-
-		const life_set = w.lives.set;
-
-		w.lives.set = undefined;
-		const life_add = (id) => (life) => {
-			const ls = w.lives.get();
-			ls[id] = life;
-
-			life_set(ls);
-		};
-
-		w.threads_r = read({}, (set) => {
-			w.threads.listen(($threads) => {
-				set(Object.fromEntries(Object.entries($threads).map(
-					(item) => item.reverse()
-				)));
-			});
-		});
-
-		w.get_id = (id) => {
-			const [k_id, chan_name] = id.split(`/`);
-			const k = w.knots.get()[k_id];
-
-			if (!chan_name) return k
-
-			const v = k.value.get();
-			if (!v || !v[chan_name]) return
-
-			// knot style of a channel
-			return {
-				value: v[chan_name]
-			}
-		};
-
-		w.get_name = (name) => {
-			const k = w.names.get()[name];
-			if (!k) return
-
-			return k
-		};
-
-		w.to_address = (id_path) => {
-			const [knot] = id_path.split(`/`);
-
-			const k = w.get_id(knot);
-			if (!k || !k.name) return `/sys/void`
-
-			return `/${w.name.get()}/${k.name.get()}`
-		};
-
-		w.remove_name = (name) => {
-			const k = w.get_name(name);
-			if (!k) return
-
-			const id = k.id.get();
-			return w.remove(id)
-		};
-
-		w.remove = (...ids) => {
-			// don't  derez/dethread
-			// they'll get picked up
-			// next loop
-			ids = ids.filter((id) => {
-				const k = w.knots.get()[id];
-				if (!k) return false
-				return true
-			});
-
-			w.knots.update(($knots) => {
-				ids.forEach((id) => {
-					delete $knots[id];
-				});
-
-				return $knots
-			});
-		};
-
-		w.add = (properties) => {
+	const proto = {
+		add (properties) {
 			properties.id = properties.id || uuid();
 
-			const k = Knot({
-				...properties,
-				weave: w,
-				life: life_add(properties.id)
-			});
+			const k = this.make(properties);
 
-			w.knots.update(($knots) => {
+			this.knots.update(($knots) => {
 				$knots[k.id.get()] = k;
 				return $knots
 			});
 
 			return k
-		};
+		},
 
-		w.knots = write(Object
-			.entries(knots)
-			.reduce((res, [knot_id, val]) => {
-				if (val.id !== knot_id) {
-					val.id = knot_id;
-				}
+		remove_name (name) {
+			const k = this.get_name(name);
+			if (!k) return
 
-				res[knot_id] = Knot({
-					...val,
-					weave: w,
-					life: life_add(knot_id)
+			const id = k.id.get();
+			return this.remove(id)
+		},
+
+		remove (...ids) {
+			const $threads = this.threads.get();
+			const $rezed = this.rezed.get();
+			const $destroys = this.destroys.get();
+
+			this.knots.update(($knots) => {
+				ids.forEach((id) => {
+					if ($destroys[id]) $destroys[id]();
+
+					delete $knots[id];
+					delete $threads[id];
+					delete $rezed[id];
 				});
 
-				return res
-			}, {})
-		);
+				this.rezed.set($rezed);
+				this.threads.set($threads);
 
-		// index by name, uniqueness not guaranteed
-		// Stitches only right now
-		w.names = derived(w.knots, ([$knots]) => {
-			const counts = {};
+				return $knots
+			});
+		},
 
-			return Object.fromEntries(
-				Object.values($knots)
-					.filter(({ knot }) => knot.get() === `stitch`)
-					.map((knot) => {
-						let n = knot.name.get();
-						// name collision
-						if (counts[n] !== undefined) {
-							n += `_${Math.floor(Math.random() * 100)}`;
-
-							knot.name.set(n);
-						}
-						return [
-							n,
-							knot
-						]
-					})
-			)
-		});
-
-		w.update = (structure) => {
-			const $names = w.names.get();
+		write (structure) {
+			const $names = this.names.get();
 
 			return Object.fromEntries(Object.entries(structure).map(([key, data]) => {
 				const k = $names[key];
 
 				if (!k) {
 					data.name = key;
-					return [key, w.add(data)]
+					return [key, this.add(data)]
 				}
 
 				const type = k.knot.get();
 
 				Object.entries(data).forEach(([key_sub, data_sub]) => {
+					if (key_sub === `knot`) return
+
 					if (key_sub === `value` && type === `stitch`) {
 						k[key_sub].set({
 							...k[key_sub].get(),
@@ -1222,31 +1137,215 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 					k[key_sub].set(data_sub);
 				});
+
 				return [key, k]
 			}))
-		};
+		},
 
-		w.resolve = (addr, id) => addr
-			.replace(`.`, w.to_address(w.chain(id, true).shift()))
-			.replace(`~`, w.name.get());
+		exists (id) {
+			const [knot, channel] = id.split(`/`);
 
-		w.derez = (...ids) => {
-			const $rezed = w.rezed.get();
+			const k = this.knots.get()[knot];
+
+			if (!k) return false
+			if (channel === undefined) return true
+
+			return Object.keys(k.value.get()).indexOf(channel) !== -1
+		},
+
+		validate () {
+			let dirty = false;
+
+			const t = this.threads.get();
+			const ks = this.knots.get();
+
+			const deletes = [];
+
+			Object.values(ks).forEach((k) => {
+				if (k.knot.get() === `stitch`) return
+
+				const chain = this.chain(k.id.get(), true);
+				const last = chain[chain.length - 1].split(`/`)[0];
+				const first = chain[0].split(`/`)[0];
+				const k_last = ks[last];
+				const k_first = ks[first];
+
+				if (
+					(k_last && k_last.knot.get() === `stitch`) ||
+	                    (k_first && k_first.knot.get() === `stitch`)
+				) return
+
+				deletes.push(k.id.get());
+			});
+
+			if (deletes.length > 0) {
+				console.warn(`Deleted ${deletes.length} orphans on validation.`);
+				this.remove(...deletes);
+			}
+
+			Object.entries(t).forEach(([r, w]) => {
+				if (this.exists(r) && this.exists(w)) return
+
+				dirty = true;
+				delete (t[r]);
+			});
+
+			if (!dirty) return
+
+			this.threads.set(t);
+		},
+
+		chain (address, right = false) {
+			const other = right
+				? this.threads.get()[address]
+				: this.threads_r.get()[address];
+
+			if (!other) return [address]
+			return [...this.chain(other, right), address]
+		},
+
+		to_address (id_path) {
+			const [knot] = id_path.split(`/`);
+
+			const k = this.get_id(knot);
+			if (!k || !k.name) return `/sys/void`
+
+			return `/${this.name.get()}/${k.name.get()}`
+		},
+
+		get_name (name) {
+			const $ns = this.names.get();
+
+			return $ns[name]
+		},
+
+		get_id (id) {
+			const [k_id, chan_name] = id.split(`/`);
+			const k = this.knots.get()[k_id];
+
+			if (!chan_name) return k
+
+			const v = k.value.get();
+			if (!v || !v[chan_name]) return
+
+			// knot style of a channel
+			return {
+				value: v[chan_name]
+			}
+		},
+
+		make (properties) {
+			return Knot({
+				...properties,
+				weave: this,
+				life: this.rezer(properties.id),
+				destroy: this.destroyer(properties.id)
+			})
+		},
+
+		destroyer (id) {
+			return (destroy) => this.destroys.update(($destroys) => {
+				$destroys[id] = destroy;
+				return $destroys
+			})
+		},
+
+		rezer (id) {
+			return (life) => this.lives.update(($lives) => {
+				$lives[id] = life;
+				return $lives
+			})
+		},
+
+		resolve (addr, id) {
+			return addr
+				.replace(`.`, this.to_address(this.chain(id, true).shift()))
+				.replace(`~`, this.name.get())
+		},
+
+		derez (...ids) {
+			const $rezed = this.rezed.get();
 			ids.forEach((id) => {
 				delete $rezed[id];
 			});
-			w.rezed.set($rezed);
-		};
+			this.rezed.set($rezed);
+		},
 
-		w.rez = (...ids) => {
-			const $rezed = w.rezed.get();
+		rez (...ids) {
+			const $rezed = this.rezed.get();
 			ids.forEach((id) => {
 				$rezed[id] = true;
 			});
-			w.rezed.set($rezed);
-		};
+			this.rezed.set($rezed);
+		},
 
-		return w
+		toJSON () {
+			const {
+				id,
+				knot,
+				name,
+				threads,
+				knots,
+				rezed
+			} = this;
+
+			return JSON.parse(JSON.stringify({
+				id,
+				knot,
+				name,
+				threads,
+				knots,
+				rezed
+			}))
+		}
+	};
+
+	// Weave of knots connected together with threads
+	var Weave = ({
+		name = random(2),
+		id = uuid(),
+		knots = {},
+		threads = {},
+		rezed = {}
+	} = false) => {
+		const weave = extend(proto, {
+			// saved
+			id: read(id),
+			name: write(name),
+			threads: write(threads),
+			rezed: write(rezed),
+
+			// not saved
+			lives: write({}),
+			names: write({}),
+			destroys: write({})
+		});
+
+		const ks = Object.entries(knots)
+			.reduce((res, [knot_id, val]) => {
+				if (val.id !== knot_id) {
+					val.id = knot_id;
+				}
+
+				res[knot_id] = weave.make(val);
+
+				return res
+			}, {});
+
+		// saved
+		weave.knots = write(ks);
+
+		// not saved
+		weave.threads_r = read({}, (set) => {
+			// destroy this on weave destroy
+			weave.threads.listen(($threads) => {
+				set(Object.fromEntries(Object.entries($threads).map(
+					(item) => item.reverse()
+				)));
+			});
+		});
+
+		return weave
 	};
 
 	const SYSTEM = `sys`;
@@ -1276,7 +1375,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return path
 	};
 
-	// put into trash bin
+	// Delete Weaves
 	const del = (keys) => {
 		const $running = running.get();
 		const $weaves = weaves.get();
@@ -1305,7 +1404,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	};
 
 	// name of the current wheel, path watches
-	const name$1 = write(``);
+	const name$2 = write(``);
 
 	const get = (address) => {
 		const [
@@ -1315,10 +1414,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		] = addr(address);
 
 		const w = weaves.get()[weave_name];
+
 		if (w === undefined) return
 		if (knot_name === undefined) return w
 
 		const k = w.names.get()[knot_name];
+
 		if (k === undefined) return
 		if (chan === undefined) return k
 
@@ -1539,7 +1640,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const bump = (what) => JSON.parse(JSON.stringify(what));
 
 	const toJSON = () => ({
-		name: name$1.get(),
+		name: name$2.get(),
 		weaves: bump(weaves),
 		running: bump(running)
 	});
@@ -1553,7 +1654,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		running: running,
 		trash: trash,
 		del: del,
-		name: name$1,
+		name: name$2,
 		get: get,
 		exists: exists,
 		spawn: spawn,
@@ -1635,21 +1736,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		sprite_frag
 	]));
 
-	const validate = ({ set }) => (val) => {
+	const validate = (thing) => (val) => {
 		if (!Array.isArray(val)) {
 			if (
 				val &&
-	      typeof val[0] === `number` &&
-	      typeof val[1] === `number` &&
-	      typeof val[2] === `number`
+				typeof val[0] === `number` &&
+				typeof val[1] === `number` &&
+				typeof val[2] === `number`
 			) {
-				set(val);
+				thing.set(val);
 				return
 			}
 
 			return
 		}
-		set(val);
+		thing.set(val);
 	};
 
 	const camera = write(twgl.m4.identity());
@@ -1798,6 +1899,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			Object.keys(rezed).forEach((id) => {
 				const knot = weave.get_id(id);
 
+				// only stitches can be rezed
 				if (!knot || knot.knot.get() !== `stitch`) {
 					dirty = true;
 					delete rezed[id];
@@ -2797,7 +2899,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 				const w = Wheel.get(data.name);
 
-				w.update({
+				w.write({
 					"!info": {
 						knot: `stitch`,
 						value: {
@@ -2936,6 +3038,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			entry
 		]
 	));
+
 	const tie = (items) =>
 		Object.entries(items)
 			.reduce((result, [key, value]) => ({
@@ -2961,7 +3064,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		})
 	});
 
-	function noop() { }
+	function noop$1() { }
 	function assign(tar, src) {
 	    // @ts-ignore
 	    for (const k in src)
@@ -3371,7 +3474,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	        ctx: null,
 	        // state
 	        props,
-	        update: noop,
+	        update: noop$1,
 	        not_equal,
 	        bound: blank_object(),
 	        // lifecycle
@@ -3420,7 +3523,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	class SvelteComponent {
 	    $destroy() {
 	        destroy_component(this, 1);
-	        this.$destroy = noop;
+	        this.$destroy = noop$1;
 	    }
 	    $on(type, callback) {
 	        const callbacks = (this.$$.callbacks[type] || (this.$$.callbacks[type] = []));
@@ -3535,8 +3638,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					set_input_value(input, ctx.omni);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(input);
 				run_all(dispose);
@@ -3704,7 +3807,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { tile }
 	function create_catch_block(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -3756,7 +3859,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { tile }
 	function create_pending_block(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -3808,8 +3911,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					info.block.p(changed, assign(assign({}, ctx), info.resolved)); // nothing
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(await_block_anchor);
 				info.block.d(detaching);
@@ -4030,15 +4133,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function instance$2($$self, $$props, $$invalidate) {
 		let $names,
-			$$unsubscribe_names = noop,
+			$$unsubscribe_names = noop$1,
 			$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate("$names", $names = $$value)), names);
 
 		let $running,
-			$$unsubscribe_running = noop,
+			$$unsubscribe_running = noop$1,
 			$$subscribe_running = () => ($$unsubscribe_running(), $$unsubscribe_running = subscribe(running, $$value => $$invalidate("$running", $running = $$value)), running);
 
 		let $rezed,
-			$$unsubscribe_rezed = noop,
+			$$unsubscribe_rezed = noop$1,
 			$$subscribe_rezed = () => ($$unsubscribe_rezed(), $$unsubscribe_rezed = subscribe(rezed, $$value => $$invalidate("$rezed", $rezed = $$value)), rezed);
 
 		$$self.$$.on_destroy.push(() => $$unsubscribe_names());
@@ -4243,21 +4346,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t5 = space();
 				div2 = element("div");
 				div2.textContent = "Plant";
-				add_location(h2, file$3, 70, 2, 1222);
+				add_location(h2, file$3, 70, 2, 1221);
 				attr_dev(div0, "class", "spirit svelte-14pqm7h");
-				add_location(div0, file$3, 72, 2, 1245);
+				add_location(div0, file$3, 72, 2, 1244);
 				attr_dev(input, "class", "nameit svelte-14pqm7h");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "Name it");
-				add_location(input, file$3, 78, 2, 1379);
+				add_location(input, file$3, 78, 2, 1378);
 				attr_dev(div1, "class", "false svelte-14pqm7h");
-				add_location(div1, file$3, 89, 4, 1595);
+				add_location(div1, file$3, 89, 4, 1594);
 				attr_dev(div2, "class", "true svelte-14pqm7h");
-				add_location(div2, file$3, 90, 4, 1668);
+				add_location(div2, file$3, 90, 4, 1667);
 				attr_dev(div3, "class", "controls svelte-14pqm7h");
-				add_location(div3, file$3, 88, 2, 1567);
+				add_location(div3, file$3, 88, 2, 1566);
 				attr_dev(div4, "class", "nameprompt svelte-14pqm7h");
-				add_location(div4, file$3, 66, 0, 1163);
+				add_location(div4, file$3, 66, 0, 1162);
 
 				dispose = [
 					listen_dev(input, "input", ctx.input_input_handler),
@@ -4321,7 +4424,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { load, image }
 	function create_catch_block$1(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -4345,7 +4448,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(img, "class", "flex svelte-14pqm7h");
 				if (img.src !== (img_src_value = ctx.src)) attr_dev(img, "src", img_src_value);
 				attr_dev(img, "alt", "fileicon");
-				add_location(img, file$3, 74, 6, 1308);
+				add_location(img, file$3, 74, 6, 1307);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, img, anchor);
@@ -4373,7 +4476,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { load, image }
 	function create_pending_block$1(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -4406,11 +4509,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t1 = space();
 				input = element("input");
 				attr_dev(div, "class", "picker svelte-14pqm7h");
-				add_location(div, file$3, 95, 0, 1745);
+				add_location(div, file$3, 95, 0, 1744);
 				attr_dev(input, "type", "file");
 				attr_dev(input, "class", "file svelte-14pqm7h");
 				input.multiple = "multiple";
-				add_location(input, file$3, 103, 0, 1865);
+				add_location(input, file$3, 103, 0, 1864);
 
 				dispose = [
 					listen_dev(div, "drop", ctx.drop, false, false, false),
@@ -4526,7 +4629,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			Wheel.spawn({ [name]: nameit });
 			const weave = Wheel.get(name);
 
-			weave.update({
+			weave.write({
 				"!info": {
 					knot: `stitch`,
 					value: {
@@ -4648,8 +4751,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					toggle_class(div, "full", ctx.full);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
 				if (insert_action && is_function(insert_action.destroy)) insert_action.destroy();
@@ -4964,7 +5067,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let $THEME_BORDER;
 
 		let $value,
-			$$unsubscribe_value = noop,
+			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
 		validate_store(TILE_COLUMNS, "TILE_COLUMNS");
@@ -5151,8 +5254,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					set_input_value(textarea, ctx.code);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(textarea);
 				if (focus_action && is_function(focus_action.destroy)) focus_action.destroy();
@@ -5351,8 +5454,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					set_style(div, "background-color", ctx.to_css(ctx.value));
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
 			}
@@ -5450,8 +5553,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					attr_dev(div, "data:type", ctx.$type);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
 			}
@@ -5634,7 +5737,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function instance$8($$self, $$props, $$invalidate) {
 		let $type,
-			$$unsubscribe_type = noop,
+			$$unsubscribe_type = noop$1,
 			$$subscribe_type = () => ($$unsubscribe_type(), $$unsubscribe_type = subscribe(type, $$value => $$invalidate("$type", $type = $$value)), type);
 
 		$$self.$$.on_destroy.push(() => $$unsubscribe_type());
@@ -5991,8 +6094,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					toggle_class(div, "active", ctx.active);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
 			}
@@ -6193,7 +6296,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function instance$9($$self, $$props, $$invalidate) {
 		let $threads,
-			$$unsubscribe_threads = noop,
+			$$unsubscribe_threads = noop$1,
 			$$subscribe_threads = () => ($$unsubscribe_threads(), $$unsubscribe_threads = subscribe(threads, $$value => $$invalidate("$threads", $threads = $$value)), threads);
 
 		let $tick;
@@ -6396,7 +6499,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	/* src\ui\explore\Channel.svelte generated by Svelte v3.14.1 */
 	const file$a = "src\\ui\\explore\\Channel.svelte";
 
-	// (69:0) {:else}
+	// (63:0) {:else}
 	function create_else_block_1(ctx) {
 		let input;
 		let focusd_action;
@@ -6408,7 +6511,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(input, "class", "edit svelte-hik274");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "JSON PLZ");
-				add_location(input, file$a, 69, 2, 1186);
+				add_location(input, file$a, 63, 2, 1097);
 
 				dispose = [
 					listen_dev(input, "input", ctx.input_input_handler),
@@ -6426,8 +6529,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					set_input_value(input, ctx.val);
 				}
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(input);
 				if (focusd_action && is_function(focusd_action.destroy)) focusd_action.destroy();
@@ -6439,14 +6542,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block_1.name,
 			type: "else",
-			source: "(69:0) {:else}",
+			source: "(63:0) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (55:0) {#if !editing}
+	// (49:0) {#if !editing}
 	function create_if_block$4(ctx) {
 		let div;
 		let t0;
@@ -6474,7 +6577,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if_block.c();
 				if_block_anchor = empty();
 				attr_dev(div, "class", "key svelte-hik274");
-				add_location(div, file$a, 55, 2, 981);
+				add_location(div, file$a, 49, 2, 892);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6531,14 +6634,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$4.name,
 			type: "if",
-			source: "(55:0) {#if !editing}",
+			source: "(49:0) {#if !editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (62:2) {:else}
+	// (56:2) {:else}
 	function create_else_block$2(ctx) {
 		let div;
 		let t_value = JSON.stringify(ctx.edit) + "";
@@ -6549,7 +6652,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				div = element("div");
 				t = text(t_value);
 				attr_dev(div, "class", "value svelte-hik274");
-				add_location(div, file$a, 62, 2, 1092);
+				add_location(div, file$a, 56, 2, 1003);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6558,8 +6661,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			p: function update(changed, ctx) {
 				if (changed.edit && t_value !== (t_value = JSON.stringify(ctx.edit) + "")) set_data_dev(t, t_value);
 			},
-			i: noop,
-			o: noop,
+			i: noop$1,
+			o: noop$1,
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
 			}
@@ -6569,14 +6672,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block$2.name,
 			type: "else",
-			source: "(62:2) {:else}",
+			source: "(56:2) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (60:2) {#if key === `sprite`}
+	// (54:2) {#if key === `sprite`}
 	function create_if_block_1$2(ctx) {
 		let current;
 
@@ -6616,7 +6719,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$2.name,
 			type: "if",
-			source: "(60:2) {#if key === `sprite`}",
+			source: "(54:2) {#if key === `sprite`}",
 			ctx
 		});
 
@@ -6661,7 +6764,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if_block.c();
 				attr_dev(div, "class", div_class_value = "channel " + ctx.side + " svelte-hik274");
 				attr_dev(div, "style", ctx.$THEME_STYLE);
-				add_location(div, file$a, 44, 0, 750);
+				add_location(div, file$a, 38, 0, 661);
 				dispose = listen_dev(div, "click", ctx.click_handler, false, false, false);
 			},
 			l: function claim(nodes) {
@@ -6747,15 +6850,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	}
 
 	function instance$a($$self, $$props, $$invalidate) {
-		let $tick;
-
 		let $value,
-			$$unsubscribe_value = noop,
+			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
 		let $THEME_STYLE;
-		validate_store(tick, "tick");
-		component_subscribe($$self, tick, $$value => $$invalidate("$tick", $tick = $$value));
 		validate_store(THEME_STYLE, "THEME_STYLE");
 		component_subscribe($$self, THEME_STYLE, $$value => $$invalidate("$THEME_STYLE", $THEME_STYLE = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
@@ -6769,7 +6868,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			
 		} } = $$props;
 
-		let edit = ``;
 		let val = ``;
 
 		const execute = () => {
@@ -6831,11 +6929,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				side,
 				focus,
 				executed,
-				edit,
 				val,
 				key,
 				value,
-				$tick,
+				edit,
 				$value,
 				editing,
 				$THEME_STYLE
@@ -6849,11 +6946,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			if ("side" in $$props) $$invalidate("side", side = $$props.side);
 			if ("focus" in $$props) $$invalidate("focus", focus = $$props.focus);
 			if ("executed" in $$props) $$invalidate("executed", executed = $$props.executed);
-			if ("edit" in $$props) $$invalidate("edit", edit = $$props.edit);
 			if ("val" in $$props) $$invalidate("val", val = $$props.val);
 			if ("key" in $$props) $$invalidate("key", key = $$props.key);
 			if ("value" in $$props) $$subscribe_value($$invalidate("value", value = $$props.value));
-			if ("$tick" in $$props) tick.set($tick = $$props.$tick);
+			if ("edit" in $$props) $$invalidate("edit", edit = $$props.edit);
 			if ("$value" in $$props) value.set($value = $$props.$value);
 			if ("editing" in $$props) $$invalidate("editing", editing = $$props.editing);
 			if ("$THEME_STYLE" in $$props) THEME_STYLE.set($THEME_STYLE = $$props.$THEME_STYLE);
@@ -6861,19 +6957,16 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		let key;
 		let value;
+		let edit;
 		let editing;
 
-		$$self.$$.update = (changed = { channel: 1, $tick: 1, $value: 1, focus: 1 }) => {
+		$$self.$$.update = (changed = { channel: 1, $value: 1, focus: 1 }) => {
 			if (changed.channel) {
 				 $$invalidate("key", [key, value] = channel, key, $$subscribe_value($$invalidate("value", value)));
 			}
 
-			if (changed.$tick || changed.$value) {
-				 {
-					if ($tick % 3 === 0) {
-						$$invalidate("edit", edit = $value);
-					}
-				}
+			if (changed.$value) {
+				 $$invalidate("edit", edit = $value);
 			}
 
 			if (changed.focus) {
@@ -6888,12 +6981,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			side,
 			focus,
 			executed,
-			edit,
 			val,
 			execute,
 			focusd,
 			key,
 			value,
+			edit,
 			$value,
 			editing,
 			$THEME_STYLE,
@@ -7332,21 +7425,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let $WEAVE_EXPLORE_OPEN;
 
 		let $value,
-			$$unsubscribe_value = noop,
+			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate("$value", $value = $$value)), value);
 
 		let $rezed,
-			$$unsubscribe_rezed = noop,
+			$$unsubscribe_rezed = noop$1,
 			$$subscribe_rezed = () => ($$unsubscribe_rezed(), $$unsubscribe_rezed = subscribe(rezed, $$value => $$invalidate("$rezed", $rezed = $$value)), rezed);
 
 		let $name,
-			$$unsubscribe_name = noop,
+			$$unsubscribe_name = noop$1,
 			$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
 		let $THEME_BORDER;
 
 		let $w_name,
-			$$unsubscribe_w_name = noop,
+			$$unsubscribe_w_name = noop$1,
 			$$subscribe_w_name = () => ($$unsubscribe_w_name(), $$unsubscribe_w_name = subscribe(w_name, $$value => $$invalidate("$w_name", $w_name = $$value)), w_name);
 
 		validate_store(WEAVE_EXPLORE_OPEN, "WEAVE_EXPLORE_OPEN");
@@ -7599,7 +7692,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { save, image }
 	function create_catch_block$2(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -7651,7 +7744,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// (1:0) <script>  import { save, image }
 	function create_pending_block$2(ctx) {
-		const block = { c: noop, m: noop, p: noop, d: noop };
+		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
@@ -7750,11 +7843,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function instance$c($$self, $$props, $$invalidate) {
 		let $running,
-			$$unsubscribe_running = noop,
+			$$unsubscribe_running = noop$1,
 			$$subscribe_running = () => ($$unsubscribe_running(), $$unsubscribe_running = subscribe(running, $$value => $$invalidate("$running", $running = $$value)), running);
 
 		let $name,
-			$$unsubscribe_name = noop,
+			$$unsubscribe_name = noop$1,
 			$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
 		let $THEME_BORDER;
@@ -7905,7 +7998,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		case `+`:
 			if (detail2) {
-				return weave.update({
+				return weave.write({
 					[detail]: {
 						knot: `stitch`,
 						value: {
@@ -7915,7 +8008,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				})
 			}
 
-			weave.update({
+			weave.write({
 				[detail]: {
 					knot: `stitch`
 				}
@@ -8046,7 +8139,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return block;
 	}
 
-	// (49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1) &&    s_name[0] !== `&`     }
+	// (49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1)     }
 	function create_if_block_1$4(ctx) {
 		let current;
 
@@ -8092,7 +8185,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$4.name,
 			type: "if",
-			source: "(49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1) &&    s_name[0] !== `&`     }",
+			source: "(49:3) {#if    (filter.length === 0 ||    s_name.indexOf(filter[0]) !== -1)     }",
 			ctx
 		});
 
@@ -8102,7 +8195,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	// (48:1) {#each stitches as [s_name,stitch] (s_name)}
 	function create_each_block$2(key_1, ctx) {
 		let first;
-		let show_if = (ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1) && ctx.s_name[0] !== `&`;
+		let show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
 		let if_block_anchor;
 		let current;
 		let if_block = show_if && create_if_block_1$4(ctx);
@@ -8123,7 +8216,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(changed, ctx) {
-				if (changed.filter || changed.stitches) show_if = (ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1) && ctx.s_name[0] !== `&`;
+				if (changed.filter || changed.stitches) show_if = ctx.filter.length === 0 || ctx.s_name.indexOf(ctx.filter[0]) !== -1;
 
 				if (show_if) {
 					if (if_block) {
@@ -8296,11 +8389,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let $WEAVE_EXPLORE_OPEN;
 
 		let $names,
-			$$unsubscribe_names = noop,
+			$$unsubscribe_names = noop$1,
 			$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate("$names", $names = $$value)), names);
 
 		let $name,
-			$$unsubscribe_name = noop,
+			$$unsubscribe_name = noop$1,
 			$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate("$name", $name = $$value)), name);
 
 		let $THEME_STYLE;
@@ -8853,7 +8946,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function instance$e($$self, $$props, $$invalidate) {
 		let $weaves,
-			$$unsubscribe_weaves = noop,
+			$$unsubscribe_weaves = noop$1,
 			$$subscribe_weaves = () => ($$unsubscribe_weaves(), $$unsubscribe_weaves = subscribe(weaves, $$value => $$invalidate("$weaves", $weaves = $$value)), weaves);
 
 		let $THEME_COLOR;
@@ -8996,7 +9089,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				mount_component(explore, target, anchor);
 				current = true;
 			},
-			p: noop,
+			p: noop$1,
 			i: function intro(local) {
 				if (current) return;
 				transition_in(explore.$$.fragment, local);
@@ -9040,10 +9133,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	ws[Wheel.SYSTEM] = system;
 
 	const app = new App({
-		target: document.body,
-		props: {
-			name: `stage`
-		}
+		target: document.body
 	});
 
 	return app;

@@ -28,7 +28,7 @@ const addr = (address) => {
 	return path
 }
 
-// put into trash bin
+// Delete Weaves
 export const del = (keys) => {
 	const $running = running.get()
 	const $weaves = weaves.get()
@@ -67,10 +67,12 @@ export const get = (address) => {
 	] = addr(address)
 
 	const w = weaves.get()[weave_name]
+
 	if (w === undefined) return
 	if (knot_name === undefined) return w
 
 	const k = w.names.get()[knot_name]
+
 	if (k === undefined) return
 	if (chan === undefined) return k
 

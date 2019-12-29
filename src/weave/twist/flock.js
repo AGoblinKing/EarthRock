@@ -32,7 +32,7 @@ export default ({
 				}
 			}
 
-			const birds = Object.values(weave.update(w_update)).map((bird) => bird.id.get())
+			const birds = Object.values(weave.write(w_update)).map((bird) => bird.id.get())
 
 			weave.rez(...birds)
 

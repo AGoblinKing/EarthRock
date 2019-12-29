@@ -100,14 +100,14 @@ export const compile = (code, weave, address) => {
 		.reverse()
 
 	const threads_update = weave.threads.get()
-	const knots = weave.knots.get()
+
+	const deletes = []
 
 	weave.chain(address).forEach((id) => {
-		delete knots[id]
-		delete threads_update[id]
+		deletes.push(id)
 	})
 
-	weave.knots.set(knots)
+	weave.remove(...deletes)
 
 	let connection = address
 

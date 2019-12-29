@@ -1,3 +1,5 @@
+import { extend } from "/util/object.js"
+
 const speed_check = new Set()
 
 // clear the speed check every frame
@@ -10,82 +12,80 @@ enforcer()
 
 let i = 0
 
-const writable = (val) => {
-	const subs = new Set()
+export const proto_write = {
+	set (value_new, silent = false) {
+		this._value = value_new === undefined
+			? null
+			: value_new
 
-	const w = {
-		i: i++,
-		// not stored
-		type: `JSON`,
-		get: () => val,
-		poke: () => {
-			w.set(w.get())
-			return w
-		},
-		set: (val_new, silent = false) => {
-			val = val_new === undefined
-				? null
-				: val_new
-
-			if (!silent) {
-				// delay if already set this frame
-				if (speed_check.has(w.i)) {
-					requestAnimationFrame(() =>
-						subs.forEach((fn) => fn(val))
-					)
-				} else {
-					speed_check.add(w.i)
-					subs.forEach((fn) => fn(val))
-				}
+		if (!silent) {
+			// delay if already set this frame
+			if (speed_check.has(this._i)) {
+				requestAnimationFrame(() =>
+					this._subs.forEach((fn) => fn(this._value))
+				)
+			} else {
+				speed_check.add(this._i)
+				this._subs.forEach((fn) => fn(this._value))
 			}
-			return w
-		},
-		update: (fn) => {
-			w.set(fn(val))
-			return w
-		},
-		subscribe: (fn) => {
-			subs.add(fn)
-			fn(val)
-			return () => subs.delete(fn)
 		}
-	}
 
-	w.toJSON = w.get
-	w.listen = w.subscribe
+		return this
+	},
 
-	return w
+	update (fn) { this.set(fn(this._value)) },
+
+	poke () { return this.set(this.get()) },
+
+	get () { return this._value },
+	toJSON () { return this._value },
+
+	subscribe (fn) {
+		this._subs.add(fn)
+		fn(this._value)
+
+		return () => this._subs.delete(fn)
+	},
+
+	listen (fn) { return this.subscribe(fn) }
 }
+
+const writable = (val) => extend(proto_write, {
+	_i: i++,
+	_subs: new Set(),
+	_value: val
+})
+
+export const proto_read = extend(proto_write, {
+	set () {
+		throw new Error(`tried to write to readable`)
+	},
+	readonly: true
+})
 
 const readable = (val, handler) => {
-	const w = writable(val)
-	const { set } = w
-	w.set = () => console.warn(`tried to write to readable`)
-	w.readonly = true
+	const w = extend(proto_read, writable(val))
+	const set = proto_write.set.bind(w)
 	if (handler) handler(set)
+
 	return w
 }
 
-export const write = (thing) => writable(thing)
+export const write = writable
+
 export const read = (thing, handler) => readable(thing, handler)
 
-export const set = (store, value) => {
-	store.set(value)
-
-	return store
-}
-
-export const transformer = (transform) => {
-	const store = write()
-
-	const set = store.set
-	store.set = (update) => {
-		set(transform(update))
-		return store
+export const proto_transformer = extend(proto_write, {
+	set (value) {
+		proto_write.set.call(this, this._transform(value))
+		return this
 	}
+})
 
-	return store
-}
+export const transformer = (transform) => extend(proto_transformer, {
+	...write(),
+	_transform: transform
+})
 
 export const listen = (subs, fn) => {
 	const call = () =>
@@ -95,54 +95,75 @@ export const listen = (subs, fn) => {
 	return () => cancels.forEach(fn => fn())
 }
 
+export const proto_map = Object.assign(
+	Object.create(proto_write),
+	{
+		set (data) {
+			proto_write.set.call(this, Object.fromEntries(
+				Object.entries(data)
+					.map(([key, val]) => [
+						key,
+						(val && typeof val.subscribe === `function`)
+							? val
+							: this._fn
+								? write(this._fn(val))
+								: write(val)
+					])
+			))
+		},
+
+		add (channels) {
+			this.set({
+				...this.get(),
+				...channels
+			})
+
+			return this
+		},
+
+		// no stores only values
+		update (data) {
+			Object.entries(data).forEach(([key, value]) => {
+				const v = this.get()
+
+				const vs = v[key]
+
+				if (!vs) {
+					v[key] = this._fn
+						? write(this._fn(value))
+						: write(value)
+
+					proto_write.set.call(this, v)
+					return
+				}
+
+				vs.set(value)
+			})
+		},
+
+		remove (channel) {
+			const $m = this.get()
+			delete $m[channel]
+			proto_write.set.call(this, $m)
+		}
+	}
+)
+
 export const map = (init = {}, fn = false) => {
-	const m = write()
-	const set_m = m.set
-
-	m.set = (data) => set_m(Object.fromEntries(
-		Object.entries(data)
-			.map(([key, val]) => [
-				key,
-				(val && typeof val.subscribe === `function`)
-					? val
-					: fn
-						? write(fn(val))
-						: write(val)
-			])
-	))
-
-	m.add = (channels) => {
-		m.set({
-			...m.get(),
-			...channels
-		})
-	}
-
-	// no stores only values
-	m.update = (data) =>
-		Object.entries(data).forEach(([key, value]) => {
-			const v = m.get()
-			const vs = v[key]
-			if (!vs) {
-				v[key] = write(value)
-				m.set(v)
-				return
-			}
-			vs.set(value)
-		})
-
-	m.remove = (channel) => {
-		const $m = m.get()
-		delete $m[channel]
-		set_m($m)
-	}
+	const m = Object.assign(
+		Object.create(proto_map),
+		{
+			...writable({}),
+			_fn: fn
+		}
+	)
 
 	m.set(init)
 
 	return m
 }
 
-// TODO: delete
+// TODO: Maybe don't need derived?
 export const derived = (stores, fn) => readable(undefined, (set) => {
 	stores = Array.isArray(stores)
 		? stores
@@ -154,6 +175,7 @@ export const derived = (stores, fn) => readable(undefined, (set) => {
 				set(fn(stores.map((s) => s.get())))
 			)
 	)
+
 	return cancels
 })
 

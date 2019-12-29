@@ -134,6 +134,7 @@ tick.listen(() => requestAnimationFrame(() => {
 		Object.keys(rezed).forEach((id) => {
 			const knot = weave.get_id(id)
 
+			// only stitches can be rezed
 			if (!knot || knot.knot.get() !== `stitch`) {
 				dirty = true
 				delete rezed[id]

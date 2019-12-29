@@ -2,7 +2,6 @@
 import SpriteEditor from "/ui/editor/SpriteEditor.svelte"
 import Thread from "./Thread.svelte"
 import { THEME_STYLE } from "/sys/flag.js"
-import { tick } from "/sys/time.js"
 import { json } from "/util/parse.js"
 
 import color from "/ui/action/color.js"
@@ -16,12 +15,7 @@ export let executed = () => {}
 
 $: [key, value] = channel
 
-let edit = ``
-$: {
-	if ($tick % 3 === 0) {
-		edit = $value
-	}
-}
+$: edit = $value
 $: editing = focus
 let val = ``
 

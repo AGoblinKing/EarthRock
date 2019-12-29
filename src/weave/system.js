@@ -18,6 +18,7 @@ const normalize = (sys) => Object.fromEntries(Object.entries(flag).map(
 		entry
 	]
 ))
+
 const tie = (items) =>
 	Object.entries(items)
 		.reduce((result, [key, value]) => ({

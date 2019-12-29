@@ -1,51 +1,57 @@
-import { map, read, transformer } from "/util/store.js"
-import { random } from "/util/text.js"
+import { map, read, proto_write } from "/util/store.js"
+import { extend } from "/util/object.js"
+
 import * as twists from "/weave/twists.js"
 
-export default ({
-	value = {},
-	name = random(2),
-	weave,
-	id,
-	life
-}) => {
-	const stitch = {
-		knot: read(`stitch`),
+const knot = read(`stitch`)
 
-		value: map(value),
+const proto_stitch = {
+	destroy () {
+		twist.destroy && twist.destroy()
+	},
 
-		name: transformer((name_new) => {
-			// tell weave it update its knots
-			// probably should be on a channel instead
-			weave && weave.knots && weave.knots.poke()
-			return name_new
-		}).set(name)
-	}
+	rez () {
+		const $id = this.id.get()
 
-	life(() => {
-		// don't execute commands if not rezed
-		if (!weave.rezed.get()[id]) return () => {}
+		// already rezed
+		if (!this.weave.rezed.get()[$id]) return
 
-		const values = stitch.value.get()
+		const values = this.value.get()
 
-		const destroys = Object.entries(twists)
-			.map(([key, command]) => {
+		this.twists = Object.entries(twists)
+			.map(([key, twist]) => {
 				const v = values[`!${key}`]
 				if (v === undefined) return
 
-				return command({
-					weave,
+				return twists({
+					weave: this.weave,
 					value: v,
-					stitch,
-					id
+					stitch: this,
+					id: this.id.get()
 				})
 			})
-			.filter((d) => d)
+	},
 
-		return () => {
-			destroys.forEach((destroy) => destroy())
+	derez () {
+		this.twists.forEach((twist) => {
+			twist.derez && twist.derez()
+		})
+	},
+
+	toJSON () {
+		return {
+			id: this.id.get(),
+			knot: this.knot.get(),
+			value: this.value.get()
 		}
-	})
-
-	return stitch
+	}
 }
+
+export default ({
+	value = {},
+	weave
+}) => extend(proto_stitch, {
+	knot,
+	value: map(value),
+	weave
+})

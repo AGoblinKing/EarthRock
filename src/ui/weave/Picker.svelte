@@ -48,7 +48,7 @@ const play_it = () => {
 
 	const weave = Wheel.get(name)
 
-	weave.update({
+	weave.write({
 		"!info": {
 			knot: `stitch`,
 			value: {

@@ -7,18 +7,14 @@ export default ({
 	id = uuid(),
 	knot,
 	...rest
-} = false) => {
-	const k = {
-		...(knots[knot]
-			? knots[knot]({
-				...rest,
-				id
-			})
-			: { knot: read(knot || `unknown`) }
-		),
+} = false) => ({
+	...(knots[knot]
+		? knots[knot]({
+			...rest,
+			id
+		})
+		: { knot: read(knot || `unknown`) }
+	),
 
-		id: read(id),
-		toJSON: () => k
-	}
-	return k
-}
+	id: read(id)
+})

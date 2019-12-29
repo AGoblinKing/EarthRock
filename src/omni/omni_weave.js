@@ -21,7 +21,7 @@ export default (weave) => (
 
 	case `+`:
 		if (detail2) {
-			return weave.update({
+			return weave.write({
 				[detail]: {
 					knot: `stitch`,
 					value: {
@@ -31,7 +31,7 @@ export default (weave) => (
 			})
 		}
 
-		weave.update({
+		weave.write({
 			[detail]: {
 				knot: `stitch`
 			}

@@ -19,7 +19,6 @@ const proto_mail = extend(proto_warp, {
 	},
 
 	derez () {
-		this.cancel_value()
 		this.cancel_whom()
 		this.clear()
 	},
@@ -30,7 +29,7 @@ const proto_mail = extend(proto_warp, {
 		this.cancel_whom = this.whom.listen(($whom) => {
 			this.clear()
 
-			$whom = this.weave.resolve($whom, this.id)
+			$whom = this.weave.resolve($whom, this.id.get())
 
 			if ($whom[0] === `$`) {
 				$whom = $whom.replace(`$`, ``)
@@ -42,8 +41,9 @@ const proto_mail = extend(proto_warp, {
 			}
 
 			let thing = Wheel.get($whom)
-			if (!thing) return this.set(null)
-			thing = thing.value
+			if (!thing) return
+
+			thing = thing.type
 				? thing.value
 				: thing
 
@@ -52,12 +52,17 @@ const proto_mail = extend(proto_warp, {
 			}))
 		})
 	},
+
 	toJSON () {
 		return {
 			type: this.type.get(),
 			value: this.value.get(),
 			whom: this.whom.get()
 		}
+	},
+
+	set (value) {
+		proto_write.set.call(this.value, value)
 	}
 })
 

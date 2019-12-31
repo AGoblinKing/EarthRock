@@ -62,15 +62,6 @@ $:active = false
   on:click={do_edit}
 >
   {#each tru_thread as link}
-    {#if link[0] === `{`}
-      <div
-        class="thread"
-        {style}
-        class:active
-      >
-        {link}
-      </div>
-    {:else}
     <div
       class="thread"
       {style}
@@ -79,7 +70,12 @@ $:active = false
     >
       <Warp {weave} id={link} />
     </div>
-    {/if}
+	<div
+		class="after-thread"
+		{style}
+		class:active
+	>
+	</div>
   {/each}
 </div>
 {/if}
@@ -110,6 +106,7 @@ $:active = false
   -0.25rem -0.25rem 0 rgba(0, 217, 255, 0);
 }
 
+
 .thread.active {
   box-shadow: 0.25rem 0.25rem 0 rgba(255, 115, 0, 0.25),
   -0.25rem -0.25rem 0 rgba(255, 115, 0, 0.25);
@@ -117,6 +114,10 @@ $:active = false
 
 .thread:hover {
   color: white;
+}
+.after-thread {
+	width: 1rem;
+	height: 1rem;
 }
 
 .cap {

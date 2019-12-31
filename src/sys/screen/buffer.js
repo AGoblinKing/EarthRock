@@ -130,14 +130,12 @@ tick.listen(() => requestAnimationFrame(() => {
 		if (!running[weave.name.get()]) return
 
 		const rezed = weave.rezed.get()
-		let dirty = false
+
 		Object.keys(rezed).forEach((id) => {
 			const warp = weave.get_id(id)
 
 			// only spacees can be displayed
 			if (!warp || warp.type.get() !== `space`) {
-				dirty = true
-				delete rezed[id]
 				return
 			}
 
@@ -176,9 +174,6 @@ tick.listen(() => requestAnimationFrame(() => {
 			set_last(`rotation`, id)
 			set_last(`color`, id)
 		})
-
-		// clean up bad rezes
-		if (dirty) weave.rezed.set(rezed)
 	})
 
 	Object.entries(buffs).forEach(([key, buff]) => {

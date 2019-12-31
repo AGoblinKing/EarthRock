@@ -69,7 +69,7 @@ const proto_math = extend(proto_warp, {
 		this.run(this.math.get())
 		this.cancels = new Set()
 
-		this.cancel_vs = this._values.listen((vs) => {
+		this.cancel_vs = this.values.listen((vs) => {
 			this.cancels.forEach((cancel) => cancel())
 			this.cancels.clear()
 
@@ -79,8 +79,6 @@ const proto_math = extend(proto_warp, {
 				this.cancels.add(k.listen(() => this.value.poke()))
 			})
 		})
-
-		this.value.set(null)
 	},
 
 	derez () {
@@ -105,11 +103,11 @@ const proto_math_value = extend(proto_write, {
 })
 
 const proto_value = extend(proto_write, {
-	set (val) {
+	set (value) {
 		const vs = this.warp.values.get()
-		val = val === undefined
+		value = value === undefined
 			? null
-			: val
+			: value
 
 		const params = {
 			...Object.fromEntries(Object.entries(vs).map(
@@ -118,9 +116,8 @@ const proto_value = extend(proto_write, {
 					: k.toJSON()
 				]
 			)),
-			value: val,
+			value: value,
 			flock: 0
-
 		}
 
 		try {

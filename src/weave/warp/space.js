@@ -1,5 +1,5 @@
 import { tree, read } from "/store.js"
-import { extend } from "/util/object.js"
+import { extend, keys } from "/util/object.js"
 
 import { proto_warp } from "./warp.js"
 
@@ -15,6 +15,7 @@ const proto_space = extend(proto_warp, {
 	create () {
 		const values = this.value.get()
 
+		// TODO: should react to twists added/removed as well
 		this.twists = Object.entries(twists)
 			.map(([key, twist]) => {
 				const v = values[`!${key}`]
@@ -48,6 +49,16 @@ const proto_space = extend(proto_warp, {
 		this.twists.forEach((twist) => {
 			twist.derez && twist.derez()
 		})
+	},
+
+	chain () {
+		const values = this.value.get()
+		const id = this.id.get()
+
+		return keys(values).reduce((result, key) => {
+			result.push(...this.weave.chain(`${id}/${key}`).slice(0, -1))
+			return result
+		}, [])
 	}
 })
 

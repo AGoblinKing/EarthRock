@@ -110,38 +110,16 @@ export const spawn = (pattern = {}) => Object.fromEntries(
 )
 
 const start_wefts = (weave) => {
-	let wefts = []
-	const cancel = any(weave.wefts, weave.rezed)((ts, rezed) => {
+	let weft_cancel = []
+
+	const cancel = weave.wefts.listen((wefts) => {
 		let dirty = false
-		const connected = new Set()
 
 		// TODO: partial updates like lives
 		// tear down existing highways
-		if (wefts) wefts.forEach((d) => d())
+		if (weft_cancel) weft_cancel.forEach((d) => d())
 
-		wefts = Object.entries(ts)
-			// don't turn on derezed chains
-			.filter(([reader, writer]) => {
-				if (connected.has(writer)) return true
-				const c = weave.chain(writer, true)
-				const [base_id] = c[0].split(`/`)
-				const other = weave.get_id(base_id)
-
-				if (!other) {
-					delete ts[reader]
-					dirty = true
-					return false
-				}
-
-				const ready = other.type.get() === `space` &&
-					rezed[base_id]
-
-				if (ready) {
-					c.forEach((id) => connected.add(id))
-				}
-
-				return ready
-			})
+		weft_cancel = Object.entries(wefts)
 			.map(([
 				reader,
 				writer
@@ -151,22 +129,23 @@ const start_wefts = (weave) => {
 
 				if (!wr || !r) {
 					dirty = true
-					delete ts[reader]
+					delete wefts[reader]
 					return
 				}
 
 				return r.value.subscribe(($val) => {
+					if (!r.rezed) return
 					wr.value.set($val)
 				})
 			}).filter((d) => d)
 
 		// silent write, to prevent flap
-		if (dirty) weave.wefts.set(ts, true)
+		if (dirty) weave.wefts.set(wefts, true)
 	})
 
 	return () => {
 		cancel()
-		wefts.forEach((d) => d())
+		weft_cancel.forEach((d) => d())
 	}
 }
 
@@ -176,19 +155,22 @@ const start_rez = (weave) => {
 		remove
 	}) => {
 		const warps = weave.warps.get()
-
+		// non reactive to weft changes
 		add.forEach((key) => {
 			const warp = warps[key]
-
 			warp && warp.rez && warp.rez()
+			warp.rezed = true
+			// notify
+			warp.value.notify()
 		})
 
 		remove.forEach((key) => {
 			const warp = warps[key]
-
 			warp && warp.derez && warp.derez()
+			delete warp.rezed
 		})
 	})
+
 	return () => {
 		cancel()
 		values(weave.rezed.get()).forEach(
@@ -196,6 +178,7 @@ const start_rez = (weave) => {
 		)
 	}
 }
+
 export const start = (weave_name) => {
 	if (weave_name === SYSTEM) {
 		return
@@ -204,11 +187,11 @@ export const start = (weave_name) => {
 	const weave = get(weave_name)
 	if (!weave) return false
 
-	const thread_cancel = start_wefts(weave)
+	const weft_cancel = start_wefts(weave)
 	const rez_cancel = start_rez(weave)
 
 	highways.set(weave_name, () => {
-		thread_cancel()
+		weft_cancel()
 		rez_cancel()
 	})
 

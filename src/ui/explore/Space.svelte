@@ -12,7 +12,7 @@ export let open = $WEAVE_EXPLORE_OPEN
 export let weave
 
 $: w_name = weave.name
-$: rezed = weave.rezed
+
 $: value = space.value
 $: name = $value[`!name`]
 
@@ -25,13 +25,12 @@ $: chans = Object.entries($value).sort(([a], [b]) => {
 const toggle = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
-	const r = $rezed
-	if (r[space.id.get()]) {
-		delete r[space.id.get()]
+	const id = space.id.get()
+	if (space.rezed) {
+		weave.derez(id, ...space.chain())
 	} else {
-		r[space.id.get()] = true
+		weave.rez(id, ...space.chain())
 	}
-	rezed.set(r)
 }
 </script>
 

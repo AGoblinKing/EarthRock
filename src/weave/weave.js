@@ -57,32 +57,31 @@ const proto_weave = {
 	write (structure) {
 		const $names = this.names.get()
 
-		return map($names)(([key, data]) => {
+		return map(structure)(([key, data]) => {
 			const k = $names[key]
 
 			if (!k) {
 				data.value = data.value || {}
 				data.value[`!name`] = key
+
 				const warp = this.add(data)
 				if (!warp) return [key, false]
+
 				return [key, warp]
 			}
 
-			const type = k.type.get()
-
 			each(data)(([key_sub, data_sub]) => {
-				// read only
-				if (!key_sub.set) return
-
-				if (key_sub === `value` && type === `space`) {
-					k[key_sub].set({
-						...k[key_sub].get(),
+				const warp = k[key_sub]
+				if (key_sub === `value`) {
+					warp.set({
+						...warp.get(),
 						...data_sub
 					})
+
 					return
 				}
 
-				k[key_sub].set(data_sub)
+				if (warp.set) warp.set(data_sub)
 			})
 
 			return [key, k]
@@ -196,15 +195,11 @@ const proto_weave = {
 
 	derez (...ids) {
 		const $rezed = this.rezed.get()
-		const $warps = this.warps.get()
 
 		ids.forEach((id) => {
-			const k = $warps[id]
-			if (!k) return
-			k.derez && k.derez()
-
 			delete $rezed[id]
 		})
+
 		this.rezed.set($rezed)
 	},
 
@@ -214,11 +209,10 @@ const proto_weave = {
 
 		ids.forEach((id) => {
 			const k = $warps[id]
-
+			// prevent bad rezes
 			if (!k) return
 
 			$rezed[id] = true
-			k.rez && k.rez()
 		})
 
 		this.rezed.set($rezed)
@@ -261,7 +255,7 @@ export default ({
 		// saved
 		id: read(id),
 		name: write(name),
-		wefts: write(wefts),
+		wefts: difference(wefts),
 		rezed: difference(rezed),
 
 		// not saved
@@ -284,7 +278,6 @@ export default ({
 	}, {})
 
 	each(ks)(([_, warp]) => warp.create && warp.create())
-
 	// saved
 	weave.warps = write(ks)
 

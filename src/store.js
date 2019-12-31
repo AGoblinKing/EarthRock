@@ -15,8 +15,7 @@ export const listen = (subs, fn) => {
 
 export const any = (...stores) => (fn) => {
 	const values = stores.map((s) => s.get())
-
-	const cancels = stores.map((store, i) => store.listen(($v) => {
+	const cancels = stores.map((store, i) => store.listen(($v, updates) => {
 		values[i] = $v
 		fn(...values)
 	}))

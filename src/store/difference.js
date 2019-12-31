@@ -2,15 +2,26 @@ import { write, proto_write } from "./write.js"
 import { extend, keys } from "/util/object.js"
 
 export const proto_difference = extend(proto_write, {
+	get (key = false) {
+		const value = proto_write.get.call(this)
+		if (key === false) return value
+
+		return value[key]
+	},
+
 	set (value) {
-		const prev = this.value
+		const prev = this.prev
+
 		this.value = value
 
 		this.notify({
-			add: keys(value).filter((k) => !prev[k]),
-			remove: keys(prev).filter((k) => !value[k]),
+			add: keys(value).filter((k) => prev[k] === undefined),
+			remove: keys(prev).filter((k) => value[k] === undefined),
 			previous: prev
 		})
+
+		// keys a copy of the previous state for diffing
+		this.prev = { ...value }
 	},
 
 	subscribe (fn) {
@@ -31,4 +42,7 @@ export const proto_difference = extend(proto_write, {
 	}
 })
 
-export const difference = (value = {}) => extend(proto_difference, write(value))
+export const difference = (value = {}) => extend(proto_difference, {
+	...write(value),
+	prev: { ...value }
+})

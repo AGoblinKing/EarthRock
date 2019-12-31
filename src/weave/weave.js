@@ -38,11 +38,6 @@ const proto_weave = {
 
 		this.warps.update(($warps) => {
 			ids.forEach((id) => {
-				const k = $warps[id]
-
-				k && k.destroy && k.destroy()
-
-				delete $warps[id]
 				delete $wefts[id]
 				delete $rezed[id]
 			})
@@ -50,6 +45,13 @@ const proto_weave = {
 			this.rezed.set($rezed)
 			this.wefts.set($wefts)
 
+			ids.forEach((id) => {
+				const k = $warps[id]
+
+				k && k.destroy && k.destroy()
+
+				delete $warps[id]
+			})
 			return $warps
 		})
 	},

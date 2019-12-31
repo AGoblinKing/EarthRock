@@ -29,6 +29,7 @@ let edit = ``
 const execute = () => {
 	if (!editing) return
 	editing = false
+	chain = weave.chain(address).slice(0, -1)
 }
 
 $:style = [

@@ -482,10 +482,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		weave.remove(...deletes);
 
-		let connection = address;
+		const space = weave.get_id(address.split(`/`)[0]);
 
+		let connection = address;
 		// lets create these warps
-		parts.forEach((part) => {
+		const ids = parts.map((part) => {
 			part = part.trim();
 
 			if (part === ``) return
@@ -493,10 +494,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const w_data = warp_create(part);
 
 			const k = weave.add(w_data);
+			const id = k.id.get();
+			wefts_update[id] = connection;
+			connection = id;
 
-			wefts_update[k.id.get()] = connection;
-			connection = k.id.get();
+			return id
 		});
+
+		if (space.rezed) weave.rez(...ids);
 
 		weave.wefts.set(
 			wefts_update
@@ -1131,11 +1136,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			this.warps.update(($warps) => {
 				ids.forEach((id) => {
-					const k = $warps[id];
-
-					k && k.destroy && k.destroy();
-
-					delete $warps[id];
 					delete $wefts[id];
 					delete $rezed[id];
 				});
@@ -1143,6 +1143,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				this.rezed.set($rezed);
 				this.wefts.set($wefts);
 
+				ids.forEach((id) => {
+					const k = $warps[id];
+
+					k && k.destroy && k.destroy();
+
+					delete $warps[id];
+				});
 				return $warps
 			});
 		},
@@ -5608,7 +5615,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return child_ctx;
 	}
 
-	// (55:0) {#if editing}
+	// (56:0) {#if editing}
 	function create_if_block_1$1(ctx) {
 		let current;
 
@@ -5655,14 +5662,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$1.name,
 			type: "if",
-			source: "(55:0) {#if editing}",
+			source: "(56:0) {#if editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (59:0) {#if tru_thread.length > 0}
+	// (60:0) {#if tru_thread.length > 0}
 	function create_if_block$3(ctx) {
 		let div;
 		let current;
@@ -5687,7 +5694,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				}
 
 				attr_dev(div, "class", "spot svelte-1mmwmc4");
-				add_location(div, file$8, 59, 0, 1376);
+				add_location(div, file$8, 60, 0, 1420);
 				dispose = listen_dev(div, "click", ctx.do_edit, false, false, false);
 			},
 			m: function mount(target, anchor) {
@@ -5756,14 +5763,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$3.name,
 			type: "if",
-			source: "(59:0) {#if tru_thread.length > 0}",
+			source: "(60:0) {#if tru_thread.length > 0}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (64:2) {#each tru_thread as link}
+	// (65:2) {#each tru_thread as link}
 	function create_each_block(ctx) {
 		let div0;
 		let color_action;
@@ -5785,11 +5792,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(div0, "class", "thread svelte-1mmwmc4");
 				attr_dev(div0, "style", ctx.style);
 				toggle_class(div0, "active", ctx.active);
-				add_location(div0, file$8, 64, 4, 1457);
+				add_location(div0, file$8, 65, 4, 1501);
 				attr_dev(div1, "class", "after-thread svelte-1mmwmc4");
 				attr_dev(div1, "style", ctx.style);
 				toggle_class(div1, "active", ctx.active);
-				add_location(div1, file$8, 72, 1, 1615);
+				add_location(div1, file$8, 73, 1, 1659);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div0, anchor);
@@ -5846,7 +5853,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block.name,
 			type: "each",
-			source: "(64:2) {#each tru_thread as link}",
+			source: "(65:2) {#each tru_thread as link}",
 			ctx
 		});
 
@@ -5870,7 +5877,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t1 = space$1();
 				div = element("div");
 				attr_dev(div, "class", "cap svelte-1mmwmc4");
-				add_location(div, file$8, 81, 0, 1711);
+				add_location(div, file$8, 82, 0, 1755);
 				dispose = listen_dev(div, "click", ctx.do_edit, false, false, false);
 			},
 			l: function claim(nodes) {
@@ -5976,6 +5983,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const execute = () => {
 			if (!editing) return;
 			$$invalidate("editing", editing = false);
+			$$invalidate("chain", chain = weave.chain(address).slice(0, -1));
 		};
 
 		const do_edit = e => {

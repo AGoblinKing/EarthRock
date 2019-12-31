@@ -109,10 +109,11 @@ export const compile = (code, weave, address) => {
 
 	weave.remove(...deletes)
 
-	let connection = address
+	const space = weave.get_id(address.split(`/`)[0])
 
+	let connection = address
 	// lets create these warps
-	parts.forEach((part) => {
+	const ids = parts.map((part) => {
 		part = part.trim()
 
 		if (part === ``) return
@@ -120,10 +121,14 @@ export const compile = (code, weave, address) => {
 		const w_data = warp_create(part)
 
 		const k = weave.add(w_data)
+		const id = k.id.get()
+		wefts_update[id] = connection
+		connection = id
 
-		wefts_update[k.id.get()] = connection
-		connection = k.id.get()
+		return id
 	})
+
+	if (space.rezed) weave.rez(...ids)
 
 	weave.wefts.set(
 		wefts_update

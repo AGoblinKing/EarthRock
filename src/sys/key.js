@@ -1,4 +1,4 @@
-import { read } from "/util/store.js"
+import { read } from "/store.js"
 
 export const key = read(``, (set) => {
 	window.addEventListener(`keyup`, (e) => {

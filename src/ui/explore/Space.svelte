@@ -6,15 +6,15 @@ import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
 export let filter = []
-export let stitch
+export let space
 
 export let open = $WEAVE_EXPLORE_OPEN
 export let weave
 
 $: w_name = weave.name
-$: name = stitch.name
 $: rezed = weave.rezed
-$: value = stitch.value
+$: value = space.value
+$: name = $value[`!name`]
 
 $: chans = Object.entries($value).sort(([a], [b]) => {
 	if (a > b) return 1
@@ -26,17 +26,17 @@ const toggle = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
 	const r = $rezed
-	if (r[stitch.id.get()]) {
-		delete r[stitch.id.get()]
+	if (r[space.id.get()]) {
+		delete r[space.id.get()]
 	} else {
-		r[stitch.id.get()] = true
+		r[space.id.get()] = true
 	}
 	rezed.set(r)
 }
 </script>
 
 <div
-  class="stitch"
+  class="space"
   class:open
   use:color={$name}
   style="border: 0.25rem solid {$THEME_BORDER};"
@@ -57,7 +57,7 @@ const toggle = (e) => {
 	{#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
 	  <Channel
 		{channel}
-		{stitch}
+		{space}
 		{weave}
 	  />
 	{/if}
@@ -78,7 +78,7 @@ const toggle = (e) => {
   margin: 0 1rem;
 }
 
-.stitch {
+.space {
   display: flex;
   align-items: center;
   padding: 0.5rem;
@@ -93,7 +93,7 @@ const toggle = (e) => {
   flex: 1;
 }
 
-.stitch:hover {
+.space:hover {
   color: white;
 }
 </style>

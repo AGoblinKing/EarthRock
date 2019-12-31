@@ -1,4 +1,4 @@
-import { read } from "/util/store.js"
+import { read } from "/store.js"
 
 export const position = read([0, 0], set => window
 	.addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))

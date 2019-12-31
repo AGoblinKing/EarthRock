@@ -4,26 +4,26 @@ export default (weave) => (
 ) => {
 	const [detail, detail2] = details
 	const names = weave.names.get()
-	const knot = names[detail]
+	const warp = names[detail]
 
 	switch (command) {
 	case `>`:
-		if (!knot) return msg(`Couldn't find ${detail}`)
+		if (!warp) return msg(`Couldn't find ${detail}`)
 		if (names[detail2]) return msg(`${detail2} already exists`)
-		knot.knot.name.set(detail2)
+
+		// TODO: rename/move
 		return
 
 	case `~`:
-		if (!knot) return
-		knot.name.set(detail2)
-
+		if (!warp) return
+		// TODO: Rename
 		return
 
 	case `+`:
 		if (detail2) {
 			return weave.write({
 				[detail]: {
-					knot: `stitch`,
+					type: `space`,
 					value: {
 						[detail2]: ``
 					}
@@ -33,7 +33,7 @@ export default (weave) => (
 
 		weave.write({
 			[detail]: {
-				knot: `stitch`
+				type: `space`
 			}
 		})
 

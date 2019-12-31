@@ -3,7 +3,7 @@ import { dark } from "/ui/action/color.js"
 import { WEAVE_EXPLORE_OPEN, THEME_STYLE } from "/sys/flag.js"
 
 import Omni from "./Omni.svelte"
-import Stitch from "./Stitch.svelte"
+import Space from "./Space.svelte"
 import Controls from "/ui/weave/Controls.svelte"
 
 import Command from "/omni/omni_weave.js"
@@ -16,13 +16,13 @@ export let filter = []
 export let open = $WEAVE_EXPLORE_OPEN
 
 $: command = Command(weave)
-$: stitches = Object.entries($names).sort(([a], [b]) => {
+$: spacees = Object.entries($names).sort(([a], [b]) => {
 	if (a > b) return 1
 	if (b > a) return -1
 	return 0
 })
 
-$: knots = weave.knots
+$: warps = weave.warps
 </script>
 
 <div
@@ -41,17 +41,17 @@ $: knots = weave.knots
 </div>
 
 {#if open}
-  <div class="stitches">
+  <div class="spacees">
 
 	<Omni {command} system={$name === Wheel.SYSTEM}/>
 
-	{#each stitches as [s_name,stitch] (s_name)}
+	{#each spacees as [s_name,space] (s_name)}
 	  {#if
 		(filter.length === 0 ||
 		s_name.indexOf(filter[0]) !== -1)
 	  }
-		<Stitch
-		  {stitch}
+		<Space
+		  {space}
 		  filter={filter.slice(1)}
 		  {weave}
 		/>

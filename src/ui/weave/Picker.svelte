@@ -1,11 +1,11 @@
 <script>
 import { load, image } from "/sys/file.js"
-import Postage from "/ui/weave/Postage.svelte"
-import * as knots from "/weave/knots.js"
+
+import * as warps from "/weave/warps.js"
 
 import color from "/ui/action/color.js"
 
-$: arr_knots = Object.entries(knots)
+$: arr_warps = Object.entries(warps)
 
 let last = {
 
@@ -30,6 +30,7 @@ const drop = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
 }
+
 let dragover
 
 const over = (whether) => (e) => {
@@ -50,7 +51,7 @@ const play_it = () => {
 
 	weave.write({
 		"!info": {
-			knot: `stitch`,
+			type: `space`,
 			value: {
 				from: last.name,
 				"save last": last.lastModified,

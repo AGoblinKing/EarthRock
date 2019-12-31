@@ -7,7 +7,7 @@ import { v3 } from "twgl.js"
 
 const { length, add, mulScalar } = v3
 
-import { read, write, transformer } from "/util/store.js"
+import { read, write, transformer } from "/store.js"
 
 export const zoom = write(0.75)
 

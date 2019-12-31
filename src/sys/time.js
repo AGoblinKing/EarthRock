@@ -1,4 +1,4 @@
-import { read } from "/util/store.js"
+import { read } from "/store.js"
 import { TIME_TICK_RATE } from "./flag.js"
 
 export const tick = read(0, (set) => {

@@ -1,17 +1,19 @@
-import { write, read, proto_write } from "/util/store.js"
+import { write, read, proto_write } from "/store.js"
 import { extend } from "/util/object.js"
 
-const knot = read(`mail`)
+import { proto_warp } from "./warp.js"
 
-const proto_mail = {
-	_fix (address) {
+const type = read(`mail`)
+
+const proto_mail = extend(proto_warp, {
+	fix (address) {
 		return address
 			.replace(`$`, ``)
 			.replace(`~`, `/${this.weave.name.get()}`)
 			.replace(`.`, this.weave.to_address(this.weave.chain(this.id.get(), true).shift()))
 	},
 
-	_clear () {
+	clear () {
 		this.cancels.forEach((fn) => fn())
 		this.cancels.clear()
 	},
@@ -19,14 +21,14 @@ const proto_mail = {
 	derez () {
 		this.cancel_value()
 		this.cancel_whom()
-		this._clear()
+		this.clear()
 	},
 
 	rez () {
 		this.cancels = new Set()
 
 		this.cancel_whom = this.whom.listen(($whom) => {
-			this._clear()
+			this.clear()
 
 			$whom = this.weave.resolve($whom, this.id)
 
@@ -52,18 +54,16 @@ const proto_mail = {
 	},
 	toJSON () {
 		return {
-			id: this.id.get(),
-			knot: this.knot.get(),
+			type: this.type.get(),
 			value: this.value.get(),
-
 			whom: this.whom.get()
 		}
 	}
-}
+})
 
 const proto_remote = extend(proto_write, {
 	set (value) {
-		const $whom = this.mail._fix(this.mail.whom.get())
+		const $whom = this.mail.fix(this.mail.whom.get())
 
 		const v = Wheel.get($whom)
 
@@ -79,11 +79,13 @@ const proto_remote = extend(proto_write, {
 // instead use the weave messaging channel
 export default ({
 	whom = `/sys/mouse/position`,
-	weave
+	weave,
+	id
 }) => {
 	const mail = extend(proto_mail, {
-		knot,
+		type,
 		whom: write(whom),
+		id: read(id),
 		weave
 	})
 

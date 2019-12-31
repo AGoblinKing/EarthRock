@@ -43,13 +43,13 @@ Imagine having two values.
 ```
 
 These values change as outside forces interact with them. Time moves forward or a user presses a key.
-We keep these values in a location defined as /{weave}/{stitch}/{name}.
+We keep these values in a location defined as /{weave}/{section}/{name}.
 
 ```
 /sys/key/keys
 
   weave: sys
-  stitch: camera
+  section: camera
   name: position
 ```
 

@@ -1,7 +1,7 @@
 // spawnable types
-export { default as mail } from "./knot/Mail.svelte"
-export { default as math } from "./knot/Math.svelte"
-export { default as stitch } from "./knot/Stitch.svelte"
-export { default as stream } from "./knot/Stream.svelte"
-export { default as unknown } from "./knot/Unknown.svelte"
-export { default as screen } from "./knot/Screen.svelte"
+export { default as mail } from "./warp/Mail.svelte"
+export { default as math } from "./warp/Math.svelte"
+export { default as space } from "./warp/Space.svelte"
+export { default as stream } from "./warp/Stream.svelte"
+export { default as unknown } from "./warp/Unknown.svelte"
+export { default as screen } from "./warp/Screen.svelte"

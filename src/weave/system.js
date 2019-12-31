@@ -1,5 +1,7 @@
 import Weave from "./weave.js"
 
+import { map, reduce } from "/util/object.js"
+
 // lets grab all the systems here
 import * as mouse from "/sys/mouse.js"
 import * as time from "/sys/time.js"
@@ -12,28 +14,29 @@ import * as camera from "/sys/camera.js"
 // private sytems
 import "/sys/data.js"
 
-const normalize = (sys) => Object.fromEntries(Object.entries(flag).map(
+const normalize = (sys) => map(flag)(
 	([key, entry]) => [
 		key.replace(/_/g, ` `).toLowerCase(),
 		entry
 	]
-))
+)
 
-const tie = (items) =>
-	Object.entries(items)
-		.reduce((result, [key, value]) => ({
-			...result,
-			[key]: {
-				name: key,
-				knot: `stitch`,
-				value
+const tie = (items) => reduce(items)(
+	(result, [key, value]) => ({
+		...result,
+		[key]: {
+			type: `space`,
+			value: {
+				...value,
+				[`!name`]: key
 			}
-		}), {})
+		}
+	}), {})
 
 export default Weave({
 	name: `sys`,
 	id: `sys`,
-	knots: tie({
+	warps: tie({
 		mouse,
 		time,
 		screen,

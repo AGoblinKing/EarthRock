@@ -12,11 +12,11 @@ $: names = weave.names
 
 $: rezed = weave.rezed
 
-$: knot = $names[k_id]
+$: warp = $names[k_id]
 
 // TODO: sometimes use postage for bad reasons
-$: id = knot
-	? knot.id.get()
+$: id = warp
+	? warp.id.get()
 	: ``
 
 $: isrunning = $running[w_id] === true

@@ -1,7 +1,7 @@
 import * as twgl from "twgl"
 import Color from "color"
 
-import { write } from "/util/store.js"
+import { write } from "/store.js"
 import { frame, tick } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
@@ -62,7 +62,7 @@ export default () => {
 	const view = m4.identity()
 	const view_projection = m4.identity()
 
-	// lifecycle on knot
+	// lifecycle on warp
 	canvas.cancel = frame.listen(([time, t]) => {
 		const snap = snapshot()
 

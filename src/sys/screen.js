@@ -1,4 +1,4 @@
-import { read, write } from "/util/store.js"
+import { read, write } from "/store.js"
 
 import webgl from "./screen/webgl.js"
 

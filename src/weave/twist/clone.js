@@ -1,11 +1,15 @@
 import { decompile, compile } from "/thread/thread.js"
 
+// TODO: Needs refactored to rez/derez system
 export default ({
 	weave,
-	stitch,
+	space,
 	value,
 	id
 }) => {
+	// no clones
+	return {}
+
 	const destroys = new Set()
 
 	const clean = () => destroys.forEach((d) => d())
@@ -29,7 +33,7 @@ export default ({
 
 			Object.entries(vs_o).forEach(([key, value_o]) =>
 				destroys.add(value_o.listen((v_o) => {
-					stitch.value.update({
+					space.value.update({
 						[key]: v_o
 					})
 				}))

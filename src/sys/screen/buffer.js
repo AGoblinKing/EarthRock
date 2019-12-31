@@ -132,16 +132,16 @@ tick.listen(() => requestAnimationFrame(() => {
 		const rezed = weave.rezed.get()
 		let dirty = false
 		Object.keys(rezed).forEach((id) => {
-			const knot = weave.get_id(id)
+			const warp = weave.get_id(id)
 
-			// only stitches can be rezed
-			if (!knot || knot.knot.get() !== `stitch`) {
+			// only spacees can be displayed
+			if (!warp || warp.type.get() !== `space`) {
 				dirty = true
 				delete rezed[id]
 				return
 			}
 
-			const vs = knot.value.get()
+			const vs = warp.value.get()
 
 			defaults.forEach(([key, def]) => {
 				if (!vs[key]) {

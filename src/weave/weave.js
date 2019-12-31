@@ -1,20 +1,25 @@
-import { write, read } from "/util/store.js"
-import { extend } from "/util/object.js"
+import { write, read, difference } from "/store.js"
+import { extend, map, each, reduce } from "/util/object.js"
 import { random } from "/util/text.js"
 
-import Knot from "./knot.js"
+import Warp from "./warp_factory.js"
 import uuid from "cuid"
 
-const proto = {
+const proto_weave = {
 	add (properties) {
 		properties.id = properties.id || uuid()
 
 		const k = this.make(properties)
 
-		this.knots.update(($knots) => {
-			$knots[k.id.get()] = k
-			return $knots
+		if (!k) return
+
+		this.warps.update(($warps) => {
+			$warps[k.id.get()] = k
+			return $warps
 		})
+
+		// allows other work to be done first
+		if (k.create) requestAnimationFrame(() => k.create())
 
 		return k
 	},
@@ -28,43 +33,48 @@ const proto = {
 	},
 
 	remove (...ids) {
-		const $threads = this.threads.get()
+		const $wefts = this.wefts.get()
 		const $rezed = this.rezed.get()
-		const $destroys = this.destroys.get()
 
-		this.knots.update(($knots) => {
+		this.warps.update(($warps) => {
 			ids.forEach((id) => {
-				if ($destroys[id]) $destroys[id]()
+				const k = $warps[id]
 
-				delete $knots[id]
-				delete $threads[id]
+				k && k.destroy && k.destroy()
+
+				delete $warps[id]
+				delete $wefts[id]
 				delete $rezed[id]
 			})
 
 			this.rezed.set($rezed)
-			this.threads.set($threads)
+			this.wefts.set($wefts)
 
-			return $knots
+			return $warps
 		})
 	},
 
 	write (structure) {
 		const $names = this.names.get()
 
-		return Object.fromEntries(Object.entries(structure).map(([key, data]) => {
+		return map($names)(([key, data]) => {
 			const k = $names[key]
 
 			if (!k) {
-				data.name = key
-				return [key, this.add(data)]
+				data.value = data.value || {}
+				data.value[`!name`] = key
+				const warp = this.add(data)
+				if (!warp) return [key, false]
+				return [key, warp]
 			}
 
-			const type = k.knot.get()
+			const type = k.type.get()
 
-			Object.entries(data).forEach(([key_sub, data_sub]) => {
-				if (key_sub === `knot`) return
+			each(data)(([key_sub, data_sub]) => {
+				// read only
+				if (!key_sub.set) return
 
-				if (key_sub === `value` && type === `stitch`) {
+				if (key_sub === `value` && type === `space`) {
 					k[key_sub].set({
 						...k[key_sub].get(),
 						...data_sub
@@ -76,40 +86,40 @@ const proto = {
 			})
 
 			return [key, k]
-		}))
+		})
 	},
 
-	exists (id) {
-		const [knot, channel] = id.split(`/`)
+	exists (address) {
+		const [warp, weft] = address.split(`/`)
 
-		const k = this.knots.get()[knot]
+		const k = this.warps.get()[warp]
 
 		if (!k) return false
-		if (channel === undefined) return true
+		if (weft === undefined) return true
 
-		return Object.keys(k.value.get()).indexOf(channel) !== -1
+		return k.value.get()[weft] !== undefined
 	},
 
 	validate () {
 		let dirty = false
 
-		const t = this.threads.get()
-		const ks = this.knots.get()
+		const wefts = this.wefts.get()
+		const warps = this.warps.get()
 
 		const deletes = []
 
-		Object.values(ks).forEach((k) => {
-			if (k.knot.get() === `stitch`) return
+		each(warps)(([_, k]) => {
+			if (k.type.get() === `space`) return
 
 			const chain = this.chain(k.id.get(), true)
 			const last = chain[chain.length - 1].split(`/`)[0]
 			const first = chain[0].split(`/`)[0]
-			const k_last = ks[last]
-			const k_first = ks[first]
+			const k_last = warps[last]
+			const k_first = warps[first]
 
 			if (
-				(k_last && k_last.knot.get() === `stitch`) ||
-                    (k_first && k_first.knot.get() === `stitch`)
+				(k_last && k_last.type.get() === `space`) ||
+                    (k_first && k_first.type.get() === `space`)
 			) return
 
 			deletes.push(k.id.get())
@@ -120,34 +130,34 @@ const proto = {
 			this.remove(...deletes)
 		}
 
-		Object.entries(t).forEach(([r, w]) => {
+		each(wefts)(([r, w]) => {
 			if (this.exists(r) && this.exists(w)) return
 
 			dirty = true
-			delete (t[r])
+			delete (wefts[r])
 		})
 
 		if (!dirty) return
 
-		this.threads.set(t)
+		this.wefts.set(wefts)
 	},
 
 	chain (address, right = false) {
 		const other = right
-			? this.threads.get()[address]
-			: this.threads_r.get()[address]
+			? this.wefts.get()[address]
+			: this.wefts_r.get()[address]
 
 		if (!other) return [address]
 		return [...this.chain(other, right), address]
 	},
 
 	to_address (id_path) {
-		const [knot] = id_path.split(`/`)
+		const [warp] = id_path.split(`/`)
 
-		const k = this.get_id(knot)
-		if (!k || !k.name) return `/sys/void`
+		const space = this.get_id(warp)
+		if (!space || !space.name) return `/sys/void`
 
-		return `/${this.name.get()}/${k.name.get()}`
+		return `/${this.name.get()}/${space.name().get()}`
 	},
 
 	get_name (name) {
@@ -158,39 +168,23 @@ const proto = {
 
 	get_id (id) {
 		const [k_id, chan_name] = id.split(`/`)
-		const k = this.knots.get()[k_id]
+		const k = this.warps.get()[k_id]
 
 		if (!chan_name) return k
 
 		const v = k.value.get()
 		if (!v || !v[chan_name]) return
 
-		// knot style of a channel
+		// warp style of a channel
 		return {
 			value: v[chan_name]
 		}
 	},
 
 	make (properties) {
-		return Knot({
+		return Warp({
 			...properties,
-			weave: this,
-			life: this.rezer(properties.id),
-			destroy: this.destroyer(properties.id)
-		})
-	},
-
-	destroyer (id) {
-		return (destroy) => this.destroys.update(($destroys) => {
-			$destroys[id] = destroy
-			return $destroys
-		})
-	},
-
-	rezer (id) {
-		return (life) => this.lives.update(($lives) => {
-			$lives[id] = life
-			return $lives
+			weave: this
 		})
 	},
 
@@ -202,7 +196,13 @@ const proto = {
 
 	derez (...ids) {
 		const $rezed = this.rezed.get()
+		const $warps = this.warps.get()
+
 		ids.forEach((id) => {
+			const k = $warps[id]
+			if (!k) return
+			k.derez && k.derez()
+
 			delete $rezed[id]
 		})
 		this.rezed.set($rezed)
@@ -210,77 +210,91 @@ const proto = {
 
 	rez (...ids) {
 		const $rezed = this.rezed.get()
+		const $warps = this.warps.get()
+
 		ids.forEach((id) => {
+			const k = $warps[id]
+
+			if (!k) return
+
 			$rezed[id] = true
+			k.rez && k.rez()
 		})
+
 		this.rezed.set($rezed)
 	},
 
-	toJSON () {
-		const {
-			id,
-			knot,
-			name,
-			threads,
-			knots,
-			rezed
-		} = this
+	destroy () {
+		this.destroys.forEach((fn) => fn())
+	},
 
-		return JSON.parse(JSON.stringify({
-			id,
-			knot,
-			name,
-			threads,
-			knots,
-			rezed
-		}))
+	toJSON () {
+		return {
+			id: this.id.toJSON(),
+			name: this.name.toJSON(),
+			wefts: this.wefts.toJSON(),
+			warps: map(this.warps.get())(([id, warp]) => [
+				id,
+				warp.toJSON()
+			]),
+			rezed: this.rezed.toJSON()
+		}
 	}
 }
 
-// Weave of knots connected together with threads
+// Weave of warps connected together with wefts
 export default ({
 	name = random(2),
 	id = uuid(),
-	knots = {},
-	threads = {},
-	rezed = {}
+	warps = {},
+	wefts = {},
+	rezed = {},
+
+	// TODO: remove conversions
+	knots,
+	threads
 } = false) => {
-	const weave = extend(proto, {
+	if (knots) warps = knots
+	if (threads) wefts = threads
+
+	const weave = extend(proto_weave, {
 		// saved
 		id: read(id),
 		name: write(name),
-		threads: write(threads),
-		rezed: write(rezed),
+		wefts: write(wefts),
+		rezed: difference(rezed),
 
 		// not saved
-		lives: write({}),
 		names: write({}),
-		destroys: write({})
+		destroys: []
 	})
 
-	const ks = Object.entries(knots)
-		.reduce((res, [knot_id, val]) => {
-			if (val.id !== knot_id) {
-				val.id = knot_id
-			}
+	const ks = reduce(warps)((res, [warp_id, val]) => {
+		if (val.id !== warp_id) {
+			val.id = warp_id
+		}
 
-			res[knot_id] = weave.make(val)
+		// wait for them all to be made
+		const warp = weave.make(val)
+		if (!warp) return res
 
-			return res
-		}, {})
+		res[warp_id] = warp
+
+		return res
+	}, {})
+
+	each(ks)(([_, warp]) => warp.create && warp.create())
 
 	// saved
-	weave.knots = write(ks)
+	weave.warps = write(ks)
 
 	// not saved
-	weave.threads_r = read({}, (set) => {
+	weave.wefts_r = read({}, (set) =>
 		// destroy this on weave destroy
-		weave.threads.listen(($threads) => {
-			set(Object.fromEntries(Object.entries($threads).map(
-				(item) => item.reverse()
-			)))
-		})
-	})
+		weave.destroys.push(weave.wefts.listen(($wefts) =>
+			set(map($wefts)((item) => item.reverse()))
+		))
+	)
 
 	return weave
 }

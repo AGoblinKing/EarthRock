@@ -1,5 +1,6 @@
 import Weave from "./weave.js"
-import { write, read, any } from "/util/store.js"
+import { write, read, any } from "/store.js"
+import { values, keys } from "/util/object.js"
 
 export const SYSTEM = `sys`
 
@@ -44,7 +45,7 @@ export const del = (keys) => {
 
 		if ($weaves[key]) {
 			dirty = true
-
+			$weaves[key].destroy()
 			trash.set(
 				$weaves[key]
 			)
@@ -62,16 +63,16 @@ export const name = write(``)
 export const get = (address) => {
 	const [
 		weave_name,
-		knot_name,
+		warp_name,
 		chan
 	] = addr(address)
 
 	const w = weaves.get()[weave_name]
 
 	if (w === undefined) return
-	if (knot_name === undefined) return w
+	if (warp_name === undefined) return w
 
-	const k = w.names.get()[knot_name]
+	const k = w.names.get()[warp_name]
 
 	if (k === undefined) return
 	if (chan === undefined) return k
@@ -108,17 +109,17 @@ export const spawn = (pattern = {}) => Object.fromEntries(
 	})
 )
 
-const start_threads = (weave) => {
-	let threads = []
-	const cancel = any(weave.threads, weave.rezed)((ts, rezed) => {
+const start_wefts = (weave) => {
+	let wefts = []
+	const cancel = any(weave.wefts, weave.rezed)((ts, rezed) => {
 		let dirty = false
 		const connected = new Set()
 
 		// TODO: partial updates like lives
 		// tear down existing highways
-		if (threads) threads.forEach((d) => d())
+		if (wefts) wefts.forEach((d) => d())
 
-		threads = Object.entries(ts)
+		wefts = Object.entries(ts)
 			// don't turn on derezed chains
 			.filter(([reader, writer]) => {
 				if (connected.has(writer)) return true
@@ -132,7 +133,7 @@ const start_threads = (weave) => {
 					return false
 				}
 
-				const ready = other.knot.get() === `stitch` &&
+				const ready = other.type.get() === `space` &&
 					rezed[base_id]
 
 				if (ready) {
@@ -160,76 +161,41 @@ const start_threads = (weave) => {
 			}).filter((d) => d)
 
 		// silent write, to prevent flap
-		if (dirty) weave.threads.set(ts, true)
+		if (dirty) weave.wefts.set(ts, true)
 	})
 
 	return () => {
 		cancel()
-		threads.forEach((d) => d())
+		wefts.forEach((d) => d())
 	}
 }
 
-const start_lives = (weave) => {
-	const enders = {}
-	const cancel_lives = () => {
-		Object.values(enders).forEach((d) => d())
-	}
+const start_rez = (weave) => {
+	const cancel = weave.rezed.listen((_, {
+		add,
+		remove
+	}) => {
+		const warps = weave.warps.get()
 
-	const cancel = any(weave.lives, weave.rezed)(($lives, $rezed) => {
-		const on = {}
+		add.forEach((key) => {
+			const warp = warps[key]
 
-		// new lives
-		Object.keys($lives)
-			.filter((id) => {
-				// chain to right
-				const c = weave.chain(id, true)
-				const last_id = c[0].split(`/`)[0]
-				const isrez = $rezed[last_id]
-				const last = weave.get_id(last_id)
+			warp && warp.rez && warp.rez()
+		})
 
-				// already living
-				if (enders[id]) {
-					const k = weave.get_id(id)
+		remove.forEach((key) => {
+			const warp = warps[key]
 
-					if (!k || !isrez) {
-						enders[id]()
-						delete enders[id]
-						return false
-					}
-
-					on[id] = true
-					return false
-				}
-
-				// not rezed
-				if (
-					!isrez ||
-					(last && last.knot.get() !== `stitch`)
-				) {
-					return false
-				}
-
-				on[id] = true
-				return true
-			})
-			.forEach((id) => {
-				enders[id] = $lives[id]()
-			})
-
-		// old lives
-		Object.entries(enders).forEach(([id, end]) => {
-			if ($lives[id] && on[id]) return
-			end()
-			delete enders[id]
+			warp && warp.derez && warp.derez()
 		})
 	})
-
 	return () => {
 		cancel()
-		cancel_lives()
+		values(weave.rezed.get()).forEach(
+			(warp) => warp && warp.derez && warp.derez()
+		)
 	}
 }
-
 export const start = (weave_name) => {
 	if (weave_name === SYSTEM) {
 		return
@@ -238,12 +204,12 @@ export const start = (weave_name) => {
 	const weave = get(weave_name)
 	if (!weave) return false
 
-	const life_cancel = start_lives(weave)
-	const thread_cancel = start_threads(weave)
+	const thread_cancel = start_wefts(weave)
+	const rez_cancel = start_rez(weave)
 
 	highways.set(weave_name, () => {
-		life_cancel()
 		thread_cancel()
+		rez_cancel()
 	})
 
 	running_set({
@@ -275,7 +241,7 @@ export const stop = (weave_name) => {
 export const stop_all = () => {
 	const $weaves = weaves.get()
 
-	Object.keys($weaves).forEach(($name) => stop($name))
+	keys($weaves).forEach(($name) => stop($name))
 }
 
 export const clear = () => {

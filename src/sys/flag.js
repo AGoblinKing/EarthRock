@@ -1,4 +1,4 @@
-import { write, read } from "/util/store.js"
+import { write, read } from "/store.js"
 import Color from "color"
 
 export const SPRITES = read(`/sheets/default_2.png`)

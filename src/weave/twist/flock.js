@@ -1,15 +1,18 @@
 export default ({
-	stitch,
+	space,
 	weave,
 	value,
 	id
 }) => {
+	// no flocking right now
+	return {}
+
 	const $value = value.get()
 	const other = Wheel.get(weave.resolve($value, id))
 
-	if (!other || other.knot.get() !== `stitch`) return
+	if (!other || other.type.get() !== `space`) return
 
-	const vs = stitch.value.get()
+	const vs = space.value.get()
 	const count = vs[`!flock count`]
 		? vs[`!flock count`].get()
 		: 1
@@ -21,12 +24,12 @@ export default ({
 		requestAnimationFrame(() => {
 		// spawn a flock
 			for (let i = 0; i < count; i++) {
-				const key = `&${stitch.name.get()} ${i + 1}`
+				const key = `&${space.name.get()} ${i + 1}`
 				w_update[key] = {
-					knot: `stitch`,
+					type: `space`,
 					value: {
 						"!clone": $value,
-						"!leader": `${stitch.name.get()}`,
+						"!leader": `${space.name.get()}`,
 						"!bird": i
 					}
 				}
@@ -40,7 +43,9 @@ export default ({
 		})
 	})
 
-	return async () => {
-		weave.remove(...await birds)
+	return {
+		destroy: async () => {
+			weave.remove(...await birds)
+		}
 	}
 }

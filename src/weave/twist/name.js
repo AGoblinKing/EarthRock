@@ -1,11 +1,11 @@
 export default ({
 	value,
 	weave,
-	stitch
+	space
 }) => {
 	let name_last
 	const update = ($name) => ($ns) => {
-		$ns[$name] = stitch
+		$ns[$name] = space
 
 		if (name_last) {
 			delete $ns[name_last]

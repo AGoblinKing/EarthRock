@@ -1,7 +1,7 @@
 import { tick } from "/sys/time.js"
 import { path } from "/sys/path.js"
 import { github } from "/sys/file.js"
-import { write } from "/util/store.js"
+import { write } from "/store.js"
 
 const VERSION = 2
 const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60)
@@ -103,7 +103,7 @@ const savewatch = async ($name) => {
 let watch = false
 path.listen(async ($path) => {
 	// your watch has ended
-	if (watch) watch()
+	if (watch) watch.then((w) => w())
 
 	if ($path.length === 1) {
 		Wheel.name.set($path[0])

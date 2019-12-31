@@ -1,7 +1,7 @@
 <script>
 import color from "/ui/action/color.js"
 import ThreadEditor from "/ui/editor/ThreadEditor.svelte"
-import Knot from "/ui/thread/Knot.svelte"
+import Warp from "/ui/thread/Warp.svelte"
 
 import { tick } from "/sys/time.js"
 import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
@@ -9,14 +9,13 @@ import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
 import { translate, format, condense } from "/thread/thread.js"
 
 export let channel
-export let stitch
+export let space
 export let weave
 
 let editing = false
-$: address = `${stitch.id.get()}/${channel[0]}`
-$: threads = weave.threads
+$: address = `${space.id.get()}/${channel[0]}`
 
-$: chain = $threads && weave.chain(address).slice(0, -1)
+$: chain = weave.chain(address).slice(0, -1)
 
 $: boxes = chain
 	.map((i) => translate(i, weave))
@@ -78,7 +77,7 @@ $:active = false
       use:color={condense(link, weave)}
       class:active
     >
-      <Knot {weave} id={link} />
+      <Warp {weave} id={link} />
     </div>
     {/if}
   {/each}

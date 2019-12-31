@@ -1,16 +1,16 @@
 // a textual representation of a WEAVE chain
 
-const knots = {
+const warps = {
 	stream: (k) => JSON.stringify(k.value.get()),
 	math: (k) => k.math.get().trim(),
 	mail: (k) => k.whom.get().trim(),
-	default: (k) => k.knot.get(),
-	stitch: (k) => `./${k.name.get()}`,
+	default: (k) => k.warp.get(),
+	space: (k) => `./${k.value.get(`!name`)}`,
 	sprite: (k) => `@${k.value.get()}`,
 	color: (k) => `#${k.value.get()}`
 }
 
-const knots_is = {
+const warps_is = {
 	color: (data) => data[0] === `#`,
 	sprite: (data) => data[0] === `@`,
 	mail: (data) => {
@@ -29,21 +29,21 @@ const knots_is = {
 	}
 }
 
-const knots_create = {
+const warps_create = {
 	math: (data) => ({
-		knot: `math`,
+		type: `math`,
 		math: data
 	}),
 	mail: (data) => ({
-		knot: `mail`,
+		type: `mail`,
 		whom: data
 	}),
 	stream: (data) => ({
-		knot: `stream`,
+		type: `stream`,
 		value: JSON.parse(data)
 	}),
 	color: (data) => ({
-		knot: `color`,
+		type: `color`,
 		value: data.slice(1)
 	}),
 	sprite: (data) => {
@@ -54,14 +54,14 @@ const knots_create = {
 		}
 
 		return {
-			knot: `sprite`,
+			type: `sprite`,
 			value: i
 		}
 	}
 }
 
 const what_is = (data) => {
-	const entries = Object.entries(knots_is)
+	const entries = Object.entries(warps_is)
 	for (let i = 0; i < entries.length; i++) {
 		const [type, fn] = entries[i]
 		if (fn(data)) return type
@@ -70,9 +70,9 @@ const what_is = (data) => {
 	return `math`
 }
 
-const knot_create = (data) => {
+const warp_create = (data) => {
 	const what = what_is(data)
-	return knots_create[what](data)
+	return warps_create[what](data)
 }
 
 export const decompile = (address, weave) =>
@@ -83,13 +83,13 @@ export const decompile = (address, weave) =>
 export const translate = (id, weave) => {
 	if (id[0] === `{`) return id
 
-	const knot = weave.knots.get()[id]
-	if (!knot) return `stitch`
+	const warp = weave.warps.get()[id]
+	if (!warp) return `space`
 
-	const type = knot.knot.get()
+	const type = warp.type.get()
 
-	return knots[type]
-		? knots[type](knot)
+	return warps[type]
+		? warps[type](warp)
 		: type
 }
 
@@ -99,7 +99,7 @@ export const compile = (code, weave, address) => {
 		.split(`=>`)
 		.reverse()
 
-	const threads_update = weave.threads.get()
+	const wefts_update = weave.wefts.get()
 
 	const deletes = []
 
@@ -111,22 +111,22 @@ export const compile = (code, weave, address) => {
 
 	let connection = address
 
-	// lets create these knots
+	// lets create these warps
 	parts.forEach((part) => {
 		part = part.trim()
 
 		if (part === ``) return
 
-		const w_data = knot_create(part)
+		const w_data = warp_create(part)
 
 		const k = weave.add(w_data)
 
-		threads_update[k.id.get()] = connection
+		wefts_update[k.id.get()] = connection
 		connection = k.id.get()
 	})
 
-	weave.threads.set(
-		threads_update
+	weave.wefts.set(
+		wefts_update
 	)
 
 	weave.validate()

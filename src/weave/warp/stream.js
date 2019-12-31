@@ -1,8 +1,10 @@
-import { write, read, proto_write } from "/util/store.js"
+import { write, read, proto_write } from "/store.js"
 import { json } from "/util/parse.js"
 import { extend } from "/util/object.js"
 
-const knot = read(`stream`)
+import { proto_warp } from "./warp.js"
+
+const type = read(`stream`)
 
 const proto_stream = extend(proto_write, {
 	set (val) {
@@ -17,8 +19,10 @@ const proto_stream = extend(proto_write, {
 })
 
 export default ({
+	id,
 	value = null
-}) => ({
-	knot,
-	value: extend(proto_stream, write()).set(value)
+}) => extend(proto_warp, {
+	type,
+	value: extend(proto_stream, write()).set(value),
+	id: read(id)
 })

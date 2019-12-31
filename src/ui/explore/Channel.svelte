@@ -6,7 +6,7 @@ import { json } from "/util/parse.js"
 
 import color from "/ui/action/color.js"
 
-export let stitch
+export let space
 export let weave
 export let channel
 export let side = `in`
@@ -39,13 +39,13 @@ const focusd = (node) => {
 <div
   class="channel {side}"
   style={$THEME_STYLE}
-  use:color={stitch.name.get()}
+  use:color={space.name().get()}
   on:click={() => {
     editing = true
     val = JSON.stringify($value)
   }}
 >
-  <Thread {channel} {stitch} {weave}/>
+  <Thread {channel} {space} {weave}/>
 {#if !editing}
   <div class="key">
     {key}

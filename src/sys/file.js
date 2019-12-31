@@ -2,7 +2,7 @@ import exif from "piexifjs"
 import fs from "file-saver"
 import { tile } from "/util/text.js"
 import Tile from "/image/tile.js"
-import { write } from "/util/store.js"
+import { write } from "/store.js"
 
 export const load = (img) => {
 	try {
@@ -90,7 +90,7 @@ export const github = async ($path, autorun = false) => {
 
 			w.write({
 				"!info": {
-					knot: `stitch`,
+					type: `space`,
 					value: {
 						from: $path.join(`/`),
 						url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`

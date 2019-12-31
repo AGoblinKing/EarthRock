@@ -1,5 +1,5 @@
 import { get } from "/weave/wheel.js"
-import { transformer } from "/util/store.js"
+import { transformer } from "/store.js"
 
 // try to keep mail safe
 export const send = transformer(({
@@ -8,9 +8,9 @@ export const send = transformer(({
 }) => {
 	let s = get(whom)
 
-	// stitch special case
-	if (s.knot && s.knot.get() === `stitch`) {
-		// forward stitch mail to a mail channel
+	// space special case
+	if (s.warp && s.warp.get() === `space`) {
+		// forward space mail to a mail channel
 		s = get(`${whom}/mail`)
 	}
 

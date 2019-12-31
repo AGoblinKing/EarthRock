@@ -1,4 +1,5 @@
 <script>
+import { read } from "/store.js"
 import { condense } from "/thread/thread.js"
 
 import ColorEditor from "/ui/editor/ColorEditor.svelte"
@@ -8,16 +9,16 @@ export let id
 export let weave
 
 $: k = weave.get_id(id)
-$: type = k.knot
+$: type = (k && k.type) || read(`unknown`)
 
-const knot_view = {
+const warp_view = {
 	sprite: SpriteEditor,
 	color: ColorEditor
 }
 </script>
 
-{#if knot_view[$type]}
-  <svelte:component this={knot_view[$type]} value={k.value} />
+{#if warp_view[$type]}
+  <svelte:component this={warp_view[$type]} value={k.value} />
 {:else}
   <div data:type={$type} class="pad">{condense(id, weave)}</div>
 {/if}

@@ -13,10 +13,18 @@ export const proto_difference = extend(proto_write, {
 		const prev = this.prev
 
 		this.value = value
+		const modify = []
 
 		this.notify({
-			add: keys(value).filter((k) => prev[k] === undefined),
-			remove: keys(prev).filter((k) => value[k] === undefined),
+			add: keys(value).filter((key) => {
+				const is_add = prev[key] === undefined
+				if (!is_add && prev[key] !== value[key]) {
+					modify.push(key)
+				}
+				return is_add
+			}),
+			remove: keys(prev).filter((key) => value[key] === undefined),
+			modify,
 			previous: prev
 		})
 
@@ -28,6 +36,7 @@ export const proto_difference = extend(proto_write, {
 		fn(this.value, {
 			add: keys(this.value),
 			remove: [],
+			modify: [],
 			previous: this.value
 		})
 

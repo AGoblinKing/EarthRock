@@ -116,6 +116,7 @@ export const snapshot = () => ({
 	time: (Date.now() - last_snap) / TIME_TICK_RATE.get()
 })
 
+// TODO: Buffers could keep a fairly stagnent array with some work
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
 	const buffs = blank()

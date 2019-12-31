@@ -11,8 +11,8 @@ const clear = () => {
 clear()
 
 export const proto_read = extend(proto_store, {
-	poke () { return this.notify() },
 	get () { return this.value },
+
 	notify () {
 		if (!this.subs) return
 

@@ -47,8 +47,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	clear();
 
 	const proto_read = extend(proto_store, {
-		poke () { return this.notify() },
 		get () { return this.value },
+
 		notify () {
 			if (!this.subs) return
 
@@ -116,10 +116,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const prev = this.prev;
 
 			this.value = value;
+			const modify = [];
 
 			this.notify({
-				add: keys(value).filter((k) => prev[k] === undefined),
-				remove: keys(prev).filter((k) => value[k] === undefined),
+				add: keys(value).filter((key) => {
+					const is_add = prev[key] === undefined;
+					if (!is_add && prev[key] !== value[key]) {
+						modify.push(key);
+					}
+					return is_add
+				}),
+				remove: keys(prev).filter((key) => value[key] === undefined),
+				modify,
 				previous: prev
 			});
 
@@ -131,6 +139,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			fn(this.value, {
 				add: keys(this.value),
 				remove: [],
+				modify: [],
 				previous: this.value
 			});
 
@@ -1399,12 +1408,31 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		weave.warps = write(ks);
 
 		// not saved
-		weave.wefts_r = read({}, (set) =>
+		weave.wefts_r = read({}, (set) => {
+			const value = {};
 			// destroy this on weave destroy
-			weave.destroys.push(weave.wefts.listen(($wefts) =>
-				set(map($wefts)((item) => item.reverse()))
-			))
-		);
+			weave.destroys.push(weave.wefts.listen(($wefts, {
+				add,
+				remove,
+				modify,
+				prev
+			}) => {
+				add.forEach((key) => {
+					value[$wefts[key]] = key;
+				});
+
+				remove.forEach((key) => {
+					delete value[prev[key]];
+				});
+
+				// modify doesn't always get triggered
+				modify.forEach((key) => {
+					value[$wefts[key]] = key;
+				});
+
+				set(value);
+			}));
+		});
 
 		return weave
 	};
@@ -1493,66 +1521,63 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const exists = (address) => get(address) !== undefined;
 
 	// create the whole path if you gotta
-	const spawn = (pattern = {}) => Object.fromEntries(
-		Object.entries(pattern).map(([
-			weave_id,
-			weave_data
-		]) => {
-			if (weave_id === SYSTEM) {
-				console.warn(`tried to spawn ${SYSTEM}`);
-				return [weave_id, get(weave_id)]
-			}
+	const spawn = (pattern = {}) => map(pattern)(([
+		weave_id,
+		weave_data
+	]) => {
+		if (weave_id === SYSTEM) {
+			console.warn(`tried to spawn ${SYSTEM}`);
+			return [weave_id, get(weave_id)]
+		}
 
-			const ws = weaves.get();
-			const w = Weave({
-				...weave_data,
-				name: weave_id
-			});
+		const ws = weaves.get();
+		const w = Weave({
+			...weave_data,
+			name: weave_id
+		});
 
-			ws[weave_id] = w;
+		ws[weave_id] = w;
 
-			weaves.set(ws);
-			return [weave_id, w]
-		})
-	);
+		weaves.set(ws);
+		return [weave_id, w]
+	});
 
 	const start_wefts = (weave) => {
-		let weft_cancel = [];
+		const weft_cancels = {};
 
-		// TODO: react to add/remove instead
 		const cancel = weave.wefts.listen((wefts, {
 			add,
-			remove
+			remove,
+			modify
 		}) => {
-			let dirty = false;
+			[...add, ...modify].forEach((reader) => {
+				const writer = wefts[reader];
+				const r = weave.get_id(reader);
+				const wr = weave.get_id(writer);
 
-			weft_cancel = Object.entries(wefts)
-				.map(([
-					reader,
-					writer
-				]) => {
-					const r = weave.get_id(reader);
-					const wr = weave.get_id(writer);
+				if (!wr || !r) {
+					console.warn(`bad weft`);
+					return
+				}
 
-					if (!wr || !r) {
-						dirty = true;
-						delete wefts[reader];
-						return
-					}
+				if (weft_cancels[reader]) weft_cancels[reader]();
 
-					return r.value.subscribe(($val) => {
-						if (!r.rezed) return
-						wr.value.set($val);
-					})
-				}).filter((d) => d);
+				weft_cancels[reader] = r.value.subscribe(($val) => {
+					if (!r.rezed) return
+					wr.value.set($val);
+				});
+			});
 
-			// silent write, to prevent flap
-			if (dirty) weave.wefts.set(wefts, true);
+			remove.forEach((key) => {
+				const r = weft_cancels[key];
+				r();
+				delete weft_cancels[key];
+			});
 		});
 
 		return () => {
 			cancel();
-			weft_cancel.forEach((d) => d());
+			values(weft_cancels).forEach((d) => d());
 		}
 	};
 
@@ -1890,6 +1915,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		time: (Date.now() - last_snap) / TIME_TICK_RATE.get()
 	});
 
+	// TODO: Buffers could keep a fairly stagnent array with some work
 	// RAF so it happens at end of frame
 	tick.listen(() => requestAnimationFrame(() => {
 		const buffs = blank();

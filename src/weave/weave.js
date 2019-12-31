@@ -285,12 +285,31 @@ export default ({
 	weave.warps = write(ks)
 
 	// not saved
-	weave.wefts_r = read({}, (set) =>
+	weave.wefts_r = read({}, (set) => {
+		const value = {}
 		// destroy this on weave destroy
-		weave.destroys.push(weave.wefts.listen(($wefts) =>
-			set(map($wefts)((item) => item.reverse()))
-		))
-	)
+		weave.destroys.push(weave.wefts.listen(($wefts, {
+			add,
+			remove,
+			modify,
+			prev
+		}) => {
+			add.forEach((key) => {
+				value[$wefts[key]] = key
+			})
+
+			remove.forEach((key) => {
+				delete value[prev[key]]
+			})
+
+			// modify doesn't always get triggered
+			modify.forEach((key) => {
+				value[$wefts[key]] = key
+			})
+
+			set(value)
+		}))
+	})
 
 	return weave
 }

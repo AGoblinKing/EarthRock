@@ -1,6 +1,6 @@
 import Weave from "./weave.js"
 import { write, read } from "/store.js"
-import { values, keys } from "/util/object.js"
+import { values, keys, map } from "/util/object.js"
 
 export const SYSTEM = `sys`
 
@@ -86,66 +86,63 @@ export const get = (address) => {
 export const exists = (address) => get(address) !== undefined
 
 // create the whole path if you gotta
-export const spawn = (pattern = {}) => Object.fromEntries(
-	Object.entries(pattern).map(([
-		weave_id,
-		weave_data
-	]) => {
-		if (weave_id === SYSTEM) {
-			console.warn(`tried to spawn ${SYSTEM}`)
-			return [weave_id, get(weave_id)]
-		}
+export const spawn = (pattern = {}) => map(pattern)(([
+	weave_id,
+	weave_data
+]) => {
+	if (weave_id === SYSTEM) {
+		console.warn(`tried to spawn ${SYSTEM}`)
+		return [weave_id, get(weave_id)]
+	}
 
-		const ws = weaves.get()
-		const w = Weave({
-			...weave_data,
-			name: weave_id
-		})
-
-		ws[weave_id] = w
-
-		weaves.set(ws)
-		return [weave_id, w]
+	const ws = weaves.get()
+	const w = Weave({
+		...weave_data,
+		name: weave_id
 	})
-)
+
+	ws[weave_id] = w
+
+	weaves.set(ws)
+	return [weave_id, w]
+})
 
 const start_wefts = (weave) => {
-	let weft_cancel = []
+	const weft_cancels = {}
 
-	// TODO: react to add/remove instead
 	const cancel = weave.wefts.listen((wefts, {
 		add,
-		remove
+		remove,
+		modify
 	}) => {
-		let dirty = false
+		[...add, ...modify].forEach((reader) => {
+			const writer = wefts[reader]
+			const r = weave.get_id(reader)
+			const wr = weave.get_id(writer)
 
-		weft_cancel = Object.entries(wefts)
-			.map(([
-				reader,
-				writer
-			]) => {
-				const r = weave.get_id(reader)
-				const wr = weave.get_id(writer)
+			if (!wr || !r) {
+				console.warn(`bad weft`)
+				return
+			}
 
-				if (!wr || !r) {
-					dirty = true
-					delete wefts[reader]
-					return
-				}
+			if (weft_cancels[reader]) weft_cancels[reader]()
 
-				return r.value.subscribe(($val) => {
-					if (!r.rezed) return
-					wr.value.set($val)
-				})
-			}).filter((d) => d)
+			weft_cancels[reader] = r.value.subscribe(($val) => {
+				if (!r.rezed) return
+				wr.value.set($val)
+			})
+		})
 
-		// silent write, to prevent flap
-		if (dirty) weave.wefts.set(wefts, true)
+		remove.forEach((key) => {
+			const r = weft_cancels[key]
+			r()
+			delete weft_cancels[key]
+		})
 	})
 
 	return () => {
 		cancel()
-		weft_cancel.forEach((d) => d())
+		values(weft_cancels).forEach((d) => d())
 	}
 }
 

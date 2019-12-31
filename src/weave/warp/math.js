@@ -33,7 +33,7 @@ const proto_math = extend(proto_warp, {
 				.replace(path_ssh, ``)
 				.trim()
 
-			const k = Wheel.get(gette)
+			const warp = Wheel.get(gette)
 			const name = gette.replace(bad_variable_characters, `z`)
 
 			expression = expression.replace(
@@ -41,9 +41,9 @@ const proto_math = extend(proto_warp, {
 				name
 			)
 
-			if (!k) {
+			if (!warp) {
 				vs[name] = {
-					k: {
+					warp: {
 						toJSON: () => null
 					},
 					shh: true
@@ -52,7 +52,7 @@ const proto_math = extend(proto_warp, {
 			}
 
 			vs[name] = {
-				k,
+				warp,
 				shh
 			}
 		})
@@ -73,10 +73,12 @@ const proto_math = extend(proto_warp, {
 			this.cancels.forEach((cancel) => cancel())
 			this.cancels.clear()
 
-			Object.entries(vs).forEach(([key, { k, shh }]) => {
+			Object.entries(vs).forEach(([key, { warp, shh }]) => {
 				if (shh) return
 
-				this.cancels.add(k.listen(() => this.value.poke()))
+				this.cancels.add(warp.listen(() => {
+					this.value.set(this.value.last)
+				}))
 			})
 		})
 	},
@@ -104,6 +106,8 @@ const proto_math_value = extend(proto_write, {
 
 const proto_value = extend(proto_write, {
 	set (value) {
+		this.last = value
+
 		const vs = this.warp.values.get()
 		value = value === undefined
 			? null
@@ -111,9 +115,9 @@ const proto_value = extend(proto_write, {
 
 		const params = {
 			...Object.fromEntries(Object.entries(vs).map(
-				([key, { k }]) => [key, k.toJSON() === undefined
+				([key, { warp }]) => [key, warp.toJSON() === undefined
 					? null
-					: k.toJSON()
+					: warp.toJSON()
 				]
 			)),
 			value: value,

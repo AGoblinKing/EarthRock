@@ -669,12 +669,24 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		rez () {
+			this.weave.spaces.update(($spaces) => {
+				$spaces.add(this);
+
+				return $spaces
+			});
+
 			this.twists.forEach((twist) => {
 				twist.rez && twist.rez();
 			});
 		},
 
 		derez () {
+			this.weave.spaces.update(($spaces) => {
+				$spaces.delete(this);
+
+				return $spaces
+			});
+
 			this.twists.forEach((twist) => {
 				twist.derez && twist.derez();
 			});
@@ -832,7 +844,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					.replace(path_ssh, ``)
 					.trim();
 
-				const k = Wheel.get(gette);
+				const warp = Wheel.get(gette);
 				const name = gette.replace(bad_variable_characters, `z`);
 
 				expression = expression.replace(
@@ -840,9 +852,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					name
 				);
 
-				if (!k) {
+				if (!warp) {
 					vs[name] = {
-						k: {
+						warp: {
 							toJSON: () => null
 						},
 						shh: true
@@ -851,7 +863,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				}
 
 				vs[name] = {
-					k,
+					warp,
 					shh
 				};
 			});
@@ -872,10 +884,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				this.cancels.forEach((cancel) => cancel());
 				this.cancels.clear();
 
-				Object.entries(vs).forEach(([key, { k, shh }]) => {
+				Object.entries(vs).forEach(([key, { warp, shh }]) => {
 					if (shh) return
 
-					this.cancels.add(k.listen(() => this.value.poke()));
+					this.cancels.add(warp.listen(() => {
+						this.value.set(this.value.last);
+					}));
 				});
 			});
 		},
@@ -903,6 +917,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const proto_value = extend(proto_write, {
 		set (value) {
+			this.last = value;
+
 			const vs = this.warp.values.get();
 			value = value === undefined
 				? null
@@ -910,9 +926,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			const params = {
 				...Object.fromEntries(Object.entries(vs).map(
-					([key, { k }]) => [key, k.toJSON() === undefined
+					([key, { warp }]) => [key, warp.toJSON() === undefined
 						? null
-						: k.toJSON()
+						: warp.toJSON()
 					]
 				)),
 				value: value,
@@ -1360,6 +1376,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			// not saved
 			names: write({}),
+			spaces: write(new Set()),
 			destroys: []
 		});
 
@@ -1502,12 +1519,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const start_wefts = (weave) => {
 		let weft_cancel = [];
 
-		const cancel = weave.wefts.listen((wefts) => {
+		// TODO: react to add/remove instead
+		const cancel = weave.wefts.listen((wefts, {
+			add,
+			remove
+		}) => {
 			let dirty = false;
-
-			// TODO: partial updates like lives
-			// tear down existing highways
-			if (weft_cancel) weft_cancel.forEach((d) => d());
 
 			weft_cancel = Object.entries(wefts)
 				.map(([
@@ -1794,12 +1811,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	let count = 0;
 
 	const buffer = {
-		...Object.fromEntries(Object.entries(verts).map(
+		...map(verts)(
 			([key, val]) => {
 				val.divisor = 0;
 				return [key, val]
 			}
-		)),
+		),
 		translate_last: {
 			divisor: 1,
 			data: [],
@@ -1888,16 +1905,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			// not running
 			if (!running[weave.name.get()]) return
 
-			const rezed = weave.rezed.get();
+			const spaces = weave.spaces.get();
 
-			Object.keys(rezed).forEach((id) => {
-				const warp = weave.get_id(id);
-
-				// only spacees can be displayed
-				if (!warp || warp.type.get() !== `space`) {
-					return
-				}
-
+			spaces.forEach((warp) => {
+				const id = warp.id.get();
 				const vs = warp.value.get();
 
 				defaults.forEach(([key, def]) => {

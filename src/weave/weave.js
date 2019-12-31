@@ -262,6 +262,7 @@ export default ({
 
 		// not saved
 		names: write({}),
+		spaces: write(new Set()),
 		destroys: []
 	})
 

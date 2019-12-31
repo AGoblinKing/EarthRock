@@ -2,6 +2,8 @@ import * as twgl from "twgl"
 import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 
+import { map } from "/util/object.js"
+
 const blank = () => ({
 	sprite: [],
 
@@ -35,12 +37,12 @@ const verts = twgl.primitives.createXYQuadVertices(1)
 let count = 0
 
 const buffer = {
-	...Object.fromEntries(Object.entries(verts).map(
+	...map(verts)(
 		([key, val]) => {
 			val.divisor = 0
 			return [key, val]
 		}
-	)),
+	),
 	translate_last: {
 		divisor: 1,
 		data: [],
@@ -129,16 +131,10 @@ tick.listen(() => requestAnimationFrame(() => {
 		// not running
 		if (!running[weave.name.get()]) return
 
-		const rezed = weave.rezed.get()
+		const spaces = weave.spaces.get()
 
-		Object.keys(rezed).forEach((id) => {
-			const warp = weave.get_id(id)
-
-			// only spacees can be displayed
-			if (!warp || warp.type.get() !== `space`) {
-				return
-			}
-
+		spaces.forEach((warp) => {
+			const id = warp.id.get()
 			const vs = warp.value.get()
 
 			defaults.forEach(([key, def]) => {

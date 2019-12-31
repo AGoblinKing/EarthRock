@@ -40,12 +40,24 @@ const proto_space = extend(proto_warp, {
 	},
 
 	rez () {
+		this.weave.spaces.update(($spaces) => {
+			$spaces.add(this)
+
+			return $spaces
+		})
+
 		this.twists.forEach((twist) => {
 			twist.rez && twist.rez()
 		})
 	},
 
 	derez () {
+		this.weave.spaces.update(($spaces) => {
+			$spaces.delete(this)
+
+			return $spaces
+		})
+
 		this.twists.forEach((twist) => {
 			twist.derez && twist.derez()
 		})

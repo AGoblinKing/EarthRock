@@ -1,5 +1,5 @@
 import Weave from "./weave.js"
-import { write, read, any } from "/store.js"
+import { write, read } from "/store.js"
 import { values, keys } from "/util/object.js"
 
 export const SYSTEM = `sys`
@@ -112,12 +112,12 @@ export const spawn = (pattern = {}) => Object.fromEntries(
 const start_wefts = (weave) => {
 	let weft_cancel = []
 
-	const cancel = weave.wefts.listen((wefts) => {
+	// TODO: react to add/remove instead
+	const cancel = weave.wefts.listen((wefts, {
+		add,
+		remove
+	}) => {
 		let dirty = false
-
-		// TODO: partial updates like lives
-		// tear down existing highways
-		if (weft_cancel) weft_cancel.forEach((d) => d())
 
 		weft_cancel = Object.entries(wefts)
 			.map(([

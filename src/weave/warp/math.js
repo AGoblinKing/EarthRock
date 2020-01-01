@@ -120,8 +120,7 @@ const proto_value = extend(proto_write, {
 					: warp.toJSON()
 				]
 			)),
-			value: value,
-			flock: 0
+			value
 		}
 
 		try {

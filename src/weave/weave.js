@@ -292,14 +292,14 @@ export default ({
 			add,
 			remove,
 			modify,
-			prev
+			previous
 		}) => {
 			add.forEach((key) => {
 				value[$wefts[key]] = key
 			})
 
 			remove.forEach((key) => {
-				delete value[prev[key]]
+				delete value[previous[key]]
 			})
 
 			// modify doesn't always get triggered

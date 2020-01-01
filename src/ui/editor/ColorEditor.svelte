@@ -3,12 +3,18 @@ import Color from "color"
 
 export let value
 
-const to_css = (col) => Color(col).setAlpha(1).toCSS()
+const to_css = (col) => {
+	return Color([
+		(col >> 16) & 0x0ff,
+		(col >> 8) & 0x0ff,
+		(col) & 0x0ff
+	]).toCSS()
+}
 </script>
 
 <div
   type="color"
-  style="background-color: {to_css(value)};"
+  style="background-color: {to_css($value)};"
   class="picker"
 >
 

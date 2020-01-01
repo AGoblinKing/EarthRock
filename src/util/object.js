@@ -1,9 +1,9 @@
 // extend an object, allows currying
 export const extend = (proto, assign = false) => assign
-	? Object.assign(
-		Object.create(proto),
-		assign
-	)
+	? {
+		__proto__: proto,
+		...assign
+	}
 	: (next_assign) => extend(proto, next_assign)
 
 export const map = (obj) => (fn) => Object.fromEntries(

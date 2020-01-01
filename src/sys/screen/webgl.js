@@ -41,7 +41,7 @@ export default () => {
 	canvas.width = 16 * 100
 	canvas.height = 16 * 100
 
-	const gl = canvas.getContext(`webgl`, { alpha: false })
+	const gl = twgl.getContext(canvas)
 	twgl.addExtensionsToContext(gl)
 
 	const textures = twgl.createTextures(gl, {

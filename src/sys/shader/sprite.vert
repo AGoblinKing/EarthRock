@@ -1,3 +1,4 @@
+#version 300 es
 precision highp float;
 
 uniform mat4 u_view_projection;
@@ -5,32 +6,36 @@ uniform float u_sprite_size;
 uniform float u_sprite_columns;
 uniform float u_time;
 
-attribute vec3 translate;
-attribute vec3 translate_last;
+in vec3 translate;
+in vec3 translate_last;
 
-attribute float scale;
-attribute float scale_last;
+in float scale;
+in float scale_last;
 
-attribute float rotation;
-attribute float rotation_last;
+in float rotation;
+in float rotation_last;
 
-attribute float alpha;
-attribute float alpha_last;
+in float alpha;
+in float alpha_last;
 
-attribute float color;
-attribute float color_last;
+in float color;
+in float color_last;
 
-attribute float sprite;
+in float sprite;
 
-attribute vec2 position;
+in vec2 position;
 
-varying vec2 v_sprite;
-varying vec4 v_color;
+out vec2 v_sprite;
+out vec4 v_color;
 
 void main() {
+
+  int c_last = int(color_last);
+  int c = int(color);
+
   v_color = mix(
-    vec4(color_last/256.0/256.0, mod(color_last/256.0, 256.0), mod(color_last, 256.0), alpha_last),
-    vec4(color/256.0/256.0, mod(color/256.0, 256.0), mod(color, 256.0), alpha),
+    vec4((c_last>>16) &0x0ff, (c_last>>8) &0x0ff, (c_last) & 0x0ff, alpha_last),
+    vec4((c>>16) &0x0ff, (c>>8) &0x0ff, (c) & 0x0ff, alpha),
     u_time
   );
 

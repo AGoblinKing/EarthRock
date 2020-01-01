@@ -1,5 +1,7 @@
 <script>
 import SpriteEditor from "/ui/editor/SpriteEditor.svelte"
+import ColorEditor from "/ui/editor/ColorEditor.svelte"
+
 import Thread from "./Thread.svelte"
 import { THEME_STYLE } from "/sys/flag.js"
 import { json } from "/util/parse.js"
@@ -53,6 +55,8 @@ const focusd = (node) => {
 
   {#if key === `sprite`}
     <SpriteEditor {value} />
+	{:else if key === `color`}
+	<ColorEditor {value} />
   {:else}
   <div class="value">
     {

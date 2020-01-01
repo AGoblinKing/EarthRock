@@ -8,10 +8,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	// extend an object, allows currying
 	const extend = (proto, assign = false) => assign
-		? Object.assign(
-			Object.create(proto),
-			assign
-		)
+		? {
+			__proto__: proto,
+			...assign
+		}
 		: (next_assign) => extend(proto, next_assign);
 
 	const map = (obj) => (fn) => Object.fromEntries(
@@ -113,26 +113,26 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		set (value) {
-			const prev = this.prev;
-
 			this.value = value;
+
+			const { previous } = this;
 			const modify = [];
 
 			this.notify({
 				add: keys(value).filter((key) => {
-					const is_add = prev[key] === undefined;
-					if (!is_add && prev[key] !== value[key]) {
+					const is_add = previous[key] === undefined;
+					if (!is_add && previous[key] !== value[key]) {
 						modify.push(key);
 					}
 					return is_add
 				}),
-				remove: keys(prev).filter((key) => value[key] === undefined),
+				remove: keys(previous).filter((key) => value[key] === undefined),
 				modify,
-				previous: prev
+				previous
 			});
 
 			// keys a copy of the previous state for diffing
-			this.prev = { ...value };
+			this.previous = { ...value };
 		},
 
 		subscribe (fn) {
@@ -156,7 +156,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const difference = (value = {}) => extend(proto_difference, {
 		...write(value),
-		prev: { ...value }
+		previous: { ...value }
 	});
 
 	const proto_tree = extend(proto_difference, {
@@ -940,8 +940,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 						: warp.toJSON()
 					]
 				)),
-				value: value,
-				flock: 0
+				value
 			};
 
 			try {
@@ -1415,14 +1414,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				add,
 				remove,
 				modify,
-				prev
+				previous
 			}) => {
 				add.forEach((key) => {
 					value[$wefts[key]] = key;
 				});
 
 				remove.forEach((key) => {
-					delete value[prev[key]];
+					delete value[previous[key]];
 				});
 
 				// modify doesn't always get triggered
@@ -1759,16 +1758,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		frame: frame
 	});
 
-	var sprite_frag = "precision highp float;uniform sampler2D u_map;varying vec2 v_sprite;varying vec4 v_color;void main(){gl_FragColor=texture2D(u_map,v_sprite);float gray=dot(gl_FragColor.rgb,vec3(0.299,0.587,0.114));gl_FragColor=vec4(vec3(gray)*v_color.rgb,v_color.a*gl_FragColor.a);if(gl_FragColor.a<0.1)discard;}";
+	var sprite_frag = "#version 300 es\nprecision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D u_map;\n\nin vec2 v_sprite;\nin vec4 v_color;\n\nout vec4 f_color;\n\nvoid main() {\n\tf_color = texture(u_map, v_sprite);\n\n\t// grayscale to remove any color from the image\n\tfloat gray = dot(f_color.rgb, vec3(0.299, 0.587, 0.114));\n\tf_color = gray * vec4(v_color.rgb, v_color.a);\n\n\t// super important, removes low opacity frags\n\tif(f_color.a < 0.1) discard;\n}"; // eslint-disable-line
 
-	var sprite_vert = "precision highp float;uniform mat4 u_view_projection;uniform float u_sprite_size;uniform float u_sprite_columns;uniform float u_time;attribute vec3 translate;attribute vec3 translate_last;attribute float scale;attribute float scale_last;attribute float rotation;attribute float rotation_last;attribute float alpha;attribute float alpha_last;attribute float color;attribute float color_last;attribute float sprite;attribute vec2 position;varying vec2 v_sprite;varying vec4 v_color;void main(){v_color=mix(vec4(color_last/256.0/256.0,mod(color_last/256.0,256.0),mod(color_last,256.0),alpha_last),vec4(color/256.0/256.0,mod(color/256.0,256.0),mod(color,256.0),alpha),u_time);float x=mod(sprite,u_sprite_columns);float y=floor(sprite/u_sprite_columns);float s=mix(scale_last,scale,u_time);vec2 pos_scale=position*s;vec2 coords=(position+vec2(0.5,0.5)+vec2(x,y))/u_sprite_columns;v_sprite=coords;vec3 t=mix(translate_last,translate,u_time);mat4 mv=u_view_projection;vec3 pos=vec3(pos_scale,0.0)+t;gl_Position=mv*vec4(pos,1.0);}";
+	var sprite_vert = "#version 300 es\nprecision highp float;\n#define GLSLIFY 1\n\nuniform mat4 u_view_projection;\nuniform float u_sprite_size;\nuniform float u_sprite_columns;\nuniform float u_time;\n\nin vec3 translate;\nin vec3 translate_last;\n\nin float scale;\nin float scale_last;\n\nin float rotation;\nin float rotation_last;\n\nin float alpha;\nin float alpha_last;\n\nin float color;\nin float color_last;\n\nin float sprite;\n\nin vec2 position;\n\nout vec2 v_sprite;\nout vec4 v_color;\n\nvoid main() {\n\n  int c_last = int(color_last);\n  int c = int(color);\n\n  v_color = mix(\n    vec4((c_last>>16) &0x0ff, (c_last>>8) &0x0ff, (c_last) & 0x0ff, alpha_last),\n    vec4((c>>16) &0x0ff, (c>>8) &0x0ff, (c) & 0x0ff, alpha),\n    u_time\n  );\n\n  float x = mod(sprite, u_sprite_columns);\n  float y = floor(sprite / u_sprite_columns);\n\n  float s = mix(scale_last, scale, u_time);\n\n  vec2 pos_scale = position * s;\n  vec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;\n  v_sprite = coords;\n\n  vec3 t = mix(translate_last, translate, u_time);\n\n  mat4 mv = u_view_projection;\n  vec3 pos = vec3(pos_scale, 0.0) + t;\n\n  gl_Position = mv * vec4(\n    pos,\n    1.0\n  );\n}\n"; // eslint-disable-line
 
-	const breaker = (a) => a.map(i => `\r\n${i}`);
-
-	const sprite$1 = read(breaker([
+	const sprite$1 = read([
 		sprite_vert,
 		sprite_frag
-	]));
+	]);
 
 	const validate = (thing) => {
 		const set = thing.set.bind(thing);
@@ -2021,7 +2018,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		canvas.width = 16 * 100;
 		canvas.height = 16 * 100;
 
-		const gl = canvas.getContext(`webgl`, { alpha: false });
+		const gl = twgl.getContext(canvas);
 		twgl.addExtensionsToContext(gl);
 
 		const textures = twgl.createTextures(gl, {
@@ -2741,7 +2738,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	var FileSaver_min = createCommonjsModule(function (module, exports) {
 	(function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
 
-
+	//# sourceMappingURL=FileSaver.min.js.map
 	});
 
 	const SIZE = 16;
@@ -5054,10 +5051,118 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	}
 
-	/* src\ui\editor\ThreadEditor.svelte generated by Svelte v3.16.7 */
-	const file$5 = "src\\ui\\editor\\ThreadEditor.svelte";
+	/* src\ui\editor\ColorEditor.svelte generated by Svelte v3.16.7 */
+	const file$5 = "src\\ui\\editor\\ColorEditor.svelte";
 
 	function create_fragment$5(ctx) {
+		let div;
+
+		const block = {
+			c: function create() {
+				div = element("div");
+				attr_dev(div, "type", "color");
+				set_style(div, "background-color", /*to_css*/ ctx[2](/*$value*/ ctx[1]));
+				attr_dev(div, "class", "picker svelte-lw4xbv");
+				add_location(div, file$5, 14, 0, 196);
+			},
+			l: function claim(nodes) {
+				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div, anchor);
+			},
+			p: function update(ctx, [dirty]) {
+				if (dirty & /*$value*/ 2) {
+					set_style(div, "background-color", /*to_css*/ ctx[2](/*$value*/ ctx[1]));
+				}
+			},
+			i: noop$1,
+			o: noop$1,
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_fragment$5.name,
+			type: "component",
+			source: "",
+			ctx
+		});
+
+		return block;
+	}
+
+	function instance$5($$self, $$props, $$invalidate) {
+		let $value,
+			$$unsubscribe_value = noop$1,
+			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(1, $value = $$value)), value);
+
+		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
+		let { value } = $$props;
+		validate_store(value, "value");
+		$$subscribe_value();
+
+		const to_css = col => {
+			return Color([col >> 16 & 255, col >> 8 & 255, col & 255]).toCSS();
+		};
+
+		const writable_props = ["value"];
+
+		Object.keys($$props).forEach(key => {
+			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<ColorEditor> was created with unknown prop '${key}'`);
+		});
+
+		$$self.$set = $$props => {
+			if ("value" in $$props) $$subscribe_value($$invalidate(0, value = $$props.value));
+		};
+
+		$$self.$capture_state = () => {
+			return { value, $value };
+		};
+
+		$$self.$inject_state = $$props => {
+			if ("value" in $$props) $$subscribe_value($$invalidate(0, value = $$props.value));
+			if ("$value" in $$props) value.set($value = $$props.$value);
+		};
+
+		return [value, $value, to_css];
+	}
+
+	class ColorEditor extends SvelteComponentDev {
+		constructor(options) {
+			super(options);
+			init(this, options, instance$5, create_fragment$5, safe_not_equal, { value: 0 });
+
+			dispatch_dev("SvelteRegisterComponent", {
+				component: this,
+				tagName: "ColorEditor",
+				options,
+				id: create_fragment$5.name
+			});
+
+			const { ctx } = this.$$;
+			const props = options.props || ({});
+
+			if (/*value*/ ctx[0] === undefined && !("value" in props)) {
+				console.warn("<ColorEditor> was created without expected prop 'value'");
+			}
+		}
+
+		get value() {
+			throw new Error("<ColorEditor>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+		}
+
+		set value(value) {
+			throw new Error("<ColorEditor>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+		}
+	}
+
+	/* src\ui\editor\ThreadEditor.svelte generated by Svelte v3.16.7 */
+	const file$6 = "src\\ui\\editor\\ThreadEditor.svelte";
+
+	function create_fragment$6(ctx) {
 		let textarea;
 		let textarea_style_value;
 		let focus_action;
@@ -5070,7 +5175,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(textarea, "class", "edit svelte-18o22ik");
 				attr_dev(textarea, "type", "text");
 				attr_dev(textarea, "style", textarea_style_value = `background-color: ${/*$THEME_BG*/ ctx[1]}; border:0.5rem solid ${/*$THEME_BORDER*/ ctx[2]};`);
-				add_location(textarea, file$5, 24, 0, 425);
+				add_location(textarea, file$6, 24, 0, 425);
 
 				dispose = [
 					action_destroyer(focus_action = /*focus*/ ctx[3].call(null, textarea)),
@@ -5106,7 +5211,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$5.name,
+			id: create_fragment$6.name,
 			type: "component",
 			source: "",
 			ctx
@@ -5117,7 +5222,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const click_handler = e => e.stopPropagation();
 
-	function instance$5($$self, $$props, $$invalidate) {
+	function instance$6($$self, $$props, $$invalidate) {
 		let $THEME_BG;
 		let $THEME_BORDER;
 		validate_store(THEME_BG, "THEME_BG");
@@ -5213,13 +5318,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	class ThreadEditor extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$5, create_fragment$5, safe_not_equal, { code: 0, weave: 5, address: 6, ondone: 7 });
+			init(this, options, instance$6, create_fragment$6, safe_not_equal, { code: 0, weave: 5, address: 6, ondone: 7 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "ThreadEditor",
 				options,
-				id: create_fragment$5.name
+				id: create_fragment$6.name
 			});
 
 			const { ctx } = this.$$;
@@ -5268,102 +5373,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		set ondone(value) {
 			throw new Error("<ThreadEditor>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-		}
-	}
-
-	/* src\ui\editor\ColorEditor.svelte generated by Svelte v3.16.7 */
-	const file$6 = "src\\ui\\editor\\ColorEditor.svelte";
-
-	function create_fragment$6(ctx) {
-		let div;
-
-		const block = {
-			c: function create() {
-				div = element("div");
-				attr_dev(div, "type", "color");
-				set_style(div, "background-color", /*to_css*/ ctx[1](/*value*/ ctx[0]));
-				attr_dev(div, "class", "picker svelte-lw4xbv");
-				add_location(div, file$6, 8, 0, 128);
-			},
-			l: function claim(nodes) {
-				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-			},
-			m: function mount(target, anchor) {
-				insert_dev(target, div, anchor);
-			},
-			p: function update(ctx, [dirty]) {
-				if (dirty & /*value*/ 1) {
-					set_style(div, "background-color", /*to_css*/ ctx[1](/*value*/ ctx[0]));
-				}
-			},
-			i: noop$1,
-			o: noop$1,
-			d: function destroy(detaching) {
-				if (detaching) detach_dev(div);
-			}
-		};
-
-		dispatch_dev("SvelteRegisterBlock", {
-			block,
-			id: create_fragment$6.name,
-			type: "component",
-			source: "",
-			ctx
-		});
-
-		return block;
-	}
-
-	function instance$6($$self, $$props, $$invalidate) {
-		let { value } = $$props;
-		const to_css = col => Color(col).setAlpha(1).toCSS();
-		const writable_props = ["value"];
-
-		Object.keys($$props).forEach(key => {
-			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<ColorEditor> was created with unknown prop '${key}'`);
-		});
-
-		$$self.$set = $$props => {
-			if ("value" in $$props) $$invalidate(0, value = $$props.value);
-		};
-
-		$$self.$capture_state = () => {
-			return { value };
-		};
-
-		$$self.$inject_state = $$props => {
-			if ("value" in $$props) $$invalidate(0, value = $$props.value);
-		};
-
-		return [value, to_css];
-	}
-
-	class ColorEditor extends SvelteComponentDev {
-		constructor(options) {
-			super(options);
-			init(this, options, instance$6, create_fragment$6, safe_not_equal, { value: 0 });
-
-			dispatch_dev("SvelteRegisterComponent", {
-				component: this,
-				tagName: "ColorEditor",
-				options,
-				id: create_fragment$6.name
-			});
-
-			const { ctx } = this.$$;
-			const props = options.props || ({});
-
-			if (/*value*/ ctx[0] === undefined && !("value" in props)) {
-				console.warn("<ColorEditor> was created without expected prop 'value'");
-			}
-		}
-
-		get value() {
-			throw new Error("<ColorEditor>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-		}
-
-		set value(value) {
-			throw new Error("<ColorEditor>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
 		}
 	}
 
@@ -6219,7 +6228,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	/* src\ui\explore\Channel.svelte generated by Svelte v3.16.7 */
 	const file$9 = "src\\ui\\explore\\Channel.svelte";
 
-	// (63:0) {:else}
+	// (67:0) {:else}
 	function create_else_block_1(ctx) {
 		let input;
 		let focusd_action;
@@ -6231,7 +6240,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(input, "class", "edit svelte-hik274");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "JSON PLZ");
-				add_location(input, file$9, 63, 2, 1096);
+				add_location(input, file$9, 67, 2, 1210);
 
 				dispose = [
 					action_destroyer(focusd_action = /*focusd*/ ctx[12].call(null, input)),
@@ -6261,14 +6270,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block_1.name,
 			type: "else",
-			source: "(63:0) {:else}",
+			source: "(67:0) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (49:0) {#if !editing}
+	// (51:0) {#if !editing}
 	function create_if_block$4(ctx) {
 		let div;
 		let t0;
@@ -6277,12 +6286,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let if_block;
 		let if_block_anchor;
 		let current;
-		const if_block_creators = [create_if_block_1$2, create_else_block$1];
+		const if_block_creators = [create_if_block_1$2, create_if_block_2, create_else_block$1];
 		const if_blocks = [];
 
 		function select_block_type_1(ctx, dirty) {
 			if (/*key*/ ctx[5] === `sprite`) return 0;
-			return 1;
+			if (/*key*/ ctx[5] === `color`) return 1;
+			return 2;
 		}
 
 		current_block_type_index = select_block_type_1(ctx);
@@ -6296,7 +6306,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if_block.c();
 				if_block_anchor = empty();
 				attr_dev(div, "class", "key svelte-hik274");
-				add_location(div, file$9, 49, 2, 891);
+				add_location(div, file$9, 51, 2, 950);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6353,14 +6363,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$4.name,
 			type: "if",
-			source: "(49:0) {#if !editing}",
+			source: "(51:0) {#if !editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (56:2) {:else}
+	// (60:2) {:else}
 	function create_else_block$1(ctx) {
 		let div;
 		let t_value = JSON.stringify(/*edit*/ ctx[7]) + "";
@@ -6371,7 +6381,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				div = element("div");
 				t = text(t_value);
 				attr_dev(div, "class", "value svelte-hik274");
-				add_location(div, file$9, 56, 2, 1002);
+				add_location(div, file$9, 60, 2, 1116);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6391,14 +6401,61 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block$1.name,
 			type: "else",
-			source: "(56:2) {:else}",
+			source: "(60:2) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (54:2) {#if key === `sprite`}
+	// (58:27) 
+	function create_if_block_2(ctx) {
+		let current;
+
+		const coloreditor = new ColorEditor({
+				props: { value: /*value*/ ctx[6] },
+				$$inline: true
+			});
+
+		const block = {
+			c: function create() {
+				create_component(coloreditor.$$.fragment);
+			},
+			m: function mount(target, anchor) {
+				mount_component(coloreditor, target, anchor);
+				current = true;
+			},
+			p: function update(ctx, dirty) {
+				const coloreditor_changes = {};
+				if (dirty & /*value*/ 64) coloreditor_changes.value = /*value*/ ctx[6];
+				coloreditor.$set(coloreditor_changes);
+			},
+			i: function intro(local) {
+				if (current) return;
+				transition_in(coloreditor.$$.fragment, local);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(coloreditor.$$.fragment, local);
+				current = false;
+			},
+			d: function destroy(detaching) {
+				destroy_component(coloreditor, detaching);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_if_block_2.name,
+			type: "if",
+			source: "(58:27) ",
+			ctx
+		});
+
+		return block;
+	}
+
+	// (56:2) {#if key === `sprite`}
 	function create_if_block_1$2(ctx) {
 		let current;
 
@@ -6438,7 +6495,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$2.name,
 			type: "if",
-			source: "(54:2) {#if key === `sprite`}",
+			source: "(56:2) {#if key === `sprite`}",
 			ctx
 		});
 
@@ -6483,7 +6540,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if_block.c();
 				attr_dev(div, "class", div_class_value = "channel " + /*side*/ ctx[3] + " svelte-hik274");
 				attr_dev(div, "style", /*$THEME_STYLE*/ ctx[10]);
-				add_location(div, file$9, 38, 0, 660);
+				add_location(div, file$9, 40, 0, 719);
 
 				dispose = [
 					action_destroyer(color_action = color$2.call(null, div, /*space*/ ctx[0].name().get())),

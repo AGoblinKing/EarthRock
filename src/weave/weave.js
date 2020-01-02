@@ -1,5 +1,5 @@
 import { write, read, difference } from "/store.js"
-import { extend, map, each, reduce } from "/util/object.js"
+import { extend, map, each, reduce, store_JSON } from "/util/object.js"
 import { random } from "/util/text.js"
 
 import Warp from "./warp_factory.js"
@@ -75,10 +75,9 @@ const proto_weave = {
 			each(data)(([key_sub, data_sub]) => {
 				const warp = k[key_sub]
 				if (key_sub === `value`) {
-					warp.set({
-						...warp.get(),
-						...data_sub
-					})
+					warp.set(Object.assign(warp.get(),
+						data_sub
+					))
 
 					return
 				}
@@ -229,10 +228,7 @@ const proto_weave = {
 			id: this.id.toJSON(),
 			name: this.name.toJSON(),
 			wefts: this.wefts.toJSON(),
-			warps: map(this.warps.get())(([id, warp]) => [
-				id,
-				warp.toJSON()
-			]),
+			warps: store_JSON(this.warps),
 			rezed: this.rezed.toJSON()
 		}
 	}

@@ -9,27 +9,32 @@ export const proto_difference = extend(proto_write, {
 		return value[key]
 	},
 
-	set (value) {
+	set (value, silent = false) {
 		this.value = value
 
 		const { previous } = this
 		const modify = []
 
-		this.notify({
-			add: keys(value).filter((key) => {
-				const is_add = previous[key] === undefined
-				if (!is_add && previous[key] !== value[key]) {
-					modify.push(key)
-				}
-				return is_add
-			}),
-			remove: keys(previous).filter((key) => value[key] === undefined),
-			modify,
-			previous
-		})
+		if (!silent) {
+			this.notify({
+				add: keys(value).filter((key) => {
+					const is_add = previous[key] === undefined
+					if (!is_add && previous[key] !== value[key]) {
+						modify.push(key)
+					}
+					return is_add
+				}),
+				remove: keys(previous).filter((key) => value[key] === undefined),
+				modify,
+				previous
+			})
+		}
 
 		// keys a copy of the previous state for diffing
-		this.previous = { ...value }
+		this.previous = {
+			__proto__: value.__proto__,
+			...value
+		}
 	},
 
 	subscribe (fn) {

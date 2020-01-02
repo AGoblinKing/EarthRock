@@ -14,9 +14,13 @@ export let weave
 
 let editing = false
 $: address = `${space.id.get()}/${channel[0]}`
+$: value = channel[1]
 
-$: chain = weave.chain(address).slice(0, -1)
-
+let chain
+$: {
+	$value
+	chain = weave.chain(address).slice(0, -1)
+}
 $: boxes = chain
 	.map((i) => translate(i, weave))
 	.join(` => `)

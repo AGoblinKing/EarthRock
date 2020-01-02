@@ -1,8 +1,12 @@
-import { extend, each, map } from "/util/object.js"
+import { extend, each, map, store_JSON } from "/util/object.js"
 import { write } from "./write.js"
 import { proto_difference, difference } from "./difference.js"
 
 export const proto_tree = extend(proto_difference, {
+	has (name) {
+		return this.get(name) !== undefined
+	},
+
 	get (name = false) {
 		const v = proto_difference.get.call(this)
 		if (name === false) return v
@@ -10,13 +14,17 @@ export const proto_tree = extend(proto_difference, {
 		return v[name]
 	},
 
-	set (data) {
-		proto_difference.set.call(this, map(data)(
-			([key, val]) => [
-				key,
-				this.convert(val)
-			])
-		)
+	set (data, silent = false) {
+		const do_set = {
+			__proto__: data.__proto__,
+			...map(data)(
+				([key, val]) => [
+					key,
+					this.convert(val)
+				])
+
+		}
+		proto_difference.set.call(this, do_set, silent)
 	},
 
 	convert (value) {
@@ -28,32 +36,30 @@ export const proto_tree = extend(proto_difference, {
 	},
 
 	add (data) {
-		this.set({
-			...this.get(),
-			...data
-		})
+		this.set(Object.assign(this.get(), data))
 
 		return this
 	},
 
+	update () { debugger },
 	// no stores only values
-	update (data) {
+	write (data) {
 		const adds = {}
 
 		each(data)(([key, value]) => {
-			const v = this.get()
+			const values = this.get()
 
-			const vs = v[key]
+			const value_self = values[key]
 
-			if (!vs) {
-				adds.key = v
+			if (!value_self) {
+				adds[key] = value
 				return
 			}
 
-			vs.set(value)
+			value_self.set(value)
 		})
 
-		if (Object.length(adds) > 0) {
+		if (Object.keys(adds).length > 0) {
 			this.add(adds)
 		}
 	},
@@ -63,6 +69,10 @@ export const proto_tree = extend(proto_difference, {
 		const $m = this.get()
 		delete $m[channel]
 		proto_difference.set.call(this, $m)
+	},
+
+	toJSON () {
+		return store_JSON(this)
 	}
 })
 

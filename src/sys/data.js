@@ -9,7 +9,7 @@ let db
 
 export const loaded = write(false)
 export const data = new Promise((resolve) => {
-	const req = window.indexedDB.open(`turbo`, VERSION)
+	const req = window.indexedDB.open(`isekai`, VERSION)
 
 	req.onupgradeneeded = async (e) => {
 		db = e.target.result
@@ -93,7 +93,7 @@ const savewatch = async ($name) => {
 
 	return () => {
 		Wheel.clear()
-		name.set(`loading`)
+		Wheel.name.set(`loading`)
 		cancel()
 	}
 }

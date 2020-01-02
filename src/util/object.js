@@ -19,3 +19,7 @@ export const reduce = (obj) => (fn, def) =>
 export const keys = Object.keys
 export const entries = Object.entries
 export const values = Object.values
+
+export const store_JSON = (store) => map(store.get())(
+	([key, thing]) => [key, thing.toJSON()]
+)

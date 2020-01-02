@@ -14,7 +14,7 @@ export const proto_warp = {
 	toJSON () {
 		return {
 			type: this.type.get(),
-			value: this.value.get()
+			value: this.value.toJSON()
 		}
 	}
 }

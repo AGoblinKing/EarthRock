@@ -1,63 +1,71 @@
 import { decompile, compile } from "/thread/thread.js"
 
-// TODO: Needs refactored to rez/derez system
-export default ({
-	weave,
-	space,
-	value,
-	id
-}) => {
-	// no clones
-	return {}
+import { extend, keys } from "/util/object.js"
 
-	const destroys = new Set()
+const proto_clone = {
+	grab_script (other, key) {
+		const weave_other = other.weave
+		const other_id = `${other.id.get()}/${key}`
+		const c_o = weave_other.chain(other_id).slice(0, -1)
+		if (c_o.length === 0) return
 
-	const clean = () => destroys.forEach((d) => d())
-	let stop_other
+		const { weave, id, space } = this
 
-	const stop_value = value.listen(($value) => {
-		clean()
-		if (stop_other) stop_other()
-		stop_other = false
+		//  we got a chain to clone!
+		const code = decompile(other_id, weave_other)
+		const addr = `${id}/${key}`
 
-		const addr_o = weave.resolve($value, id)
-		const split = addr_o.split(`/`)
+		const $value = weave_other.get_id(other.id.get())
+			.value.get(key).get()
 
-		const other = Wheel.get(addr_o)
-		if (!other) return
+		// don't overwrite existing values
+		if (!space.value.has(key)) {
+			space.value.write({ [key]: $value })
+		}
 
-		const weave_other = Wheel.get(split[0])
+		// compile script later
+		requestAnimationFrame(() =>
+			compile(code, weave, addr)
+		)
+	},
 
-		stop_other = other.value.listen((vs_o) => {
-			clean()
+	rez () {
+		const { space, weave, value, id } = this
 
-			Object.entries(vs_o).forEach(([key, value_o]) =>
-				destroys.add(value_o.listen((v_o) => {
-					space.value.update({
-						[key]: v_o
-					})
-				}))
-			)
+		this.cancel = value.listen(($value) => {
+			const other = Wheel.get(weave.resolve($value, id))
 
-			// going to cause flap
-			requestAnimationFrame(() => {
-				// basic values added, we can now attach scripts
-				Object.keys(vs_o).forEach((key) => {
-					const other_id = `${other.id.get()}/${key}`
-					const c_o = weave_other.chain(other_id).slice(0, -1)
-					if (c_o.length === 0) return
+			if (!other) {
+				console.warn(`Invalid other for clone`)
+			}
 
-					//  we got a chain to clone!
-					const code = decompile(other_id, weave_other)
-					compile(code, weave, `${id}/${key}`)
-				})
+			const proto = other
+				? other.value.get()
+				: {}
+
+			keys(proto).forEach((key) => {
+				this.grab_script(other, key)
 			})
-		})
-	})
 
-	return () => {
-		clean()
-		stop_other()
-		stop_value()
+			// set proto
+			space.set({
+				...space.get(),
+				__proto__: proto
+			}, true)
+		})
+	},
+
+	derez () {
+		this.cancel()
+
+		// remove proto
+		this.space.set({
+			...this.space.get()
+		}, true)
+
+		// leave the scripts sadly
 	}
+
 }
+
+export default extend(proto_clone)

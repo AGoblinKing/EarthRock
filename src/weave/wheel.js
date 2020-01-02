@@ -1,6 +1,6 @@
 import Weave from "./weave.js"
 import { write, read } from "/store.js"
-import { values, keys, map } from "/util/object.js"
+import { values, keys, map, store_JSON } from "/util/object.js"
 
 export const SYSTEM = `sys`
 
@@ -135,6 +135,7 @@ const start_wefts = (weave) => {
 
 		remove.forEach((key) => {
 			const r = weft_cancels[key]
+			if (!r) return
 			r()
 			delete weft_cancels[key]
 		})
@@ -155,7 +156,9 @@ const start_rez = (weave) => {
 		// non reactive to weft changes
 		add.forEach((key) => {
 			const warp = warps[key]
-			warp && warp.rez && warp.rez()
+			if (!warp) return
+
+			warp.rez && warp.rez()
 			warp.rezed = true
 			// notify
 			warp.value.notify()
@@ -163,7 +166,9 @@ const start_rez = (weave) => {
 
 		remove.forEach((key) => {
 			const warp = warps[key]
-			warp && warp.derez && warp.derez()
+			if (!warp) return
+
+			warp.derez && warp.derez()
 			delete warp.rezed
 		})
 	})
@@ -236,12 +241,10 @@ export const restart = (name) => {
 	Wheel.start(name)
 }
 
-const bump = (what) => JSON.parse(JSON.stringify(what))
-
 export const toJSON = () => ({
 	name: name.get(),
-	weaves: bump(weaves),
-	running: bump(running)
+	weaves: store_JSON(weaves),
+	running: running.toJSON()
 })
 
 export const REG_ID = /\$?[~.]?\/[a-zA-Z !%&/]+/g

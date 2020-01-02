@@ -27,9 +27,32 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const keys = Object.keys;
 	const values = Object.values;
 
+	const store_JSON = (store) => map(store.get())(
+		([key, thing]) => [key, thing.toJSON()]
+	);
+
 	const proto_store = {
 		toJSON () {
-			return this.value
+			switch (typeof this.value) {
+			case `undefined`:
+			case `number`:
+			case `string`:
+				return this.value
+
+			case `object`:
+				if (Array.isArray(this.value) ||
+					this.value === null
+				) {
+					return this.value
+				}
+				if (this.value.toJSON) {
+					return this.value.toJSON()
+				}
+			}
+
+			return JSON.parse(
+				JSON.stringify(this.value)
+			)
 		}
 	};
 
@@ -112,27 +135,32 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			return value[key]
 		},
 
-		set (value) {
+		set (value, silent = false) {
 			this.value = value;
 
 			const { previous } = this;
 			const modify = [];
 
-			this.notify({
-				add: keys(value).filter((key) => {
-					const is_add = previous[key] === undefined;
-					if (!is_add && previous[key] !== value[key]) {
-						modify.push(key);
-					}
-					return is_add
-				}),
-				remove: keys(previous).filter((key) => value[key] === undefined),
-				modify,
-				previous
-			});
+			if (!silent) {
+				this.notify({
+					add: keys(value).filter((key) => {
+						const is_add = previous[key] === undefined;
+						if (!is_add && previous[key] !== value[key]) {
+							modify.push(key);
+						}
+						return is_add
+					}),
+					remove: keys(previous).filter((key) => value[key] === undefined),
+					modify,
+					previous
+				});
+			}
 
 			// keys a copy of the previous state for diffing
-			this.previous = { ...value };
+			this.previous = {
+				__proto__: value.__proto__,
+				...value
+			};
 		},
 
 		subscribe (fn) {
@@ -160,6 +188,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	});
 
 	const proto_tree = extend(proto_difference, {
+		has (name) {
+			return this.get(name) !== undefined
+		},
+
 		get (name = false) {
 			const v = proto_difference.get.call(this);
 			if (name === false) return v
@@ -167,13 +199,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			return v[name]
 		},
 
-		set (data) {
-			proto_difference.set.call(this, map(data)(
-				([key, val]) => [
-					key,
-					this.convert(val)
-				])
-			);
+		set (data, silent = false) {
+			const do_set = {
+				__proto__: data.__proto__,
+				...map(data)(
+					([key, val]) => [
+						key,
+						this.convert(val)
+					])
+
+			};
+			proto_difference.set.call(this, do_set, silent);
 		},
 
 		convert (value) {
@@ -185,32 +221,30 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		add (data) {
-			this.set({
-				...this.get(),
-				...data
-			});
+			this.set(Object.assign(this.get(), data));
 
 			return this
 		},
 
+		update () { debugger },
 		// no stores only values
-		update (data) {
+		write (data) {
 			const adds = {};
 
 			each(data)(([key, value]) => {
-				const v = this.get();
+				const values = this.get();
 
-				const vs = v[key];
+				const value_self = values[key];
 
-				if (!vs) {
-					adds.key = v;
+				if (!value_self) {
+					adds[key] = value;
 					return
 				}
 
-				vs.set(value);
+				value_self.set(value);
 			});
 
-			if (Object.length(adds) > 0) {
+			if (Object.keys(adds).length > 0) {
 				this.add(adds);
 			}
 		},
@@ -220,6 +254,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const $m = this.get();
 			delete $m[channel];
 			proto_difference.set.call(this, $m);
+		},
+
+		toJSON () {
+			return store_JSON(this)
 		}
 	});
 
@@ -370,7 +408,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		toJSON () {
 			return {
 				type: this.type.get(),
-				value: this.value.get()
+				value: this.value.toJSON()
 			}
 		}
 	};
@@ -462,6 +500,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return warps_create[what](data)
 	};
 
+	const decompile = (address, weave) =>
+		weave.chain(address).slice(0, -1)
+			.map((i) => translate(i, weave))
+			.join(` => `);
+
 	const translate = (id, weave) => {
 		if (id[0] === `{`) return id
 
@@ -551,16 +594,73 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			: v
 	};
 
-	// TODO: Needs refactored to rez/derez system
-	var clone = ({
-		weave,
-		space,
-		value,
-		id
-	}) => {
-		// no clones
-		return {}
+	const proto_clone = {
+		grab_script (other, key) {
+			const weave_other = other.weave;
+			const other_id = `${other.id.get()}/${key}`;
+			const c_o = weave_other.chain(other_id).slice(0, -1);
+			if (c_o.length === 0) return
+
+			const { weave, id, space } = this;
+
+			//  we got a chain to clone!
+			const code = decompile(other_id, weave_other);
+			const addr = `${id}/${key}`;
+
+			const $value = weave_other.get_id(other.id.get())
+				.value.get(key).get();
+
+			// don't overwrite existing values
+			if (!space.value.has(key)) {
+				space.value.write({ [key]: $value });
+			}
+
+			// compile script later
+			requestAnimationFrame(() =>
+				compile(code, weave, addr)
+			);
+		},
+
+		rez () {
+			const { space, weave, value, id } = this;
+
+			this.cancel = value.listen(($value) => {
+				const other = Wheel.get(weave.resolve($value, id));
+
+				if (!other) {
+					console.warn(`Invalid other for clone`);
+				}
+
+				const proto = other
+					? other.value.get()
+					: {};
+
+				keys(proto).forEach((key) => {
+					this.grab_script(other, key);
+				});
+
+				// set proto
+				space.set({
+					...space.get(),
+					__proto__: proto
+				}, true);
+			});
+		},
+
+		derez () {
+			this.cancel();
+
+			// remove proto
+			this.space.set({
+				...this.space.get()
+			}, true);
+
+			// leave the scripts sadly
+		}
+
 	};
+
+	var clone = extend(proto_clone);
 
 	var leader = extend({
 		rez () {
@@ -599,7 +699,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	});
 
-	var name$1 = ({
+	var name = ({
 		value,
 		weave,
 		space
@@ -640,7 +740,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		flock: flock,
 		clone: clone,
 		leader: leader,
-		name: name$1
+		name: name
 	});
 
 	const type = read(`space`);
@@ -1197,10 +1297,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				each(data)(([key_sub, data_sub]) => {
 					const warp = k[key_sub];
 					if (key_sub === `value`) {
-						warp.set({
-							...warp.get(),
-							...data_sub
-						});
+						warp.set(Object.assign(warp.get(),
+							data_sub
+						));
 
 						return
 					}
@@ -1351,10 +1450,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				id: this.id.toJSON(),
 				name: this.name.toJSON(),
 				wefts: this.wefts.toJSON(),
-				warps: map(this.warps.get())(([id, warp]) => [
-					id,
-					warp.toJSON()
-				]),
+				warps: store_JSON(this.warps),
 				rezed: this.rezed.toJSON()
 			}
 		}
@@ -1492,7 +1588,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	};
 
 	// name of the current wheel, path watches
-	const name$2 = write(``);
+	const name$1 = write(``);
 
 	const get = (address) => {
 		const [
@@ -1569,6 +1665,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			remove.forEach((key) => {
 				const r = weft_cancels[key];
+				if (!r) return
 				r();
 				delete weft_cancels[key];
 			});
@@ -1589,7 +1686,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			// non reactive to weft changes
 			add.forEach((key) => {
 				const warp = warps[key];
-				warp && warp.rez && warp.rez();
+				if (!warp) return
+
+				warp.rez && warp.rez();
 				warp.rezed = true;
 				// notify
 				warp.value.notify();
@@ -1597,7 +1696,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			remove.forEach((key) => {
 				const warp = warps[key];
-				warp && warp.derez && warp.derez();
+				if (!warp) return
+
+				warp.derez && warp.derez();
 				delete warp.rezed;
 			});
 		});
@@ -1670,12 +1771,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		Wheel.start(name);
 	};
 
-	const bump = (what) => JSON.parse(JSON.stringify(what));
-
 	const toJSON = () => ({
-		name: name$2.get(),
-		weaves: bump(weaves),
-		running: bump(running)
+		name: name$1.get(),
+		weaves: store_JSON(weaves),
+		running: running.toJSON()
 	});
 
 	const REG_ID = /\$?[~.]?\/[a-zA-Z !%&/]+/g;
@@ -1687,7 +1786,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		running: running,
 		trash: trash,
 		del: del,
-		name: name$2,
+		name: name$1,
 		get: get,
 		exists: exists,
 		spawn: spawn,
@@ -2947,7 +3046,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const loaded = write(false);
 	const data = new Promise((resolve) => {
-		const req = window.indexedDB.open(`turbo`, VERSION);
+		const req = window.indexedDB.open(`isekai`, VERSION);
 
 		req.onupgradeneeded = async (e) => {
 			db = e.target.result;
@@ -3026,7 +3125,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		return () => {
 			Wheel.clear();
-			name.set(`loading`);
+			Wheel.name.set(`loading`);
 			cancel();
 		}
 	};
@@ -5680,18 +5779,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function get_each_context(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[17] = list[i];
+		child_ctx[19] = list[i];
 		return child_ctx;
 	}
 
-	// (56:0) {#if editing}
+	// (60:0) {#if editing}
 	function create_if_block_1$1(ctx) {
 		let current;
 
 		const threadeditor = new ThreadEditor({
 				props: {
 					code: /*edit*/ ctx[2],
-					ondone: /*execute*/ ctx[7],
+					ondone: /*execute*/ ctx[8],
 					weave: /*weave*/ ctx[0],
 					address: /*address*/ ctx[3]
 				},
@@ -5731,19 +5830,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$1.name,
 			type: "if",
-			source: "(56:0) {#if editing}",
+			source: "(60:0) {#if editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (60:0) {#if tru_thread.length > 0}
+	// (64:0) {#if tru_thread.length > 0}
 	function create_if_block$3(ctx) {
 		let div;
 		let current;
 		let dispose;
-		let each_value = /*tru_thread*/ ctx[4];
+		let each_value = /*tru_thread*/ ctx[5];
 		let each_blocks = [];
 
 		for (let i = 0; i < each_value.length; i += 1) {
@@ -5763,8 +5862,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				}
 
 				attr_dev(div, "class", "spot svelte-1mmwmc4");
-				add_location(div, file$8, 60, 0, 1420);
-				dispose = listen_dev(div, "click", /*do_edit*/ ctx[8], false, false, false);
+				add_location(div, file$8, 64, 0, 1468);
+				dispose = listen_dev(div, "click", /*do_edit*/ ctx[9], false, false, false);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -5776,8 +5875,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				if (dirty & /*style, active, condense, tru_thread, weave*/ 113) {
-					each_value = /*tru_thread*/ ctx[4];
+				if (dirty & /*style, active, condense, tru_thread, weave*/ 225) {
+					each_value = /*tru_thread*/ ctx[5];
 					let i;
 
 					for (i = 0; i < each_value.length; i += 1) {
@@ -5832,14 +5931,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$3.name,
 			type: "if",
-			source: "(60:0) {#if tru_thread.length > 0}",
+			source: "(64:0) {#if tru_thread.length > 0}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (65:2) {#each tru_thread as link}
+	// (69:2) {#each tru_thread as link}
 	function create_each_block(ctx) {
 		let div0;
 		let color_action;
@@ -5851,7 +5950,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const warp = new Warp$1({
 				props: {
 					weave: /*weave*/ ctx[0],
-					id: /*link*/ ctx[17]
+					id: /*link*/ ctx[19]
 				},
 				$$inline: true
 			});
@@ -5863,14 +5962,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t = space$1();
 				div1 = element("div");
 				attr_dev(div0, "class", "thread svelte-1mmwmc4");
-				attr_dev(div0, "style", /*style*/ ctx[5]);
-				toggle_class(div0, "active", /*active*/ ctx[6]);
-				add_location(div0, file$8, 65, 4, 1501);
+				attr_dev(div0, "style", /*style*/ ctx[6]);
+				toggle_class(div0, "active", /*active*/ ctx[7]);
+				add_location(div0, file$8, 69, 4, 1549);
 				attr_dev(div1, "class", "after-thread svelte-1mmwmc4");
-				attr_dev(div1, "style", /*style*/ ctx[5]);
-				toggle_class(div1, "active", /*active*/ ctx[6]);
-				add_location(div1, file$8, 73, 1, 1659);
-				dispose = action_destroyer(color_action = color$2.call(null, div0, condense(/*link*/ ctx[17], /*weave*/ ctx[0])));
+				attr_dev(div1, "style", /*style*/ ctx[6]);
+				toggle_class(div1, "active", /*active*/ ctx[7]);
+				add_location(div1, file$8, 77, 1, 1707);
+				dispose = action_destroyer(color_action = color$2.call(null, div0, condense(/*link*/ ctx[19], /*weave*/ ctx[0])));
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div0, anchor);
@@ -5883,25 +5982,25 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				ctx = new_ctx;
 				const warp_changes = {};
 				if (dirty & /*weave*/ 1) warp_changes.weave = /*weave*/ ctx[0];
-				if (dirty & /*tru_thread*/ 16) warp_changes.id = /*link*/ ctx[17];
+				if (dirty & /*tru_thread*/ 32) warp_changes.id = /*link*/ ctx[19];
 				warp.$set(warp_changes);
 
-				if (!current || dirty & /*style*/ 32) {
-					attr_dev(div0, "style", /*style*/ ctx[5]);
+				if (!current || dirty & /*style*/ 64) {
+					attr_dev(div0, "style", /*style*/ ctx[6]);
 				}
 
-				if (color_action && is_function(color_action.update) && dirty & /*tru_thread, weave*/ 17) color_action.update.call(null, condense(/*link*/ ctx[17], /*weave*/ ctx[0]));
+				if (color_action && is_function(color_action.update) && dirty & /*tru_thread, weave*/ 33) color_action.update.call(null, condense(/*link*/ ctx[19], /*weave*/ ctx[0]));
 
-				if (dirty & /*active*/ 64) {
-					toggle_class(div0, "active", /*active*/ ctx[6]);
+				if (dirty & /*active*/ 128) {
+					toggle_class(div0, "active", /*active*/ ctx[7]);
 				}
 
-				if (!current || dirty & /*style*/ 32) {
-					attr_dev(div1, "style", /*style*/ ctx[5]);
+				if (!current || dirty & /*style*/ 64) {
+					attr_dev(div1, "style", /*style*/ ctx[6]);
 				}
 
-				if (dirty & /*active*/ 64) {
-					toggle_class(div1, "active", /*active*/ ctx[6]);
+				if (dirty & /*active*/ 128) {
+					toggle_class(div1, "active", /*active*/ ctx[7]);
 				}
 			},
 			i: function intro(local) {
@@ -5926,7 +6025,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block.name,
 			type: "each",
-			source: "(65:2) {#each tru_thread as link}",
+			source: "(69:2) {#each tru_thread as link}",
 			ctx
 		});
 
@@ -5940,7 +6039,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let current;
 		let dispose;
 		let if_block0 = /*editing*/ ctx[1] && create_if_block_1$1(ctx);
-		let if_block1 = /*tru_thread*/ ctx[4].length > 0 && create_if_block$3(ctx);
+		let if_block1 = /*tru_thread*/ ctx[5].length > 0 && create_if_block$3(ctx);
 
 		const block = {
 			c: function create() {
@@ -5950,8 +6049,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t1 = space$1();
 				div = element("div");
 				attr_dev(div, "class", "cap svelte-1mmwmc4");
-				add_location(div, file$8, 82, 0, 1755);
-				dispose = listen_dev(div, "click", /*do_edit*/ ctx[8], false, false, false);
+				add_location(div, file$8, 86, 0, 1803);
+				dispose = listen_dev(div, "click", /*do_edit*/ ctx[9], false, false, false);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5985,7 +6084,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					check_outros();
 				}
 
-				if (/*tru_thread*/ ctx[4].length > 0) {
+				if (/*tru_thread*/ ctx[5].length > 0) {
 					if (if_block1) {
 						if_block1.p(ctx, dirty);
 						transition_in(if_block1, 1);
@@ -6038,25 +6137,31 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	}
 
 	function instance$8($$self, $$props, $$invalidate) {
+		let $value,
+			$$unsubscribe_value = noop$1,
+			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(13, $value = $$value)), value);
+
 		let $tick;
 		let $THEME_BORDER;
 		let $THEME_BG;
 		validate_store(tick, "tick");
-		component_subscribe($$self, tick, $$value => $$invalidate(14, $tick = $$value));
+		component_subscribe($$self, tick, $$value => $$invalidate(16, $tick = $$value));
 		validate_store(THEME_BORDER, "THEME_BORDER");
-		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(15, $THEME_BORDER = $$value));
+		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(17, $THEME_BORDER = $$value));
 		validate_store(THEME_BG, "THEME_BG");
-		component_subscribe($$self, THEME_BG, $$value => $$invalidate(16, $THEME_BG = $$value));
+		component_subscribe($$self, THEME_BG, $$value => $$invalidate(18, $THEME_BG = $$value));
+		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 		let { channel } = $$props;
 		let { space } = $$props;
 		let { weave } = $$props;
 		let editing = false;
+		let chain;
 		let edit = ``;
 
 		const execute = () => {
 			if (!editing) return;
 			$$invalidate(1, editing = false);
-			$$invalidate(11, chain = weave.chain(address).slice(0, -1));
+			$$invalidate(12, chain = weave.chain(address).slice(0, -1));
 		};
 
 		const do_edit = e => {
@@ -6075,8 +6180,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		});
 
 		$$self.$set = $$props => {
-			if ("channel" in $$props) $$invalidate(9, channel = $$props.channel);
-			if ("space" in $$props) $$invalidate(10, space = $$props.space);
+			if ("channel" in $$props) $$invalidate(10, channel = $$props.channel);
+			if ("space" in $$props) $$invalidate(11, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(0, weave = $$props.weave);
 		};
 
@@ -6086,9 +6191,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				space,
 				weave,
 				editing,
+				chain,
 				edit,
 				address,
-				chain,
+				value,
+				$value,
 				boxes,
 				time_cut,
 				$tick,
@@ -6101,25 +6208,27 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		};
 
 		$$self.$inject_state = $$props => {
-			if ("channel" in $$props) $$invalidate(9, channel = $$props.channel);
-			if ("space" in $$props) $$invalidate(10, space = $$props.space);
+			if ("channel" in $$props) $$invalidate(10, channel = $$props.channel);
+			if ("space" in $$props) $$invalidate(11, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(0, weave = $$props.weave);
 			if ("editing" in $$props) $$invalidate(1, editing = $$props.editing);
+			if ("chain" in $$props) $$invalidate(12, chain = $$props.chain);
 			if ("edit" in $$props) $$invalidate(2, edit = $$props.edit);
 			if ("address" in $$props) $$invalidate(3, address = $$props.address);
-			if ("chain" in $$props) $$invalidate(11, chain = $$props.chain);
+			if ("value" in $$props) $$subscribe_value($$invalidate(4, value = $$props.value));
+			if ("$value" in $$props) value.set($value = $$props.$value);
 			if ("boxes" in $$props) boxes = $$props.boxes;
 			if ("time_cut" in $$props) time_cut = $$props.time_cut;
 			if ("$tick" in $$props) tick.set($tick = $$props.$tick);
-			if ("tru_thread" in $$props) $$invalidate(4, tru_thread = $$props.tru_thread);
-			if ("style" in $$props) $$invalidate(5, style = $$props.style);
+			if ("tru_thread" in $$props) $$invalidate(5, tru_thread = $$props.tru_thread);
+			if ("style" in $$props) $$invalidate(6, style = $$props.style);
 			if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
 			if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
-			if ("active" in $$props) $$invalidate(6, active = $$props.active);
+			if ("active" in $$props) $$invalidate(7, active = $$props.active);
 		};
 
 		let address;
-		let chain;
+		let value;
 		let boxes;
 		let time_cut;
 		let tru_thread;
@@ -6127,41 +6236,48 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let active;
 
 		$$self.$$.update = () => {
-			if ($$self.$$.dirty & /*space, channel*/ 1536) {
+			if ($$self.$$.dirty & /*space, channel*/ 3072) {
 				 $$invalidate(3, address = `${space.id.get()}/${channel[0]}`);
 			}
 
-			if ($$self.$$.dirty & /*weave, address*/ 9) {
-				 $$invalidate(11, chain = weave.chain(address).slice(0, -1));
+			if ($$self.$$.dirty & /*channel*/ 1024) {
+				 $$subscribe_value($$invalidate(4, value = channel[1]));
 			}
 
-			if ($$self.$$.dirty & /*chain, weave*/ 2049) {
+			if ($$self.$$.dirty & /*$value, weave, address*/ 8201) {
+				 {
+					$$invalidate(12, chain = weave.chain(address).slice(0, -1));
+				}
+			}
+
+			if ($$self.$$.dirty & /*chain, weave*/ 4097) {
 				 boxes = chain.map(i => translate(i, weave)).join(` => `);
 			}
 
-			if ($$self.$$.dirty & /*$tick*/ 16384) {
+			if ($$self.$$.dirty & /*$tick*/ 65536) {
 				 time_cut = $tick && Date.now() - 1000;
 			}
 
-			if ($$self.$$.dirty & /*chain*/ 2048) {
-				 $$invalidate(4, tru_thread = chain);
+			if ($$self.$$.dirty & /*chain*/ 4096) {
+				 $$invalidate(5, tru_thread = chain);
 			}
 
-			if ($$self.$$.dirty & /*$THEME_BORDER, $THEME_BG*/ 98304) {
-				 $$invalidate(5, style = [
+			if ($$self.$$.dirty & /*$THEME_BORDER, $THEME_BG*/ 393216) {
+				 $$invalidate(6, style = [
 					`border: 0.25rem solid ${$THEME_BORDER};`,
 					`background-color: ${$THEME_BG};`
 				].join(``));
 			}
 		};
 
-		 $$invalidate(6, active = false);
+		 $$invalidate(7, active = false);
 
 		return [
 			weave,
 			editing,
 			edit,
 			address,
+			value,
 			tru_thread,
 			style,
 			active,
@@ -6175,7 +6291,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	class Thread extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$8, create_fragment$8, safe_not_equal, { channel: 9, space: 10, weave: 0 });
+			init(this, options, instance$8, create_fragment$8, safe_not_equal, { channel: 10, space: 11, weave: 0 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
@@ -6187,11 +6303,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const { ctx } = this.$$;
 			const props = options.props || ({});
 
-			if (/*channel*/ ctx[9] === undefined && !("channel" in props)) {
+			if (/*channel*/ ctx[10] === undefined && !("channel" in props)) {
 				console.warn("<Thread> was created without expected prop 'channel'");
 			}
 
-			if (/*space*/ ctx[10] === undefined && !("space" in props)) {
+			if (/*space*/ ctx[11] === undefined && !("space" in props)) {
 				console.warn("<Thread> was created without expected prop 'space'");
 			}
 

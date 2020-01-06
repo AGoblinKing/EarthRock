@@ -115,13 +115,16 @@ const start_wefts = (weave) => {
 		remove,
 		modify
 	}) => {
+		let dirty
+
 		[...add, ...modify].forEach((reader) => {
 			const writer = wefts[reader]
 			const r = weave.get_id(reader)
 			const wr = weave.get_id(writer)
 
 			if (!wr || !r) {
-				console.warn(`bad weft`)
+				dirty = true
+				delete wefts[reader]
 				return
 			}
 
@@ -139,6 +142,10 @@ const start_wefts = (weave) => {
 			r()
 			delete weft_cancels[key]
 		})
+
+		if (dirty) {
+			weave.wefts.set(wefts, true)
+		}
 	})
 
 	return () => {
@@ -148,15 +155,20 @@ const start_wefts = (weave) => {
 }
 
 const start_rez = (weave) => {
-	const cancel = weave.rezed.listen((_, {
+	const cancel = weave.rezed.listen(($rezed, {
 		add,
 		remove
 	}) => {
+		const deletes = []
+
 		const warps = weave.warps.get()
 		// non reactive to weft changes
 		add.forEach((key) => {
 			const warp = warps[key]
-			if (!warp) return
+			if (!warp) {
+				delete $rezed[key]
+				return deletes.push(key)
+			}
 
 			warp.rez && warp.rez()
 			warp.rezed = true
@@ -166,11 +178,18 @@ const start_rez = (weave) => {
 
 		remove.forEach((key) => {
 			const warp = warps[key]
-			if (!warp) return
+			if (!warp) {
+				delete $rezed[key]
+				return deletes.push(key)
+			}
 
 			warp.derez && warp.derez()
 			delete warp.rezed
 		})
+
+		if (deletes.length > 0) {
+			weave.rezed.set($rezed, true)
+		}
 	})
 
 	return () => {

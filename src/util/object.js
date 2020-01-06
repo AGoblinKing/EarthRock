@@ -20,6 +20,12 @@ export const keys = Object.keys
 export const entries = Object.entries
 export const values = Object.values
 
-export const store_JSON = (store) => map(store.get())(
-	([key, thing]) => [key, thing.toJSON()]
-)
+export const store_JSON = (store) => reduce(store.get())(
+	(result, [key, thing]) => {
+		if (key[0] === `&`) return result
+
+		result[key] = thing.toJSON()
+
+		return result
+	}
+	, {})

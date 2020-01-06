@@ -132,7 +132,7 @@ tick.listen(() => requestAnimationFrame(() => {
 		// not running
 		if (!running[weave.name.get()]) return
 
-		const spaces = weave.spaces.get()
+		const spaces = [...weave.spaces.get().values()]
 
 		spaces.forEach((warp) => {
 			const id = warp.id.get()

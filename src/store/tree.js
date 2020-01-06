@@ -41,7 +41,6 @@ export const proto_tree = extend(proto_difference, {
 		return this
 	},
 
-	update () { debugger },
 	// no stores only values
 	write (data) {
 		const adds = {}

@@ -27,9 +27,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	const keys = Object.keys;
 	const values = Object.values;
 
-	const store_JSON = (store) => map(store.get())(
-		([key, thing]) => [key, thing.toJSON()]
-	);
+	const store_JSON = (store) => reduce(store.get())(
+		(result, [key, thing]) => {
+			if (key[0] === `&`) return result
+
+			result[key] = thing.toJSON();
+
+			return result
+		}
+		, {});
 
 	const proto_store = {
 		toJSON () {
@@ -226,7 +232,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			return this
 		},
 
-		update () { debugger },
 		// no stores only values
 		write (data) {
 			const adds = {};
@@ -413,15 +418,58 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	};
 
-	var flock = ({
-		space,
-		weave,
-		value,
-		id
-	}) => {
-		// no flocking right now
-		return {}
+	const proto_flock = {
+		cancel () {
+			const removes = [...this.birds];
+
+			// basically anything that fucks with the weave you want to delay
+			requestAnimationFrame(() => {
+				this.weave.remove(...removes);
+			});
+		},
+
+		rez () {
+			const { value, space, weave } = this;
+			this.birds = [];
+
+			const fc = space.value.get(`!flock count`);
+			const count = fc
+				? fc.get()
+				: 1;
+
+			this.value_cancel = value.listen(($value) => {
+				this.cancel();
+				const update = Object.fromEntries([...Array(count)].map(
+					(_, i) => {
+						return [`&${uuid()}`, {
+							type: `space`,
+							value: {
+								"!clone": $value,
+								"!leader": `~/${space.value.get(`!name`).get()}`,
+								"!bird": i
+							}
+						}]
+					}
+				));
+
+				// store bird ids for later deletion
+				requestAnimationFrame(() => {
+					this.birds = Object.values(weave.write_ids(update)).map((item) => item.id.get());
+
+					requestAnimationFrame(() => {
+						this.weave.rez(...this.birds);
+					});
+				});
+			});
+		},
+
+		derez () {
+			this.value_cancel();
+			this.cancel();
+		}
 	};
+
+	var flock = extend(proto_flock);
 
 	// a textual representation of a WEAVE chain
 
@@ -518,7 +566,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			: type
 	};
 
-	const compile = (code, weave, address) => {
+	const compile = ({
+		code,
+		weave,
+		address,
+		prefix = ``
+	}) => {
 		const parts = code
 			.replace(/[\r\n]/g, ``)
 			.split(`=>`)
@@ -544,9 +597,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			if (part === ``) return
 
 			const w_data = warp_create(part);
+			w_data.id = `${prefix}${uuid()}`;
 
 			const k = weave.add(w_data);
 			const id = k.id.get();
+
 			wefts_update[id] = connection;
 			connection = id;
 
@@ -560,6 +615,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		);
 
 		weave.validate();
+
+		return ids
 	};
 
 	const format = (txt) => {
@@ -605,7 +662,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			//  we got a chain to clone!
 			const code = decompile(other_id, weave_other);
-			const addr = `${id}/${key}`;
+			const address = `${id}/${key}`;
 
 			const $value = weave_other.get_id(other.id.get())
 				.value.get(key).get();
@@ -616,9 +673,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			}
 
 			// compile script later
-			requestAnimationFrame(() =>
-				compile(code, weave, addr)
-			);
+			requestAnimationFrame(() => {
+				this.scripts = compile({
+					code,
+					weave,
+					address,
+					prefix: `&`
+				});
+			});
 		},
 
 		rez () {
@@ -656,6 +718,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			}, true);
 
 			// leave the scripts sadly
+			this.weave.remove(...this.scripts);
 		}
 
 	};
@@ -743,11 +806,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		name: name
 	});
 
+	const string_nothing = read(``);
+
 	const type = read(`space`);
 
 	const proto_space = extend(proto_warp, {
 		name () {
-			return this.value.get(`!name`)
+			return this.value.get(`!name`) || string_nothing
 		},
 
 		create () {
@@ -779,7 +844,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		rez () {
 			this.weave.spaces.update(($spaces) => {
-				$spaces.add(this);
+				$spaces.set(this.id.get(), this);
 
 				return $spaces
 			});
@@ -791,7 +856,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		derez () {
 			this.weave.spaces.update(($spaces) => {
-				$spaces.delete(this);
+				$spaces.delete(this.id.get());
 
 				return $spaces
 			});
@@ -1228,6 +1293,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	};
 
 	const proto_weave = {
+		is_rezed () {
+			return Wheel.running.get()[this.name.get()] !== undefined
+		},
+
 		add (properties) {
 			properties.id = properties.id || uuid();
 
@@ -1246,6 +1315,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			return k
 		},
 
+		remove_unnamed () {
+			const warps = this.warps.get();
+
+			const removes = [];
+			Object.keys(warps).forEach((id) => {
+				if (id[0] !== `&`) return
+				removes.push(id);
+			});
+
+			this.remove(...removes);
+
+			return removes.length
+		},
+
 		remove_name (name) {
 			const k = this.get_name(name);
 			if (!k) return
@@ -1255,27 +1338,64 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		remove (...ids) {
-			const $wefts = this.wefts.get();
-			const $rezed = this.rezed.get();
-
 			this.warps.update(($warps) => {
-				ids.forEach((id) => {
-					delete $wefts[id];
-					delete $rezed[id];
-				});
+				let dirty;
 
-				this.rezed.set($rezed);
-				this.wefts.set($wefts);
+				const $rezed = this.rezed.get();
+				const rz_self = this.is_rezed();
 
 				ids.forEach((id) => {
 					const k = $warps[id];
+					if (!k) return
 
-					k && k.destroy && k.destroy();
+					if (rz_self && $rezed[id]) {
+						dirty = true;
+						delete $rezed[id];
+						k.derez && k.derez();
+					}
+
+					k.destroy && k.destroy();
 
 					delete $warps[id];
 				});
+
+				if (dirty) {
+					this.rezed.set($rezed, true);
+				}
+
 				return $warps
 			});
+		},
+		write_ids (structure) {
+			const $warps = this.warps.get();
+
+			return map(structure)(([key, data]) => {
+				const k = $warps[key];
+
+				if (!k) {
+					data.value = data.value || {};
+					data.id = key;
+					const warp = this.add(data);
+					if (!warp) return [key, false]
+
+					return [key, warp]
+				}
+
+				each(data)(([key_sub, data_sub]) => {
+					const warp = k[key_sub];
+					if (key_sub === `value`) {
+						warp.set(Object.assign(warp.get(),
+							data_sub
+						));
+
+						return
+					}
+
+					if (warp.set) warp.set(data_sub);
+				});
+
+				return [key, k]
+			})
 		},
 
 		write (structure) {
@@ -1348,7 +1468,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			});
 
 			if (deletes.length > 0) {
-				console.warn(`Deleted ${deletes.length} orphans on validation.`);
+				// console.warn(`Deleted ${deletes.length} orphans on validation.`)
 				this.remove(...deletes);
 			}
 
@@ -1393,6 +1513,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const k = this.warps.get()[k_id];
 
 			if (!chan_name) return k
+			if (!k) return
 
 			const v = k.value.get();
 			if (!v || !v[chan_name]) return
@@ -1480,7 +1601,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			// not saved
 			names: write({}),
-			spaces: write(new Set()),
+			spaces: write(new Map()),
 			destroys: []
 		});
 
@@ -1645,13 +1766,16 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			remove,
 			modify
 		}) => {
+			let dirty;
+
 			[...add, ...modify].forEach((reader) => {
 				const writer = wefts[reader];
 				const r = weave.get_id(reader);
 				const wr = weave.get_id(writer);
 
 				if (!wr || !r) {
-					console.warn(`bad weft`);
+					dirty = true;
+					delete wefts[reader];
 					return
 				}
 
@@ -1669,6 +1793,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				r();
 				delete weft_cancels[key];
 			});
+
+			if (dirty) {
+				weave.wefts.set(wefts, true);
+			}
 		});
 
 		return () => {
@@ -1678,15 +1806,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	};
 
 	const start_rez = (weave) => {
-		const cancel = weave.rezed.listen((_, {
+		const cancel = weave.rezed.listen(($rezed, {
 			add,
 			remove
 		}) => {
+			const deletes = [];
+
 			const warps = weave.warps.get();
 			// non reactive to weft changes
 			add.forEach((key) => {
 				const warp = warps[key];
-				if (!warp) return
+				if (!warp) {
+					delete $rezed[key];
+					return deletes.push(key)
+				}
 
 				warp.rez && warp.rez();
 				warp.rezed = true;
@@ -1696,11 +1829,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			remove.forEach((key) => {
 				const warp = warps[key];
-				if (!warp) return
+				if (!warp) {
+					delete $rezed[key];
+					return deletes.push(key)
+				}
 
 				warp.derez && warp.derez();
 				delete warp.rezed;
 			});
+
+			if (deletes.length > 0) {
+				weave.rezed.set($rezed, true);
+			}
 		});
 
 		return () => {
@@ -2027,7 +2167,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			// not running
 			if (!running[weave.name.get()]) return
 
-			const spaces = weave.spaces.get();
+			const spaces = [...weave.spaces.get().values()];
 
 			spaces.forEach((warp) => {
 				const id = warp.id.get();
@@ -5274,7 +5414,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				attr_dev(textarea, "class", "edit svelte-18o22ik");
 				attr_dev(textarea, "type", "text");
 				attr_dev(textarea, "style", textarea_style_value = `background-color: ${/*$THEME_BG*/ ctx[1]}; border:0.5rem solid ${/*$THEME_BORDER*/ ctx[2]};`);
-				add_location(textarea, file$6, 24, 0, 425);
+				add_location(textarea, file$6, 24, 0, 429);
 
 				dispose = [
 					action_destroyer(focus_action = /*focus*/ ctx[3].call(null, textarea)),
@@ -5342,7 +5482,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const execute = () => {
 			if (!editing) return;
 			editing = false;
-			compile(code, weave, address);
+			compile({ code, weave, address });
 			ondone();
 		};
 
@@ -7190,7 +7330,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return child_ctx;
 	}
 
-	// (53:0) {#if open}
+	// (55:0) {#if open}
 	function create_if_block$5(ctx) {
 		let div;
 		let each_blocks = [];
@@ -7214,7 +7354,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				}
 
 				attr_dev(div, "class", "chans svelte-1u9m5gf");
-				add_location(div, file$b, 53, 2, 1009);
+				add_location(div, file$b, 55, 2, 1043);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -7260,14 +7400,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$5.name,
 			type: "if",
-			source: "(53:0) {#if open}",
+			source: "(55:0) {#if open}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (56:1) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
+	// (58:1) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
 	function create_if_block_1$3(ctx) {
 		let current;
 
@@ -7313,14 +7453,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$3.name,
 			type: "if",
-			source: "(56:1) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
+			source: "(58:1) {#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (55:2) {#each chans as channel (channel[0])}
+	// (57:2) {#each chans as channel (channel[0])}
 	function create_each_block$1(key_1, ctx) {
 		let first;
 		let show_if = /*filter*/ ctx[0].length === 0 || /*channel*/ ctx[14].name.indexOf(/*filter*/ ctx[0][0]) !== -1;
@@ -7386,7 +7526,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block$1.name,
 			type: "each",
-			source: "(55:2) {#each chans as channel (channel[0])}",
+			source: "(57:2) {#each chans as channel (channel[0])}",
 			ctx
 		});
 
@@ -7426,13 +7566,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if (if_block) if_block.c();
 				if_block_anchor = empty();
 				attr_dev(div0, "class", "name svelte-1u9m5gf");
-				add_location(div0, file$b, 42, 2, 841);
+				add_location(div0, file$b, 44, 2, 875);
 				attr_dev(div1, "class", "postage svelte-1u9m5gf");
-				add_location(div1, file$b, 46, 2, 886);
+				add_location(div1, file$b, 48, 2, 920);
 				attr_dev(div2, "class", "space svelte-1u9m5gf");
 				set_style(div2, "border", "0.25rem solid " + /*$THEME_BORDER*/ ctx[9]);
 				toggle_class(div2, "open", /*open*/ ctx[2]);
-				add_location(div2, file$b, 36, 0, 728);
+				add_location(div2, file$b, 38, 0, 762);
 
 				dispose = [
 					listen_dev(div1, "click", /*toggle*/ ctx[11], false, false, false),
@@ -7555,8 +7695,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			e.preventDefault();
 			e.stopPropagation();
 			const id = space.id.get();
+			const rezed = weave.rezed.get();
 
-			if (space.rezed) {
+			if (rezed[id]) {
 				weave.derez(id, ...space.chain());
 			} else {
 				weave.rez(id, ...space.chain());
@@ -8093,6 +8234,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 			return
 		case `-`:
+			if (detail.indexOf(`*`) !== -1) {
+				const reg = detail.replace(`*`, ``);
+				const ns = weave.names.get();
+
+				const removes = [];
+
+				each(ns)(([name, warp]) => {
+					if (name.slice(0, reg.length) === reg) {
+						removes.push(warp.id.get());
+					}
+				});
+
+				weave.remove(...removes);
+			}
+
 			if (detail2) {
 				const s = weave.get_name(detail);
 				if (!s) return

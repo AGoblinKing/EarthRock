@@ -6,6 +6,10 @@ import Warp from "./warp_factory.js"
 import uuid from "cuid"
 
 const proto_weave = {
+	is_rezed () {
+		return Wheel.running.get()[this.name.get()] !== undefined
+	},
+
 	add (properties) {
 		properties.id = properties.id || uuid()
 
@@ -24,6 +28,20 @@ const proto_weave = {
 		return k
 	},
 
+	remove_unnamed () {
+		const warps = this.warps.get()
+
+		const removes = []
+		Object.keys(warps).forEach((id) => {
+			if (id[0] !== `&`) return
+			removes.push(id)
+		})
+
+		this.remove(...removes)
+
+		return removes.length
+	},
+
 	remove_name (name) {
 		const k = this.get_name(name)
 		if (!k) return
@@ -33,26 +51,63 @@ const proto_weave = {
 	},
 
 	remove (...ids) {
-		const $wefts = this.wefts.get()
-		const $rezed = this.rezed.get()
-
 		this.warps.update(($warps) => {
-			ids.forEach((id) => {
-				delete $wefts[id]
-				delete $rezed[id]
-			})
+			let dirty
 
-			this.rezed.set($rezed)
-			this.wefts.set($wefts)
+			const $rezed = this.rezed.get()
+			const rz_self = this.is_rezed()
 
 			ids.forEach((id) => {
 				const k = $warps[id]
+				if (!k) return
 
-				k && k.destroy && k.destroy()
+				if (rz_self && $rezed[id]) {
+					dirty = true
+					delete $rezed[id]
+					k.derez && k.derez()
+				}
+
+				k.destroy && k.destroy()
 
 				delete $warps[id]
 			})
+
+			if (dirty) {
+				this.rezed.set($rezed, true)
+			}
+
 			return $warps
+		})
+	},
+	write_ids (structure) {
+		const $warps = this.warps.get()
+
+		return map(structure)(([key, data]) => {
+			const k = $warps[key]
+
+			if (!k) {
+				data.value = data.value || {}
+				data.id = key
+				const warp = this.add(data)
+				if (!warp) return [key, false]
+
+				return [key, warp]
+			}
+
+			each(data)(([key_sub, data_sub]) => {
+				const warp = k[key_sub]
+				if (key_sub === `value`) {
+					warp.set(Object.assign(warp.get(),
+						data_sub
+					))
+
+					return
+				}
+
+				if (warp.set) warp.set(data_sub)
+			})
+
+			return [key, k]
 		})
 	},
 
@@ -126,7 +181,7 @@ const proto_weave = {
 		})
 
 		if (deletes.length > 0) {
-			console.warn(`Deleted ${deletes.length} orphans on validation.`)
+			// console.warn(`Deleted ${deletes.length} orphans on validation.`)
 			this.remove(...deletes)
 		}
 
@@ -171,6 +226,7 @@ const proto_weave = {
 		const k = this.warps.get()[k_id]
 
 		if (!chan_name) return k
+		if (!k) return
 
 		const v = k.value.get()
 		if (!v || !v[chan_name]) return
@@ -258,7 +314,7 @@ export default ({
 
 		// not saved
 		names: write({}),
-		spaces: write(new Set()),
+		spaces: write(new Map()),
 		destroys: []
 	})
 

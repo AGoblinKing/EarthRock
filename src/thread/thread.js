@@ -1,4 +1,5 @@
 // a textual representation of a WEAVE chain
+import cuid from "cuid"
 
 const warps = {
 	stream: (k) => JSON.stringify(k.value.get()),
@@ -93,7 +94,12 @@ export const translate = (id, weave) => {
 		: type
 }
 
-export const compile = (code, weave, address) => {
+export const compile = ({
+	code,
+	weave,
+	address,
+	prefix = ``
+}) => {
 	const parts = code
 		.replace(/[\r\n]/g, ``)
 		.split(`=>`)
@@ -119,9 +125,11 @@ export const compile = (code, weave, address) => {
 		if (part === ``) return
 
 		const w_data = warp_create(part)
+		w_data.id = `${prefix}${cuid()}`
 
 		const k = weave.add(w_data)
 		const id = k.id.get()
+
 		wefts_update[id] = connection
 		connection = id
 
@@ -135,6 +143,8 @@ export const compile = (code, weave, address) => {
 	)
 
 	weave.validate()
+
+	return ids
 }
 
 export const format = (txt) => {

@@ -5,11 +5,13 @@ import { proto_warp } from "./warp.js"
 
 import * as twists from "/weave/twists.js"
 
+const string_nothing = read(``)
+
 const type = read(`space`)
 
 const proto_space = extend(proto_warp, {
 	name () {
-		return this.value.get(`!name`)
+		return this.value.get(`!name`) || string_nothing
 	},
 
 	create () {
@@ -41,7 +43,7 @@ const proto_space = extend(proto_warp, {
 
 	rez () {
 		this.weave.spaces.update(($spaces) => {
-			$spaces.add(this)
+			$spaces.set(this.id.get(), this)
 
 			return $spaces
 		})
@@ -53,7 +55,7 @@ const proto_space = extend(proto_warp, {
 
 	derez () {
 		this.weave.spaces.update(($spaces) => {
-			$spaces.delete(this)
+			$spaces.delete(this.id.get())
 
 			return $spaces
 		})

@@ -1,51 +1,55 @@
-export default ({
-	space,
-	weave,
-	value,
-	id
-}) => {
-	// no flocking right now
-	return {}
+import { extend } from "/util/object.js"
+import cuid from "cuid"
 
-	const $value = value.get()
-	const other = Wheel.get(weave.resolve($value, id))
+const proto_flock = {
+	cancel () {
+		const removes = [...this.birds]
 
-	if (!other || other.type.get() !== `space`) return
-
-	const vs = space.value.get()
-	const count = vs[`!flock count`]
-		? vs[`!flock count`].get()
-		: 1
-
-	const w_update = {}
-
-	const birds = new Promise((resolve) => {
-		// rez the birds next chance
+		// basically anything that fucks with the weave you want to delay
 		requestAnimationFrame(() => {
-		// spawn a flock
-			for (let i = 0; i < count; i++) {
-				const key = `&${space.name.get()} ${i + 1}`
-				w_update[key] = {
-					type: `space`,
-					value: {
-						"!clone": $value,
-						"!leader": `${space.name.get()}`,
-						"!bird": i
-					}
-				}
-			}
-
-			const birds = Object.values(weave.write(w_update)).map((bird) => bird.id.get())
-
-			weave.rez(...birds)
-
-			resolve(birds)
+			this.weave.remove(...removes)
 		})
-	})
+	},
 
-	return {
-		destroy: async () => {
-			weave.remove(...await birds)
-		}
+	rez () {
+		const { value, space, weave } = this
+		this.birds = []
+
+		const fc = space.value.get(`!flock count`)
+		const count = fc
+			? fc.get()
+			: 1
+
+		this.value_cancel = value.listen(($value) => {
+			this.cancel()
+			const update = Object.fromEntries([...Array(count)].map(
+				(_, i) => {
+					return [`&${cuid()}`, {
+						type: `space`,
+						value: {
+							"!clone": $value,
+							"!leader": `~/${space.value.get(`!name`).get()}`,
+							"!bird": i
+						}
+					}]
+				}
+			))
+
+			// store bird ids for later deletion
+			requestAnimationFrame(() => {
+				this.birds = Object.values(weave.write_ids(update)).map((item) => item.id.get())
+
+				requestAnimationFrame(() => {
+					this.weave.rez(...this.birds)
+				})
+			})
+		})
+	},
+
+	derez () {
+		this.value_cancel()
+		this.cancel()
 	}
 }
+
+export default extend(proto_flock)

@@ -1,3 +1,5 @@
+import { each } from "/util/object.js"
+
 export default (weave) => (
 	[command, ...details],
 	msg
@@ -39,6 +41,21 @@ export default (weave) => (
 
 		return
 	case `-`:
+		if (detail.indexOf(`*`) !== -1) {
+			const reg = detail.replace(`*`, ``)
+			const ns = weave.names.get()
+
+			const removes = []
+
+			each(ns)(([name, warp]) => {
+				if (name.slice(0, reg.length) === reg) {
+					removes.push(warp.id.get())
+				}
+			})
+
+			weave.remove(...removes)
+		}
+
 		if (detail2) {
 			const s = weave.get_name(detail)
 			if (!s) return

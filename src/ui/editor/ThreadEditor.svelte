@@ -16,7 +16,7 @@ const execute = () => {
 	// prevent back to back compiles
 	if (!editing) return
 	editing = false
-	compile(code, weave, address)
+	compile({ code, weave, address })
 	ondone()
 }
 </script>

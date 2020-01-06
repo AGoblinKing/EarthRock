@@ -13,7 +13,7 @@ const proto_clone = {
 
 		//  we got a chain to clone!
 		const code = decompile(other_id, weave_other)
-		const addr = `${id}/${key}`
+		const address = `${id}/${key}`
 
 		const $value = weave_other.get_id(other.id.get())
 			.value.get(key).get()
@@ -24,9 +24,14 @@ const proto_clone = {
 		}
 
 		// compile script later
-		requestAnimationFrame(() =>
-			compile(code, weave, addr)
-		)
+		requestAnimationFrame(() => {
+			this.scripts = compile({
+				code,
+				weave,
+				address,
+				prefix: `&`
+			})
+		})
 	},
 
 	rez () {
@@ -64,6 +69,7 @@ const proto_clone = {
 		}, true)
 
 		// leave the scripts sadly
+		this.weave.remove(...this.scripts)
 	}
 
 }

@@ -26,7 +26,9 @@ const toggle = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
 	const id = space.id.get()
-	if (space.rezed) {
+	const rezed = weave.rezed.get()
+
+	if (rezed[id]) {
 		weave.derez(id, ...space.chain())
 	} else {
 		weave.rez(id, ...space.chain())

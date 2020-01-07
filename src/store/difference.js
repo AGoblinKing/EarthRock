@@ -49,7 +49,7 @@ export const proto_difference = extend(proto_write, {
 	},
 
 	notify (difference) {
-		if (!this.subs) return
+		if (!this.subs || !difference) return
 
 		// TODO: this skips the speed limit, good? bad?
 		this.subs.forEach((fn) => fn(this.value, difference))

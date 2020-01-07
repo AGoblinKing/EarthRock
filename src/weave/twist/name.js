@@ -1,33 +1,34 @@
-export default ({
-	value,
-	weave,
-	space
-}) => {
-	let name_last
-	const update = ($name) => ($ns) => {
-		$ns[$name] = space
+import { extend } from "/util/object.js"
 
-		if (name_last) {
-			delete $ns[name_last]
+const proto_name = {
+	update ($name) {
+		return ($ns) => {
+			$ns[$name] = this.space
+
+			if (this.name_last) {
+				delete $ns[this.name_last]
+			}
+
+			this.name_last = $name
+
+			return $ns
 		}
+	},
 
-		name_last = $name
+	create () {
+		this.cancel = this.value.listen(($name) =>
+			this.weave.names.update(this.update($name))
+		)
+	},
 
-		return $ns
-	}
+	destroy () {
+		this.cancel()
 
-	const cancel = value.listen(($name) =>
-		weave.names.update(update($name))
-	)
-
-	return {
-		destroy: () => {
-			cancel()
-
-			weave.names.update(($ns) => {
-				delete $ns[name_last]
-				return $ns
-			})
-		}
+		this.weave.names.update(($ns) => {
+			delete $ns[this.name_last]
+			return $ns
+		})
 	}
 }
+
+export default extend(proto_name)

@@ -15,7 +15,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		: (next_assign) => extend(proto, next_assign);
 
 	const map = (obj) => (fn) => Object.fromEntries(
-		Object.entries(obj).map(fn)
+		Object.entries(obj).reduce((result, [key, value]) => {
+			const entry = fn([key, value]);
+
+			if (entry) result.push(entry);
+
+			return result
+		}, [])
 	);
 
 	const each = (obj) => (fn) =>
@@ -26,6 +32,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	const keys = Object.keys;
 	const values = Object.values;
+	const assign = (obj) => (...next) => Object.assign(obj, ...next);
 
 	const store_JSON = (store) => reduce(store.get())(
 		(result, [key, thing]) => {
@@ -181,7 +188,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		notify (difference) {
-			if (!this.subs) return
+			if (!this.subs || !difference) return
 
 			// TODO: this skips the speed limit, good? bad?
 			this.subs.forEach((fn) => fn(this.value, difference));
@@ -762,39 +769,38 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	});
 
-	var name = ({
-		value,
-		weave,
-		space
-	}) => {
-		let name_last;
-		const update = ($name) => ($ns) => {
-			$ns[$name] = space;
+	const proto_name = {
+		update ($name) {
+			return ($ns) => {
+				$ns[$name] = this.space;
 
-			if (name_last) {
-				delete $ns[name_last];
+				if (this.name_last) {
+					delete $ns[this.name_last];
+				}
+
+				this.name_last = $name;
+
+				return $ns
 			}
+		},
 
-			name_last = $name;
+		create () {
+			this.cancel = this.value.listen(($name) =>
+				this.weave.names.update(this.update($name))
+			);
+		},
 
-			return $ns
-		};
+		destroy () {
+			this.cancel();
 
-		const cancel = value.listen(($name) =>
-			weave.names.update(update($name))
-		);
-
-		return {
-			destroy: () => {
-				cancel();
-
-				weave.names.update(($ns) => {
-					delete $ns[name_last];
-					return $ns
-				});
-			}
+			this.weave.names.update(($ns) => {
+				delete $ns[this.name_last];
+				return $ns
+			});
 		}
 	};
+
+	var name = extend(proto_name);
 
 
 
@@ -816,52 +822,80 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		},
 
 		create () {
-			const values = this.value.get();
+			this.twists = {};
 
-			// TODO: should react to twists added/removed as well
-			this.twists = Object.entries(twists)
-				.map(([key, twist]) => {
-					const v = values[`!${key}`];
-					if (v === undefined) return
+			this.listen_value = this.value.listen(
+				($value, { add, remove }) => {
+					assign(this.twists)(
+						add.reduce((result, key) => {
+							// ignore !
+							const Twist = twists[key.slice(1)];
+							if (Twist === undefined) return result
 
-					const t = twist({
-						weave: this.weave,
-						value: v,
-						space: this,
-						id: this.id.get()
+							const twist = Twist({
+								weave: this.weave,
+								value: $value[key],
+								space: this,
+								id: this.id.get()
+							});
+
+							twist.create && twist.create();
+
+							if (this.rezed && twist.rez) {
+								// delay
+								requestAnimationFrame(() => twist.rez());
+							}
+
+							result[key] = twist;
+
+							return result
+						}, {})
+					);
+
+					remove.forEach((key) => {
+						const twist = this.twists[key];
+
+						if (this.rezed && twist.derez) twist.derez();
+						twist.destroy && twist.destroy();
+
+						delete this.twists[key];
 					});
-
-					t.create && t.create();
-
-					return t
-				})
-				.filter((i) => i);
+				});
 		},
 
 		destroy () {
-			this.twists.forEach((twist) => twist.destroy && twist.destroy());
+			this.listen_value();
+
+			each(this.twists)(([_, twist]) => {
+				if (this.rezed && twist.derez) twist.derez();
+				twist.destroy && twist.destroy();
+			});
+
+			this.twists = {};
 		},
 
 		rez () {
+			this.rezed = true;
 			this.weave.spaces.update(($spaces) => {
 				$spaces.set(this.id.get(), this);
 
 				return $spaces
 			});
 
-			this.twists.forEach((twist) => {
+			each(this.twists)(([_, twist]) => {
 				twist.rez && twist.rez();
 			});
 		},
 
 		derez () {
+			this.rezed = false;
 			this.weave.spaces.update(($spaces) => {
 				$spaces.delete(this.id.get());
 
 				return $spaces
 			});
 
-			this.twists.forEach((twist) => {
+			each(this.twists)(([_, twist]) => {
 				twist.derez && twist.derez();
 			});
 		},
@@ -1823,7 +1857,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 				warp.rez && warp.rez();
 				warp.rezed = true;
-				// notify
+
+				// TODO: Maybe not?
+				// notify to refresh now that a rez has happened
 				warp.value.notify();
 			});
 
@@ -3295,40 +3331,43 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	});
 
 	const normalize$1 = (sys) => map(flag)(
-		([key, entry]) => [
-			key.replace(/_/g, ` `).toLowerCase(),
+		([k, entry]) => [
+			k.replace(/_/g, ` `).toLowerCase(),
 			entry
 		]
 	);
 
 	const tie = (items) => reduce(items)(
-		(result, [key, value]) => ({
+		(result, [k, value]) => ({
 			...result,
-			[key]: {
+			[k]: {
 				type: `space`,
 				value: {
 					...value,
-					[`!name`]: key
+					[`!name`]: k
 				}
 			}
 		}), {});
 
+	const systems = {
+		mouse,
+		time,
+		screen,
+		input,
+		key: key$1,
+		flag: normalize$1(),
+		camera: camera$1
+	};
+
 	var system = Weave({
 		name: `sys`,
 		id: `sys`,
-		warps: tie({
-			mouse,
-			time,
-			screen,
-			input,
-			key: key$1,
-			flag: normalize$1(),
-			camera: camera$1
-		})
+		warps: tie(systems),
+		rezed: systems
 	});
 
 	function noop$1() { }
-	function assign(tar, src) {
+	function assign$1(tar, src) {
 	    // @ts-ignore
 	    for (const k in src)
 	        tar[k] = src[k];
@@ -3377,7 +3416,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	}
 	function get_slot_context(definition, ctx, $$scope, fn) {
 	    return definition[1] && fn
-	        ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+	        ? assign$1($$scope.ctx.slice(), definition[1](fn(ctx)))
 	        : $$scope.ctx;
 	}
 	function get_slot_changes(definition, $$scope, dirty, fn) {

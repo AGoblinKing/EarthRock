@@ -15,34 +15,37 @@ import * as camera from "/sys/camera.js"
 import "/sys/data.js"
 
 const normalize = (sys) => map(flag)(
-	([key, entry]) => [
-		key.replace(/_/g, ` `).toLowerCase(),
+	([k, entry]) => [
+		k.replace(/_/g, ` `).toLowerCase(),
 		entry
 	]
 )
 
 const tie = (items) => reduce(items)(
-	(result, [key, value]) => ({
+	(result, [k, value]) => ({
 		...result,
-		[key]: {
+		[k]: {
 			type: `space`,
 			value: {
 				...value,
-				[`!name`]: key
+				[`!name`]: k
 			}
 		}
 	}), {})
 
+const systems = {
+	mouse,
+	time,
+	screen,
+	input,
+	key,
+	flag: normalize(flag),
+	camera
+}
+
 export default Weave({
 	name: `sys`,
 	id: `sys`,
-	warps: tie({
-		mouse,
-		time,
-		screen,
-		input,
-		key,
-		flag: normalize(flag),
-		camera
-	})
+	warps: tie(systems),
+	rezed: systems
 })

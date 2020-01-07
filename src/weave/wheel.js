@@ -172,7 +172,9 @@ const start_rez = (weave) => {
 
 			warp.rez && warp.rez()
 			warp.rezed = true
-			// notify
+
+			// TODO: Maybe not?
+			// notify to refresh now that a rez has happened
 			warp.value.notify()
 		})
 

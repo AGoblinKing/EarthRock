@@ -1,5 +1,5 @@
 import { tree, read } from "/store.js"
-import { extend, keys } from "/util/object.js"
+import { extend, keys, each, assign } from "/util/object.js"
 
 import { proto_warp } from "./warp.js"
 
@@ -15,52 +15,80 @@ const proto_space = extend(proto_warp, {
 	},
 
 	create () {
-		const values = this.value.get()
+		this.twists = {}
 
-		// TODO: should react to twists added/removed as well
-		this.twists = Object.entries(twists)
-			.map(([key, twist]) => {
-				const v = values[`!${key}`]
-				if (v === undefined) return
+		this.listen_value = this.value.listen(
+			($value, { add, remove }) => {
+				assign(this.twists)(
+					add.reduce((result, key) => {
+						// ignore !
+						const Twist = twists[key.slice(1)]
+						if (Twist === undefined) return result
 
-				const t = twist({
-					weave: this.weave,
-					value: v,
-					space: this,
-					id: this.id.get()
+						const twist = Twist({
+							weave: this.weave,
+							value: $value[key],
+							space: this,
+							id: this.id.get()
+						})
+
+						twist.create && twist.create()
+
+						if (this.rezed && twist.rez) {
+							// delay
+							requestAnimationFrame(() => twist.rez())
+						}
+
+						result[key] = twist
+
+						return result
+					}, {})
+				)
+
+				remove.forEach((key) => {
+					const twist = this.twists[key]
+
+					if (this.rezed && twist.derez) twist.derez()
+					twist.destroy && twist.destroy()
+
+					delete this.twists[key]
 				})
-
-				t.create && t.create()
-
-				return t
 			})
-			.filter((i) => i)
 	},
 
 	destroy () {
-		this.twists.forEach((twist) => twist.destroy && twist.destroy())
+		this.listen_value()
+
+		each(this.twists)(([_, twist]) => {
+			if (this.rezed && twist.derez) twist.derez()
+			twist.destroy && twist.destroy()
+		})
+
+		this.twists = {}
 	},
 
 	rez () {
+		this.rezed = true
 		this.weave.spaces.update(($spaces) => {
 			$spaces.set(this.id.get(), this)
 
 			return $spaces
 		})
 
-		this.twists.forEach((twist) => {
+		each(this.twists)(([_, twist]) => {
 			twist.rez && twist.rez()
 		})
 	},
 
 	derez () {
+		this.rezed = false
 		this.weave.spaces.update(($spaces) => {
 			$spaces.delete(this.id.get())
 
 			return $spaces
 		})
 
-		this.twists.forEach((twist) => {
+		each(this.twists)(([_, twist]) => {
 			twist.derez && twist.derez()
 		})
 	},

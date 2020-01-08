@@ -1,20 +1,28 @@
 <script>
 import color from "/ui/action/color.js"
-import { WEAVE_EXPLORE_OPEN, THEME_BORDER } from "/sys/flag.js"
+import { THEME_BORDER } from "/sys/flag.js"
+import { read } from "/store.js"
 
+import Flock from "./Flock.svelte"
 import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
-export let filter = []
 export let space
 
-export let open = $WEAVE_EXPLORE_OPEN
 export let weave
+
+const open = true
 
 $: w_name = weave.name
 
-$: value = space.value
+$: value = space ? space.value : read({
+	"!name": read(``),
+	"!birds": read([])
+})
+
 $: name = $value[`!name`]
+$: birds = $value[`!birds`]
+$: bird = $value[`!bird`]
 
 $: chans = Object.entries($value).sort(([a], [b]) => {
 	if (a > b) return 1
@@ -34,8 +42,10 @@ const toggle = (e) => {
 		weave.rez(id, ...space.chain())
 	}
 }
+let space_bird
 </script>
 
+{#if space}
 <div
   class="space"
   class:open
@@ -43,7 +53,7 @@ const toggle = (e) => {
   style="border: 0.25rem solid {$THEME_BORDER};"
 >
   <div class="name">
-  {$name}
+  {bird ? `${bird.get()}::` : ``}{$name}
   </div>
 
   <div class="postage" on:click={toggle}>
@@ -55,19 +65,23 @@ const toggle = (e) => {
 {#if open}
   <div class="chans">
   {#each chans as channel (channel[0])}
-	{#if filter.length === 0 || channel.name.indexOf(filter[0]) !== -1}
 	  <Channel
 		{channel}
 		{space}
 		{weave}
 	  />
-	{/if}
   {/each}
   </div>
 {/if}
 
-<style>
+{#if birds}
+	<Flock {birds} {weave} set_bird={(bird) => { space_bird = bird }}>
+		<svelte:self {weave} space={space_bird} />
+	</Flock>
+{/if}
 
+{/if}
+<style>
 .chans {
   margin-left: 1rem;
 }
@@ -83,11 +97,9 @@ const toggle = (e) => {
   display: flex;
   align-items: center;
   padding: 0.5rem;
-  margin-left: 1rem;
+
   border-right: none;
-  border-radius: 0.25rem;
   padding-right: 1rem;
-  margin-top:-0.25rem;
 }
 
 .name {

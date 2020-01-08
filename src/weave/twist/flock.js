@@ -38,10 +38,7 @@ const proto_flock = {
 			// store bird ids for later deletion
 			requestAnimationFrame(() => {
 				this.birds = Object.values(weave.write_ids(update)).map((item) => item.id.get())
-
-				requestAnimationFrame(() => {
-					this.weave.rez(...this.birds)
-				})
+				this.weave.rez(...this.birds)
 			})
 		})
 	},

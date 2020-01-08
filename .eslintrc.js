@@ -18,7 +18,7 @@ module.exports = {
 	"rules": {
 		"indent": ["error", "tab"],
 		"no-tabs": ["off"],
-		"multiline-ternary": ["error", "always"],
+		"multiline-ternary": ["off", "always"],
 		"import/no-absolute-path": ["off"],
 		"import/first": ["off"],
 		quotes: ["error", "backtick"],

@@ -23,7 +23,7 @@ const proto_weave = {
 		})
 
 		// allows other work to be done first
-		if (k.create) requestAnimationFrame(() => k.create())
+		if (k.create) k.create()
 
 		return k
 	},
@@ -222,6 +222,8 @@ const proto_weave = {
 	},
 
 	get_id (id) {
+		if (!id) return
+
 		const [k_id, chan_name] = id.split(`/`)
 		const k = this.warps.get()[k_id]
 

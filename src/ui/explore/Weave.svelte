@@ -9,11 +9,11 @@ import Controls from "/ui/weave/Controls.svelte"
 import Command from "/omni/omni_weave.js"
 
 export let weave
+
 $: name = weave.name
 $: names = weave.names
 
-export let filter = []
-export let open = $WEAVE_EXPLORE_OPEN
+let open = weave.name.get() !== Wheel.SYSTEM
 
 $: command = Command(weave)
 $: spacees = Object.entries($names).sort(([a], [b]) => {
@@ -46,16 +46,12 @@ $: warps = weave.warps
 	<Omni {command} system={$name === Wheel.SYSTEM}/>
 
 	{#each spacees as [s_name,space] (s_name)}
-	  {#if
-		(filter.length === 0 ||
-		s_name.indexOf(filter[0]) !== -1)
-	  }
+
 		<Space
 		  {space}
-		  filter={filter.slice(1)}
 		  {weave}
 		/>
-	  {/if}
+
 	{/each}
   </div>
 {/if}

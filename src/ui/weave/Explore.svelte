@@ -15,13 +15,10 @@ key.listen((char) => {
 
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves)
-let filter = ``
-
-$: parts = filter[0] === `-` || filter[0] === `+`
-	? [``, ``]
-	: filter.split(`/`)
 
 export let hidden = window.location.hash.indexOf(`dev`) === -1
+
+const terminal = ``
 
 const command = ([action, ...details], msg) => {
 	switch (action) {
@@ -29,7 +26,6 @@ const command = ([action, ...details], msg) => {
 		Wheel.del({
 			[details[0]]: true
 		})
-		filter = ``
 		return
 	case `+`:
 		if (details.length === 1) {
@@ -44,7 +40,6 @@ const command = ([action, ...details], msg) => {
 				msg(`Couldn't add ${details.join(`/`)}. `)
 			})
 		}
-		filter = ``
 	}
 }
 </script>
@@ -59,25 +54,20 @@ const command = ([action, ...details], msg) => {
   class:hidden
 >
   <div class="partial">
-  <div
-    class="logo"
-    style={$THEME_STYLE}
-  >[ I S E K A I ]</div>
+	<div
+		class="logo"
+		style={$THEME_STYLE}
+	>[ I S E K A I ]</div>
 
-  <div class="events">
-    <Omni {command} />
-  </div>
+	<div class="events">
+		<Omni {command} />
+	</div>
 
-  <div class="weaves">
-  {#each ws as weave (weave.id.get())}
-    {#if
-      filter === `` ||
-      weave.name.get().indexOf(parts[0]) !== -1
-    }
-      <Weave {weave} filter={parts.slice(1)} open={weave.name.get() !== Wheel.SYSTEM} />
-    {/if}
-  {/each}
-  </div>
+	<div class="weaves">
+	{#each ws as weave (weave.id.get())}
+		<Weave {weave} />
+	{/each}
+	</div>
   </div>
 </div>
 {/if}

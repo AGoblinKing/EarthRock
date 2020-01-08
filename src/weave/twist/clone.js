@@ -19,29 +19,31 @@ const proto_clone = {
 			.value.get(key).get()
 
 		// don't overwrite existing values
-		if (!space.value.has(key)) {
+		if (!space.value.has(key)) 	{
 			space.value.write({ [key]: $value })
 		}
 
 		// compile script later
 		requestAnimationFrame(() => {
-			this.scripts = compile({
+			this.scripts.push(...compile({
 				code,
 				weave,
 				address,
 				prefix: `&`
-			})
+			}))
 		})
 	},
 
 	rez () {
 		const { space, weave, value, id } = this
+		this.scripts = this.scripts || []
 
 		this.cancel = value.listen(($value) => {
+			this.weave.remove(...this.scripts)
 			const other = Wheel.get(weave.resolve($value, id))
 
 			if (!other) {
-				console.warn(`Invalid other for clone`)
+				console.warn(`Invid other for clone`)
 			}
 
 			const proto = other

@@ -56,8 +56,16 @@ const proto_weave = {
 
 			const $rezed = this.rezed.get()
 			const rz_self = this.is_rezed()
+			const $wefts = this.wefts.get()
+
+			let dirty_wefts = false
 
 			ids.forEach((id) => {
+				if ($wefts[id]) {
+					dirty_wefts = true
+					delete $wefts[id]
+				}
+
 				const k = $warps[id]
 				if (!k) return
 
@@ -76,9 +84,14 @@ const proto_weave = {
 				this.rezed.set($rezed, true)
 			}
 
+			if (dirty_wefts) {
+				this.wefts.set($wefts)
+			}
+
 			return $warps
 		})
 	},
+
 	write_ids (structure) {
 		const $warps = this.warps.get()
 
@@ -254,8 +267,12 @@ const proto_weave = {
 
 	derez (...ids) {
 		const $rezed = this.rezed.get()
-
+		const $warps = this.warps.get()
 		ids.forEach((id) => {
+			const warp = $warps[id]
+			if (warp && warp.type.get() === `space`) {
+				this.derez(...$warps[id].chain())
+			}
 			delete $rezed[id]
 		})
 
@@ -267,10 +284,13 @@ const proto_weave = {
 		const $warps = this.warps.get()
 
 		ids.forEach((id) => {
-			const k = $warps[id]
+			const warp = $warps[id]
 			// prevent bad rezes
-			if (!k) return
+			if (!warp) return
 
+			if (warp.type.get() === `space`) {
+				this.derez(...warp.chain())
+			}
 			$rezed[id] = true
 		})
 
@@ -348,12 +368,12 @@ export default ({
 			modify,
 			previous
 		}) => {
-			add.forEach((key) => {
-				value[$wefts[key]] = key
-			})
-
 			remove.forEach((key) => {
 				delete value[previous[key]]
+			})
+
+			add.forEach((key) => {
+				value[$wefts[key]] = key
 			})
 
 			// modify doesn't always get triggered

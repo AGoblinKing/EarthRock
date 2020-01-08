@@ -23,7 +23,6 @@
     "rollup-plugin-glslify": "^1.1.3",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-notify": "^1.1.0",
     "rollup-plugin-replace-html-vars": "^1.0.3",
     "rollup-plugin-root-import": "^0.2.4",
     "rollup-plugin-svelte": "^5.1.1",

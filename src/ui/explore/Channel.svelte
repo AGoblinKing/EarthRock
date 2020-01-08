@@ -97,7 +97,7 @@ const focusd = (node) => {
   display: flex;
   overflow: hidden;
   margin-left: 1rem;
-border-top: none !important;
+  border-top: none !important;
 
 }
 
@@ -124,6 +124,7 @@ border-top: none !important;
   user-select: all;
   padding: 0.5rem;
   overflow: hidden;
+  word-break: break-all;
   text-align: left;
 }
 

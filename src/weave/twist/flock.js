@@ -15,12 +15,14 @@ const proto_flock = {
 		const { value, space, weave } = this
 		this.birds = []
 
-		const fc = space.value.get(`!flock count`)
-		const count = fc
-			? fc.get()
-			: 1
-
 		this.value_cancel = value.listen(($value) => {
+			const split = $value.split(` `)
+			let count = 1
+			if (split.length > 1) {
+				count = parseInt(split[0])
+				$value = split.slice(1).join(` `)
+			}
+
 			this.cancel()
 			const update = Object.fromEntries([...Array(count)].map(
 				(_, i) => {

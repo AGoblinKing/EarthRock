@@ -107,13 +107,7 @@ export const compile = ({
 
 	const wefts_update = weave.wefts.get()
 
-	const deletes = []
-
-	weave.chain(address).forEach((id) => {
-		deletes.push(id)
-	})
-
-	weave.remove(...deletes)
+	weave.remove(...weave.chain(address).slice(0, -1))
 
 	const space = weave.get_id(address.split(`/`)[0])
 
@@ -141,8 +135,6 @@ export const compile = ({
 	weave.wefts.set(
 		wefts_update
 	)
-
-	weave.validate()
 
 	return ids
 }

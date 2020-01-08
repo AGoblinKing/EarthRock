@@ -6,6 +6,7 @@ import rootImport from 'rollup-plugin-root-import'
 import resolve from 'rollup-plugin-node-resolve'
 import glslify from 'rollup-plugin-glslify'
 import visualizer from 'rollup-plugin-visualizer'
+
 const production = !process.env.ROLLUP_WATCH
 
 const output = `docs`

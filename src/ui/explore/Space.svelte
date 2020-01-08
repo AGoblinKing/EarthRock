@@ -9,8 +9,7 @@ import Postage from "/ui/weave/Postage.svelte"
 
 export let space
 export let weave
-export let prefix = ``
-export let postfix = ``
+export let is_bird = false
 
 const open = true
 
@@ -41,31 +40,31 @@ const toggle = (e) => {
 	const id = space.id.get()
 
 	if (rezed) {
-		weave.derez(id, ...space.chain())
+		weave.derez(id)
 	} else {
-		weave.rez(id, ...space.chain())
+		weave.rez(id)
 	}
 }
 
 const space_bird = write(false)
 </script>
 
-<div
-  class="space"
-  class:open
-  use:color={$name}
-  style="border: 0.25rem solid {$THEME_BORDER};"
->
-  <div class="name">
-  	{prefix}{$name}{postfix}
-  </div>
+{#if !is_bird}
+	<div
+		class="space"
+		class:open
+		use:color={$name}
+		style="border: 0.25rem solid {$THEME_BORDER};"
+	>
+		<div class="name">
+			{$name}
+		</div>
 
- {#if prefix === ``}
-  <div class="postage" on:click={toggle}>
-	<Postage address={`/${$w_name}/${$name}`}/>
-  </div>
+		<div class="postage" on:click={toggle}>
+			<Postage address={`/${$w_name}/${$name}`}/>
+		</div>
+	</div>
 {/if}
-</div>
 
 {#if open}
   <div class="chans">
@@ -74,7 +73,7 @@ const space_bird = write(false)
 		{channel}
 		{space}
 		{weave}
-		nothread={prefix !== ``}
+		nothread={is_bird}
 	  />
   {/each}
   </div>
@@ -87,8 +86,7 @@ const space_bird = write(false)
 			<svelte:self
 				{weave}
 				space={$space_bird}
-				prefix={`${prefix}${$name}${postfix}::`}
-				postfix={space_bird ? `::${$space_bird.birdex + 1}` : ``}
+				is_bird={true}
 			/>
 
 		{/if}
@@ -124,5 +122,9 @@ const space_bird = write(false)
 
 .space:hover {
   color: white;
+}
+
+.is_bird {
+	display: none;
 }
 </style>

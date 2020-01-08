@@ -18,8 +18,6 @@ $: ws = Object.values($weaves)
 
 export let hidden = window.location.hash.indexOf(`dev`) === -1
 
-const terminal = ``
-
 const command = ([action, ...details], msg) => {
 	switch (action) {
 	case `-`:
@@ -92,6 +90,7 @@ const command = ([action, ...details], msg) => {
 }
 
 .explore {
+  opacity: 0.95;
   position: absolute;
   align-items: flex-end;
   font-size: 1.5rem;

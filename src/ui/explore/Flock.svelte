@@ -10,9 +10,7 @@ export let set_bird
 let birdex = 0
 
 $: bird = weave.get_id($birds[birdex])
-$: bird_name = bird
-	? bird.name()
-	: read(``)
+$: bird_name = bird ? bird.name() : read(``)
 
 let last_bird = false
 $: {
@@ -35,7 +33,8 @@ $: {
 <div
 	class="sub_space"
 >
-	<div class="navigation" style="background-color: {$THEME_BORDER}">
+	<div class="navigation"
+		style="border-bottom: 0.25rem solid {$THEME_BORDER}; background-color: {$THEME_BORDER}">
 		<div
 			class="button"
 			on:click={() => {
@@ -49,7 +48,7 @@ $: {
 			use:color={$bird_name}
 		>&lt;</div>
 
-		<div use:color={$bird_name}>{birdex + 1} / {$birds.length}</div>
+		<div>{birdex + 1} : {$birds.length}</div>
 		<div
 			class="button"
 			use:color={$bird_name}
@@ -69,13 +68,18 @@ $: {
 </div>
 
 <style>
+.button	 {
+	padding: 0;
+	border: 0.5rem solid rgba(0,0,0,0.5);
+}
 
 .button:hover {
-	background-color: gold;
+	background-color: rgba(255, 217, 0, 0.555) !important;
 	transition: all 250ms linear;
 }
 
 .navigation {
+	user-select: none;
 	display: flex;
 	flex-basis: 1;
 	margin-left: 2rem;
@@ -86,7 +90,6 @@ $: {
 	border-top: none;
 	border-bottom: none;
 	padding: 0.5rem;
-
 }
 
 </style>

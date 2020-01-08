@@ -439,12 +439,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const { value, space, weave } = this;
 			this.birds = [];
 
-			const fc = space.value.get(`!flock count`);
-			const count = fc
-				? fc.get()
-				: 1;
-
 			this.value_cancel = value.listen(($value) => {
+				const split = $value.split(` `);
+				let count = 1;
+				if (split.length > 1) {
+					count = parseInt(split[0]);
+					$value = split.slice(1).join(` `);
+				}
+
 				this.cancel();
 				const update = Object.fromEntries([...Array(count)].map(
 					(_, i) => {
@@ -583,13 +585,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		const wefts_update = weave.wefts.get();
 
-		const deletes = [];
-
-		weave.chain(address).forEach((id) => {
-			deletes.push(id);
-		});
-
-		weave.remove(...deletes);
+		weave.remove(...weave.chain(address).slice(0, -1));
 
 		const space = weave.get_id(address.split(`/`)[0]);
 
@@ -617,8 +613,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		weave.wefts.set(
 			wefts_update
 		);
-
-		weave.validate();
 
 		return ids
 	};
@@ -672,29 +666,31 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				.value.get(key).get();
 
 			// don't overwrite existing values
-			if (!space.value.has(key)) {
+			if (!space.value.has(key)) 	{
 				space.value.write({ [key]: $value });
 			}
 
 			// compile script later
 			requestAnimationFrame(() => {
-				this.scripts = compile({
+				this.scripts.push(...compile({
 					code,
 					weave,
 					address,
 					prefix: `&`
-				});
+				}));
 			});
 		},
 
 		rez () {
 			const { space, weave, value, id } = this;
+			this.scripts = this.scripts || [];
 
 			this.cancel = value.listen(($value) => {
+				this.weave.remove(...this.scripts);
 				const other = Wheel.get(weave.resolve($value, id));
 
 				if (!other) {
-					console.warn(`Invalid other for clone`);
+					console.warn(`Invid other for clone`);
 				}
 
 				const proto = other
@@ -1405,8 +1401,16 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 				const $rezed = this.rezed.get();
 				const rz_self = this.is_rezed();
+				const $wefts = this.wefts.get();
+
+				let dirty_wefts = false;
 
 				ids.forEach((id) => {
+					if ($wefts[id]) {
+						dirty_wefts = true;
+						delete $wefts[id];
+					}
+
 					const k = $warps[id];
 					if (!k) return
 
@@ -1425,9 +1429,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					this.rezed.set($rezed, true);
 				}
 
+				if (dirty_wefts) {
+					this.wefts.set($wefts);
+				}
+
 				return $warps
 			});
 		},
+
 		write_ids (structure) {
 			const $warps = this.warps.get();
 
@@ -1603,8 +1612,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		derez (...ids) {
 			const $rezed = this.rezed.get();
-
+			const $warps = this.warps.get();
 			ids.forEach((id) => {
+				const warp = $warps[id];
+				if (warp && warp.type.get() === `space`) {
+					this.derez(...$warps[id].chain());
+				}
 				delete $rezed[id];
 			});
 
@@ -1616,10 +1629,13 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const $warps = this.warps.get();
 
 			ids.forEach((id) => {
-				const k = $warps[id];
+				const warp = $warps[id];
 				// prevent bad rezes
-				if (!k) return
+				if (!warp) return
 
+				if (warp.type.get() === `space`) {
+					this.derez(...warp.chain());
+				}
 				$rezed[id] = true;
 			});
 
@@ -1697,12 +1713,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				modify,
 				previous
 			}) => {
-				add.forEach((key) => {
-					value[$wefts[key]] = key;
-				});
-
 				remove.forEach((key) => {
 					delete value[previous[key]];
+				});
+
+				add.forEach((key) => {
+					value[$wefts[key]] = key;
 				});
 
 				// modify doesn't always get triggered
@@ -2007,6 +2023,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	window.Wheel = Wheel$1;
 
+	const worker = new Worker(`/worker.js`);
+
 	const position = read([0, 0], set => window
 		.addEventListener(`mousemove`, ({ clientX, clientY }) => set([clientX, clientY]))
 	);
@@ -2247,7 +2265,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					let value = vs[key].get();
 
 					if (typeof value === `number`) {
-						value = [value];
+						value = Array(def.length).fill(value);
 					}
 
 					if (!Array.isArray(value)) {
@@ -4752,10 +4770,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		let t3;
 		let t4_value = /*$birds*/ ctx[2].length + "";
 		let t4;
-		let color_action_1;
 		let t5;
 		let div2;
-		let color_action_2;
+		let color_action_1;
 		let t7;
 		let current;
 		let dispose;
@@ -4771,30 +4788,30 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t1 = space$1();
 				div1 = element("div");
 				t2 = text(t2_value);
-				t3 = text(" / ");
+				t3 = text(" : ");
 				t4 = text(t4_value);
 				t5 = space$1();
 				div2 = element("div");
 				div2.textContent = ">";
 				t7 = space$1();
 				if (default_slot) default_slot.c();
-				attr_dev(div0, "class", "button svelte-im88gb");
-				add_location(div0, file$3, 38, 2, 705);
-				attr_dev(div1, "class", "svelte-im88gb");
-				add_location(div1, file$3, 51, 2, 967);
-				attr_dev(div2, "class", "button svelte-im88gb");
-				add_location(div2, file$3, 52, 2, 1035);
-				attr_dev(div3, "class", "navigation svelte-im88gb");
+				attr_dev(div0, "class", "button svelte-1uvfgb6");
+				add_location(div0, file$3, 37, 2, 750);
+				attr_dev(div1, "class", "svelte-1uvfgb6");
+				add_location(div1, file$3, 50, 2, 1012);
+				attr_dev(div2, "class", "button svelte-1uvfgb6");
+				add_location(div2, file$3, 51, 2, 1057);
+				attr_dev(div3, "class", "navigation svelte-1uvfgb6");
+				set_style(div3, "border-bottom", "0.25rem solid " + /*$THEME_BORDER*/ ctx[4]);
 				set_style(div3, "background-color", /*$THEME_BORDER*/ ctx[4]);
-				add_location(div3, file$3, 37, 1, 635);
-				attr_dev(div4, "class", "sub_space svelte-im88gb");
-				add_location(div4, file$3, 34, 0, 605);
+				add_location(div3, file$3, 35, 1, 631);
+				attr_dev(div4, "class", "sub_space svelte-1uvfgb6");
+				add_location(div4, file$3, 32, 0, 601);
 
 				dispose = [
 					listen_dev(div0, "click", /*click_handler*/ ctx[12], false, false, false),
 					action_destroyer(color_action = color$2.call(null, div0, /*$bird_name*/ ctx[5])),
-					action_destroyer(color_action_1 = color$2.call(null, div1, /*$bird_name*/ ctx[5])),
-					action_destroyer(color_action_2 = color$2.call(null, div2, /*$bird_name*/ ctx[5])),
+					action_destroyer(color_action_1 = color$2.call(null, div2, /*$bird_name*/ ctx[5])),
 					listen_dev(div2, "click", /*click_handler_1*/ ctx[13], false, false, false)
 				];
 			},
@@ -4825,7 +4842,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if ((!current || dirty & /*birdex*/ 2) && t2_value !== (t2_value = /*birdex*/ ctx[1] + 1 + "")) set_data_dev(t2, t2_value);
 				if ((!current || dirty & /*$birds*/ 4) && t4_value !== (t4_value = /*$birds*/ ctx[2].length + "")) set_data_dev(t4, t4_value);
 				if (color_action_1 && is_function(color_action_1.update) && dirty & /*$bird_name*/ 32) color_action_1.update.call(null, /*$bird_name*/ ctx[5]);
-				if (color_action_2 && is_function(color_action_2.update) && dirty & /*$bird_name*/ 32) color_action_2.update.call(null, /*$bird_name*/ ctx[5]);
+
+				if (!current || dirty & /*$THEME_BORDER*/ 16) {
+					set_style(div3, "border-bottom", "0.25rem solid " + /*$THEME_BORDER*/ ctx[4]);
+				}
 
 				if (!current || dirty & /*$THEME_BORDER*/ 16) {
 					set_style(div3, "background-color", /*$THEME_BORDER*/ ctx[4]);
@@ -6284,18 +6304,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function get_each_context(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[20] = list[i];
+		child_ctx[19] = list[i];
 		return child_ctx;
 	}
 
-	// (61:0) {#if editing}
+	// (68:0) {#if editing}
 	function create_if_block_4(ctx) {
 		let current;
 
 		const threadeditor = new ThreadEditor({
 				props: {
 					code: /*edit*/ ctx[4],
-					ondone: /*execute*/ ctx[10],
+					ondone: /*execute*/ ctx[9],
 					weave: /*weave*/ ctx[0],
 					address: /*address*/ ctx[5]
 				},
@@ -6335,20 +6355,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_4.name,
 			type: "if",
-			source: "(61:0) {#if editing}",
+			source: "(68:0) {#if editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (76:0) {:else}
+	// (83:0) {:else}
 	function create_else_block_1(ctx) {
 		let t;
 		let div;
 		let current;
 		let dispose;
-		let if_block0 = /*tru_thread*/ ctx[7].length > 0 && create_if_block_3(ctx);
+		let if_block0 = /*chain*/ ctx[3].length > 0 && create_if_block_3(ctx);
 
 		function select_block_type_2(ctx, dirty) {
 			if (/*chain*/ ctx[3].length > 0) return create_if_block_2;
@@ -6364,9 +6384,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t = space$1();
 				div = element("div");
 				if_block1.c();
-				attr_dev(div, "class", "cap svelte-pvzg9f");
-				add_location(div, file$9, 99, 1, 1988);
-				dispose = listen_dev(div, "click", /*do_edit*/ ctx[11], false, false, false);
+				attr_dev(div, "class", "cap svelte-kqray9");
+				add_location(div, file$9, 106, 1, 1981);
+				dispose = listen_dev(div, "click", /*do_edit*/ ctx[10], false, false, false);
 			},
 			m: function mount(target, anchor) {
 				if (if_block0) if_block0.m(target, anchor);
@@ -6376,7 +6396,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				if (/*tru_thread*/ ctx[7].length > 0) {
+				if (/*chain*/ ctx[3].length > 0) {
 					if (if_block0) {
 						if_block0.p(ctx, dirty);
 						transition_in(if_block0, 1);
@@ -6430,14 +6450,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block_1.name,
 			type: "else",
-			source: "(76:0) {:else}",
+			source: "(83:0) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (65:0) {#if nothread}
+	// (72:0) {#if nothread}
 	function create_if_block$3(ctx) {
 		let div;
 
@@ -6453,9 +6473,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			c: function create() {
 				div = element("div");
 				if_block.c();
-				attr_dev(div, "class", "cap svelte-pvzg9f");
+				attr_dev(div, "class", "cap svelte-kqray9");
 				toggle_class(div, "nothread", /*nothread*/ ctx[1]);
-				add_location(div, file$9, 65, 1, 1477);
+				add_location(div, file$9, 72, 1, 1480);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6490,19 +6510,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$3.name,
 			type: "if",
-			source: "(65:0) {#if nothread}",
+			source: "(72:0) {#if nothread}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (77:1) {#if tru_thread.length > 0}
+	// (84:1) {#if chain.length > 0}
 	function create_if_block_3(ctx) {
 		let div;
 		let current;
 		let dispose;
-		let each_value = /*tru_thread*/ ctx[7];
+		let each_value = /*chain*/ ctx[3];
 		let each_blocks = [];
 
 		for (let i = 0; i < each_value.length; i += 1) {
@@ -6521,9 +6541,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(div, "class", "spot svelte-pvzg9f");
-				add_location(div, file$9, 77, 2, 1646);
-				dispose = listen_dev(div, "click", /*do_edit*/ ctx[11], false, false, false);
+				attr_dev(div, "class", "spot svelte-kqray9");
+				add_location(div, file$9, 84, 2, 1644);
+				dispose = listen_dev(div, "click", /*do_edit*/ ctx[10], false, false, false);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6535,8 +6555,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				if (dirty & /*style, active, condense, tru_thread, weave*/ 897) {
-					each_value = /*tru_thread*/ ctx[7];
+				if (dirty & /*style, active, condense, chain, weave*/ 393) {
+					each_value = /*chain*/ ctx[3];
 					let i;
 
 					for (i = 0; i < each_value.length; i += 1) {
@@ -6591,14 +6611,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_3.name,
 			type: "if",
-			source: "(77:1) {#if tru_thread.length > 0}",
+			source: "(84:1) {#if chain.length > 0}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (82:2) {#each tru_thread as link}
+	// (89:2) {#each chain as link}
 	function create_each_block(ctx) {
 		let div0;
 		let color_action;
@@ -6610,7 +6630,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const warp = new Warp$1({
 				props: {
 					weave: /*weave*/ ctx[0],
-					id: /*link*/ ctx[20]
+					id: /*link*/ ctx[19]
 				},
 				$$inline: true
 			});
@@ -6621,15 +6641,15 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				create_component(warp.$$.fragment);
 				t = space$1();
 				div1 = element("div");
-				attr_dev(div0, "class", "thread svelte-pvzg9f");
-				attr_dev(div0, "style", /*style*/ ctx[8]);
-				toggle_class(div0, "active", /*active*/ ctx[9]);
-				add_location(div0, file$9, 82, 3, 1730);
-				attr_dev(div1, "class", "after-thread svelte-pvzg9f");
-				attr_dev(div1, "style", /*style*/ ctx[8]);
-				toggle_class(div1, "active", /*active*/ ctx[9]);
-				add_location(div1, file$9, 90, 3, 1878);
-				dispose = action_destroyer(color_action = color$2.call(null, div0, condense(/*link*/ ctx[20], /*weave*/ ctx[0])));
+				attr_dev(div0, "class", "thread svelte-kqray9");
+				attr_dev(div0, "style", /*style*/ ctx[7]);
+				toggle_class(div0, "active", /*active*/ ctx[8]);
+				add_location(div0, file$9, 89, 3, 1723);
+				attr_dev(div1, "class", "after-thread svelte-kqray9");
+				attr_dev(div1, "style", /*style*/ ctx[7]);
+				toggle_class(div1, "active", /*active*/ ctx[8]);
+				add_location(div1, file$9, 97, 3, 1871);
+				dispose = action_destroyer(color_action = color$2.call(null, div0, condense(/*link*/ ctx[19], /*weave*/ ctx[0])));
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div0, anchor);
@@ -6642,25 +6662,25 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				ctx = new_ctx;
 				const warp_changes = {};
 				if (dirty & /*weave*/ 1) warp_changes.weave = /*weave*/ ctx[0];
-				if (dirty & /*tru_thread*/ 128) warp_changes.id = /*link*/ ctx[20];
+				if (dirty & /*chain*/ 8) warp_changes.id = /*link*/ ctx[19];
 				warp.$set(warp_changes);
 
-				if (!current || dirty & /*style*/ 256) {
-					attr_dev(div0, "style", /*style*/ ctx[8]);
+				if (!current || dirty & /*style*/ 128) {
+					attr_dev(div0, "style", /*style*/ ctx[7]);
 				}
 
-				if (color_action && is_function(color_action.update) && dirty & /*tru_thread, weave*/ 129) color_action.update.call(null, condense(/*link*/ ctx[20], /*weave*/ ctx[0]));
+				if (color_action && is_function(color_action.update) && dirty & /*chain, weave*/ 9) color_action.update.call(null, condense(/*link*/ ctx[19], /*weave*/ ctx[0]));
 
-				if (dirty & /*active*/ 512) {
-					toggle_class(div0, "active", /*active*/ ctx[9]);
+				if (dirty & /*active*/ 256) {
+					toggle_class(div0, "active", /*active*/ ctx[8]);
 				}
 
-				if (!current || dirty & /*style*/ 256) {
-					attr_dev(div1, "style", /*style*/ ctx[8]);
+				if (!current || dirty & /*style*/ 128) {
+					attr_dev(div1, "style", /*style*/ ctx[7]);
 				}
 
-				if (dirty & /*active*/ 512) {
-					toggle_class(div1, "active", /*active*/ ctx[9]);
+				if (dirty & /*active*/ 256) {
+					toggle_class(div1, "active", /*active*/ ctx[8]);
 				}
 			},
 			i: function intro(local) {
@@ -6685,14 +6705,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block.name,
 			type: "each",
-			source: "(82:2) {#each tru_thread as link}",
+			source: "(89:2) {#each chain as link}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (106:2) {:else}
+	// (113:2) {:else}
 	function create_else_block_2(ctx) {
 		let t;
 
@@ -6713,14 +6733,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block_2.name,
 			type: "else",
-			source: "(106:2) {:else}",
+			source: "(113:2) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (104:2) {#if chain.length > 0}
+	// (111:2) {#if chain.length > 0}
 	function create_if_block_2(ctx) {
 		let t_value = /*chain*/ ctx[3].length + "";
 		let t;
@@ -6744,14 +6764,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_2.name,
 			type: "if",
-			source: "(104:2) {#if chain.length > 0}",
+			source: "(111:2) {#if chain.length > 0}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (72:2) {:else}
+	// (79:2) {:else}
 	function create_else_block$1(ctx) {
 		let t;
 
@@ -6772,14 +6792,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_else_block$1.name,
 			type: "else",
-			source: "(72:2) {:else}",
+			source: "(79:2) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (70:2) {#if chain.length > 0}
+	// (77:2) {#if chain.length > 0}
 	function create_if_block_1$1(ctx) {
 		let t_value = /*chain*/ ctx[3].length + "";
 		let t;
@@ -6803,7 +6823,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$1.name,
 			type: "if",
-			source: "(70:2) {#if chain.length > 0}",
+			source: "(77:2) {#if chain.length > 0}",
 			ctx
 		});
 
@@ -6923,17 +6943,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	function instance$9($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
-			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(14, $value = $$value)), value);
+			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(13, $value = $$value)), value);
 
 		let $tick;
 		let $THEME_BORDER;
 		let $THEME_BG;
 		validate_store(tick, "tick");
-		component_subscribe($$self, tick, $$value => $$invalidate(17, $tick = $$value));
+		component_subscribe($$self, tick, $$value => $$invalidate(16, $tick = $$value));
 		validate_store(THEME_BORDER, "THEME_BORDER");
-		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(18, $THEME_BORDER = $$value));
+		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(17, $THEME_BORDER = $$value));
 		validate_store(THEME_BG, "THEME_BG");
-		component_subscribe($$self, THEME_BG, $$value => $$invalidate(19, $THEME_BG = $$value));
+		component_subscribe($$self, THEME_BG, $$value => $$invalidate(18, $THEME_BG = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 		let { channel } = $$props;
 		let { space } = $$props;
@@ -6965,8 +6985,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		});
 
 		$$self.$set = $$props => {
-			if ("channel" in $$props) $$invalidate(12, channel = $$props.channel);
-			if ("space" in $$props) $$invalidate(13, space = $$props.space);
+			if ("channel" in $$props) $$invalidate(11, channel = $$props.channel);
+			if ("space" in $$props) $$invalidate(12, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(0, weave = $$props.weave);
 			if ("nothread" in $$props) $$invalidate(1, nothread = $$props.nothread);
 		};
@@ -6986,7 +7006,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				boxes,
 				time_cut,
 				$tick,
-				tru_thread,
 				style,
 				$THEME_BORDER,
 				$THEME_BG,
@@ -6995,8 +7014,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		};
 
 		$$self.$inject_state = $$props => {
-			if ("channel" in $$props) $$invalidate(12, channel = $$props.channel);
-			if ("space" in $$props) $$invalidate(13, space = $$props.space);
+			if ("channel" in $$props) $$invalidate(11, channel = $$props.channel);
+			if ("space" in $$props) $$invalidate(12, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(0, weave = $$props.weave);
 			if ("nothread" in $$props) $$invalidate(1, nothread = $$props.nothread);
 			if ("editing" in $$props) $$invalidate(2, editing = $$props.editing);
@@ -7008,31 +7027,29 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			if ("boxes" in $$props) boxes = $$props.boxes;
 			if ("time_cut" in $$props) time_cut = $$props.time_cut;
 			if ("$tick" in $$props) tick.set($tick = $$props.$tick);
-			if ("tru_thread" in $$props) $$invalidate(7, tru_thread = $$props.tru_thread);
-			if ("style" in $$props) $$invalidate(8, style = $$props.style);
+			if ("style" in $$props) $$invalidate(7, style = $$props.style);
 			if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
 			if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
-			if ("active" in $$props) $$invalidate(9, active = $$props.active);
+			if ("active" in $$props) $$invalidate(8, active = $$props.active);
 		};
 
 		let address;
 		let value;
 		let boxes;
 		let time_cut;
-		let tru_thread;
 		let style;
 		let active;
 
 		$$self.$$.update = () => {
-			if ($$self.$$.dirty & /*space, channel*/ 12288) {
+			if ($$self.$$.dirty & /*space, channel*/ 6144) {
 				 $$invalidate(5, address = `${space.id.get()}/${channel[0]}`);
 			}
 
-			if ($$self.$$.dirty & /*channel*/ 4096) {
+			if ($$self.$$.dirty & /*channel*/ 2048) {
 				 $$subscribe_value($$invalidate(6, value = channel[1]));
 			}
 
-			if ($$self.$$.dirty & /*$value, weave, address*/ 16417) {
+			if ($$self.$$.dirty & /*$value, weave, address*/ 8225) {
 				 {
 					$$invalidate(3, chain = weave.chain(address).slice(0, -1));
 				}
@@ -7042,23 +7059,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				 boxes = chain.map(i => translate(i, weave)).join(` => `);
 			}
 
-			if ($$self.$$.dirty & /*$tick*/ 131072) {
+			if ($$self.$$.dirty & /*$tick*/ 65536) {
 				 time_cut = $tick && Date.now() - 1000;
 			}
 
-			if ($$self.$$.dirty & /*chain*/ 8) {
-				 $$invalidate(7, tru_thread = chain);
-			}
-
-			if ($$self.$$.dirty & /*$THEME_BORDER, $THEME_BG*/ 786432) {
-				 $$invalidate(8, style = [
+			if ($$self.$$.dirty & /*$THEME_BORDER, $THEME_BG*/ 393216) {
+				 $$invalidate(7, style = [
 					`border: 0.25rem solid ${$THEME_BORDER};`,
 					`background-color: ${$THEME_BG};`
 				].join(``));
 			}
 		};
 
-		 $$invalidate(9, active = false);
+		 $$invalidate(8, active = false);
 
 		return [
 			weave,
@@ -7068,7 +7081,6 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			edit,
 			address,
 			value,
-			tru_thread,
 			style,
 			active,
 			execute,
@@ -7083,8 +7095,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			super(options);
 
 			init(this, options, instance$9, create_fragment$9, safe_not_equal, {
-				channel: 12,
-				space: 13,
+				channel: 11,
+				space: 12,
 				weave: 0,
 				nothread: 1
 			});
@@ -7099,11 +7111,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const { ctx } = this.$$;
 			const props = options.props || ({});
 
-			if (/*channel*/ ctx[12] === undefined && !("channel" in props)) {
+			if (/*channel*/ ctx[11] === undefined && !("channel" in props)) {
 				console.warn("<Thread> was created without expected prop 'channel'");
 			}
 
-			if (/*space*/ ctx[13] === undefined && !("space" in props)) {
+			if (/*space*/ ctx[12] === undefined && !("space" in props)) {
 				console.warn("<Thread> was created without expected prop 'space'");
 			}
 
@@ -7161,7 +7173,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const block = {
 			c: function create() {
 				input = element("input");
-				attr_dev(input, "class", "edit svelte-hik274");
+				attr_dev(input, "class", "edit svelte-1jvel1");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "JSON PLZ");
 				add_location(input, file$a, 70, 2, 1244);
@@ -7229,7 +7241,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				t1 = space$1();
 				if_block.c();
 				if_block_anchor = empty();
-				attr_dev(div, "class", "key svelte-hik274");
+				attr_dev(div, "class", "key svelte-1jvel1");
 				add_location(div, file$a, 54, 2, 984);
 			},
 			m: function mount(target, anchor) {
@@ -7304,7 +7316,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			c: function create() {
 				div = element("div");
 				t = text(t_value);
-				attr_dev(div, "class", "value svelte-hik274");
+				attr_dev(div, "class", "value svelte-1jvel1");
 				add_location(div, file$a, 63, 2, 1150);
 			},
 			m: function mount(target, anchor) {
@@ -7463,7 +7475,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				create_component(thread.$$.fragment);
 				t = space$1();
 				if_block.c();
-				attr_dev(div, "class", div_class_value = "channel " + /*side*/ ctx[4] + " svelte-hik274");
+				attr_dev(div, "class", div_class_value = "channel " + /*side*/ ctx[4] + " svelte-1jvel1");
 				attr_dev(div, "style", /*$THEME_STYLE*/ ctx[11]);
 				add_location(div, file$a, 41, 0, 740);
 
@@ -7513,7 +7525,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					if_block.m(div, null);
 				}
 
-				if (!current || dirty & /*side*/ 16 && div_class_value !== (div_class_value = "channel " + /*side*/ ctx[4] + " svelte-hik274")) {
+				if (!current || dirty & /*side*/ 16 && div_class_value !== (div_class_value = "channel " + /*side*/ ctx[4] + " svelte-1jvel1")) {
 					attr_dev(div, "class", div_class_value);
 				}
 
@@ -8014,40 +8026,74 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function get_each_context$1(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[23] = list[i];
+		child_ctx[22] = list[i];
 		return child_ctx;
 	}
 
-	// (63:1) {#if prefix === ``}
+	// (52:0) {#if !is_bird}
 	function create_if_block_3$1(ctx) {
-		let div;
+		let div2;
+		let div0;
+		let t0;
+		let t1;
+		let div1;
+		let color_action;
 		let current;
 		let dispose;
 
 		const postage = new Postage({
 				props: {
-					address: `/${/*$w_name*/ ctx[14]}/${/*$name*/ ctx[12]}`
+					address: `/${/*$w_name*/ ctx[13]}/${/*$name*/ ctx[11]}`
 				},
 				$$inline: true
 			});
 
 		const block = {
 			c: function create() {
-				div = element("div");
+				div2 = element("div");
+				div0 = element("div");
+				t0 = text(/*$name*/ ctx[11]);
+				t1 = space$1();
+				div1 = element("div");
 				create_component(postage.$$.fragment);
-				attr_dev(div, "class", "postage svelte-yanokm");
-				add_location(div, file$c, 63, 2, 1224);
-				dispose = listen_dev(div, "click", /*toggle*/ ctx[16], false, false, false);
+				attr_dev(div0, "class", "name svelte-1qljqj6");
+				add_location(div0, file$c, 58, 2, 1100);
+				attr_dev(div1, "class", "postage svelte-1qljqj6");
+				add_location(div1, file$c, 62, 2, 1146);
+				attr_dev(div2, "class", "space svelte-1qljqj6");
+				set_style(div2, "border", "0.25rem solid " + /*$THEME_BORDER*/ ctx[12]);
+				toggle_class(div2, "open", open$1);
+				add_location(div2, file$c, 52, 1, 986);
+
+				dispose = [
+					listen_dev(div1, "click", /*toggle*/ ctx[15], false, false, false),
+					action_destroyer(color_action = color$2.call(null, div2, /*$name*/ ctx[11]))
+				];
 			},
 			m: function mount(target, anchor) {
-				insert_dev(target, div, anchor);
-				mount_component(postage, div, null);
+				insert_dev(target, div2, anchor);
+				append_dev(div2, div0);
+				append_dev(div0, t0);
+				append_dev(div2, t1);
+				append_dev(div2, div1);
+				mount_component(postage, div1, null);
 				current = true;
 			},
 			p: function update(ctx, dirty) {
+				if (!current || dirty & /*$name*/ 2048) set_data_dev(t0, /*$name*/ ctx[11]);
 				const postage_changes = {};
-				if (dirty & /*$w_name, $name*/ 20480) postage_changes.address = `/${/*$w_name*/ ctx[14]}/${/*$name*/ ctx[12]}`;
+				if (dirty & /*$w_name, $name*/ 10240) postage_changes.address = `/${/*$w_name*/ ctx[13]}/${/*$name*/ ctx[11]}`;
 				postage.$set(postage_changes);
+
+				if (!current || dirty & /*$THEME_BORDER*/ 4096) {
+					set_style(div2, "border", "0.25rem solid " + /*$THEME_BORDER*/ ctx[12]);
+				}
+
+				if (color_action && is_function(color_action.update) && dirty & /*$name*/ 2048) color_action.update.call(null, /*$name*/ ctx[11]);
+
+				if (dirty & /*open*/ 0) {
+					toggle_class(div2, "open", open$1);
+				}
 			},
 			i: function intro(local) {
 				if (current) return;
@@ -8059,9 +8105,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = false;
 			},
 			d: function destroy(detaching) {
-				if (detaching) detach_dev(div);
+				if (detaching) detach_dev(div2);
 				destroy_component(postage);
-				dispose();
+				run_all(dispose);
 			}
 		};
 
@@ -8069,21 +8115,21 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_3$1.name,
 			type: "if",
-			source: "(63:1) {#if prefix === ``}",
+			source: "(52:0) {#if !is_bird}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (70:0) {#if open}
+	// (69:0) {#if open}
 	function create_if_block_2$2(ctx) {
 		let div;
 		let each_blocks = [];
 		let each_1_lookup = new Map();
 		let current;
-		let each_value = /*chans*/ ctx[10];
-		const get_key = ctx => /*channel*/ ctx[23][0];
+		let each_value = /*chans*/ ctx[9];
+		const get_key = ctx => /*channel*/ ctx[22][0];
 
 		for (let i = 0; i < each_value.length; i += 1) {
 			let child_ctx = get_each_context$1(ctx, each_value, i);
@@ -8099,8 +8145,8 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(div, "class", "chans svelte-yanokm");
-				add_location(div, file$c, 70, 2, 1352);
+				attr_dev(div, "class", "chans svelte-1qljqj6");
+				add_location(div, file$c, 69, 2, 1277);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -8112,7 +8158,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				const each_value = /*chans*/ ctx[10];
+				const each_value = /*chans*/ ctx[9];
 				group_outros();
 				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$1, null, get_each_context$1);
 				check_outros();
@@ -8146,24 +8192,24 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_2$2.name,
 			type: "if",
-			source: "(70:0) {#if open}",
+			source: "(69:0) {#if open}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (72:2) {#each chans as channel (channel[0])}
+	// (71:2) {#each chans as channel (channel[0])}
 	function create_each_block$1(key_1, ctx) {
 		let first;
 		let current;
 
 		const channel = new Channel({
 				props: {
-					channel: /*channel*/ ctx[23],
+					channel: /*channel*/ ctx[22],
 					space: /*space*/ ctx[0],
 					weave: /*weave*/ ctx[1],
-					nothread: /*prefix*/ ctx[2] !== ``
+					nothread: /*is_bird*/ ctx[2]
 				},
 				$$inline: true
 			});
@@ -8183,10 +8229,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			},
 			p: function update(ctx, dirty) {
 				const channel_changes = {};
-				if (dirty & /*chans*/ 1024) channel_changes.channel = /*channel*/ ctx[23];
+				if (dirty & /*chans*/ 512) channel_changes.channel = /*channel*/ ctx[22];
 				if (dirty & /*space*/ 1) channel_changes.space = /*space*/ ctx[0];
 				if (dirty & /*weave*/ 2) channel_changes.weave = /*weave*/ ctx[1];
-				if (dirty & /*prefix*/ 4) channel_changes.nothread = /*prefix*/ ctx[2] !== ``;
+				if (dirty & /*is_bird*/ 4) channel_changes.nothread = /*is_bird*/ ctx[2];
 				channel.$set(channel_changes);
 			},
 			i: function intro(local) {
@@ -8208,22 +8254,22 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block$1.name,
 			type: "each",
-			source: "(72:2) {#each chans as channel (channel[0])}",
+			source: "(71:2) {#each chans as channel (channel[0])}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (83:0) {#if birds && rezed}
+	// (82:0) {#if birds && rezed}
 	function create_if_block$5(ctx) {
 		let current;
 
 		const flock = new Flock({
 				props: {
-					birds: /*birds*/ ctx[9],
+					birds: /*birds*/ ctx[8],
 					weave: /*weave*/ ctx[1],
-					set_bird: /*func*/ ctx[22],
+					set_bird: /*func*/ ctx[21],
 					$$slots: { default: [create_default_slot] },
 					$$scope: { ctx }
 				},
@@ -8240,10 +8286,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			},
 			p: function update(ctx, dirty) {
 				const flock_changes = {};
-				if (dirty & /*birds*/ 512) flock_changes.birds = /*birds*/ ctx[9];
+				if (dirty & /*birds*/ 256) flock_changes.birds = /*birds*/ ctx[8];
 				if (dirty & /*weave*/ 2) flock_changes.weave = /*weave*/ ctx[1];
 
-				if (dirty & /*$$scope, $space_bird, weave, prefix, $name, postfix*/ 67145742) {
+				if (dirty & /*$$scope, $space_bird, weave*/ 33570818) {
 					flock_changes.$$scope = { dirty, ctx };
 				}
 
@@ -8267,25 +8313,22 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$5.name,
 			type: "if",
-			source: "(83:0) {#if birds && rezed}",
+			source: "(82:0) {#if birds && rezed}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (86:2) {#if $space_bird}
+	// (85:2) {#if $space_bird}
 	function create_if_block_1$3(ctx) {
 		let current;
 
 		const space_1 = new Space({
 				props: {
 					weave: /*weave*/ ctx[1],
-					space: /*$space_bird*/ ctx[15],
-					prefix: `${/*prefix*/ ctx[2]}${/*$name*/ ctx[12]}${/*postfix*/ ctx[3]}::`,
-					postfix: /*space_bird*/ ctx[17]
-					? `::${/*$space_bird*/ ctx[15].birdex + 1}`
-					: ``
+					space: /*$space_bird*/ ctx[14],
+					is_bird: true
 				},
 				$$inline: true
 			});
@@ -8301,13 +8344,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			p: function update(ctx, dirty) {
 				const space_1_changes = {};
 				if (dirty & /*weave*/ 2) space_1_changes.weave = /*weave*/ ctx[1];
-				if (dirty & /*$space_bird*/ 32768) space_1_changes.space = /*$space_bird*/ ctx[15];
-				if (dirty & /*prefix, $name, postfix*/ 4108) space_1_changes.prefix = `${/*prefix*/ ctx[2]}${/*$name*/ ctx[12]}${/*postfix*/ ctx[3]}::`;
-
-				if (dirty & /*$space_bird*/ 32768) space_1_changes.postfix = /*space_bird*/ ctx[17]
-				? `::${/*$space_bird*/ ctx[15].birdex + 1}`
-				: ``;
-
+				if (dirty & /*$space_bird*/ 16384) space_1_changes.space = /*$space_bird*/ ctx[14];
 				space_1.$set(space_1_changes);
 			},
 			i: function intro(local) {
@@ -8328,18 +8365,18 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block_1$3.name,
 			type: "if",
-			source: "(86:2) {#if $space_bird}",
+			source: "(85:2) {#if $space_bird}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (84:1) <Flock {birds} {weave} set_bird={(bird) => { space_bird.set(bird) }}>
+	// (83:1) <Flock {birds} {weave} set_bird={(bird) => { space_bird.set(bird) }}>
 	function create_default_slot(ctx) {
 		let if_block_anchor;
 		let current;
-		let if_block = /*$space_bird*/ ctx[15] && create_if_block_1$3(ctx);
+		let if_block = /*$space_bird*/ ctx[14] && create_if_block_1$3(ctx);
 
 		const block = {
 			c: function create() {
@@ -8352,7 +8389,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				if (/*$space_bird*/ ctx[15]) {
+				if (/*$space_bird*/ ctx[14]) {
 					if (if_block) {
 						if_block.p(ctx, dirty);
 						transition_in(if_block, 1);
@@ -8391,7 +8428,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_default_slot.name,
 			type: "slot",
-			source: "(84:1) <Flock {birds} {weave} set_bird={(bird) => { space_bird.set(bird) }}>",
+			source: "(83:1) <Flock {birds} {weave} set_bird={(bird) => { space_bird.set(bird) }}>",
 			ctx
 		});
 
@@ -8399,68 +8436,37 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	}
 
 	function create_fragment$c(ctx) {
-		let div1;
-		let div0;
 		let t0;
 		let t1;
-		let t2;
-		let t3;
-		let color_action;
-		let t4;
-		let t5;
 		let if_block2_anchor;
 		let current;
-		let dispose;
-		let if_block0 = /*prefix*/ ctx[2] === `` && create_if_block_3$1(ctx);
+		let if_block0 = !/*is_bird*/ ctx[2] && create_if_block_3$1(ctx);
 		let if_block1 =  create_if_block_2$2(ctx);
-		let if_block2 = /*birds*/ ctx[9] && /*rezed*/ ctx[11] && create_if_block$5(ctx);
+		let if_block2 = /*birds*/ ctx[8] && /*rezed*/ ctx[10] && create_if_block$5(ctx);
 
 		const block = {
 			c: function create() {
-				div1 = element("div");
-				div0 = element("div");
-				t0 = text(/*prefix*/ ctx[2]);
-				t1 = text(/*$name*/ ctx[12]);
-				t2 = text(/*postfix*/ ctx[3]);
-				t3 = space$1();
 				if (if_block0) if_block0.c();
-				t4 = space$1();
+				t0 = space$1();
 				if (if_block1) if_block1.c();
-				t5 = space$1();
+				t1 = space$1();
 				if (if_block2) if_block2.c();
 				if_block2_anchor = empty();
-				attr_dev(div0, "class", "name svelte-yanokm");
-				add_location(div0, file$c, 58, 2, 1139);
-				attr_dev(div1, "class", "space svelte-yanokm");
-				set_style(div1, "border", "0.25rem solid " + /*$THEME_BORDER*/ ctx[13]);
-				toggle_class(div1, "open", open$1);
-				add_location(div1, file$c, 52, 0, 1026);
-				dispose = action_destroyer(color_action = color$2.call(null, div1, /*$name*/ ctx[12]));
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
 			},
 			m: function mount(target, anchor) {
-				insert_dev(target, div1, anchor);
-				append_dev(div1, div0);
-				append_dev(div0, t0);
-				append_dev(div0, t1);
-				append_dev(div0, t2);
-				append_dev(div1, t3);
-				if (if_block0) if_block0.m(div1, null);
-				insert_dev(target, t4, anchor);
+				if (if_block0) if_block0.m(target, anchor);
+				insert_dev(target, t0, anchor);
 				if (if_block1) if_block1.m(target, anchor);
-				insert_dev(target, t5, anchor);
+				insert_dev(target, t1, anchor);
 				if (if_block2) if_block2.m(target, anchor);
 				insert_dev(target, if_block2_anchor, anchor);
 				current = true;
 			},
 			p: function update(ctx, [dirty]) {
-				if (!current || dirty & /*prefix*/ 4) set_data_dev(t0, /*prefix*/ ctx[2]);
-				if (!current || dirty & /*$name*/ 4096) set_data_dev(t1, /*$name*/ ctx[12]);
-				if (!current || dirty & /*postfix*/ 8) set_data_dev(t2, /*postfix*/ ctx[3]);
-
-				if (/*prefix*/ ctx[2] === ``) {
+				if (!/*is_bird*/ ctx[2]) {
 					if (if_block0) {
 						if_block0.p(ctx, dirty);
 						transition_in(if_block0, 1);
@@ -8468,7 +8474,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 						if_block0 = create_if_block_3$1(ctx);
 						if_block0.c();
 						transition_in(if_block0, 1);
-						if_block0.m(div1, null);
+						if_block0.m(t0.parentNode, t0);
 					}
 				} else if (if_block0) {
 					group_outros();
@@ -8480,19 +8486,9 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					check_outros();
 				}
 
-				if (!current || dirty & /*$THEME_BORDER*/ 8192) {
-					set_style(div1, "border", "0.25rem solid " + /*$THEME_BORDER*/ ctx[13]);
-				}
-
-				if (color_action && is_function(color_action.update) && dirty & /*$name*/ 4096) color_action.update.call(null, /*$name*/ ctx[12]);
-
-				if (dirty & /*open*/ 0) {
-					toggle_class(div1, "open", open$1);
-				}
-
 				if_block1.p(ctx, dirty);
 
-				if (/*birds*/ ctx[9] && /*rezed*/ ctx[11]) {
+				if (/*birds*/ ctx[8] && /*rezed*/ ctx[10]) {
 					if (if_block2) {
 						if_block2.p(ctx, dirty);
 						transition_in(if_block2, 1);
@@ -8526,14 +8522,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				current = false;
 			},
 			d: function destroy(detaching) {
-				if (detaching) detach_dev(div1);
-				if (if_block0) if_block0.d();
-				if (detaching) detach_dev(t4);
+				if (if_block0) if_block0.d(detaching);
+				if (detaching) detach_dev(t0);
 				if (if_block1) if_block1.d(detaching);
-				if (detaching) detach_dev(t5);
+				if (detaching) detach_dev(t1);
 				if (if_block2) if_block2.d(detaching);
 				if (detaching) detach_dev(if_block2_anchor);
-				dispose();
 			}
 		};
 
@@ -8553,29 +8547,29 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	function instance$c($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
-			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(18, $value = $$value)), value);
+			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(17, $value = $$value)), value);
 
 		let $w_rezed,
 			$$unsubscribe_w_rezed = noop$1,
-			$$subscribe_w_rezed = () => ($$unsubscribe_w_rezed(), $$unsubscribe_w_rezed = subscribe(w_rezed, $$value => $$invalidate(20, $w_rezed = $$value)), w_rezed);
+			$$subscribe_w_rezed = () => ($$unsubscribe_w_rezed(), $$unsubscribe_w_rezed = subscribe(w_rezed, $$value => $$invalidate(19, $w_rezed = $$value)), w_rezed);
 
 		let $id,
 			$$unsubscribe_id = noop$1,
-			$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate(21, $id = $$value)), id);
+			$$subscribe_id = () => ($$unsubscribe_id(), $$unsubscribe_id = subscribe(id, $$value => $$invalidate(20, $id = $$value)), id);
 
 		let $name,
 			$$unsubscribe_name = noop$1,
-			$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate(12, $name = $$value)), name);
+			$$subscribe_name = () => ($$unsubscribe_name(), $$unsubscribe_name = subscribe(name, $$value => $$invalidate(11, $name = $$value)), name);
 
 		let $THEME_BORDER;
 
 		let $w_name,
 			$$unsubscribe_w_name = noop$1,
-			$$subscribe_w_name = () => ($$unsubscribe_w_name(), $$unsubscribe_w_name = subscribe(w_name, $$value => $$invalidate(14, $w_name = $$value)), w_name);
+			$$subscribe_w_name = () => ($$unsubscribe_w_name(), $$unsubscribe_w_name = subscribe(w_name, $$value => $$invalidate(13, $w_name = $$value)), w_name);
 
 		let $space_bird;
 		validate_store(THEME_BORDER, "THEME_BORDER");
-		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(13, $THEME_BORDER = $$value));
+		component_subscribe($$self, THEME_BORDER, $$value => $$invalidate(12, $THEME_BORDER = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 		$$self.$$.on_destroy.push(() => $$unsubscribe_w_rezed());
 		$$self.$$.on_destroy.push(() => $$unsubscribe_id());
@@ -8583,8 +8577,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		$$self.$$.on_destroy.push(() => $$unsubscribe_w_name());
 		let { space } = $$props;
 		let { weave } = $$props;
-		let { prefix = `` } = $$props;
-		let { postfix = `` } = $$props;
+		let { is_bird = false } = $$props;
 
 		const toggle = e => {
 			e.preventDefault();
@@ -8592,16 +8585,16 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			const id = space.id.get();
 
 			if (rezed) {
-				weave.derez(id, ...space.chain());
+				weave.derez(id);
 			} else {
-				weave.rez(id, ...space.chain());
+				weave.rez(id);
 			}
 		};
 
 		const space_bird = write(false);
 		validate_store(space_bird, "space_bird");
-		component_subscribe($$self, space_bird, value => $$invalidate(15, $space_bird = value));
-		const writable_props = ["space", "weave", "prefix", "postfix"];
+		component_subscribe($$self, space_bird, value => $$invalidate(14, $space_bird = value));
+		const writable_props = ["space", "weave", "is_bird"];
 
 		Object_1.keys($$props).forEach(key => {
 			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Space> was created with unknown prop '${key}'`);
@@ -8614,16 +8607,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		$$self.$set = $$props => {
 			if ("space" in $$props) $$invalidate(0, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(1, weave = $$props.weave);
-			if ("prefix" in $$props) $$invalidate(2, prefix = $$props.prefix);
-			if ("postfix" in $$props) $$invalidate(3, postfix = $$props.postfix);
+			if ("is_bird" in $$props) $$invalidate(2, is_bird = $$props.is_bird);
 		};
 
 		$$self.$capture_state = () => {
 			return {
 				space,
 				weave,
-				prefix,
-				postfix,
+				is_bird,
 				w_name,
 				w_rezed,
 				value,
@@ -8646,18 +8637,17 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		$$self.$inject_state = $$props => {
 			if ("space" in $$props) $$invalidate(0, space = $$props.space);
 			if ("weave" in $$props) $$invalidate(1, weave = $$props.weave);
-			if ("prefix" in $$props) $$invalidate(2, prefix = $$props.prefix);
-			if ("postfix" in $$props) $$invalidate(3, postfix = $$props.postfix);
-			if ("w_name" in $$props) $$subscribe_w_name($$invalidate(4, w_name = $$props.w_name));
-			if ("w_rezed" in $$props) $$subscribe_w_rezed($$invalidate(5, w_rezed = $$props.w_rezed));
-			if ("value" in $$props) $$subscribe_value($$invalidate(6, value = $$props.value));
-			if ("name" in $$props) $$subscribe_name($$invalidate(7, name = $$props.name));
+			if ("is_bird" in $$props) $$invalidate(2, is_bird = $$props.is_bird);
+			if ("w_name" in $$props) $$subscribe_w_name($$invalidate(3, w_name = $$props.w_name));
+			if ("w_rezed" in $$props) $$subscribe_w_rezed($$invalidate(4, w_rezed = $$props.w_rezed));
+			if ("value" in $$props) $$subscribe_value($$invalidate(5, value = $$props.value));
+			if ("name" in $$props) $$subscribe_name($$invalidate(6, name = $$props.name));
 			if ("$value" in $$props) value.set($value = $$props.$value);
-			if ("id" in $$props) $$subscribe_id($$invalidate(8, id = $$props.id));
-			if ("birds" in $$props) $$invalidate(9, birds = $$props.birds);
+			if ("id" in $$props) $$subscribe_id($$invalidate(7, id = $$props.id));
+			if ("birds" in $$props) $$invalidate(8, birds = $$props.birds);
 			if ("bird" in $$props) bird = $$props.bird;
-			if ("chans" in $$props) $$invalidate(10, chans = $$props.chans);
-			if ("rezed" in $$props) $$invalidate(11, rezed = $$props.rezed);
+			if ("chans" in $$props) $$invalidate(9, chans = $$props.chans);
+			if ("rezed" in $$props) $$invalidate(10, rezed = $$props.rezed);
 			if ("$w_rezed" in $$props) w_rezed.set($w_rezed = $$props.$w_rezed);
 			if ("$id" in $$props) id.set($id = $$props.$id);
 			if ("$name" in $$props) name.set($name = $$props.$name);
@@ -8678,53 +8668,52 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 		$$self.$$.update = () => {
 			if ($$self.$$.dirty & /*weave*/ 2) {
-				 $$subscribe_w_name($$invalidate(4, w_name = weave.name));
+				 $$subscribe_w_name($$invalidate(3, w_name = weave.name));
 			}
 
 			if ($$self.$$.dirty & /*weave*/ 2) {
-				 $$subscribe_w_rezed($$invalidate(5, w_rezed = weave.rezed));
+				 $$subscribe_w_rezed($$invalidate(4, w_rezed = weave.rezed));
 			}
 
 			if ($$self.$$.dirty & /*space*/ 1) {
-				 $$subscribe_value($$invalidate(6, value = space
+				 $$subscribe_value($$invalidate(5, value = space
 				? space.value
 				: read({ "!name": read(``), "!birds": read([]) })));
 			}
 
-			if ($$self.$$.dirty & /*$value*/ 262144) {
-				 $$subscribe_name($$invalidate(7, name = $value[`!name`] || read(``)));
+			if ($$self.$$.dirty & /*$value*/ 131072) {
+				 $$subscribe_name($$invalidate(6, name = $value[`!name`] || read(``)));
 			}
 
 			if ($$self.$$.dirty & /*space*/ 1) {
-				 $$subscribe_id($$invalidate(8, id = space.id));
+				 $$subscribe_id($$invalidate(7, id = space.id));
 			}
 
-			if ($$self.$$.dirty & /*$value*/ 262144) {
-				 $$invalidate(9, birds = $value[`!birds`]);
+			if ($$self.$$.dirty & /*$value*/ 131072) {
+				 $$invalidate(8, birds = $value[`!birds`]);
 			}
 
-			if ($$self.$$.dirty & /*$value*/ 262144) {
+			if ($$self.$$.dirty & /*$value*/ 131072) {
 				 bird = $value[`!bird`];
 			}
 
-			if ($$self.$$.dirty & /*$value*/ 262144) {
-				 $$invalidate(10, chans = Object.entries($value).sort(([a], [b]) => {
+			if ($$self.$$.dirty & /*$value*/ 131072) {
+				 $$invalidate(9, chans = Object.entries($value).sort(([a], [b]) => {
 					if (a > b) return 1;
 					if (b > a) return -1;
 					return 0;
 				}));
 			}
 
-			if ($$self.$$.dirty & /*$w_rezed, $id*/ 3145728) {
-				 $$invalidate(11, rezed = $w_rezed[$id]);
+			if ($$self.$$.dirty & /*$w_rezed, $id*/ 1572864) {
+				 $$invalidate(10, rezed = $w_rezed[$id]);
 			}
 		};
 
 		return [
 			space,
 			weave,
-			prefix,
-			postfix,
+			is_bird,
 			w_name,
 			w_rezed,
 			value,
@@ -8750,13 +8739,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	class Space extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-
-			init(this, options, instance$c, create_fragment$c, safe_not_equal, {
-				space: 0,
-				weave: 1,
-				prefix: 2,
-				postfix: 3
-			});
+			init(this, options, instance$c, create_fragment$c, safe_not_equal, { space: 0, weave: 1, is_bird: 2 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
@@ -8793,19 +8776,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			throw new Error("<Space>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
 		}
 
-		get prefix() {
+		get is_bird() {
 			throw new Error("<Space>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
 		}
 
-		set prefix(value) {
-			throw new Error("<Space>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-		}
-
-		get postfix() {
-			throw new Error("<Space>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-		}
-
-		set postfix(value) {
+		set is_bird(value) {
 			throw new Error("<Space>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
 		}
 	}
@@ -9652,11 +9627,11 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 
 	function get_each_context$3(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[8] = list[i];
+		child_ctx[7] = list[i];
 		return child_ctx;
 	}
 
-	// (50:0) {#if !hidden}
+	// (48:0) {#if !hidden}
 	function create_if_block$8(ctx) {
 		let div4;
 		let div3;
@@ -9676,7 +9651,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			});
 
 		let each_value = /*ws*/ ctx[2];
-		const get_key = ctx => /*weave*/ ctx[8].id.get();
+		const get_key = ctx => /*weave*/ ctx[7].id.get();
 
 		for (let i = 0; i < each_value.length; i += 1) {
 			let child_ctx = get_each_context$3(ctx, each_value, i);
@@ -9700,19 +9675,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(div0, "class", "logo svelte-e39f2m");
+				attr_dev(div0, "class", "logo svelte-abkqzb");
 				attr_dev(div0, "style", /*$THEME_STYLE*/ ctx[4]);
-				add_location(div0, file$f, 56, 1, 1134);
-				attr_dev(div1, "class", "events svelte-e39f2m");
-				add_location(div1, file$f, 61, 1, 1208);
-				attr_dev(div2, "class", "weaves svelte-e39f2m");
-				add_location(div2, file$f, 65, 1, 1264);
-				attr_dev(div3, "class", "partial svelte-e39f2m");
-				add_location(div3, file$f, 55, 2, 1110);
-				attr_dev(div4, "class", "explore svelte-e39f2m");
+				add_location(div0, file$f, 54, 1, 1111);
+				attr_dev(div1, "class", "events svelte-abkqzb");
+				add_location(div1, file$f, 59, 1, 1185);
+				attr_dev(div2, "class", "weaves svelte-abkqzb");
+				add_location(div2, file$f, 63, 1, 1241);
+				attr_dev(div3, "class", "partial svelte-abkqzb");
+				add_location(div3, file$f, 53, 2, 1087);
+				attr_dev(div4, "class", "explore svelte-abkqzb");
 				set_style(div4, "color", /*$THEME_COLOR*/ ctx[3]);
 				toggle_class(div4, "hidden", /*hidden*/ ctx[0]);
-				add_location(div4, file$f, 50, 0, 1030);
+				add_location(div4, file$f, 48, 0, 1007);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div4, anchor);
@@ -9782,20 +9757,20 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_if_block$8.name,
 			type: "if",
-			source: "(50:0) {#if !hidden}",
+			source: "(48:0) {#if !hidden}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (67:1) {#each ws as weave (weave.id.get())}
+	// (65:1) {#each ws as weave (weave.id.get())}
 	function create_each_block$3(key_2, ctx) {
 		let first;
 		let current;
 
 		const weave = new Weave$1({
-				props: { weave: /*weave*/ ctx[8] },
+				props: { weave: /*weave*/ ctx[7] },
 				$$inline: true
 			});
 
@@ -9814,7 +9789,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			},
 			p: function update(ctx, dirty) {
 				const weave_changes = {};
-				if (dirty & /*ws*/ 4) weave_changes.weave = /*weave*/ ctx[8];
+				if (dirty & /*ws*/ 4) weave_changes.weave = /*weave*/ ctx[7];
 				weave.$set(weave_changes);
 			},
 			i: function intro(local) {
@@ -9836,14 +9811,14 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block$3.name,
 			type: "each",
-			source: "(67:1) {#each ws as weave (weave.id.get())}",
+			source: "(65:1) {#each ws as weave (weave.id.get())}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (48:0) <Picker>
+	// (46:0) <Picker>
 	function create_default_slot$1(ctx) {
 		let if_block_anchor;
 		let current;
@@ -9899,7 +9874,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_default_slot$1.name,
 			type: "slot",
-			source: "(48:0) <Picker>",
+			source: "(46:0) <Picker>",
 			ctx
 		});
 
@@ -9937,7 +9912,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			p: function update(ctx, [dirty]) {
 				const picker_changes = {};
 
-				if (dirty & /*$$scope, hidden, $THEME_COLOR, ws, $THEME_STYLE*/ 2077) {
+				if (dirty & /*$$scope, hidden, $THEME_COLOR, ws, $THEME_STYLE*/ 1053) {
 					picker_changes.$$scope = { dirty, ctx };
 				}
 

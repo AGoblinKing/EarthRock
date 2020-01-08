@@ -146,7 +146,7 @@ tick.listen(() => requestAnimationFrame(() => {
 				let value = vs[key].get()
 
 				if (typeof value === `number`) {
-					value = [value]
+					value = Array(def.length).fill(value)
 				}
 
 				if (!Array.isArray(value)) {

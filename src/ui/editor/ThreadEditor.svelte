@@ -23,23 +23,23 @@ const execute = () => {
 
 
 <textarea
-  spellcheck="false"
-  class="edit"
-  type="text"
-  style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
-  use:focus
-  bind:value={code}
-  on:click={(e) => e.stopPropagation()}
-  on:keydown={(e) => {
-    if (e.ctrlKey && e.which === 13) {
-      execute()
-      e.preventDefault()
-      e.stopPropagation()
-    }
-  }}
-  on:blur={(e) => {
-    execute()
-  }}
+	spellcheck="false"
+	class="edit"
+	type="text"
+	style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
+	use:focus
+	bind:value={code}
+	on:click={(e) => e.stopPropagation()}
+	on:keydown={(e) => {
+		if (e.ctrlKey && e.which === 13) {
+			execute()
+			e.preventDefault()
+			e.stopPropagation()
+		}
+	}}
+	on:blur={(e) => {
+		execute()
+	}}
 />
 
 <style>

@@ -18,22 +18,24 @@ $: address = `${space.id.get()}/${channel[0]}`
 $: value = channel[1]
 
 let chain
+
 $: {
 	$value
 	chain = weave.chain(address).slice(0, -1)
 }
+
 $: boxes = chain
 	.map((i) => translate(i, weave))
 	.join(` => `)
 
 $: time_cut = $tick && Date.now() - 1000
 
-$: tru_thread = chain
 let edit = ``
 
 const execute = () => {
 	if (!editing) return
 	editing = false
+
 	chain = weave.chain(address).slice(0, -1)
 }
 
@@ -48,8 +50,13 @@ const do_edit = (e) => {
 	if (weave.name.get() === Wheel.SYSTEM) return
 	if (editing) return
 	editing = true
-	edit = format(weave.chain(address).slice(0, -1).map((i) => translate(i, weave))
-		.join(` => `))
+
+	edit = format(
+		weave.chain(address)
+			.slice(0, -1)
+			.map((i) => translate(i, weave))
+			.join(` => `)
+	)
 }
 
 // TODO: light up on value changes
@@ -74,12 +81,12 @@ $:active = false
 		{/if}
 	</div>
 {:else}
-	{#if tru_thread.length > 0}
+	{#if chain.length > 0}
 		<div
 			class="spot"
 			on:click={do_edit}
 		>
-		{#each tru_thread as link}
+		{#each chain as link}
 			<div
 				class="thread"
 				{style}
@@ -124,7 +131,7 @@ $:active = false
 .thread {
   white-space: nowrap;
   transition: all 250ms ease-in-out;
-  margin-right: -0.2rem;
+
   border-radius: 0.25rem;
   box-shadow: 0.25rem 0.25rem 0 rgba(0, 217, 255, 0),
   -0.25rem -0.25rem 0 rgba(0, 217, 255, 0);
@@ -139,8 +146,11 @@ $:active = false
 .thread:hover {
   color: white;
 }
+
 .after-thread {
 	width: 1rem;
+	border-left: none !important;
+	border-right: none !important;
 	height: 1rem;
 }
 
@@ -155,6 +165,7 @@ $:active = false
 	border-right: 0.25rem solid rgba(255,255,255,0.0.5);
 	padding: 0.5rem;
 	z-index: 2;
+	user-select: none;
 }
 .cap:hover {
   background-color: rgba(255, 255, 255, 0.25);

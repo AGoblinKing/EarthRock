@@ -1,26 +1,29 @@
 <script>
 import color from "/ui/action/color.js"
 import { THEME_BORDER } from "/sys/flag.js"
-import { read } from "/store.js"
+import { read, write } from "/store.js"
 
 import Flock from "./Flock.svelte"
 import Channel from "./Channel.svelte"
 import Postage from "/ui/weave/Postage.svelte"
 
 export let space
-
 export let weave
+export let prefix = ``
+export let postfix = ``
 
 const open = true
 
 $: w_name = weave.name
+$: w_rezed = weave.rezed
 
 $: value = space ? space.value : read({
 	"!name": read(``),
 	"!birds": read([])
 })
 
-$: name = $value[`!name`]
+$: name = $value[`!name`] || read(``)
+$: id = space.id
 $: birds = $value[`!birds`]
 $: bird = $value[`!bird`]
 
@@ -30,22 +33,23 @@ $: chans = Object.entries($value).sort(([a], [b]) => {
 	return 0
 })
 
+$: rezed = $w_rezed[$id]
+
 const toggle = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
 	const id = space.id.get()
-	const rezed = weave.rezed.get()
 
-	if (rezed[id]) {
+	if (rezed) {
 		weave.derez(id, ...space.chain())
 	} else {
 		weave.rez(id, ...space.chain())
 	}
 }
-let space_bird
+
+const space_bird = write(false)
 </script>
 
-{#if space}
 <div
   class="space"
   class:open
@@ -53,13 +57,14 @@ let space_bird
   style="border: 0.25rem solid {$THEME_BORDER};"
 >
   <div class="name">
-  {bird ? `${bird.get()}::` : ``}{$name}
+  	{prefix}{$name}{postfix}
   </div>
 
+ {#if prefix === ``}
   <div class="postage" on:click={toggle}>
 	<Postage address={`/${$w_name}/${$name}`}/>
   </div>
-
+{/if}
 </div>
 
 {#if open}
@@ -69,18 +74,29 @@ let space_bird
 		{channel}
 		{space}
 		{weave}
+		nothread={prefix !== ``}
 	  />
   {/each}
   </div>
 {/if}
 
-{#if birds}
-	<Flock {birds} {weave} set_bird={(bird) => { space_bird = bird }}>
-		<svelte:self {weave} space={space_bird} />
+{#if birds && rezed}
+	<Flock {birds} {weave} set_bird={(bird) => { space_bird.set(bird) }}>
+
+		{#if $space_bird}
+			<svelte:self
+				{weave}
+				space={$space_bird}
+				prefix={`${prefix}${$name}${postfix}::`}
+				postfix={space_bird ? `::${$space_bird.birdex + 1}` : ``}
+			/>
+
+		{/if}
+
 	</Flock>
 {/if}
 
-{/if}
+
 <style>
 .chans {
   margin-left: 1rem;

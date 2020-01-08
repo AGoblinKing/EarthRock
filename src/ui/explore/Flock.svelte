@@ -5,7 +5,7 @@ import { read } from "/store.js"
 
 export let weave
 export let birds = read([])
-export let set_bird = () => {}
+export let set_bird
 
 let birdex = 0
 
@@ -19,8 +19,15 @@ $: {
 	if (last_bird === false) last_bird = bird
 
 	if (bird && bird !== last_bird) {
+		bird.birdex = birdex
 		set_bird(bird)
 		last_bird = bird
+	}
+
+	if (!bird) {
+		requestAnimationFrame(() => {
+			bird = weave.get_id($birds[birdex])
+		})
 	}
 }
 </script>
@@ -42,7 +49,7 @@ $: {
 			use:color={$bird_name}
 		>&lt;</div>
 
-		<div use:color={$bird_name}>{birdex}</div>
+		<div use:color={$bird_name}>{birdex + 1} / {$birds.length}</div>
 		<div
 			class="button"
 			use:color={$bird_name}
@@ -56,9 +63,9 @@ $: {
 		>></div>
 	</div>
 
-	{#if bird }
-		<slot />
-	{/if}
+
+	<slot />
+
 </div>
 
 <style>
@@ -78,7 +85,8 @@ $: {
 .navigation > div {
 	border-top: none;
 	border-bottom: none;
-	padding: 1rem;
+	padding: 0.5rem;
+
 }
 
 </style>

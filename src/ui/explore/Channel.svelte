@@ -9,6 +9,7 @@ import { json } from "/util/parse.js"
 import color from "/ui/action/color.js"
 
 export let space
+export let nothread
 export let weave
 export let channel
 export let side = `in`
@@ -47,7 +48,9 @@ const focusd = (node) => {
     val = JSON.stringify($value)
   }}
 >
-  <Thread {channel} {space} {weave}/>
+
+<Thread {channel} {space} {weave} {nothread}/>
+
 {#if !editing}
   <div class="key">
     {key}
@@ -81,6 +84,7 @@ const focusd = (node) => {
     }}
   />
 {/if}
+
 </div>
 <style>
 

@@ -11,6 +11,7 @@ import { translate, format, condense } from "/thread/thread.js"
 export let channel
 export let space
 export let weave
+export let nothread
 
 let editing = false
 $: address = `${space.id.get()}/${channel[0]}`
@@ -61,34 +62,52 @@ $:active = false
   <ThreadEditor code={edit} ondone={execute} {weave} {address}/>
 {/if}
 
-{#if tru_thread.length > 0}
-<div
-  class="spot"
-  on:click={do_edit}
->
-  {#each tru_thread as link}
-    <div
-      class="thread"
-      {style}
-      use:color={condense(link, weave)}
-      class:active
-    >
-      <Warp {weave} id={link} />
-    </div>
+{#if nothread}
 	<div
-		class="after-thread"
-		{style}
-		class:active
+		class="cap"
+		class:nothread
 	>
+		{#if chain.length > 0}
+			{chain.length}
+		{:else}
+			&nbsp;
+		{/if}
 	</div>
-  {/each}
-</div>
+{:else}
+	{#if tru_thread.length > 0}
+		<div
+			class="spot"
+			on:click={do_edit}
+		>
+		{#each tru_thread as link}
+			<div
+				class="thread"
+				{style}
+				use:color={condense(link, weave)}
+				class:active
+			>
+				<Warp {weave} id={link} />
+			</div>
+			<div
+				class="after-thread"
+				{style}
+				class:active
+			>
+			</div>
+		{/each}
+		</div>
+	{/if}
+	<div
+		class="cap"
+		on:click={do_edit}
+	>
+	 {#if chain.length > 0}
+			{chain.length}
+		{:else}
+			&nbsp;
+		{/if}
+	</div>
 {/if}
-<div
-  class="cap"
-  on:click={do_edit}
-/>
-
 <style>
 .spot {
   display: flex;
@@ -125,11 +144,17 @@ $:active = false
 	height: 1rem;
 }
 
+
+.cap.nothread:hover {
+	background-color: rgba(0,0,0,0.5);
+}
 .cap {
-  background-color: rgba(0,0,0,0.5);
-  border-right: 0.25rem solid rgba(255,255,255,0.0.5);
-  padding: 0.5rem;
-  z-index: 2;
+	display: flex;
+	justify-content: center;
+	background-color: rgba(0,0,0,0.5);
+	border-right: 0.25rem solid rgba(255,255,255,0.0.5);
+	padding: 0.5rem;
+	z-index: 2;
 }
 .cap:hover {
   background-color: rgba(255, 255, 255, 0.25);

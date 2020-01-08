@@ -47,6 +47,7 @@ const proto_space = extend(proto_warp, {
 
 				remove.forEach((key) => {
 					const twist = this.twists[key]
+					if (!twist) return
 
 					if (this.rezed && twist.derez) twist.derez()
 					twist.destroy && twist.destroy()

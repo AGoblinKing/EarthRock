@@ -13,8 +13,6 @@ let last = {
 let files
 let nameit = false
 const drop = (e) => {
-	dragover = false
-
 	const files = e.dataTransfer.files
 	for (let i = 0; i < files.length; i++) {
 		const reader = new FileReader()
@@ -31,11 +29,8 @@ const drop = (e) => {
 	e.stopPropagation()
 }
 
-let dragover
-
 const over = (whether) => (e) => {
 	e.dataTransfer.dropEffect = `copy`
-	dragover = whether
 	e.preventDefault()
 	e.stopPropagation()
 }

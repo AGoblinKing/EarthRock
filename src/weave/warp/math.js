@@ -40,7 +40,10 @@ const proto_math = extend(proto_warp, {
 			// not an id or invalid
 			if (!warp) return
 
-			const name = gette.replace(bad_variable_characters, `z`)
+			const name = item
+				.replace(path_space, `dot`)
+				.replace(path_weave, `weave`)
+				.replace(bad_variable_characters, `z`)
 
 			expression = expression.replace(
 				new RegExp(escape(item), `g`),

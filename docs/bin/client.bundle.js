@@ -815,16 +815,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		}
 	});
 
+	let tick_set;
 	const tick = read(0, (set) => {
-		let intv = false;
-
-		TIME_TICK_RATE.listen(($rate) => {
-			if (intv) clearInterval(intv);
-			intv = setInterval(() => {
-				set(tick.get() + 1);
-			}, $rate);
-		});
+		tick_set = set;
 	});
+
+	let last_tick = Date.now();
 
 	const frame = read([0, 0], (set) => {
 		let old;
@@ -838,6 +834,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			data[1] = Math.round(ts - old);
 
 			old = ts;
+			const now = Date.now();
+			if (now - last_tick >= TIME_TICK_RATE.get()) {
+				last_tick = now;
+				tick_set(tick.get() + 1);
+			}
+
 			set(data);
 		};
 
@@ -1648,7 +1650,10 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				// not an id or invalid
 				if (!warp) return
 
-				const name = gette.replace(bad_variable_characters, `z`);
+				const name = item
+					.replace(path_space, `dot`)
+					.replace(path_weave, `weave`)
+					.replace(bad_variable_characters, `z`);
 
 				expression = expression.replace(
 					new RegExp(escape(item), `g`),

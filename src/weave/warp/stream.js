@@ -1,6 +1,6 @@
 import { write, read, proto_write } from "/store.js"
 import { json } from "/util/parse.js"
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 import { proto_warp } from "./warp.js"
 

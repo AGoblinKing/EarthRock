@@ -1,4 +1,4 @@
-import { extend, each, map, store_JSON } from "/util/object.js"
+import { extend, each, map, store_JSON } from "/object.js"
 import { write } from "./write.js"
 import { proto_difference, difference } from "./difference.js"
 

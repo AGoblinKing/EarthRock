@@ -1,5 +1,5 @@
 import { read } from "/store.js"
-import { TIME_TICK_RATE } from "./flag.js"
+import { TIME_TICK_RATE } from "/sys/flag.js"
 
 export const tick = read(0, (set) => {
 	let intv = false

@@ -1,6 +1,6 @@
 import { write, read, difference } from "/store.js"
-import { extend, map, each, reduce, store_JSON } from "/util/object.js"
-import { random } from "/util/text.js"
+import { extend, map, each, reduce, store_JSON } from "/object.js"
+import { random } from "/text.js"
 
 import Warp from "./warp_factory.js"
 import uuid from "cuid"
@@ -205,9 +205,11 @@ const proto_weave = {
 			delete (wefts[r])
 		})
 
-		if (!dirty) return
+		if (!dirty) return deletes.length
 
 		this.wefts.set(wefts)
+
+		return deletes.length
 	},
 
 	chain (address, right = false) {
@@ -223,9 +225,8 @@ const proto_weave = {
 		const [warp] = id_path.split(`/`)
 
 		const space = this.get_id(warp)
-		if (!space || !space.name) return `/sys/void`
 
-		return `/${this.name.get()}/${space.name().get()}`
+		return `/${this.name.get()}/${space.id.get()}`
 	},
 
 	get_name (name) {
@@ -268,6 +269,7 @@ const proto_weave = {
 	derez (...ids) {
 		const $rezed = this.rezed.get()
 		const $warps = this.warps.get()
+
 		ids.forEach((id) => {
 			const warp = $warps[id]
 			if (warp && warp.type.get() === `space`) {
@@ -289,8 +291,9 @@ const proto_weave = {
 			if (!warp) return
 
 			if (warp.type.get() === `space`) {
-				this.derez(...warp.chain())
+				this.rez(...warp.chain())
 			}
+
 			$rezed[id] = true
 		})
 

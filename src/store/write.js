@@ -1,4 +1,4 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 import { read, proto_read } from "./read.js"
 
 export const proto_write = extend(proto_read, {

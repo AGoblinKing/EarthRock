@@ -1,6 +1,6 @@
 import { read, write } from "/store.js"
 import { proto_warp } from "./warp.js"
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 const type = read(`sprite`)
 

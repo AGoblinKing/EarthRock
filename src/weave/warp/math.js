@@ -1,12 +1,14 @@
 import { math as math_js } from "/util/math.js"
 import { write, read, proto_write } from "/store.js"
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 import { proto_warp } from "./warp.js"
 
 const noop = () => {}
 
 const bad_variable_characters = /[ .~%!&/^]/g
+
+// for creating searches
 const regexcape = /[.*+?^${}()|[\]\\]/g
 
 const path_space = /\.\//g
@@ -34,22 +36,16 @@ const proto_math = extend(proto_warp, {
 				.trim()
 
 			const warp = Wheel.get(gette)
+
+			// not an id or invalid
+			if (!warp) return
+
 			const name = gette.replace(bad_variable_characters, `z`)
 
 			expression = expression.replace(
 				new RegExp(escape(item), `g`),
 				name
 			)
-
-			if (!warp) {
-				vs[name] = {
-					warp: {
-						toJSON: () => null
-					},
-					shh: true
-				}
-				return
-			}
 
 			vs[name] = {
 				warp,
@@ -61,7 +57,8 @@ const proto_math = extend(proto_warp, {
 			this.fn = math_js(expression)
 			this.values.set(vs)
 		} catch (ex) {
-			return console.warn(`MATH`, ex)
+			// TODO: Alert user of math error here
+			// console.warn(`MATH`, ex)
 		}
 	},
 
@@ -127,7 +124,7 @@ const proto_value = extend(proto_write, {
 			const result = this.warp.fn(params)
 			proto_write.set.call(this, result)
 		} catch (ex) {
-			console.warn(`math error`, ex)
+			if (ex.message !== `stop`) console.warn(`math error`, ex)
 		}
 
 		return this

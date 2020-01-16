@@ -1,7 +1,7 @@
 import exif from "piexifjs"
 import fs from "file-saver"
-import { tile } from "/util/text.js"
-import Tile from "/image/tile.js"
+import { tile } from "/text.js"
+import Tile from "/_client/image/tile.js"
 import { write } from "/store.js"
 
 export const load = (img) => {

@@ -12,7 +12,7 @@ export const parser = new expr.Parser({
 })
 
 parser.functions.stop = function () {
-	throw new Error(`math stop`)
+	throw new Error(`stop`)
 }
 
 Object.entries(v3).forEach(([key, fn]) => {

@@ -1,5 +1,5 @@
 import { write } from "/store.js"
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 export default extend({
 	rez () {

@@ -1,4 +1,4 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 import { proto_write, write } from "./write.js"
 

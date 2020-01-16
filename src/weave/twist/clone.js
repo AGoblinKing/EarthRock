@@ -1,8 +1,7 @@
-import { decompile, compile } from "/thread/thread.js"
+import { decompile, compile } from "/weave/thread.js"
+import { extend, keys } from "/object.js"
 
-import { extend, keys } from "/util/object.js"
-
-const proto_clone = {
+export default extend({
 	grab_script (other, key) {
 		const weave_other = other.weave
 		const other_id = `${other.id.get()}/${key}`
@@ -74,6 +73,4 @@ const proto_clone = {
 		this.weave.remove(...this.scripts)
 	}
 
-}
-
-export default extend(proto_clone)
+})

@@ -1,5 +1,5 @@
 import { proto_warp } from "./warp.js"
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 import { read, transformer } from "/store.js"
 import Color from "color"

@@ -1,5 +1,5 @@
 import { tree, read } from "/store.js"
-import { extend, keys, each, assign } from "/util/object.js"
+import { extend, keys, each, assign } from "/object.js"
 
 import { proto_warp } from "./warp.js"
 
@@ -10,55 +10,60 @@ const string_nothing = read(``)
 const type = read(`space`)
 
 const proto_space = extend(proto_warp, {
+	address () {
+		return `/${this.weave.name.get()}/${this.name().get() || this.id.get()}`
+	},
+
 	name () {
 		return this.value.get(`!name`) || string_nothing
 	},
 
 	create () {
+		const id = this.id.get()
 		this.twists = {}
 
-		this.listen_value = this.value.listen(
-			($value, { add, remove }) => {
-				assign(this.twists)(
-					add.reduce((result, key) => {
-						// ignore !
-						const Twist = twists[key.slice(1)]
-						if (Twist === undefined) return result
+		this.cancel = this.value.listen(($value, { add, remove }) => {
+			assign(this.twists)(
+				add.reduce((result, key) => {
+					// ignore !
+					const Twist = twists[key.slice(1)]
+					if (Twist === undefined) return result
 
-						const twist = Twist({
-							weave: this.weave,
-							value: $value[key],
-							space: this,
-							id: this.id.get()
-						})
+					const twist = Twist({
+						weave: this.weave,
+						value: $value[key],
+						space: this,
+						id: this.id.get()
+					})
 
-						twist.create && twist.create()
+					twist.create && twist.create()
 
-						if (this.rezed && twist.rez) {
-							// delay
-							requestAnimationFrame(() => twist.rez())
-						}
+					if (this.rezed && twist.rez) {
+						// delay
+						requestAnimationFrame(() => twist.rez())
+					}
 
-						result[key] = twist
+					result[key] = twist
 
-						return result
-					}, {})
-				)
+					return result
+				}, {})
+			)
 
-				remove.forEach((key) => {
-					const twist = this.twists[key]
-					if (!twist) return
+			remove.forEach((key) => {
+				const twist = this.twists[key]
+				this.weave.remove(...this.weave.chain(`${id}/${key}`).slice(0, -1))
+				if (!twist) return
 
-					if (this.rezed && twist.derez) twist.derez()
-					twist.destroy && twist.destroy()
+				if (this.rezed && twist.derez) twist.derez()
+				twist.destroy && twist.destroy()
 
-					delete this.twists[key]
-				})
+				delete this.twists[key]
 			})
+		})
 	},
 
 	destroy () {
-		this.listen_value()
+		this.cancel()
 
 		each(this.twists)(([_, twist]) => {
 			if (this.rezed && twist.derez) twist.derez()
@@ -102,6 +107,35 @@ const proto_space = extend(proto_warp, {
 			result.push(...this.weave.chain(`${id}/${key}`).slice(0, -1))
 			return result
 		}, [])
+	},
+
+	get (key) {
+		return this.value.get(key)
+	},
+
+	gets (...keys) {
+		return keys.reduce((result, key) => {
+			result[key] = this.get(key)
+			return result
+		}, {})
+	},
+
+	get_value (key) {
+		const v = this.value.get(key)
+
+		if (!v) return
+		return v.get()
+	},
+
+	get_values (...keys) {
+		return keys.reduce((result, key) => {
+			result[key] = this.get_value(key)
+			return result
+		}, {})
+	},
+
+	write (update) {
+		return this.value.write(update)
 	}
 })
 

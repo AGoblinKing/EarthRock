@@ -20,6 +20,7 @@ const validate = (thing) => {
 		set(val)
 	}
 }
+
 export const camera = write(m4.identity())
 export const position = write([0, 0, 0])
 export const look = write([0, 0, -1])

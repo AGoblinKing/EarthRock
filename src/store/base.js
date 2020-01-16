@@ -1,4 +1,4 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
 export const proto_store = {
 	toJSON () {

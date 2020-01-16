@@ -1,11 +1,10 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 
-const proto_birds = {
+export default extend({
 	create () {
 		requestAnimationFrame(() => {
 			// always set the value to nothing to start
 			this.value.set([])
 		})
 	}
-}
-export default extend(proto_birds)
+})

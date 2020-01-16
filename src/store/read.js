@@ -1,4 +1,4 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 import { proto_store, store } from "./base.js"
 
 const speed_check = new Set()

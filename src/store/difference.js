@@ -1,5 +1,5 @@
 import { write, proto_write } from "./write.js"
-import { extend, keys } from "/util/object.js"
+import { extend, keys } from "/object.js"
 
 export const proto_difference = extend(proto_write, {
 	get (key = false) {

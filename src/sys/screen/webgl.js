@@ -19,23 +19,32 @@ CLEAR_COLOR.listen((txt) => {
 const { m4 } = twgl
 const up = [0, 1, 0]
 
-const smooth_position = {
-	last: [0, 0, 0],
-	next: [0, 0, 0],
-	get: (t) =>
-		twgl.v3.lerp(
-			smooth_position.last,
-			smooth_position.next,
-			t
-		)
-}
-
-tick.listen(() => requestAnimationFrame(() => {
-	smooth_position.last = smooth_position.next
-	smooth_position.next = position.get()
-}))
-
 export default () => {
+	const smooth_position = {
+		last: [0, 0, 0],
+		next: [0, 0, 0],
+		future: [0, 0, 0],
+
+		update () {
+			smooth_position.last = [...smooth_position.next]
+			smooth_position.next = position.get()
+		},
+
+		get: (t) => {
+			const v = twgl.v3.lerp(
+				smooth_position.last,
+				smooth_position.next,
+				t
+			)
+
+			if (1 - t < 0.1) {
+				smooth_position.update()
+			}
+
+			return v
+		}
+	}
+
 	const canvas = document.createElement(`canvas`)
 
 	canvas.width = 16 * 100
@@ -68,10 +77,13 @@ export default () => {
 
 		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
+		gl.clearColor(...clear_color)
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+
 		// see what these are about
 		gl.enable(gl.DEPTH_TEST)
 		gl.enable(gl.BLEND)
-		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		const r = canvas.width / canvas.height
 
 		const projection = twgl.m4.ortho(
@@ -87,9 +99,6 @@ export default () => {
 
 		m4.multiply(projection, view, view_projection)
 
-		gl.clearColor(...clear_color)
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-
 		if (snap.count < 1) {
 			return
 		}
@@ -99,7 +108,10 @@ export default () => {
 			u_time: snap.time,
 			u_sprite_size: 16,
 			u_sprite_columns: 32,
-			u_view_projection: view_projection
+			u_view_projection: view_projection,
+			u_background_color: Math.round(clear_color[0] * 256 * 256) +
+				Math.round(clear_color[1] * 256) +
+				clear_color[2]
 		}
 
 		try {

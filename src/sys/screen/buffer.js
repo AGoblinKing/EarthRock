@@ -2,7 +2,7 @@ import * as twgl from "twgl"
 import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 
-import { map } from "/util/object.js"
+import { map } from "/object.js"
 
 const blank = () => ({
 	sprite: [],

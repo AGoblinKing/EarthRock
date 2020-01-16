@@ -1,7 +1,7 @@
-import { extend } from "/util/object.js"
+import { extend } from "/object.js"
 import cuid from "cuid"
 
-const proto_flock = {
+export default extend({
 	cancel () {
 		const removes = [...this.birds]
 
@@ -49,6 +49,4 @@ const proto_flock = {
 		this.value_cancel()
 		this.cancel()
 	}
-}
-
-export default extend(proto_flock)
+})

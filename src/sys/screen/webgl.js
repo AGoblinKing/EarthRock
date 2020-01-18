@@ -2,7 +2,7 @@ import * as twgl from "twgl"
 import Color from "color"
 
 import { write } from "/store.js"
-import { frame, tick } from "/sys/time.js"
+import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
 import { SPRITES, CLEAR_COLOR } from "/sys/flag.js"
@@ -37,7 +37,7 @@ export default () => {
 				t
 			)
 
-			if (1 - t < 0.1) {
+			if (1 - t < 0.05) {
 				smooth_position.update()
 			}
 

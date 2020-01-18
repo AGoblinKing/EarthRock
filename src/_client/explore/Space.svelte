@@ -56,13 +56,14 @@ const space_bird = write(false)
 		use:color={$name}
 		style="border: 0.25rem solid {$THEME_BORDER};"
 	>
+	<div class="postage" on:click={toggle}>
+			<Postage address={`/${$w_name}/${$name}`}/>
+		</div>
 		<div class="name">
 			{$name}
 		</div>
 
-		<div class="postage" on:click={toggle}>
-			<Postage address={`/${$w_name}/${$name}`}/>
-		</div>
+
 	</div>
 {/if}
 
@@ -103,21 +104,21 @@ const space_bird = write(false)
 .postage {
   width: 2rem;
   height: 2rem;
-  display: flex;
-  margin: 0 1rem;
+  margin: 0.5rem 1rem;
 }
 
 .space {
   display: flex;
   align-items: center;
   padding: 0.5rem;
-
+	margin: 0 1rem;
   border-right: none;
   padding-right: 1rem;
 }
 
 .name {
   flex: 1;
+	font-size: 2rem;
 }
 
 .space:hover {

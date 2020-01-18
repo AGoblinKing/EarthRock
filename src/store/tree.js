@@ -51,7 +51,7 @@ export const proto_tree = extend(proto_difference, {
 			const value_self = values[key]
 
 			if (!value_self) {
-				adds[key] = value
+				adds[key] = typeof value === `object` && value !== null && value.get ? value : write(value)
 				return
 			}
 

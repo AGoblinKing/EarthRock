@@ -12,6 +12,7 @@ export let channel
 export let space
 export let weave
 export let nothread
+export let right = false
 
 let editing = false
 $: address = `${space.id.get()}/${channel[0]}`
@@ -19,9 +20,16 @@ $: value = channel[1]
 
 let chain
 
+const get_chain = () => right
+	?	weave.chain(address, right).slice(1)
+	: weave.chain(address).slice(0, -1)
+
+const update_chain = () => {
+	chain = get_chain()
+}
+
 $: {
-	$value
-	chain = weave.chain(address).slice(0, -1)
+	update_chain($value)
 }
 
 $: boxes = chain
@@ -36,7 +44,7 @@ const execute = () => {
 	if (!editing) return
 	editing = false
 
-	chain = weave.chain(address).slice(0, -1)
+	update_chain()
 }
 
 $:style = [
@@ -52,8 +60,7 @@ const do_edit = (e) => {
 	editing = true
 
 	edit = format(
-		weave.chain(address)
-			.slice(0, -1)
+		get_chain()
 			.map((i) => translate(i, weave))
 			.join(` => `)
 	)
@@ -115,15 +122,15 @@ $:active = false
 		{/if}
 	</div>
 {/if}
+
 <style>
 .spot {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   position: absolute;
-  right: 20%;
-  margin-right: -2rem;
-  width: auto;
+  right: 62.5%;
+	margin-right: -2rem;
   margin-top: -0.2rem;
 }
 
@@ -139,12 +146,12 @@ $:active = false
 
 
 .thread.active {
-  box-shadow: 0.25rem 0.25rem 0 rgba(255, 115, 0, 0.25),
-  -0.25rem -0.25rem 0 rgba(255, 115, 0, 0.25);
+	box-shadow: 0.25rem 0.25rem 0 rgba(255, 115, 0, 0.25),
+	-0.25rem -0.25rem 0 rgba(255, 115, 0, 0.25);
 }
 
 .thread:hover {
-  color: white;
+	color: white;
 }
 
 .after-thread {
@@ -158,6 +165,7 @@ $:active = false
 .cap.nothread:hover {
 	background-color: rgba(0,0,0,0.5);
 }
+
 .cap {
 	display: flex;
 	justify-content: center;
@@ -167,6 +175,7 @@ $:active = false
 	z-index: 2;
 	user-select: none;
 }
+
 .cap:hover {
   background-color: rgba(255, 255, 255, 0.25);
 }

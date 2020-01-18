@@ -63,10 +63,12 @@ const focusd = (node) => {
 
   {#if key === `sprite`}
     <SpriteEditor {value} />
+		<gdiv class="flex"/>
 	{:else if key === `color`}
-	<ColorEditor {value} />
+		<ColorEditor {value} />
+		<div class="flex"/>
   {:else}
-  <div class="value">
+  	<div class="value">
     {
      JSON.stringify(edit)
     }
@@ -89,6 +91,7 @@ const focusd = (node) => {
     }}
   />
 {/if}
+<Thread {channel} {space} {weave} {nothread} right={true} />
 
 </div>
 <style>
@@ -102,8 +105,9 @@ const focusd = (node) => {
   display: flex;
   overflow: hidden;
   margin-left: 1rem;
-  border-top: none !important;
-
+  margin-right: 2rem;
+	border-top-width: 0.125rem !important;
+	border-bottom-width: 0.125rem !important;
 }
 
 .channel.out {
@@ -116,6 +120,8 @@ const focusd = (node) => {
   border-right: 0.25rem solid rgba(0,0, 0,0.5);
   padding: 0.5rem;
 }
+
+.flex { flex: 1; }
 
 .out .key {
   border-right: none;

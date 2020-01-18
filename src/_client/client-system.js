@@ -13,6 +13,7 @@ import * as camera from "/sys/camera.js"
 
 // private sytems
 import "/sys/data.js"
+import "/sys/physics.js"
 
 const normalize = (sys) => map(flag)(
 	([k, entry]) => [

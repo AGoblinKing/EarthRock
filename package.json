@@ -3,7 +3,6 @@
 	"version": "1.0.0",
 	"license": "GPL-3.0-or-later",
 	"devDependencies": {
-		"cannon": "^0.6.2",
 		"color-js": "^1.0.5",
 		"cuid": "^2.1.8",
 		"eslint": "^6.8.0",
@@ -24,6 +23,7 @@
 		"rollup-plugin-glslify": "^1.1.3",
 		"rollup-plugin-json": "^4.0.0",
 		"rollup-plugin-node-resolve": "^5.2.0",
+		"rollup-plugin-notify": "^1.1.0",
 		"rollup-plugin-replace-html-vars": "^1.0.3",
 		"rollup-plugin-root-import": "^0.2.4",
 		"rollup-plugin-svelte": "^5.1.1",
@@ -41,15 +41,12 @@
 		"build:wheel": "rollup -c ./src/_wheel.config.js",
 		"build:physics": "rollup -c ./src/_physics.config.js",
 		"build:client": "rollup -c ./src/_client.config.js",
-
 		"auto": "run-p auto:ext auto:wheel auto:physics auto:client",
 		"auto:ext": "rollup -w -c ./src/_ext.config.js",
 		"auto:wheel": "rollup -w -c ./src/_wheel.config.js",
 		"auto:physics": "rollup -w -c ./src/_physics.config.js",
 		"auto:client": "rollup -w -c ./src/_client.config.js",
-
 		"dev": "run-p start auto",
-
 		"start": "run-script-os",
 		"start:windows": ".\\bin\\bifrost.exe",
 		"start:macos": "bin/bifrost",

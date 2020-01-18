@@ -75,11 +75,6 @@ const proto_space = extend(proto_warp, {
 
 	rez () {
 		this.rezed = true
-		this.weave.spaces.update(($spaces) => {
-			$spaces.set(this.id.get(), this)
-
-			return $spaces
-		})
 
 		each(this.twists)(([_, twist]) => {
 			twist.rez && twist.rez()
@@ -88,11 +83,6 @@ const proto_space = extend(proto_warp, {
 
 	derez () {
 		this.rezed = false
-		this.weave.spaces.update(($spaces) => {
-			$spaces.delete(this.id.get())
-
-			return $spaces
-		})
 
 		each(this.twists)(([_, twist]) => {
 			twist.derez && twist.derez()

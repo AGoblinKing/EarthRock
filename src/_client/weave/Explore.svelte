@@ -1,12 +1,13 @@
 <script>
 import { github } from "/sys/file.js"
+import { key } from "/sys/key.js"
+import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 
 import Omni from "/_client/explore/Omni.svelte"
+import Weave from "/_client/explore/Weave.svelte"
+
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
-import Weave from "/_client/explore/Weave.svelte"
-import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
-import { key } from "/sys/key.js"
 
 key.listen(char => {
 	if (char !== `\``) return
@@ -56,8 +57,9 @@ const command = ([action, ...details], msg) => {
 .logo:hover {
 	color: rgba(60, 255, 0, 0.8);
 }
+
 .partial {
-	width: 20%;
+	width: 25%;
 	display: flex;
 	flex-direction: column;
 }
@@ -65,8 +67,8 @@ const command = ([action, ...details], msg) => {
 .explore {
 	opacity: 0.95;
 	position: absolute;
-	align-items: flex-end;
-	font-size: 1.5rem;
+	align-items: center;
+	font-size: 1.25rem;
 	scrollbar-color: #333;
 	scrollbar-width: 1rem;
 	scroll-behavior: smooth;

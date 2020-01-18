@@ -3,6 +3,7 @@ import { terser } from 'rollup-plugin-terser'
 import rootImport from 'rollup-plugin-root-import'
 import resolve from 'rollup-plugin-node-resolve'
 import visualizer from 'rollup-plugin-visualizer'
+import notify from 'rollup-plugin-notify'
 
 const production = !process.env.ROLLUP_WATCH
 
@@ -19,12 +20,13 @@ export default {
 	},
 
 	plugins: [
+		notify(),
 		visualizer({
 			filename: `docs/stats/physics.html`
 		}),
 
 		rootImport({
-			root: `${__dirname}/src`,
+			root: __dirname,
 			useEntry: `prepend`
 		}),
 
@@ -32,6 +34,7 @@ export default {
 
 		resolve({ browser: true }),
 		production && terser()
+
 	],
 
 	watch: {

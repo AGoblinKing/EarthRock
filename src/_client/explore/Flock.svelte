@@ -48,7 +48,7 @@ $: {
 			use:color={$bird_name}
 		>&lt;</div>
 
-		<div>{birdex + 1} : {$birds.length}</div>
+		<div class="flex">{birdex + 1} : {$birds.length}</div>
 		<div
 			class="button"
 			use:color={$bird_name}
@@ -68,6 +68,12 @@ $: {
 </div>
 
 <style>
+.flex {
+	flex: 1;
+	display: flex;
+	justify-content: space-evenly;
+}
+
 .button	 {
 	padding: 0;
 	border: 0.5rem solid rgba(0,0,0,0.5);
@@ -82,8 +88,9 @@ $: {
 	user-select: none;
 	display: flex;
 	flex-basis: 1;
-	margin-left: 2rem;
-	justify-content: space-evenly;
+	margin-left: 3rem;
+	margin-right: 3rem;
+
 }
 
 .navigation > div {

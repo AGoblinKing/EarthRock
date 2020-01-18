@@ -1,8 +1,8 @@
 import * as twgl from "twgl"
 import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
-
-import { map } from "/object.js"
+import { visible } from "/weave/twist/visible.js"
+import { map, values } from "/object.js"
 
 const blank = () => ({
 	sprite: [],
@@ -110,17 +110,24 @@ const last = {
 
 let last_snap = Date.now()
 
+// we're a frame behind always
+const get_time = () => {
+	const t = (Date.now() - last_snap) / TIME_TICK_RATE.get()
+
+	return t
+	//
+}
+
 export const snapshot = () => ({
 	count,
 	buffer,
-	time: (Date.now() - last_snap) / TIME_TICK_RATE.get()
+	time: get_time()
 })
 
 // TODO: Buffers could keep a fairly stagnent array with some work
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
 	const buffs = blank()
-	const running = Wheel.running.get()
 
 	const set_last = (key, id, count = 1) => {
 		const key_last = last[key][id] || buffs[key].slice(-count)
@@ -128,49 +135,45 @@ tick.listen(() => requestAnimationFrame(() => {
 		buffs[`${key}_last`].push(...key_last)
 	}
 
-	Object.values(Wheel.weaves.get()).forEach((weave) => {
-		// not running
-		if (!running[weave.name.get()]) return
+	// get sprites from sprite twist
+	const spaces = values(visible)
 
-		const spaces = [...weave.spaces.get().values()]
+	spaces.forEach((warp) => {
+		const id = warp.id.get()
+		const vs = warp.value.get()
 
-		spaces.forEach((warp) => {
-			const id = warp.id.get()
-			const vs = warp.value.get()
+		defaults.forEach(([key, def]) => {
+			if (!vs[key]) {
+				return buffs[key].push(...def)
+			}
 
-			defaults.forEach(([key, def]) => {
-				if (!vs[key]) {
-					return buffs[key].push(...def)
+			let value = vs[key].get()
+
+			if (typeof value === `number`) {
+				value = Array(def.length).fill(value)
+			}
+
+			if (!Array.isArray(value)) {
+				return buffs[key].push(...def)
+			}
+
+			const result = []
+			for (let i = 0; i < def.length; i++) {
+				if (typeof value[i] !== `number` || i >= value.length) {
+					result.push(def[i])
+					return
 				}
+				result.push(value[i])
+			}
 
-				let value = vs[key].get()
-
-				if (typeof value === `number`) {
-					value = Array(def.length).fill(value)
-				}
-
-				if (!Array.isArray(value)) {
-					return buffs[key].push(...def)
-				}
-
-				const result = []
-				for (let i = 0; i < def.length; i++) {
-					if (typeof value[i] !== `number` || i >= value.length) {
-						result.push(def[i])
-						return
-					}
-					result.push(value[i])
-				}
-
-				buffs[key].push(...result)
-			})
-
-			set_last(`position`, id, 3)
-			set_last(`scale`, id)
-			set_last(`alpha`, id)
-			set_last(`rotation`, id)
-			set_last(`color`, id)
+			buffs[key].push(...result)
 		})
+
+		set_last(`position`, id, 3)
+		set_last(`scale`, id)
+		set_last(`alpha`, id)
+		set_last(`rotation`, id)
+		set_last(`color`, id)
 	})
 
 	Object.entries(buffs).forEach(([key, buff]) => {

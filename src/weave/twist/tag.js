@@ -1,9 +1,7 @@
 import { extend } from "/object.js"
 
 // [tag]: Set [id]
-const tags = Wheel.shared.tags = {
-	// players: [id, id2]
-}
+export const tags = {}
 
 export default extend({
 	cleanup () {

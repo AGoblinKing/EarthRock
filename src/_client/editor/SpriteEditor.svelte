@@ -14,16 +14,25 @@ const to_grid = (num, ratio) => {
 	return Math.max(0, Math.min(v, $TILE_COLUMNS - 1))
 }
 
+const fix = (e) => {
+	const [half_w, half_h] = [e.target.clientWidth / 2, e.target.clientHeight / 2]
+	return [e.layerX + half_w, e.layerY + half_h]
+}
+
 const track = (e) => {
 	const ratio = e.target.clientWidth / $TILE_COLUMNS
 
-	x = to_grid(e.layerX, ratio) * ratio
-	y = to_grid(e.layerY, ratio) * ratio
+	const [layer_x, layer_y] = fix(e)
+
+	x = to_grid(layer_x, ratio) * ratio
+	y = to_grid(layer_y, ratio) * ratio
 }
 
 const select = (e) => {
 	const ratio = e.target.clientWidth / $TILE_COLUMNS
-	value.set(to_grid(e.layerX, ratio) + to_grid(e.layerY, ratio) * $TILE_COLUMNS)
+
+	const [layer_x, layer_y] = fix(e)
+	value.set(to_grid(layer_x, ratio) + to_grid(layer_y, ratio) * $TILE_COLUMNS)
 	editing = false
 }
 
@@ -72,8 +81,8 @@ const blur = () => {
 
 <style>
 .tile {
-  height: 1.75rem;
-  width: 1.75rem;
+  height: 1.5rem;
+  width: 1.5rem;
   display: flex;
   justify-self: center;
   margin: 0.25rem;
@@ -88,14 +97,19 @@ const blur = () => {
 }
 
 .edit {
-  position: absolute;
-  right: 0;
+  position: fixed;
+
+	left: 50%;
+	top: 50%;
+
   z-index: 5;
-  bottom: 0;
+
   width: 64rem;
-  margin: 1rem;
   height: 64rem;
+
+  margin: 1rem;
   background-size: 100%;
+	transform: translate(-50%, -50%);
 }
 
 .cursor {

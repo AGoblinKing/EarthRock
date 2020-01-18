@@ -71,8 +71,8 @@ const move = ({ x, y, target }) => {
 
 .picker {
   border: 0.2rem solid rgba(0,0,0,0.5);
-  height: 1.75rem;
-  width: 1.75rem;
+  height: 1.5rem;
+  width: 1.5rem;
   margin: 0.25rem;
 }
 </style>

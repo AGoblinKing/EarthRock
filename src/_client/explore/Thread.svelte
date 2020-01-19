@@ -91,6 +91,7 @@ $:active = false
 	{#if chain.length > 0}
 		<div
 			class="spot"
+			class:right
 			on:click={do_edit}
 		>
 		{#each chain as link}
@@ -125,15 +126,20 @@ $:active = false
 
 <style>
 .spot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  position: absolute;
-  right: 62.5%;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	position: absolute;
+	right: 62.5%;
 	margin-right: -2rem;
-  margin-top: -0.2rem;
+	margin-top: -0.2rem;
 }
 
+.spot.right {
+	left:62.5%;
+	flex-direction: row-reverse;
+	right: auto;
+}
 
 .thread {
   white-space: nowrap;

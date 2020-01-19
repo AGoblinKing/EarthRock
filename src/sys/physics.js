@@ -2,7 +2,10 @@
 import { write } from "/store.js"
 import { tick } from "/sys/time.js"
 import { each, map } from "/object.js"
+
 const physics = new Worker(`/bin/physics.bundle.js`)
+
+export const bodies = write({})
 
 const ask = () => requestAnimationFrame(() => {
 	const msg = map(bodies.get())(([key, body]) => {
@@ -18,7 +21,8 @@ const ask = () => requestAnimationFrame(() => {
 				scale: def($body.scale, 1),
 				"!real": def($body[`!real`], false),
 				"!name": def($body[`!name`], `id-${key}`),
-				mass: def($body.mass, 1)
+				mass: def($body.mass, 1),
+				"!force": def($body[`!force`], undefined)
 			}
 		]
 	})
@@ -46,8 +50,6 @@ physics.onmessage = ({ data }) => {
 		ask()
 	}
 }
-
-export const bodies = write({})
 
 export const add = (...spaces) => {
 	const $bodies = bodies.get()

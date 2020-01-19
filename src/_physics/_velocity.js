@@ -37,7 +37,9 @@ export default (body, bodies) => {
 		body.mass === 0 ||
 		// too slow to bother
 		v3.length(body[`!velocity`]) < MIN
-	) return
+	) {
+		return
+	}
 
 	let decay = DECAY
 	decay = body.mass >= 0 ? decay * body.mass : decay / Math.abs(body.mass)
@@ -66,28 +68,17 @@ export default (body, bodies) => {
 					v3.mulScalar(body[`!velocity`], 0.5),
 					body_other[`!velocity`]
 				)
-
-				// bounce self
-				v3.mulScalar(body[`!velocity`], 0.5, body[`!velocity`])
-			} else {
-				// doh wall bounce self
-				v3.mulScalar(body[`!velocity`], 0.75, body[`!velocity`])
 			}
 
 			const diff = v3.subtract(body.position, body_other.position)
 
 			// undo last move
-			v3.subtract(body.position, v3.mulScalar(body[`!velocity`], 1.0), body.position)
-
-			// TODO: don't undo last move, put them along the edge of the body
-			// they collided with
+			v3.subtract(body.position, body[`!velocity`], body.position)
 
 			if (Math.abs(diff[0]) > Math.abs(diff[1])) {
 				body[`!velocity`][0] = -body[`!velocity`][0]
-				body[`!velocity`][1] = -body[`!velocity`][1] * 0.5
 			} else {
 				body[`!velocity`][1] = -body[`!velocity`][1]
-				body[`!velocity`][0] = -body[`!velocity`][0] * 0.5
 			}
 		}
 	})

@@ -2,35 +2,17 @@ import * as twgl from "twgl"
 import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 import { visible } from "/weave/twist/visible.js"
-import { map, values } from "/object.js"
+import { map, values, each, keys } from "/object.js"
 
-const blank = () => ({
-	sprite: [],
-
-	position: [],
-	position_last: [],
-
-	scale: [],
-	scale_last: [],
-
-	color: [],
-	color_last: [],
-
-	alpha: [],
-	alpha_last: [],
-
-	rotation: [],
-	rotation_last: []
-})
-
-const defaults = Object.entries({
+const defaults = {
 	position: [0, 0, 0],
 	sprite: [0],
 	scale: [1],
 	color: [0xFFFFFF],
 	rotation: [0],
-	alpha: [1]
-})
+	alpha: [1],
+	flags: [0]
+}
 
 const verts = twgl.primitives.createXYQuadVertices(1)
 
@@ -45,150 +27,261 @@ const buffer = {
 	),
 	translate_last: {
 		divisor: 1,
-		data: [],
+		data: new Float32Array(3),
 		numComponents: 3
 	},
 	translate: {
 		divisor: 1,
-		data: [],
+		data: new Float32Array(3),
 		numComponents: 3
 	},
 	rotation: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	},
 	rotation_last: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	},
 	alpha: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	},
 	alpha_last: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	},
 	color: {
 		numComponents: 1,
-		data: [],
+		data: new Int32Array(1),
 		divisor: 1
 	},
 	color_last: {
 		numComponents: 1,
-		data: [],
+		data: new Int32Array(1),
 		divisor: 1
 	},
 	sprite: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
+		divisor: 1
+	},
+	flags: {
+		numComponents: 1,
+		data: new Int32Array(1),
 		divisor: 1
 	},
 	scale: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	},
 	scale_last: {
 		numComponents: 1,
-		data: [],
+		data: new Float32Array(1),
 		divisor: 1
 	}
 }
 
-const last = {
-	position: {},
-	scale: {},
-	alpha: {},
-	color: {},
-	rotation: {}
-}
-
 let last_snap = Date.now()
 
-// we're a frame behind always
 const get_time = () => {
 	const t = (Date.now() - last_snap) / TIME_TICK_RATE.get()
 
 	return t
-	//
 }
 
-export const snapshot = () => ({
-	count,
-	buffer,
-	time: get_time()
-})
-
-// TODO: Buffers could keep a fairly stagnent array with some work
-// RAF so it happens at end of frame
-tick.listen(() => requestAnimationFrame(() => {
-	const buffs = blank()
-
-	const set_last = (key, id, count = 1) => {
-		const key_last = last[key][id] || buffs[key].slice(-count)
-		last[key][id] = buffs[key].slice(-count)
-		buffs[`${key}_last`].push(...key_last)
-	}
-
-	// get sprites from sprite twist
-	const spaces = values(visible)
-
-	spaces.forEach((warp) => {
-		const id = warp.id.get()
-		const vs = warp.value.get()
-
-		defaults.forEach(([key, def]) => {
-			if (!vs[key]) {
-				return buffs[key].push(...def)
-			}
-
-			let value = vs[key].get()
-
-			if (typeof value === `number`) {
-				value = Array(def.length).fill(value)
-			}
-
-			if (!Array.isArray(value)) {
-				return buffs[key].push(...def)
-			}
-
-			const result = []
-			for (let i = 0; i < def.length; i++) {
-				if (typeof value[i] !== `number` || i >= value.length) {
-					result.push(def[i])
-					return
-				}
-				result.push(value[i])
-			}
-
-			buffs[key].push(...result)
+let buffer_info
+const get_buffer = (gl) => {
+	if (buffer_info) {
+		each(buffer)(([key, { data, divisor }]) => {
+			if (divisor !== 1) return
+			twgl.setAttribInfoBufferFromArray(
+				gl,
+				buffer_info.attribs[key],
+				data
+			)
 		})
 
-		set_last(`position`, id, 3)
-		set_last(`scale`, id)
-		set_last(`alpha`, id)
-		set_last(`rotation`, id)
-		set_last(`color`, id)
+		return buffer_info
+	}
+
+	buffer_info = twgl.createBufferInfoFromArrays(
+		gl,
+		buffer
+	)
+
+	dirty = true
+	return buffer_info
+}
+
+let dirty
+export const snapshot = (gl) => {
+	const result = {
+		count,
+		buffer_info: get_buffer(gl),
+		time: get_time(),
+		dirty
+	}
+	if (dirty) dirty = false
+	return result
+}
+
+const keydex = {}
+
+let buffer_count = 0
+
+const available = []
+
+const expand = (amount = 100) => {
+	buffer_info = false
+
+	const count_new = buffer_count + amount
+
+	values(buffer).forEach(({
+		divisor,
+		data,
+		numComponents
+	}) => {
+		if (divisor !== 1) return
+		each(buffer)(([_, buff]) => {
+			const { data, numComponents, divisor } = buff
+			if (divisor !== 1) return
+
+			buff.data = new data.__proto__.constructor(numComponents * count_new)
+
+			buff.data.set(data, 0)
+		})
 	})
 
-	Object.entries(buffs).forEach(([key, buff]) => {
-		if (key === `position`) {
-			buffer.translate.data = buff
-			return
-		}
-		if (key === `position_last`) {
-			buffer.translate_last.data = buff
-			return
+	available.push(...[...Array(amount)].map((_, i) => buffer_count + i))
+	buffer_count = count_new
+}
+
+const to_idx = (key) => {
+	if (keydex[key] === undefined) {
+		// grab an available key
+		if (available.length === 0) {
+			expand()
 		}
 
-		buffer[key].data = buff
+		keydex[key] = available.shift()
+	}
+
+	return keydex[key]
+}
+
+// free the key value and make the idx available
+const free = (key) => {
+	const idx = keydex[key]
+	// this key is freEEeee already
+	if (idx === undefined) return
+
+	available.push(idx)
+
+	each(buffer)(([_, { data, numComponents, divisor }]) => {
+		if (divisor !== 1) return
+
+		// zero it out
+		data.set([...Array(numComponents)].fill(0), idx * numComponents)
+	})
+}
+
+let last_update
+// RAF so it happens at end of frame
+tick.listen(() => requestAnimationFrame(() => {
+	if (!buffer_info) return
+
+	// grab the shiz
+	const { update, remove, add } = visible.hey()
+
+	// add all the defaults for each one
+	add.forEach((key) => {
+		each(defaults)(([key_d, val]) => {
+			if (buffer[`${key_d}_last`]) {
+				const idx = to_idx(key)
+				const { data, numComponents } = buffer[`${key_d}_last`]
+
+				data.set([...val], idx * numComponents)
+			}
+
+			// already set
+			if (update[key] && update[key][key_d] !== undefined) return
+
+			update[key][key_d] = visible.value[key][key_d] === undefined
+				? visible.value[key].get_value(key_d)
+				: [...val]
+		})
 	})
 
-	count = buffer.sprite.data.length
+	each(update)(([key, space]) => {
+		const idx = to_idx(key)
+		last_update.delete(key)
+
+		each(buffer)(([key_b, { data, divisor, numComponents }]) => {
+			if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
+
+			const bdx = idx * numComponents
+
+			// alias positon to translate
+			const space_key = key_b === `translate` ? `position` : key_b
+			const twist = space[space_key]
+
+			let update_set
+			// TODO: Maybe store all values in twists as TypeArrays?
+			if (typeof twist === `number`) {
+				update_set = [...Array(numComponents)].fill(twist)
+			} else if (Array.isArray(twist)) {
+				// assume under not over
+				if (twist.length < numComponents) {
+					for (let i = numComponents - twist.length; i < twist.length; i++) {
+						twist[i] = defaults[space_key][i]
+					}
+				}
+
+				update_set = twist.slice(0, numComponents)
+			} else {
+				// otherwise wtf was that? lets set default
+				update_set = [...data.subarray(bdx, bdx + numComponents)]
+			}
+
+			// update your last buffer if it exists
+			if (buffer[`${key_b}_last`] !== undefined) {
+				const { data: data_last } = buffer[`${key_b}_last`]
+
+				data_last.set([...data.subarray(bdx, bdx + numComponents)], bdx)
+			}
+
+			return data.set(update_set, bdx)
+		})
+	})
+
+	remove.forEach((key) => {
+		last_update.delete(key)
+		free(key)
+	})
+
+	last_update && last_update.forEach((key) => {
+		const idx = to_idx(key)
+
+		each(buffer)(([key_b, { data, divisor, numComponents }]) => {
+			if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
+
+			const bdx = idx * numComponents
+
+			if (buffer[`${key_b}_last`] !== undefined) {
+				const { data: data_last } = buffer[`${key_b}_last`]
+
+				data_last.set([...data.subarray(bdx, bdx + numComponents)], bdx)
+			}
+		})
+	})
+
+	count = buffer_count
 	last_snap = Date.now()
+	last_update = new Set(keys(update))
 }))

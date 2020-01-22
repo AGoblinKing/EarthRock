@@ -3,6 +3,7 @@ import color from "/_client/action/color.js"
 import { THEME_BORDER } from "/sys/flag.js"
 import { read, write } from "/store.js"
 
+import nav from "/_client/action/nav.js"
 import Flock from "./Flock.svelte"
 import Channel from "./Channel.svelte"
 import Postage from "/_client/weave/Postage.svelte"
@@ -54,19 +55,18 @@ const space_bird = write(false)
 		class="space"
 		class:open
 		use:color={$name}
+		use:nav={{ id: space.address() }}
 		style="border: 0.25rem solid {$THEME_BORDER};"
 	>
-	<div class="postage" on:click={toggle}>
+		<div class="postage" on:click={toggle}>
 			<Postage address={`/${$w_name}/${$name}`}/>
 		</div>
 		<div class="name">
 			{$name}
 		</div>
-
-
 	</div>
-{/if}
 
+{/if}
 {#if open}
   <div class="chans">
   {#each chans as channel (channel[0])}

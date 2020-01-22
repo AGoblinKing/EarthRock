@@ -124,8 +124,8 @@ const proto_space = extend(proto_warp, {
 		}, {})
 	},
 
-	write (update) {
-		return this.value.write(update)
+	write (update, shh) {
+		return this.value.write(update, shh)
 	}
 })
 

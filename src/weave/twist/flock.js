@@ -1,4 +1,6 @@
 import { extend } from "/object.js"
+import { any } from "/store.js"
+
 import cuid from "cuid"
 
 export default extend({
@@ -15,16 +17,18 @@ export default extend({
 		const { value, space, weave } = this
 		this.birds = []
 
-		this.value_cancel = value.listen(($value) => {
-			const split = $value.split(` `)
-			let count = 1
-			if (split.length > 1) {
-				count = parseInt(split[0])
-				$value = split.slice(1).join(` `)
-			}
+		if (!space.get(`count`)) {
+			space.write({ count: 1 }, true)
+		}
+		let last_bird = ``
+		let last_count = 0
 
+		this.value_cancel = any(value, space.get(`count`))(($value, $count) => {
+			if (last_bird === $value && $count === last_count) return
+			last_bird = $value
+			last_count = $count
 			this.cancel()
-			const update = Object.fromEntries([...Array(count)].map(
+			const update = Object.fromEntries([...Array($count)].map(
 				(_, i) => {
 					return [`&${cuid()}`, {
 						type: `space`,

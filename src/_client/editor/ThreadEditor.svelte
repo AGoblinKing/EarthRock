@@ -5,6 +5,7 @@ import { compile } from "/weave/thread.js"
 export let code
 export let weave
 export let address
+export let right
 
 export let ondone = () => {}
 
@@ -16,7 +17,7 @@ const execute = () => {
 	// prevent back to back compiles
 	if (!editing) return
 	editing = false
-	compile({ code, weave, address })
+	compile({ code, weave, address, right })
 	ondone()
 }
 </script>

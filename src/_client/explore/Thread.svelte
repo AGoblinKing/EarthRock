@@ -21,7 +21,7 @@ $: value = channel[1]
 let chain
 
 const get_chain = () => right
-	?	weave.chain(address, right).slice(1)
+	? weave.chain(address, right).slice(1)
 	: weave.chain(address).slice(0, -1)
 
 const update_chain = () => {
@@ -73,7 +73,7 @@ $:active = false
 </script>
 
 {#if editing}
-  <ThreadEditor code={edit} ondone={execute} {weave} {address}/>
+	<ThreadEditor code={edit} ondone={execute} {weave} {address} {right}/>
 {/if}
 
 {#if nothread}
@@ -130,13 +130,14 @@ $:active = false
 	align-items: center;
 	justify-content: flex-start;
 	position: absolute;
-	right: 62.5%;
-	margin-right: -2rem;
+	right: 50%;
+	margin-right: 18rem;
 	margin-top: -0.2rem;
 }
 
 .spot.right {
-	left:62.5%;
+	left:50%;
+	margin-left: 18rem;
 	flex-direction: row-reverse;
 	right: auto;
 }

@@ -66,44 +66,48 @@ export default () => {
 		sprite.get()
 	)
 
-	canvas.snap = write(snapshot())
+	canvas.snap = write(snapshot(gl))
 
 	const view = m4.identity()
 	const view_projection = m4.identity()
 
+	let vertex_info
 	// lifecycle on warp
+
+	const drawObjects = [{
+		programInfo: program_info,
+		vertexArrayInfo: vertex_info,
+		uniforms: {},
+		instanceCount: 0
+	}]
+
+	gl.enable(gl.DEPTH_TEST)
+	gl.enable(gl.BLEND)
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.useProgram(program_info.program)
+
 	canvas.cancel = frame.listen(([time, t]) => {
-		const snap = snapshot()
-
-		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-
-		gl.clearColor(...clear_color)
+		gl.viewport(0, 0, canvas.width, canvas.height)
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+		gl.clearColor(...clear_color)
+		const snap = snapshot(gl)
+		if (snap.count < 1) return
 
-		// see what these are about
-		gl.enable(gl.DEPTH_TEST)
-		gl.enable(gl.BLEND)
-		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		const r = canvas.width / canvas.height
-
-		const projection = twgl.m4.ortho(
-			-10 * r, 10 * r, 10, -10, -100, 50
-		)
-
+		const projection = twgl.m4.ortho(-10 * r, 10 * r, 10, -10, -100, 50)
 		const c = camera.get()
-
 		const $pos = smooth_position.get(snap.time)
 
 		m4.lookAt($pos, twgl.v3.add($pos, look.get()), up, c)
 		m4.inverse(c, view)
-
 		m4.multiply(projection, view, view_projection)
 
-		if (snap.count < 1) {
-			return
+		if (snap.dirty || !drawObjects[0].vertexArrayInfo) {
+			drawObjects[0].vertexArrayInfo = twgl.createVertexArrayInfo(gl, program_info, snap.buffer_info)
 		}
 
-		const u = {
+		drawObjects[0].instanceCount = snap.count
+		drawObjects[0].uniforms = {
 			u_map: textures.map,
 			u_time: snap.time,
 			u_sprite_size: 16,
@@ -114,27 +118,7 @@ export default () => {
 				clear_color[2]
 		}
 
-		try {
-			const buffer_info = twgl.createBufferInfoFromArrays(
-				gl,
-				snap.buffer
-			)
-
-			const vertex_info = twgl.createVertexArrayInfo(gl, program_info, buffer_info)
-
-			gl.useProgram(program_info.program)
-			twgl.setBuffersAndAttributes(gl, program_info, vertex_info)
-			twgl.setUniforms(program_info, u)
-
-			twgl.drawObjectList(gl, [{
-				programInfo: program_info,
-				vertexArrayInfo: vertex_info,
-				uniforms: u,
-				instanceCount: snap.count
-			}])
-		} catch (ex) {
-			console.warn(`GPU ERROR ${ex}`)
-		}
+		twgl.drawObjectList(gl, drawObjects)
 	})
 
 	return canvas

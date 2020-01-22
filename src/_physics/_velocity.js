@@ -30,13 +30,15 @@ export default (body, bodies) => {
 		v3.add(body[`!velocity`], body[`!force`], body[`!velocity`])
 	}
 
+	const length = 	v3.length(body[`!velocity`])
 	if (
 		// bad velocity
 		Array.isArray(body[`!velocity`]) === false ||
 		// 0 mass things don't move ever
 		body.mass === 0 ||
 		// too slow to bother
-		v3.length(body[`!velocity`]) < MIN
+		length < MIN ||
+		length === Infinity
 	) {
 		return
 	}
@@ -45,11 +47,14 @@ export default (body, bodies) => {
 	decay = body.mass >= 0 ? decay * body.mass : decay / Math.abs(body.mass)
 
 	v3.add(body.position, body[`!velocity`], body.position)
+
 	v3.mulScalar(body[`!velocity`], decay, body[`!velocity`])
+
+	const dirty = [body.id]
 
 	// ghost~~~
 	if (!body[`!real`]) {
-		return
+		return dirty
 	}
 
 	// check for collision now that we moved
@@ -63,11 +68,14 @@ export default (body, bodies) => {
 			// absorb/reflect some velocity
 			if (body_other.mass > 0) {
 				// bounce other
+				// TODO: bug probably here
+
 				v3.add(
-					body_other[`!velocity`],
+					body_other[`!velocity`] || [0, 0, 0],
 					v3.mulScalar(body[`!velocity`], 0.5),
 					body_other[`!velocity`]
 				)
+				dirty.push(body_other.id)
 			}
 
 			const diff = v3.subtract(body.position, body_other.position)
@@ -82,4 +90,6 @@ export default (body, bodies) => {
 			}
 		}
 	})
+
+	return dirty
 }

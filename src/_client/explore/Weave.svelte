@@ -1,6 +1,7 @@
 <script>
 import { THEME_STYLE } from "/sys/flag.js"
 
+import nav from "/_client/action/nav.js"
 import Controls from "/_client/weave/Controls.svelte"
 import Command from "/_client/omni/omni_weave.js"
 import { dark } from "/_client/action/color.js"
@@ -30,6 +31,9 @@ $: warps = weave.warps
 	class:open
 	use:dark={$name}
 	style={$THEME_STYLE}
+	use:nav={{
+		id: $name
+	}}
 	on:click={() => {
 		open = !open
 	}}

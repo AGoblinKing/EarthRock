@@ -46,6 +46,23 @@ const command = ([action, ...details], msg) => {
 </script>
 
 <style>
+:global(.nav) {
+	z-index: 2;
+	color: white;
+	box-shadow:
+	inset 0 5rem 0 rgba(224, 168, 83,0.25),
+	inset 0 -5rem 0 rgba(224, 168, 83,0.25),
+	inset 1.60rem 0 0 rgba(224, 168, 83,0.5),
+	inset -1.60rem 0 0 rgba(224, 168, 83,0.5);
+}
+:global(.nav.beat) {
+	box-shadow:
+	inset 0 5rem 0 rgba(224, 168, 83,0.25),
+	inset 0 -5rem 0 rgba(224, 168, 83,0.25),
+	inset 1.00rem 0 0 rgba(224, 168, 83,0.5),
+	inset -1.00rem 0 0 rgba(224, 168, 83,0.5);
+}
+
 .logo {
 	display: none;
 	padding: 0.5rem;
@@ -59,7 +76,7 @@ const command = ([action, ...details], msg) => {
 }
 
 .partial {
-	width: 25%;
+	width: 40rem;
 	display: flex;
 	flex-direction: column;
 }

@@ -47,7 +47,7 @@ const focusd = (node) => {
 	class="channel {side}"
 	style={$THEME_STYLE}
 	use:color={space.name().get()}
-	use:nav={address}
+	use:nav={{ id: address }}
 	on:click={() => {
 		editing = true
 		val = JSON.stringify($value)
@@ -57,39 +57,38 @@ const focusd = (node) => {
 <Thread {channel} {space} {weave} {nothread}/>
 
 {#if !editing}
-  <div class="key">
-    {key}
-  </div>
+	<div class="key">
+		{key}
+	</div>
 
-  {#if key === `sprite`}
-    <SpriteEditor {value} />
-		<gdiv class="flex"/>
+	{#if key === `sprite`}
+		<SpriteEditor {value} />
+		<div class="flex"/>
 	{:else if key === `color`}
 		<ColorEditor {value} />
 		<div class="flex"/>
-  {:else}
-  	<div class="value">
-    {
-     JSON.stringify(edit)
-    }
-    </div>
-  {/if}
+	{:else}
+	<div class="value">
+		{
+		JSON.stringify(edit)
+		}
+		</div>
+	{/if}
 {:else}
-  <input
-    class="edit"
-    use:focusd
-    type="text"
-    bind:value={val}
-    placeholder="JSON PLZ"
-    on:keydown={({ which }) => {
-      if (which !== 13) return
-
-      execute()
-    }}
-    on:blur={() => {
-      execute()
-    }}
-  />
+	<input
+		class="edit"
+		use:focusd
+		type="text"
+		bind:value={val}
+		placeholder="JSON PLZ"
+		on:keydown={({ which }) => {
+			if (which !== 13) return
+			execute()
+		}}
+		on:blur={() => {
+			execute()
+		}}
+	/>
 {/if}
 <Thread {channel} {space} {weave} {nothread} right={true} />
 

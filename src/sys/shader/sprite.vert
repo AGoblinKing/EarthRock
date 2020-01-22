@@ -1,5 +1,5 @@
 #version 300 es
-precision highp float;
+precision lowp float;
 
 uniform mat4 u_view_projection;
 uniform float u_sprite_size;
@@ -19,32 +19,25 @@ in float rotation_last;
 in float alpha;
 in float alpha_last;
 
-in float color;
-in float color_last;
+in int color;
+in int color_last;
 
 in float sprite;
 
 in vec2 position;
+
+in int flags;
 
 out vec2 v_sprite;
 out vec4 v_color;
 
 void main() {
 	// mix the last color and the new color
-	int c_last = int(color_last);
-	int c = int(color);
-
 	v_color = mix(
-		vec4((c_last>>16) &0x0ff, (c_last>>8) &0x0ff, (c_last) & 0x0ff, alpha_last),
-		vec4((c>>16) &0x0ff, (c>>8) &0x0ff, (c) & 0x0ff, alpha),
+		vec4((color_last>>16) &0x0ff, (color_last>>8) &0x0ff, (color_last) & 0x0ff, alpha_last),
+		vec4((color>>16) &0x0ff, (color>>8) &0x0ff, (color) & 0x0ff, alpha),
 		u_time
 	);
-
-	// mix the color with the background color
-	// int ubc = int(u_background_color);
-	// vec4 color_bg = vec4((ubc>>16) &0x0ff, (ubc>>8) &0x0ff, (ubc) & 0x0ff, alpha);
-
-	// v_color = mix(color_bg, v_color, alpha);
 
 	// scale
 	float s = mix(scale_last, scale, u_time);
@@ -55,6 +48,15 @@ void main() {
 
 	vec2 pos_scale = position * s;
 	vec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;
+
+	if((flags & 0x1) == 1) {
+		coords[0] = -1.0 * coords[0];
+	}
+
+	if((flags & 0x2) == 2) {
+		coords[1] = 1.0 - coords[1];
+	}
+
 	v_sprite = coords;
 
 	// position

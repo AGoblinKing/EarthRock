@@ -44,7 +44,9 @@ physics.onmessage = ({ data }) => {
 			update
 		]) => {
 			const body = $bodies[id]
-			if (body) body.write(update)
+			if (!body) return
+
+			body.write(update)
 		})
 
 		ask()

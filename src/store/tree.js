@@ -35,14 +35,14 @@ export const proto_tree = extend(proto_difference, {
 				: write(value)
 	},
 
-	add (data) {
-		this.set(Object.assign(this.get(), data))
+	add (data, shh) {
+		this.set(Object.assign(this.get(), data), shh)
 
 		return this
 	},
 
 	// no stores only values
-	write (data) {
+	write (data, shh) {
 		const adds = {}
 
 		each(data)(([key, value]) => {
@@ -59,7 +59,7 @@ export const proto_tree = extend(proto_difference, {
 		})
 
 		if (Object.keys(adds).length > 0) {
-			this.add(adds)
+			this.add(adds, shh)
 		}
 	},
 

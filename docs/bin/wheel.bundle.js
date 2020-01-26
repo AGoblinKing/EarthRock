@@ -513,6 +513,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 	const warp_create = (data) => {
 		const what = what_is(data);
+
 		return warps_create[what](data)
 	};
 
@@ -669,7 +670,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				const other = Wheel.get(weave.resolve($value, id));
 
 				if (!other) {
-					console.warn(`Invid other for clone`);
+					console.warn(`Invalid other for clone`);
 				}
 
 				const proto = other
@@ -840,7 +841,9 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				{
 					id: key,
 					position: def($body.position, [0, 0, 0]),
-					"!velocity": def($body[`!velocity`], [0, 0, 0]),
+					"!velocity": ($body[`!velocity`] && Array.isArray($body[`!velocity`].get()))
+						? $body[`!velocity`].get().map((i) => i === null ? 0 : i)
+						: [0, 0, 0],
 					scale: def($body.scale, 1),
 					"!real": def($body[`!real`], false),
 					"!name": def($body[`!name`], `id-${key}`),
@@ -1139,7 +1142,9 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 	});
 
 	const json = (v) => {
-		if (v.indexOf(`.`) === -1) {
+		if (typeof v !== `string`) return v
+
+		if (v.indexOf(`.`) === -1 && v.indexOf(`,`) === -1) {
 			const n = parseInt(v);
 			if (typeof n === `number` && !isNaN(n)) {
 				return n
@@ -1326,7 +1331,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		toJSON () {
 			return {
 				type: this.type.get(),
-				value: this.value.get(),
+				value: null,
 				math: this.math.get()
 			}
 		}

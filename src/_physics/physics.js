@@ -23,9 +23,9 @@ const handlers = {
 
 			dirty.forEach((id) => {
 				updates[id] = {
-					position: body.position,
-					"!velocity": body[`!velocity`],
-					"!collide": body[`!collide`]
+					position: bodies[id].position,
+					"!velocity": bodies[id][`!velocity`],
+					"!collide": bodies[id][`!collide`]
 				}
 			})
 		})

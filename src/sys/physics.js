@@ -17,7 +17,9 @@ const ask = () => requestAnimationFrame(() => {
 			{
 				id: key,
 				position: def($body.position, [0, 0, 0]),
-				"!velocity": def($body[`!velocity`], [0, 0, 0]),
+				"!velocity": ($body[`!velocity`] && Array.isArray($body[`!velocity`].get()))
+					? $body[`!velocity`].get().map((i) => i === null ? 0 : i)
+					: [0, 0, 0],
 				scale: def($body.scale, 1),
 				"!real": def($body[`!real`], false),
 				"!name": def($body[`!name`], `id-${key}`),

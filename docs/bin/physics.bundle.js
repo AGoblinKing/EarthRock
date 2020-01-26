@@ -5,6 +5,7 @@
 
 	const each = (obj) => (fn) =>
 		Object.entries(obj).forEach(fn);
+	const values = Object.values;
 
 	/* @license twgl.js 4.14.1 Copyright (c) 2015, Gregg Tavares All Rights Reserved.
 	Available via the MIT license.
@@ -481,13 +482,22 @@
 		)
 	};
 
+	const tick_velocity = (body) => v3.add(body.position, body[`!velocity`], body.position);
+
+	const flip_vel = (body, body_other) => {
+		const diff = v3.subtract(body.position, body_other.position);
+		if (Math.abs(diff[0]) > Math.abs(diff[1])) {
+			body[`!velocity`][0] = -body[`!velocity`][0];
+		} else {
+			body[`!velocity`][1] = -body[`!velocity`][1];
+		}
+	};
 	var Velocity = (body, bodies) => {
 		// for things like gravity
-		if (body.mass > 0 && body[`!force`] && Array.isArray(body[`!force`])) {
-			v3.add(body[`!velocity`], body[`!force`], body[`!velocity`]);
-		}
+		if (body.mass > 0 && body[`!force`] && Array.isArray(body[`!force`])) ;
 
 		const length = 	v3.length(body[`!velocity`]);
+
 		if (
 			// bad velocity
 			Array.isArray(body[`!velocity`]) === false ||
@@ -503,7 +513,7 @@
 		let decay = DECAY;
 		decay = body.mass >= 0 ? decay * body.mass : decay / Math.abs(body.mass);
 
-		v3.add(body.position, body[`!velocity`], body.position);
+		tick_velocity(body);
 
 		v3.mulScalar(body[`!velocity`], decay, body[`!velocity`]);
 
@@ -514,40 +524,51 @@
 			return dirty
 		}
 
+		const interactions = new Set();
+
+		const later = [];
+
 		// check for collision now that we moved
 		// naive check all colliders
 		// absorb some of the impact and bounce them
+		values(bodies).forEach((body_other) => {
+			if	(
+				// prevent double interactions
+				interactions.has(`${body_other.id}_${body.id}`) ||
+				!intersect(body, body_other)
+			) return
 
-		each(bodies)(([_, body_other]) => {
-			if	(intersect(body, body_other)) {
-				body[`!collide`] = body_other.id;
+			body[`!collide`] = body_other.id;
+			interactions.add(`${body.id}_${body_other.id}`);
 
-				// absorb/reflect some velocity
-				if (body_other.mass > 0) {
-					// bounce other
-					// TODO: bug probably here
+			// absorb/reflect some velocity
+			if (body_other.mass === 0) return
+			const transfer = v3.mulScalar(v3.subtract(body[`!velocity`], body_other[`!velocity`]), 0.5);
 
-					v3.add(
-						body_other[`!velocity`] || [0, 0, 0],
-						v3.mulScalar(body[`!velocity`], 0.5),
-						body_other[`!velocity`]
-					);
-					dirty.push(body_other.id);
-				}
+			later.push(() => {
+			// bounce other
+				v3.add(
+					body_other[`!velocity`],
+					transfer,
+					body_other[`!velocity`]
+				);
 
-				const diff = v3.subtract(body.position, body_other.position);
+				// conserve energy
+				v3.add(
+					body[`!velocity`],
+					v3.negate(transfer),
+					body[`!velocity`]
+				);
 
-				// undo last move
-				v3.subtract(body.position, body[`!velocity`], body.position);
+				tick_velocity(body_other);
+			});
 
-				if (Math.abs(diff[0]) > Math.abs(diff[1])) {
-					body[`!velocity`][0] = -body[`!velocity`][0];
-				} else {
-					body[`!velocity`][1] = -body[`!velocity`][1];
-				}
-			}
+			dirty.push(body_other.id);
+
+			flip_vel(body, body_other);
 		});
 
+		later.forEach((fn) => fn());
 		return dirty
 	};
 
@@ -573,9 +594,9 @@
 
 				dirty.forEach((id) => {
 					updates[id] = {
-						position: body.position,
-						"!velocity": body[`!velocity`],
-						"!collide": body[`!collide`]
+						position: bodies[id].position,
+						"!velocity": bodies[id][`!velocity`],
+						"!collide": bodies[id][`!collide`]
 					};
 				});
 			});

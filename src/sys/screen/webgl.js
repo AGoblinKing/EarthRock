@@ -88,8 +88,9 @@ export default () => {
 
 	canvas.cancel = frame.listen(([time, t]) => {
 		gl.viewport(0, 0, canvas.width, canvas.height)
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 		gl.clearColor(...clear_color)
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+
 		const snap = snapshot(gl)
 		if (snap.count < 1) return
 
@@ -102,9 +103,9 @@ export default () => {
 		m4.inverse(c, view)
 		m4.multiply(projection, view, view_projection)
 
-		if (snap.dirty || !drawObjects[0].vertexArrayInfo) {
-			drawObjects[0].vertexArrayInfo = twgl.createVertexArrayInfo(gl, program_info, snap.buffer_info)
-		}
+		// if (snap.dirty || !drawObjects[0].vertexArrayInfo) {
+		drawObjects[0].vertexArrayInfo = twgl.createVertexArrayInfo(gl, program_info, snap.buffer_info)
+		// }
 
 		drawObjects[0].instanceCount = snap.count
 		drawObjects[0].uniforms = {

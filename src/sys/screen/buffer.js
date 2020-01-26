@@ -127,6 +127,7 @@ export const snapshot = (gl) => {
 		time: get_time(),
 		dirty
 	}
+
 	if (dirty) dirty = false
 	return result
 }

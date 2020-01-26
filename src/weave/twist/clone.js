@@ -45,7 +45,7 @@ export default extend({
 			const other = Wheel.get(weave.resolve($value, id))
 
 			if (!other) {
-				console.warn(`Invid other for clone`)
+				console.warn(`Invalid other for clone`)
 			}
 
 			const proto = other

@@ -3,7 +3,7 @@
 	EarthRock.run is a playground to create and play games with your friends.
 
 ## [Goblin Games](http://github.com/agoblin/s/)
-### [Grave Tyrant](http://earthrock.com/?agoblin/s/grave%20tyrant)
+### [Grave Tyrant](http://earthrock.run/?agoblin/s/grave%20tyrant)
 Raid ancient tombs from another planet in a top down bullet hell.
 ![](docs/img/gravetyrant.gif)
 ### Supply Chaos

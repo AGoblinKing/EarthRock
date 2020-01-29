@@ -2,10 +2,10 @@ import { decompile, compile } from "/weave/thread.js"
 import { extend, keys } from "/object.js"
 
 export default extend({
-	grab_script (other, key) {
+	grab_script (other, key, right) {
 		const weave_other = other.weave
 		const other_id = `${other.id.get()}/${key}`
-		const c_o = weave_other.chain(other_id).slice(0, -1)
+		const c_o = weave_other.chain(other_id, right).slice(0, -1)
 		if (c_o.length === 0) return
 
 		const { weave, id, space } = this
@@ -15,8 +15,8 @@ export default extend({
 			address: other_id,
 			weave: weave_other
 		})
-		const address = `${id}/${key}`
 
+		const address = `${id}/${key}`
 		const $value = weave_other.get_id(other.id.get())
 			.value.get(key).get()
 
@@ -31,6 +31,7 @@ export default extend({
 				code,
 				weave,
 				address,
+				right,
 				prefix: `&`
 			}))
 		})
@@ -54,6 +55,7 @@ export default extend({
 
 			keys(proto).forEach((key) => {
 				this.grab_script(other, key)
+				this.grab_script(other, key, true)
 			})
 
 			// set proto

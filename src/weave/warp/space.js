@@ -11,7 +11,7 @@ const type = read(`space`)
 
 const proto_space = extend(proto_warp, {
 	address () {
-		return `/${this.weave.name.get()}/${this.name().get() || this.id.get()}`
+		return `${this.weave.name.get()}/${this.name().get() || this.id.get()}`
 	},
 
 	name () {
@@ -52,6 +52,8 @@ const proto_space = extend(proto_warp, {
 			remove.forEach((key) => {
 				const twist = this.twists[key]
 				this.weave.remove(...this.weave.chain(`${id}/${key}`).slice(0, -1))
+				this.weave.remove(...this.weave.chain(`${id}/${key}`, true).slice(0, -1))
+
 				if (!twist) return
 
 				if (this.rezed && twist.derez) twist.derez()
@@ -94,7 +96,10 @@ const proto_space = extend(proto_warp, {
 		const id = this.id.get()
 
 		return keys(values).reduce((result, key) => {
-			result.push(...this.weave.chain(`${id}/${key}`).slice(0, -1))
+			result.push(
+				...this.weave.chain(`${id}/${key}`).slice(0, -1),
+				...this.weave.chain(`${id}/${key}`, true).slice(1)
+			)
 			return result
 		}, [])
 	},

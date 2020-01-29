@@ -137,9 +137,10 @@ const start_wefts = (weave) => {
 			}
 
 			if (weft_cancels[reader]) weft_cancels[reader]()
+			const space = weave.get_id(reader.split(`/`)[0])
 
 			weft_cancels[reader] = r.value.subscribe(($val) => {
-				if (!r.rezed) return
+				if (!space.rezed) return
 				wr.value.set($val)
 			})
 		})
@@ -180,8 +181,8 @@ const start_rez = (weave) => {
 				return deletes.push(key)
 			}
 
-			warp.rez && warp.rez()
 			warp.rezed = true
+			warp.rez && warp.rez()
 
 			// TODO: Maybe not?
 			// notify to refresh now that a rez has happened
@@ -195,8 +196,8 @@ const start_rez = (weave) => {
 				return deletes.push(key)
 			}
 
-			warp.derez && warp.derez()
 			delete warp.rezed
+			warp.derez && warp.derez()
 		})
 
 		if (deletes.length > 0) {
@@ -220,8 +221,8 @@ export const start = (weave_name) => {
 	const weave = get(weave_name)
 	if (!weave) return false
 
-	const weft_cancel = start_wefts(weave)
 	const rez_cancel = start_rez(weave)
+	const weft_cancel = start_wefts(weave)
 
 	highways.set(weave_name, () => {
 		weft_cancel()

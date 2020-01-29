@@ -24,13 +24,21 @@ const proto_math = extend(proto_warp, {
 	run (expression) {
 		const matches = expression.match(Wheel.REG_ID)
 		const vs = {}
+
 		const leaf = this.weave.chain(this.id.get(), true).shift()
-		const s = this.weave.to_address(leaf)
+		let space_addr = this.weave.to_address(leaf)
+
+		const space = Wheel.get(space_addr)
+
+		if (space.type.get() !== `space`) {
+			const leaf_right = this.weave.chain(this.id.get()).shift()
+			space_addr = this.weave.to_address(leaf_right)
+		}
 
 		new Set(matches).forEach((item) => {
 			const shh = item[0] === `$`
 			const gette = item
-				.replace(path_space, `${s}/`)
+				.replace(path_space, `${space_addr}/`)
 				.replace(path_weave, `/${this.weave.name.get()}/`)
 				.replace(path_ssh, ``)
 				.trim()
@@ -58,6 +66,7 @@ const proto_math = extend(proto_warp, {
 
 		try {
 			this.fn = math_js(expression)
+
 			this.values.set(vs)
 		} catch (ex) {
 			// TODO: Alert user of math error here
@@ -113,6 +122,7 @@ const proto_value = extend(proto_write, {
 			? null
 			: value
 
+		// could be faster
 		const params = {
 			...Object.fromEntries(Object.entries(vs).map(
 				([key, { warp }]) => [key, warp.toJSON() === undefined
@@ -124,7 +134,13 @@ const proto_value = extend(proto_write, {
 		}
 
 		try {
+			params.null = null
+			params.delay = false
+
 			const result = this.warp.fn(params)
+
+			// null or undefined means do nothing
+			if (result === null || result === undefined) return
 			proto_write.set.call(this, result)
 		} catch (ex) {
 			if (ex.message !== `stop`) console.warn(`math error`, ex)

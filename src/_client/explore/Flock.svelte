@@ -35,7 +35,7 @@ $: {
 >
 
 	<div class="navigation"
-		style="border-bottom: 0.25rem solid {$THEME_BORDER}; background-color: {$THEME_BORDER}">
+		style="background-color: {$THEME_BORDER}">
 		<div
 			class="button"
 			on:click={() => {
@@ -76,7 +76,7 @@ $: {
 
 .button	 {
 	padding: 0;
-	border: 0.5rem solid rgba(0,0,0,0.5);
+
 }
 
 .name {
@@ -95,8 +95,8 @@ $: {
 	user-select: none;
 	display: flex;
 	flex-basis: 1;
-	margin-left: 3rem;
-	margin-right: 3rem;
+	margin-left: 2rem;
+	margin-right: 2rem;
 
 }
 

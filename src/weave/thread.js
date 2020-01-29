@@ -126,7 +126,8 @@ export const compile = ({
 
 	const space = weave.get_id(address.split(`/`)[0])
 
-	let connection = address
+	let connection = right ? undefined : address
+
 	// lets create these warps
 	const ids = parts.map((part) => {
 		part = part.trim()
@@ -144,6 +145,10 @@ export const compile = ({
 
 		return id
 	})
+
+	if (right) {
+		wefts_update[address] = ids[ids.length - 1]
+	}
 
 	if (space.rezed) weave.rez(...ids)
 

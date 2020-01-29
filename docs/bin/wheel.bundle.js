@@ -367,6 +367,25 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		.join(` `);
 
 	const proto_warp = {
+		get_space () {
+			const id = this.id.get();
+			let space_id;
+
+			const finder = (spx) => {
+				if (spx.indexOf(`/`) === -1) return
+
+				space_id = spx.split(`/`)[0];
+				return true
+			};
+
+			this.weave.chain(id).some(finder);
+			if (space_id === undefined) {
+				this.weave.chain(id, true).some(finder);
+			}
+
+			return this.weave.get_id(space_id)
+		},
+
 		listen (fn) {
 			return this.value.listen(fn)
 		},
@@ -566,7 +585,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 		const space = weave.get_id(address.split(`/`)[0]);
 
-		let connection = address;
+		let connection = right ? undefined : address;
+
 		// lets create these warps
 		const ids = parts.map((part) => {
 			part = part.trim();
@@ -584,6 +604,10 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 			return id
 		});
+
+		if (right) {
+			wefts_update[address] = ids[ids.length - 1];
+		}
 
 		if (space.rezed) weave.rez(...ids);
 
@@ -627,10 +651,10 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 	};
 
 	var clone = extend({
-		grab_script (other, key) {
+		grab_script (other, key, right) {
 			const weave_other = other.weave;
 			const other_id = `${other.id.get()}/${key}`;
-			const c_o = weave_other.chain(other_id).slice(0, -1);
+			const c_o = weave_other.chain(other_id, right).slice(0, -1);
 			if (c_o.length === 0) return
 
 			const { weave, id, space } = this;
@@ -640,8 +664,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				address: other_id,
 				weave: weave_other
 			});
-			const address = `${id}/${key}`;
 
+			const address = `${id}/${key}`;
 			const $value = weave_other.get_id(other.id.get())
 				.value.get(key).get();
 
@@ -656,6 +680,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 					code,
 					weave,
 					address,
+					right,
 					prefix: `&`
 				}));
 			});
@@ -679,6 +704,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 				keys(proto).forEach((key) => {
 					this.grab_script(other, key);
+					this.grab_script(other, key, true);
 				});
 
 				// set proto
@@ -1012,7 +1038,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 	const proto_space = extend(proto_warp, {
 		address () {
-			return `/${this.weave.name.get()}/${this.name().get() || this.id.get()}`
+			return `${this.weave.name.get()}/${this.name().get() || this.id.get()}`
 		},
 
 		name () {
@@ -1053,6 +1079,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				remove.forEach((key) => {
 					const twist = this.twists[key];
 					this.weave.remove(...this.weave.chain(`${id}/${key}`).slice(0, -1));
+					this.weave.remove(...this.weave.chain(`${id}/${key}`, true).slice(0, -1));
+
 					if (!twist) return
 
 					if (this.rezed && twist.derez) twist.derez();
@@ -1095,7 +1123,10 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			const id = this.id.get();
 
 			return keys(values).reduce((result, key) => {
-				result.push(...this.weave.chain(`${id}/${key}`).slice(0, -1));
+				result.push(
+					...this.weave.chain(`${id}/${key}`).slice(0, -1),
+					...this.weave.chain(`${id}/${key}`, true).slice(1)
+				);
 				return result
 			}, [])
 		},
@@ -1215,10 +1246,6 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		assignment: true
 	});
 
-	parser.functions.stop = function () {
-		throw new Error(`stop`)
-	};
-
 	Object.entries(twgl.v3).forEach(([key, fn]) => {
 		parser.functions[`v3_${key}`] = function (...args) {
 			return fn(...args)
@@ -1241,7 +1268,11 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			maths[formula] = p;
 		}
 
-		return (variables) => p.evaluate(variables)
+		return (variables) => {
+			p.evaluate(variables);
+
+			return variables.return
+		}
 	};
 
 	const noop = () => {};
@@ -1264,13 +1295,21 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		run (expression) {
 			const matches = expression.match(Wheel.REG_ID);
 			const vs = {};
+
 			const leaf = this.weave.chain(this.id.get(), true).shift();
-			const s = this.weave.to_address(leaf);
+			let space_addr = this.weave.to_address(leaf);
+
+			const space = Wheel.get(space_addr);
+
+			if (space.type.get() !== `space`) {
+				const leaf_right = this.weave.chain(this.id.get()).shift();
+				space_addr = this.weave.to_address(leaf_right);
+			}
 
 			new Set(matches).forEach((item) => {
 				const shh = item[0] === `$`;
 				const gette = item
-					.replace(path_space, `${s}/`)
+					.replace(path_space, `${space_addr}/`)
 					.replace(path_weave, `/${this.weave.name.get()}/`)
 					.replace(path_ssh, ``)
 					.trim();
@@ -1298,6 +1337,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 			try {
 				this.fn = math(expression);
+
 				this.values.set(vs);
 			} catch (ex) {
 				// TODO: Alert user of math error here
@@ -1353,6 +1393,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				? null
 				: value;
 
+			// could be faster
 			const params = {
 				...Object.fromEntries(Object.entries(vs).map(
 					([key, { warp }]) => [key, warp.toJSON() === undefined
@@ -1364,7 +1405,13 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			};
 
 			try {
+				params.null = null;
+				params.delay = false;
+
 				const result = this.warp.fn(params);
+
+				// null or undefined means do nothing
+				if (result === null || result === undefined) return
 				proto_write.set.call(this, result);
 			} catch (ex) {
 				if (ex.message !== `stop`) console.warn(`math error`, ex);
@@ -1410,10 +1457,12 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 	const proto_mail = extend(proto_warp, {
 		fix (address) {
+			const space = this.get_space();
+
 			return address
 				.replace(`$`, ``)
 				.replace(`~`, `/${this.weave.name.get()}`)
-				.replace(`.`, this.weave.to_address(this.weave.chain(this.id.get(), true).shift()))
+				.replace(`.`, `${this.weave.name.get()}/${space ? space.get_value(`!name`) : `not connected`}`)
 		},
 
 		clear () {
@@ -1431,27 +1480,24 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 			this.cancel_whom = this.whom.listen(($whom) => {
 				this.clear();
-
-				$whom = this.weave.resolve($whom, this.id.get());
+				const fixed = this.fix($whom);
+				const thing = Wheel.get(fixed);
 
 				if ($whom[0] === `$`) {
-					$whom = $whom.replace(`$`, ``);
-					const thing = Wheel.get($whom);
 					if (!thing) return this.set(null)
 
 					this.set(thing.get());
 					return
 				}
 
-				let thing = Wheel.get($whom);
 				if (!thing) return
 
-				thing = thing.type
+				const remote = thing.type
 					? thing.value
 					: thing;
 
-				this.cancels.add(thing.listen(($thing) => {
-					this.set($thing);
+				this.cancels.add(remote.listen(($remote) => {
+					this.set($remote);
 				}));
 			});
 		},
@@ -1470,7 +1516,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 	});
 
 	const proto_remote = extend(proto_write, {
-		set (value) {
+		set (value, shh) {
 			const $whom = this.mail.fix(this.mail.whom.get());
 
 			const v = Wheel.get($whom);
@@ -1480,7 +1526,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			}
 
 			v.set(value);
-			proto_write.set.call(this, value);
+			proto_write.set.call(this, value, shh);
 		}
 	});
 
@@ -2066,9 +2112,10 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				}
 
 				if (weft_cancels[reader]) weft_cancels[reader]();
+				const space = weave.get_id(reader.split(`/`)[0]);
 
 				weft_cancels[reader] = r.value.subscribe(($val) => {
-					if (!r.rezed) return
+					if (!space.rezed) return
 					wr.value.set($val);
 				});
 			});
@@ -2109,8 +2156,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 					return deletes.push(key)
 				}
 
-				warp.rez && warp.rez();
 				warp.rezed = true;
+				warp.rez && warp.rez();
 
 				// TODO: Maybe not?
 				// notify to refresh now that a rez has happened
@@ -2124,8 +2171,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 					return deletes.push(key)
 				}
 
-				warp.derez && warp.derez();
 				delete warp.rezed;
+				warp.derez && warp.derez();
 			});
 
 			if (deletes.length > 0) {
@@ -2149,8 +2196,8 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		const weave = get(weave_name);
 		if (!weave) return false
 
-		const weft_cancel = start_wefts(weave);
 		const rez_cancel = start_rez(weave);
+		const weft_cancel = start_wefts(weave);
 
 		highways.set(weave_name, () => {
 			weft_cancel();

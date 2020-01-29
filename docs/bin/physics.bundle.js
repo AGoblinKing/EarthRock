@@ -492,9 +492,12 @@
 			body[`!velocity`][1] = -body[`!velocity`][1];
 		}
 	};
+
 	var Velocity = (body, bodies) => {
 		// for things like gravity
-		if (body.mass > 0 && body[`!force`] && Array.isArray(body[`!force`])) ;
+		if (body.mass > 0 && body[`!force`] && Array.isArray(body[`!force`])) {
+			v3.add(body[`!velocity`], body[`!force`], body[`!velocity`]);
+		}
 
 		const length = 	v3.length(body[`!velocity`]);
 
@@ -507,7 +510,7 @@
 			length < MIN ||
 			length === Infinity
 		) {
-			return
+			return [false, false]
 		}
 
 		let decay = DECAY;
@@ -518,13 +521,12 @@
 		v3.mulScalar(body[`!velocity`], decay, body[`!velocity`]);
 
 		const dirty = [body.id];
+		const collides = [];
 
 		// ghost~~~
 		if (!body[`!real`]) {
-			return dirty
+			return [dirty, []]
 		}
-
-		const interactions = new Set();
 
 		const later = [];
 
@@ -532,31 +534,30 @@
 		// naive check all colliders
 		// absorb some of the impact and bounce them
 		values(bodies).forEach((body_other) => {
-			if	(
-				// prevent double interactions
-				interactions.has(`${body_other.id}_${body.id}`) ||
-				!intersect(body, body_other)
-			) return
+			if (!intersect(body, body_other)) return
 
-			body[`!collide`] = body_other.id;
-			interactions.add(`${body.id}_${body_other.id}`);
+			// mark the collision
+			collides.push(body_other.id);
 
 			// absorb/reflect some velocity
 			if (body_other.mass === 0) return
+
 			const transfer = v3.mulScalar(v3.subtract(body[`!velocity`], body_other[`!velocity`]), 0.5);
+			const strong_force = v3.mulScalar(v3.normalize(v3.negate(v3.subtract(body.position, body_other.position))), 0.05);
+			const dist = v3.add(transfer, strong_force);
 
 			later.push(() => {
-			// bounce other
+				// bounce other
 				v3.add(
 					body_other[`!velocity`],
-					transfer,
+					dist,
 					body_other[`!velocity`]
 				);
 
 				// conserve energy
 				v3.add(
 					body[`!velocity`],
-					v3.negate(transfer),
+					v3.negate(dist),
 					body[`!velocity`]
 				);
 
@@ -569,13 +570,15 @@
 		});
 
 		later.forEach((fn) => fn());
-		return dirty
+		return [dirty, collides]
 	};
 
 	const handlers = {
 		// solve for the next 100ms
 		solve (bodies) {
 			const updates = {};
+
+			const collisions = {};
 
 			each(bodies)(([id, body]) => {
 				// fix defaults
@@ -589,16 +592,33 @@
 					? body.mass
 					: 1;
 
-				const dirty = Velocity(body, bodies);
+				const [dirty, collides] = Velocity(body, bodies);
 				if (!dirty) return
+
+				if (!collisions[id]) collisions[id] = [];
+				collisions[id].push(...collides);
+
+				collides.forEach((id_o) => {
+					if (collisions[id_o]) {
+						collisions[id_o].push(id);
+					} else {
+						collisions[id_o] = [id];
+					}
+				});
 
 				dirty.forEach((id) => {
 					updates[id] = {
 						position: bodies[id].position,
-						"!velocity": bodies[id][`!velocity`],
-						"!collide": bodies[id][`!collide`]
+						"!velocity": bodies[id][`!velocity`]
 					};
 				});
+			});
+
+			Object.entries(collisions).forEach(([id, collides]) => {
+				if (collides.length === 0) return
+				if (!updates[id]) updates[id] = {};
+
+				updates[id][`!collide`] = [...new Set(collides)];
 			});
 
 			postMessage({

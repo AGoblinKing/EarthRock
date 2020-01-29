@@ -11,10 +11,6 @@ export const parser = new expr.Parser({
 	assignment: true
 })
 
-parser.functions.stop = function () {
-	throw new Error(`stop`)
-}
-
 Object.entries(v3).forEach(([key, fn]) => {
 	parser.functions[`v3_${key}`] = function (...args) {
 		return fn(...args)
@@ -37,5 +33,9 @@ export const math = (formula) => {
 		maths[formula] = p
 	}
 
-	return (variables) => p.evaluate(variables)
+	return (variables) => {
+		p.evaluate(variables)
+
+		return variables.return
+	}
 }

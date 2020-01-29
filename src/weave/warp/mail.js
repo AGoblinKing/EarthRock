@@ -7,10 +7,12 @@ const type = read(`mail`)
 
 const proto_mail = extend(proto_warp, {
 	fix (address) {
+		const space = this.get_space()
+
 		return address
 			.replace(`$`, ``)
 			.replace(`~`, `/${this.weave.name.get()}`)
-			.replace(`.`, this.weave.to_address(this.weave.chain(this.id.get(), true).shift()))
+			.replace(`.`, `${this.weave.name.get()}/${space ? space.get_value(`!name`) : `not connected`}`)
 	},
 
 	clear () {
@@ -28,27 +30,24 @@ const proto_mail = extend(proto_warp, {
 
 		this.cancel_whom = this.whom.listen(($whom) => {
 			this.clear()
-
-			$whom = this.weave.resolve($whom, this.id.get())
+			const fixed = this.fix($whom)
+			const thing = Wheel.get(fixed)
 
 			if ($whom[0] === `$`) {
-				$whom = $whom.replace(`$`, ``)
-				const thing = Wheel.get($whom)
 				if (!thing) return this.set(null)
 
 				this.set(thing.get())
 				return
 			}
 
-			let thing = Wheel.get($whom)
 			if (!thing) return
 
-			thing = thing.type
+			const remote = thing.type
 				? thing.value
 				: thing
 
-			this.cancels.add(thing.listen(($thing) => {
-				this.set($thing)
+			this.cancels.add(remote.listen(($remote) => {
+				this.set($remote)
 			}))
 		})
 	},
@@ -67,7 +66,7 @@ const proto_mail = extend(proto_warp, {
 })
 
 const proto_remote = extend(proto_write, {
-	set (value) {
+	set (value, shh) {
 		const $whom = this.mail.fix(this.mail.whom.get())
 
 		const v = Wheel.get($whom)
@@ -77,7 +76,7 @@ const proto_remote = extend(proto_write, {
 		}
 
 		v.set(value)
-		proto_write.set.call(this, value)
+		proto_write.set.call(this, value, shh)
 	}
 })
 

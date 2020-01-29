@@ -34,10 +34,11 @@ const flip_vel = (body, body_other) => {
 		body[`!velocity`][1] = -body[`!velocity`][1]
 	}
 }
+
 export default (body, bodies) => {
 	// for things like gravity
 	if (body.mass > 0 && body[`!force`] && Array.isArray(body[`!force`])) {
-		// v3.add(body[`!velocity`], body[`!force`], body[`!velocity`])
+		v3.add(body[`!velocity`], body[`!force`], body[`!velocity`])
 	}
 
 	const length = 	v3.length(body[`!velocity`])
@@ -51,7 +52,7 @@ export default (body, bodies) => {
 		length < MIN ||
 		length === Infinity
 	) {
-		return
+		return [false, false]
 	}
 
 	let decay = DECAY
@@ -62,13 +63,12 @@ export default (body, bodies) => {
 	v3.mulScalar(body[`!velocity`], decay, body[`!velocity`])
 
 	const dirty = [body.id]
+	const collides = []
 
 	// ghost~~~
 	if (!body[`!real`]) {
-		return dirty
+		return [dirty, []]
 	}
-
-	const interactions = new Set()
 
 	const later = []
 
@@ -76,31 +76,30 @@ export default (body, bodies) => {
 	// naive check all colliders
 	// absorb some of the impact and bounce them
 	values(bodies).forEach((body_other) => {
-		if	(
-			// prevent double interactions
-			interactions.has(`${body_other.id}_${body.id}`) ||
-			!intersect(body, body_other)
-		) return
+		if (!intersect(body, body_other)) return
 
-		body[`!collide`] = body_other.id
-		interactions.add(`${body.id}_${body_other.id}`)
+		// mark the collision
+		collides.push(body_other.id)
 
 		// absorb/reflect some velocity
 		if (body_other.mass === 0) return
+
 		const transfer = v3.mulScalar(v3.subtract(body[`!velocity`], body_other[`!velocity`]), 0.5)
+		const strong_force = v3.mulScalar(v3.normalize(v3.negate(v3.subtract(body.position, body_other.position))), 0.05)
+		const dist = v3.add(transfer, strong_force)
 
 		later.push(() => {
-		// bounce other
+			// bounce other
 			v3.add(
 				body_other[`!velocity`],
-				transfer,
+				dist,
 				body_other[`!velocity`]
 			)
 
 			// conserve energy
 			v3.add(
 				body[`!velocity`],
-				v3.negate(transfer),
+				v3.negate(dist),
 				body[`!velocity`]
 			)
 
@@ -113,5 +112,5 @@ export default (body, bodies) => {
 	})
 
 	later.forEach((fn) => fn())
-	return dirty
+	return [dirty, collides]
 }

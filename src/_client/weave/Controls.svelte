@@ -11,9 +11,11 @@ $: running = Wheel.running
 
 $: runs = $running[weave.name.get()]
 
-const toggle = (e) => {
-	e.stopPropagation()
-	e.preventDefault()
+export const toggle = (e) => {
+	if (e) {
+		e.stopPropagation()
+		e.preventDefault()
+	}
 
 	if (runs) {
 		Wheel.stop($name)
@@ -23,9 +25,11 @@ const toggle = (e) => {
 
 	runs = !runs
 }
-const save_it = (e) => {
-	e.preventDefault()
-	e.stopPropagation()
+export const save_it = (e) => {
+	if (e) {
+		e.preventDefault()
+		e.stopPropagation()
+	}
 	save(weave)
 }
 $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_BG};`
@@ -39,6 +43,7 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
       address={`/${$name}`}
     />
   </div>
+  <slot/>
   {#if $name !== Wheel.SYSTEM}
   <div
     class="save"
@@ -61,6 +66,7 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 
 .controls {
   display: flex;
+  flex: 1;
   align-items: center;
   margin: 0 0.5rem;
 }

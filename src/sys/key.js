@@ -2,27 +2,23 @@ import { read } from "/store.js"
 
 export const key = read(``, (set) => {
 	window.addEventListener(`keyup`, (e) => {
-		if (
-			e.target.tagName === `INPUT` ||
-      e.target.tagName === `TEXTAREA`
-		) {
-			return
-		}
-
+		// always allow keyup
 		e.preventDefault()
 
+		if (e.code === `ControlRight`) return set(`enter!`)
 		set(`${e.key.toLowerCase()}!`)
 	})
 
 	window.addEventListener(`keydown`, (e) => {
 		if (
-			e.target.tagName === `INPUT` ||
-      e.target.tagName === `TEXTAREA`
+			e.target.tagName === `INPUT` || e.target.tagName === `TEXTAREA`
 		) {
 			return
 		}
 
 		e.preventDefault()
+
+		if (e.code === `ControlRight`) return set(`enter`)
 
 		set(e.key.toLowerCase())
 	})

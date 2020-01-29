@@ -54,7 +54,9 @@ const command = ([action, ...details], msg) => {
 	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
 	<div class="explore" style="color: {$THEME_COLOR};" >
 		<div class="partial">
-		<div class="logo" style={$THEME_STYLE} use:color={`I S E K A I`} >[ I S E K A I ]</div>
+
+		<a class="logo" style={$THEME_STYLE} href="https://www.patreon.com/earthrock" target="_new">[ I S E K A I ]</a>
+
 
 		<div class="events">
 			<Omni {command} />
@@ -92,6 +94,7 @@ const command = ([action, ...details], msg) => {
 }
 
 .logo {
+	color: white;
 	padding: 0.5rem;
 	text-align: center;
 	color: rgb(224, 168, 83);

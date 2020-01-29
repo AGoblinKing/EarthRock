@@ -10689,21 +10689,19 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 	// (53:0) {#if !hidden}
 	function create_if_block$9(ctx) {
 		let div0;
-		let a;
+		let a0;
 		let t0;
-		let div5;
 		let div4;
-		let div1;
-		let t1;
-		let color_action;
-		let t2;
-		let div2;
-		let t3;
 		let div3;
+		let a1;
+		let t1;
+		let t2;
+		let div1;
+		let t3;
+		let div2;
 		let each_blocks = [];
 		let each_1_lookup = new Map();
 		let current;
-		let dispose;
 		const github_1 = new Github({ $$inline: true });
 
 		const omni = new Omni({
@@ -10723,75 +10721,76 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		const block = {
 			c: function create() {
 				div0 = element("div");
-				a = element("a");
+				a0 = element("a");
 				create_component(github_1.$$.fragment);
 				t0 = space$1();
-				div5 = element("div");
 				div4 = element("div");
-				div1 = element("div");
+				div3 = element("div");
+				a1 = element("a");
 				t1 = text("[ I S E K A I ]");
 				t2 = space$1();
-				div2 = element("div");
+				div1 = element("div");
 				create_component(omni.$$.fragment);
 				t3 = space$1();
-				div3 = element("div");
+				div2 = element("div");
 
 				for (let i = 0; i < each_blocks.length; i += 1) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(a, "href", "https://github.com/agoblinking/earthrock");
-				attr_dev(a, "target", "_new");
-				add_location(a, file$g, 53, 22, 1184);
-				attr_dev(div0, "class", "github svelte-lzj2ki");
+				attr_dev(a0, "href", "https://github.com/agoblinking/earthrock");
+				attr_dev(a0, "target", "_new");
+				add_location(a0, file$g, 53, 22, 1184);
+				attr_dev(div0, "class", "github svelte-1i7cbxv");
 				add_location(div0, file$g, 53, 1, 1163);
-				attr_dev(div1, "class", "logo svelte-lzj2ki");
-				attr_dev(div1, "style", /*$THEME_STYLE*/ ctx[4]);
-				add_location(div1, file$g, 56, 2, 1357);
-				attr_dev(div2, "class", "events svelte-lzj2ki");
-				add_location(div2, file$g, 58, 2, 1450);
-				attr_dev(div3, "class", "weaves svelte-lzj2ki");
-				add_location(div3, file$g, 62, 2, 1509);
-				attr_dev(div4, "class", "partial svelte-lzj2ki");
-				add_location(div4, file$g, 55, 2, 1332);
-				attr_dev(div5, "class", "explore svelte-lzj2ki");
-				set_style(div5, "color", /*$THEME_COLOR*/ ctx[3]);
-				add_location(div5, file$g, 54, 1, 1275);
-				dispose = action_destroyer(color_action = color$2.call(null, div1, `I S E K A I`));
+				attr_dev(a1, "class", "logo svelte-1i7cbxv");
+				attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[4]);
+				attr_dev(a1, "href", "https://www.patreon.com/earthrock");
+				attr_dev(a1, "target", "_new");
+				add_location(a1, file$g, 57, 2, 1359);
+				attr_dev(div1, "class", "events svelte-1i7cbxv");
+				add_location(div1, file$g, 60, 2, 1478);
+				attr_dev(div2, "class", "weaves svelte-1i7cbxv");
+				add_location(div2, file$g, 64, 2, 1537);
+				attr_dev(div3, "class", "partial svelte-1i7cbxv");
+				add_location(div3, file$g, 55, 2, 1332);
+				attr_dev(div4, "class", "explore svelte-1i7cbxv");
+				set_style(div4, "color", /*$THEME_COLOR*/ ctx[3]);
+				add_location(div4, file$g, 54, 1, 1275);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div0, anchor);
-				append_dev(div0, a);
-				mount_component(github_1, a, null);
+				append_dev(div0, a0);
+				mount_component(github_1, a0, null);
 				insert_dev(target, t0, anchor);
-				insert_dev(target, div5, anchor);
-				append_dev(div5, div4);
-				append_dev(div4, div1);
-				append_dev(div1, t1);
-				append_dev(div4, t2);
-				append_dev(div4, div2);
-				mount_component(omni, div2, null);
-				append_dev(div4, t3);
+				insert_dev(target, div4, anchor);
 				append_dev(div4, div3);
+				append_dev(div3, a1);
+				append_dev(a1, t1);
+				append_dev(div3, t2);
+				append_dev(div3, div1);
+				mount_component(omni, div1, null);
+				append_dev(div3, t3);
+				append_dev(div3, div2);
 
 				for (let i = 0; i < each_blocks.length; i += 1) {
-					each_blocks[i].m(div3, null);
+					each_blocks[i].m(div2, null);
 				}
 
 				current = true;
 			},
 			p: function update(ctx, dirty) {
 				if (!current || dirty & /*$THEME_STYLE*/ 16) {
-					attr_dev(div1, "style", /*$THEME_STYLE*/ ctx[4]);
+					attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[4]);
 				}
 
 				const each_value = /*ws*/ ctx[2];
 				group_outros();
-				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div3, outro_and_destroy_block, create_each_block$3, null, get_each_context$3);
+				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div2, outro_and_destroy_block, create_each_block$3, null, get_each_context$3);
 				check_outros();
 
 				if (!current || dirty & /*$THEME_COLOR*/ 8) {
-					set_style(div5, "color", /*$THEME_COLOR*/ ctx[3]);
+					set_style(div4, "color", /*$THEME_COLOR*/ ctx[3]);
 				}
 			},
 			i: function intro(local) {
@@ -10819,14 +10818,12 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 				if (detaching) detach_dev(div0);
 				destroy_component(github_1);
 				if (detaching) detach_dev(t0);
-				if (detaching) detach_dev(div5);
+				if (detaching) detach_dev(div4);
 				destroy_component(omni);
 
 				for (let i = 0; i < each_blocks.length; i += 1) {
 					each_blocks[i].d();
 				}
-
-				dispose();
 			}
 		};
 
@@ -10841,7 +10838,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 		return block;
 	}
 
-	// (64:3) {#each ws as weave, i (weave.id.get())}
+	// (66:3) {#each ws as weave, i (weave.id.get())}
 	function create_each_block$3(key_2, ctx) {
 		let first;
 		let current;
@@ -10908,7 +10905,7 @@ var app = (function (Color, uuid, expr, twgl, exif) {
 			block,
 			id: create_each_block$3.name,
 			type: "each",
-			source: "(64:3) {#each ws as weave, i (weave.id.get())}",
+			source: "(66:3) {#each ws as weave, i (weave.id.get())}",
 			ctx
 		});
 

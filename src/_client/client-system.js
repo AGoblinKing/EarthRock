@@ -8,6 +8,7 @@ import * as time from "/sys/time.js"
 import * as screen from "/sys/screen.js"
 import * as input from "/sys/input.js"
 import * as key from "/sys/key.js"
+import * as gamepad from "/sys/gamepad.js"
 import * as flag from "/sys/flag.js"
 import * as camera from "/sys/camera.js"
 
@@ -40,6 +41,7 @@ const systems = {
 	screen,
 	input,
 	key,
+	gamepad,
 	flag: normalize(flag),
 	camera
 }

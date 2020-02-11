@@ -61,11 +61,20 @@ export const do_edit = (e) => {
 	if (editing) return
 	editing = true
 
-	edit = format(
-		get_chain()
-			.map((i) => translate(i, weave))
-			.join(` => `)
-	)
+	if (right) {
+		edit = format(
+			get_chain()
+				.map((i) => translate(i, weave))
+				.reverse()
+				.join(` => `)
+		)
+	} else {
+		edit = format(
+			get_chain()
+				.map((i) => translate(i, weave))
+				.join(` => `)
+		)
+	}
 }
 
 // TODO: light up on value changes

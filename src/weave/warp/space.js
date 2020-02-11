@@ -64,6 +64,14 @@ const proto_space = extend(proto_warp, {
 		})
 	},
 
+	remove (...keys) {
+		const $space = this.value.get()
+		keys.forEach((key) => {
+			delete $space[key]
+		})
+		this.value.set($space)
+	},
+
 	destroy () {
 		this.cancel()
 

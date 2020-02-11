@@ -31,6 +31,8 @@ const change = (node, value) => {
 		})
 	}
 }
+
+$: condensed = condense(id, weave, $value)
 </script>
 
 <div
@@ -39,9 +41,9 @@ const change = (node, value) => {
 	use:change={value}
 >
 	{#if warp_view[$type]}
-	<svelte:component this={warp_view[$type]} value={k.value} />
+		<svelte:component this={warp_view[$type]} value={k.value} />
 	{:else}
-	<div data:type={$type} class="pad">{condense(id, weave)}</div>
+		<div data:type={$type} class="pad">{condensed}</div>
 	{/if}
 </div>
 

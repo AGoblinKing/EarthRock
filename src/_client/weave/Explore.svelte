@@ -1,10 +1,11 @@
 <script>
 import { github } from "/sys/file.js"
 import { key } from "/sys/key.js"
+import { button } from "/sys/gamepad.js"
+
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 
-import nav from "/_client/action/nav.js"
-import color from "/_client/action/color.js"
+import nav, { cursor } from "/_client/action/nav.js"
 import Omni from "/_client/explore/Omni.svelte"
 import Weave from "/_client/explore/Weave.svelte"
 import Github from "./Github.svelte"
@@ -15,12 +16,24 @@ key.listen(char => {
 	if (char !== `\``) return
 	hidden = !hidden
 })
+button.listen(button => {
+	if (button !== `select`) return
+
+	hidden = !hidden
+})
 
 $: weaves = Wheel.weaves
-$: ws = Object.values($weaves)
+$: ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
+	const $a = a.get()
+	const $b = b.get()
+	if ($a > $b) return 1
+	if ($b > $a) return -1
+	return 0
+})
 
 export let hidden = window.location.hash.indexOf(`dev`) === -1
 
+let nameit = false
 const command = ([action, ...details], msg) => {
 	switch (action) {
 	case `-`:
@@ -45,17 +58,50 @@ const command = ([action, ...details], msg) => {
 		}
 	}
 }
+let picker
+
+const top_space = () => {
+	const weave = ws[ws.length - 1]
+	if (!weave) return
+
+	const spaces = weave.names.get()
+	const space_keys = Object.keys(spaces)
+	if (space_keys.length < 1) return weave.name.get()
+	const space_key = space_keys[space_keys.length - 1]
+	const twists = Object.keys(spaces[space_key].value.get()).sort()
+
+	if (twists.length < 1) return `${weave.name.get()}/${space_key}`
+
+	return `${weave.name.get()}/${space_key}/${twists[twists.length - 1]}`
+}
 </script>
 
 <MainScreen {hidden} />
 
-<Picker>
+<Picker {nameit} bind:this={picker}>
 {#if !hidden}
 	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
 	<div class="explore" style="color: {$THEME_COLOR};" >
 		<div class="partial">
 
-		<a class="logo" style={$THEME_STYLE} href="https://www.patreon.com/earthrock" target="_new">[ I S E K A I ]</a>
+		<a
+			class="logo"
+			style={$THEME_STYLE}
+			href="https://www.patreon.com/earthrock"
+			target="_new"
+			use:nav={{
+				id: `/`,
+				up: top_space,
+				down: `sys`,
+				page_up: ws[ws.length - 1].name.get(),
+				page_down: `sys`,
+				insert: () => {
+					// pop up picker with a blank
+					nameit = {}
+					cursor.set(picker)
+				}
+			}}
+		>[ I S E K A I ]</a>
 
 
 		<div class="events">
@@ -64,10 +110,10 @@ const command = ([action, ...details], msg) => {
 
 		<div class="weaves">
 			{#each ws as weave, i (weave.id.get())}
-			<Weave {weave} navi={{
-				up: ws[i - 1] ? ws[i - 1].name.get() : undefined,
-				down: ws[i + 1] ? ws[i + 1].name.get() : undefined
-			}}/>
+				<Weave {weave} navi={{
+					up: ws[i - 1] ? ws[i - 1].name.get() : `/`,
+					down: ws[i + 1] ? ws[i + 1].name.get() : `/`
+				}}/>
 			{/each}
 		</div>
 		</div>
@@ -83,7 +129,7 @@ const command = ([action, ...details], msg) => {
 		inset 0 2rem 0 rgba(224, 168, 83,0.5),
 		inset 0 -2rem 0 rgba(224, 168, 83,0.5),
 		inset 1.60rem 0 0 rgba(224, 168, 83,1),
-		inset -1.60rem 0 0 rgba(224, 168, 83,1);
+		inset -1.60rem 0 0 rgba(224, 168, 83,1) !important;
 }
 :global(.nav.beat) {
 	box-shadow:

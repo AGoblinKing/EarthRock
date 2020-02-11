@@ -1,8 +1,11 @@
-var app = (function (exports, Color, uuid, expr, twgl) {
+var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 	'use strict';
 
 	Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
 	uuid = uuid && uuid.hasOwnProperty('default') ? uuid['default'] : uuid;
+	scribble = scribble && scribble.hasOwnProperty('default') ? scribble['default'] : scribble;
+	Tone = Tone && Tone.hasOwnProperty('default') ? Tone['default'] : Tone;
+	exif = exif && exif.hasOwnProperty('default') ? exif['default'] : exif;
 	expr = expr && expr.hasOwnProperty('default') ? expr['default'] : expr;
 
 	// extend an object, allows currying
@@ -310,7 +313,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 	const SPRITES = read(`/sheets/default_2.png`);
 
 	const IS_DEV = read(window.location.host === `localhost:5000`);
-	const SOUND_ON = write(false);
+	const SOUND_ON = write(true);
 
 	const SVELTE_ANIMATION = write({ delay: 100, duration: 300 });
 
@@ -548,9 +551,14 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		weave,
 		right = false
 	}) => {
-		return chain(weave, address, right)
-			.map((i) => translate(i, weave))
-			.join(` => `)
+		const c = chain(weave, address, right)
+			.map((i) => translate(i, weave));
+
+		if (right) {
+			return c.reverse().join(` => `)
+		}
+
+		return c.join(` => `)
 	};
 
 	const translate = (id, weave) => {
@@ -573,10 +581,11 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		prefix = ``,
 		right = false
 	}) => {
-		const parts = code
+		let parts = code
 			.replace(/[\r\n]/g, ``)
-			.split(`=>`)
-			.reverse();
+			.split(`=>`);
+
+		if (!right) parts = parts.reverse();
 
 		const wefts_update = weave.wefts.get();
 
@@ -585,7 +594,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 		const space = weave.get_id(address.split(`/`)[0]);
 
-		let connection = right ? undefined : address;
+		let connection = address;
 
 		// lets create these warps
 		const ids = parts.map((part) => {
@@ -599,15 +608,16 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			const k = weave.add(w_data);
 			const id = k.id.get();
 
-			wefts_update[id] = connection;
+			if (right) {
+				wefts_update[connection] = id;
+			} else {
+				wefts_update[id] = connection;
+			}
+
 			connection = id;
 
 			return id
 		});
-
-		if (right) {
-			wefts_update[address] = ids[ids.length - 1];
-		}
 
 		if (space.rezed) weave.rez(...ids);
 
@@ -655,6 +665,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			const weave_other = other.weave;
 			const other_id = `${other.id.get()}/${key}`;
 			const c_o = weave_other.chain(other_id, right).slice(0, -1);
+
 			if (c_o.length === 0) return
 
 			const { weave, id, space } = this;
@@ -698,6 +709,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 					console.warn(`Invalid other for clone`);
 				}
 
+				// allows to reset existing protos
 				const proto = other
 					? other.value.get()
 					: {};
@@ -1016,6 +1028,248 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		}
 	});
 
+	var sound = extend({
+		play () {
+			this.clip = scribble.clip({
+				synth: `PolySynth`,
+				pattern: `[xx][xR]`.repeat(4),
+				notes: scribble.arp({
+					chords: `Dm BbM Am FM BbM FM CM Gm`,
+					count: 8,
+					order: 1022
+				}),
+				accent: `x-xx--xx`
+			});
+
+			this.clip.start();
+			Tone.Transport.start();
+		},
+
+		stop () {
+			if (this.clip) this.clip.stop();
+		},
+
+		rez () {
+			let first = false;
+			this.cancel = this.value.listen(($song) => {
+				if (!first) {
+					first = true;
+					return
+				}
+				// construct $sound from data and then play it
+				this.stop();
+				this.play();
+			});
+		},
+
+		derez () {
+			this.cancel();
+		}
+	});
+
+	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
+	function createCommonjsModule(fn, module) {
+		return module = { exports: {} }, fn(module, module.exports), module.exports;
+	}
+
+	var FileSaver_min = createCommonjsModule(function (module, exports) {
+	(function(a,b){b();})(commonjsGlobal,function(){function b(a,b){return "undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(b,c,d){var e=new XMLHttpRequest;e.open("GET",b),e.responseType="blob",e.onload=function(){a(e.response,c,d);},e.onerror=function(){console.error("could not download file");},e.send();}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send();}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"));}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b);}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof commonjsGlobal&&commonjsGlobal.global===commonjsGlobal?commonjsGlobal:void 0,a=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href);},4E4),setTimeout(function(){e(j);},0));}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i);});}}:function(a,b,d,e){if(e=e||open("","_blank"),e&&(e.document.title=e.document.body.innerText="downloading..."),"string"==typeof a)return c(a,b,d);var g="application/octet-stream"===a.type,h=/constructor/i.test(f.HTMLElement)||f.safari,i=/CriOS\/[\d]+/.test(navigator.userAgent);if((i||g&&h)&&"object"==typeof FileReader){var j=new FileReader;j.onloadend=function(){var a=j.result;a=i?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),e?e.location.href=a:location=a,e=null;},j.readAsDataURL(a);}else{var k=f.URL||f.webkitURL,l=k.createObjectURL(a);e?e.location=l:location.href=l,e=null,setTimeout(function(){k.revokeObjectURL(l);},4E4);}});f.saveAs=a.saveAs=a,(module.exports=a);});
+
+	//# sourceMappingURL=FileSaver.min.js.map
+	});
+
+	const SIZE = 16;
+	const SPACING = 0;
+	const COLUMNS = TILE_COLUMNS.get();
+	const COUNT = TILE_COUNT.get();
+
+	const ready = new Promise((resolve) => {
+		const tiles = new Image();
+		tiles.src = `/sheets/default_2.png`;
+
+		tiles.onload = () => {
+			const canvas = document.createElement(`canvas`);
+			canvas.width = tiles.width;
+			canvas.height = tiles.height;
+
+			const ctx = canvas.getContext(`2d`);
+			ctx.drawImage(tiles, 0, 0);
+
+			resolve({ ctx, canvas });
+		};
+	});
+
+	const repo = new Map();
+
+	const num_random = (min, max) =>
+		Math.floor(Math.random() * (Math.abs(min) + Math.abs(max)) - Math.abs(min));
+
+	var Tile = async ({
+		width,
+		height,
+		data,
+		random = false
+	}) => {
+		const { canvas } = await ready;
+
+		const key = `${width}:${height}:${data}`;
+
+		if (!random && repo.has(key)) {
+			return repo.get(key)
+		}
+
+		const data_canvas = document.createElement(`canvas`);
+		const data_ctx = data_canvas.getContext(`2d`);
+
+		data_canvas.width = SIZE * width;
+		data_canvas.height = SIZE * height;
+
+		if (random) {
+			let t_x, t_y;
+			let s_x, s_y;
+
+			for (let x = 0; x < width; x++) {
+				for (let y = 0; y < height; y++) {
+					t_x = x * SIZE;
+					t_y = y * SIZE;
+
+					s_x = num_random(0, COLUMNS) * (SIZE + SPACING);
+					s_y = num_random(0, COUNT / COLUMNS) * (SIZE + SPACING);
+
+					data_ctx.drawImage(
+						canvas,
+						s_x, s_y, SIZE, SIZE,
+						t_x, t_y, SIZE, SIZE
+					);
+				}
+			}
+		} else if (data.length > 0) {
+			let x, y;
+			data.split(` `).forEach((loc, i) => {
+				x = i % width;
+				y = Math.floor(i / width);
+
+				const idx = parseInt(loc, 10);
+				const o_x = idx % COLUMNS;
+				const o_y = Math.floor(idx / COLUMNS);
+
+				const t_x = x * SIZE;
+				const t_y = y * SIZE;
+
+				const s_x = o_x * (SIZE + SPACING);
+				const s_y = o_y * (SIZE + SPACING);
+
+				data_ctx.drawImage(
+					canvas,
+					s_x, s_y, SIZE, SIZE,
+					t_x, t_y, SIZE, SIZE
+				);
+			});
+		}
+
+		const result = data_canvas.toDataURL(`image/png`);
+		if (!random) {
+			repo.set(key, result);
+		}
+
+		return result
+	};
+
+	const load = (img) => {
+		try {
+			const r = exif.load(img);
+			return JSON.parse(r[`0th`][exif.ImageIFD.Make])
+		} catch (ex) {
+			return false
+		}
+	};
+
+	const saved = write(false);
+
+	const img_load = (data) => new Promise(async (resolve) => {
+		const image = new Image();
+		image.src = await Tile(data);
+		image.onload = () => resolve(image);
+	});
+
+	const garden = img_load({
+		width: 4,
+		height: 4,
+		data: [
+			`18 19 19 20`,
+			`50 0 0 52`,
+			`50 0 0 52`,
+			`82 83 83 84`
+		].join(` `)
+	});
+
+	const github = async ($path, {
+		autorun = false
+	} = false) => {
+		const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`;
+
+		const reader = new FileReader();
+		const blob = await fetch(url)
+			.then((r) => r.blob());
+
+		reader.readAsDataURL(blob);
+
+		return new Promise((resolve, reject) => {
+			reader.addEventListener(`load`, () => {
+				const data = load(reader.result);
+				if (!data) return reject(new Error(404))
+
+				Wheel.spawn({
+					[data.name]: data
+				});
+
+				const w = Wheel.get(data.name);
+
+				w.write({
+					"!info": {
+						type: `space`,
+						value: {
+							from: $path.join(`/`),
+							url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`
+						}
+					}
+				});
+
+				if (autorun) {
+					Wheel.start(data.name);
+				}
+
+				resolve(data.name);
+			});
+		})
+	};
+
+	var need = extend({
+		create () {
+			// give it a raf for the rest to calm down
+			requestAnimationFrame(() => {
+				this.cancel = this.value.listen(($value) => {
+					$value = Array.isArray($value)
+						? $value
+						: [$value];
+
+					$value.forEach((item) => {
+						if (typeof item !== `string`) return
+						const components = item.split(`/`);
+						// if the dep is already loaded don't bother
+						if (Wheel.get(components[components.length - 1])) return
+						github(components);
+					});
+				});
+			});
+		},
+
+		destroy () {
+			this.cancel && this.cancel();
+		}
+	});
+
 
 
 	var twists = /*#__PURE__*/Object.freeze({
@@ -1029,7 +1283,9 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		real: physical,
 		collide: collide,
 		visible: visible$1,
-		force: physical
+		force: physical,
+		sound: sound,
+		need: need
 	});
 
 	const string_nothing = read(``);
@@ -1089,6 +1345,14 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 					delete this.twists[key];
 				});
 			});
+		},
+
+		remove (...keys) {
+			const $space = this.value.get();
+			keys.forEach((key) => {
+				delete $space[key];
+			});
+			this.value.set($space);
 		},
 
 		destroy () {
@@ -1269,8 +1533,11 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 		}
 
 		return (variables) => {
-			p.evaluate(variables);
-
+			try {
+				p.evaluate(variables);
+			} catch (er) {
+				console.warn(`Math script error`, er);
+			}
 			return variables.return
 		}
 	};
@@ -1298,6 +1565,9 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 			const leaf = this.weave.chain(this.id.get(), true).shift();
 			let space_addr = this.weave.to_address(leaf);
+
+			// nad address
+			if (!space_addr) return
 
 			const space = Wheel.get(space_addr);
 
@@ -1360,7 +1630,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 						this.value.set(this.value.last);
 					}));
 				});
-			});
+			});	// do latter once setup
 		},
 
 		derez () {
@@ -1378,14 +1648,14 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 	});
 
 	const proto_math_value = extend(proto_write, {
-		set (expression) {
-			this.warp.run(expression);
-			return expression
+		set (expression, silent) {
+			proto_write.set.call(this, expression, silent);
+			if (!silent) this.warp.run(expression);
 		}
 	});
 
 	const proto_value = extend(proto_write, {
-		set (value) {
+		set (value, silent) {
 			this.last = value;
 
 			const vs = this.warp.values.get();
@@ -1404,18 +1674,36 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 				value
 			};
 
-			try {
-				params.null = null;
-				params.delay = false;
+			params.null = null;
+			params.delay = false;
 
-				const result = this.warp.fn(params);
+			const result = this.warp.fn(params);
 
-				// null or undefined means do nothing
-				if (result === null || result === undefined) return
-				proto_write.set.call(this, result);
-			} catch (ex) {
-				if (ex.message !== `stop`) console.warn(`math error`, ex);
+			Object.entries(vs).forEach(([key, { warp }]) => {
+				const original = warp.toJSON();
+				const value = params[key];
+
+				if (
+					Array.isArray(original) &&
+					Array.isArray(value) &&
+					original.some((x, i) => x !== value[key]) === false
+				) return
+
+				if (original === value) return
+				vs[key].warp.value.set(value);
+			});
+
+			// null or undefined means do nothing
+			if (result === null || result === undefined) return
+			if (params.delay) {
+				requestAnimationFrame(() => {
+					proto_write.set.call(this, result);
+				});
+
+				return this
 			}
+
+			proto_write.set.call(this, result, silent);
 
 			return this
 		}
@@ -1445,10 +1733,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			warp: m
 		});
 
-		// do latter once setup
-		requestAnimationFrame(() => {
-			m.math.set(math);
-		});
+		requestAnimationFrame(() => m.math.set(math, true));
 
 		return m
 	};
@@ -1720,7 +2005,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 				if (!k) {
 					data.value = data.value || {};
-					data.value[`!name`] = key;
+					data.value[`!name`] = data.value[`!name`] || key;
 
 					const warp = this.add(data);
 					if (!warp) return [key, false]
@@ -1813,6 +2098,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 			const [warp] = id_path.split(`/`);
 
 			const space = this.get_id(warp);
+			if (!space) return
 
 			return `/${this.name.get()}/${space.id.get()}`
 		},
@@ -1927,7 +2213,6 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 			// not saved
 			names: write({}),
-			spaces: write(new Map()),
 			destroys: []
 		});
 
@@ -2013,7 +2298,7 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 		let dirty = false;
 
-		Object.keys(keys).forEach((key) => {
+		keys.forEach((key) => {
 			if (key === SYSTEM) return
 
 			if ($running[key]) {
@@ -2284,5 +2569,5 @@ var app = (function (exports, Color, uuid, expr, twgl) {
 
 	return exports;
 
-}({}, Color, cuid, exprEval, twgl));
+}({}, Color, cuid, scribble, Tone, EXT.piexifjs, exprEval, twgl));
 //# sourceMappingURL=wheel.bundle.js.map

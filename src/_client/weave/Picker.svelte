@@ -4,14 +4,18 @@ import { load, image } from "/sys/file.js"
 import * as warps from "/weave/warps.js"
 
 import color from "/_client/action/color.js"
+import { cursor, goto } from "/_client/action/nav.js"
 
 $: arr_warps = Object.entries(warps)
 
 let last = {}
 let files
-let nameit = false
+export let nameit = false
+export const id = `/picker`
 
 const drop = (e) => {
+	e.preventDefault()
+	e.stopPropagation()
 	const files = e.dataTransfer.files
 	for (let i = 0; i < files.length; i++) {
 		const reader = new FileReader()
@@ -24,14 +28,27 @@ const drop = (e) => {
 		}
 		reader.readAsDataURL(files[i])
 	}
-	e.preventDefault()
-	e.stopPropagation()
+}
+
+// prevent a dead zone
+$: {
+	if (nameit === false && $cursor && $cursor.id === `/picker`) {
+		goto(`/`)
+	}
 }
 
 const over = (whether) => (e) => {
 	e.dataTransfer.dropEffect = `copy`
 	e.preventDefault()
 	e.stopPropagation()
+}
+
+export const cancel = () => {
+	nameit = false
+}
+
+export const click = () => {
+	play_it()
 }
 
 const play_it = () => {
@@ -61,31 +78,36 @@ let name
 
 {#if nameit}
 <div
-  class="nameprompt"
-  use:color={`/${name}`}
+	class="nameprompt"
+	use:color={`/${name}`}
 >
-  <h2>Name It!</h2>
+	<h2>Name It!</h2>
 
-  <div class="spirit">
-    {#await image(name) then src}
-      <img  class="flex" {src} alt="fileicon"/>
-    {/await}
-  </div>
+	<div class="spirit">
+	{#await image(name) then src}
+		<img  class="flex" {src} alt="fileicon"/>
+	{/await}
+	</div>
 
-  <input
-    class="nameit"
-    on:keydown={(e) => {
-      if (e.which !== 13) return
-      play_it()
-    }}
-    type="text"
-    bind:value={name}
-    placeholder="Name it"
-  />
-  <div class="controls">
-    <div class="false" on:click={() => { nameit = false }}>Cancel</div>
-    <div class="true" on:click={play_it}>Plant</div>
-  </div>
+	<input
+		class="nameit"
+		on:keydown={(e) => {
+			if (e.key.toLowerCase() === `end`) {
+				nameit = false
+				return
+			}
+			if (e.which !== 13) return
+			play_it()
+		}}
+		autofocus
+		type="text"
+		bind:value={name}
+		placeholder="Name it"
+	/>
+	<div class="controls">
+		<div class="false" on:click={() => { nameit = false }}>Cancel</div>
+		<div class="true" on:click={play_it}>Plant</div>
+	</div>
 </div>
 {/if}
 

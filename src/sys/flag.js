@@ -6,7 +6,7 @@ export const TIME_TICK_RATE = write(100)
 export const SPRITES = read(`/sheets/default_2.png`)
 
 export const IS_DEV = read(window.location.host === `localhost:5000`)
-export const SOUND_ON = write(false)
+export const SOUND_ON = write(true)
 
 export const SVELTE_ANIMATION = write({ delay: 100, duration: 300 })
 

@@ -34,8 +34,11 @@ export const math = (formula) => {
 	}
 
 	return (variables) => {
-		p.evaluate(variables)
-
+		try {
+			p.evaluate(variables)
+		} catch (er) {
+			console.warn(`Math script error`, er)
+		}
 		return variables.return
 	}
 }

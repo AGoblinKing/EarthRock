@@ -68,7 +68,9 @@ export const image = async (name) => {
 	return canvas.toDataURL(`image/jpeg`, 0.95)
 }
 
-export const github = async ($path, autorun = false) => {
+export const github = async ($path, {
+	autorun = false
+} = false) => {
 	const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`
 
 	const reader = new FileReader()

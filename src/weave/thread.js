@@ -89,9 +89,14 @@ export const decompile = ({
 	weave,
 	right = false
 }) => {
-	return chain(weave, address, right)
+	const c = chain(weave, address, right)
 		.map((i) => translate(i, weave))
-		.join(` => `)
+
+	if (right) {
+		return c.reverse().join(` => `)
+	}
+
+	return c.join(` => `)
 }
 
 export const translate = (id, weave) => {
@@ -114,10 +119,11 @@ export const compile = ({
 	prefix = ``,
 	right = false
 }) => {
-	const parts = code
+	let parts = code
 		.replace(/[\r\n]/g, ``)
 		.split(`=>`)
-		.reverse()
+
+	if (!right) parts = parts.reverse()
 
 	const wefts_update = weave.wefts.get()
 
@@ -126,7 +132,7 @@ export const compile = ({
 
 	const space = weave.get_id(address.split(`/`)[0])
 
-	let connection = right ? undefined : address
+	let connection = address
 
 	// lets create these warps
 	const ids = parts.map((part) => {
@@ -140,15 +146,16 @@ export const compile = ({
 		const k = weave.add(w_data)
 		const id = k.id.get()
 
-		wefts_update[id] = connection
+		if (right) {
+			wefts_update[connection] = id
+		} else {
+			wefts_update[id] = connection
+		}
+
 		connection = id
 
 		return id
 	})
-
-	if (right) {
-		wefts_update[address] = ids[ids.length - 1]
-	}
 
 	if (space.rezed) weave.rez(...ids)
 

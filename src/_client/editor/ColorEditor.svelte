@@ -11,11 +11,11 @@ const to_css = (col) => {
 	]).toCSS()
 }
 
-let picking = false
+export let editing = false
 const pick = (e) => {
 	e.preventDefault()
 	e.stopPropagation()
-	picking = true
+	editing = true
 }
 
 const move = ({ x, y, target }) => {
@@ -29,14 +29,14 @@ const move = ({ x, y, target }) => {
 }
 </script>
 
-{#if picking}
+{#if editing}
 <div
 	class="dopick"
 	style="background-color: {to_css($value)};"
 	on:click={(e) => {
 		e.preventDefault()
 		e.stopPropagation()
-		picking = false
+		editing = false
 	}}
 	on:mousemove={move}
 >
@@ -54,7 +54,7 @@ const move = ({ x, y, target }) => {
 </div>
 
 <svelte:window on:click={() => {
-	if (picking) picking = false
+	if (editing) editing = false
 }}/>
 
 <style>

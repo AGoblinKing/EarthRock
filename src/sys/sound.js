@@ -1,12 +1,29 @@
+import { extend } from "/object.js"
 import Tone from "tone"
-import { SOUND_ON } from "./flag.js"
 
-import * as sound_import from "./sound/ui.js"
+export default extend({
+	play () {
 
-if (!SOUND_ON.get()) {
-	Tone.Master.mute = true
-}
+	},
 
-Tone.Master.volume.value = -10
+	stop () {
 
-export const sounds = sound_import
+	},
+
+	rez () {
+		let first = false
+		this.cancel = this.value.listen(($sound) => {
+			if (!first) {
+				first = true
+				return
+			}
+			// construct $sound from data and then play it
+			this.stop()
+			this.play()
+		})
+	},
+
+	derez () {
+		this.cancel()
+	}
+})

@@ -38,7 +38,7 @@ export const del = (keys) => {
 
 	let dirty = false
 
-	Object.keys(keys).forEach((key) => {
+	keys.forEach((key) => {
 		if (key === SYSTEM) return
 
 		if ($running[key]) {

@@ -27,6 +27,16 @@ export const key = read(``, (set) => {
 export const keys = read({}, (set) => {
 	const value = {}
 
+	const clear = () => {
+		Object.entries(value).forEach(([key, val]) => {
+			if (val && key[key.length - 1] !== `!`) {
+				value[key] = false
+			}
+		})
+
+		set(value)
+	}
+
 	key.listen((char) => {
 		value[char] = true
 		if (char.length > 1 && char[char.length - 1] === `!`) {
@@ -36,4 +46,9 @@ export const keys = read({}, (set) => {
 		}
 		set(value)
 	})
+
+	// really try to avoid stuck keys
+	window.addEventListener(`blur`, clear)
+	document.addEventListener(`focus`, clear)
+	document.addEventListener(`visibilitychange`, clear, false)
 })

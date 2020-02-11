@@ -6,6 +6,7 @@ export default extend({
 		const weave_other = other.weave
 		const other_id = `${other.id.get()}/${key}`
 		const c_o = weave_other.chain(other_id, right).slice(0, -1)
+
 		if (c_o.length === 0) return
 
 		const { weave, id, space } = this
@@ -49,6 +50,7 @@ export default extend({
 				console.warn(`Invalid other for clone`)
 			}
 
+			// allows to reset existing protos
 			const proto = other
 				? other.value.get()
 				: {}

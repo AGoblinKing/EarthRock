@@ -1,6 +1,8 @@
 <script>
-import nav from "/_client/action/nav.js"
+import nav, { cursor, goto } from "/_client/action/nav.js"
 import Controls from "/_client/weave/Controls.svelte"
+import cuid from "cuid"
+import { random } from "/text.js"
 
 import { dark } from "/_client/action/color.js"
 
@@ -11,8 +13,6 @@ export let navi = {}
 
 $: name = weave.name
 $: names = weave.names
-
-let open = weave.name.get() !== Wheel.SYSTEM
 
 $: spacees = Object.entries($names).sort(([a], [b]) => {
 	if (a > b) return 1
@@ -33,14 +33,13 @@ let controls
 
 <div
 	class="weave"
-	class:open
 	use:dark={$name}
 	use:nav={{
 		id: $name,
-		up: navi.up,
-		down: open && spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
-		page_down: open && spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
-		page_up: navi.up,
+		up: () => navi.up,
+		down: () => spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
+		page_down: () => spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
+		page_up: () => navi.up,
 		origin: $name === `sys`,
 		left: () => {
 			controls.toggle()
@@ -49,16 +48,28 @@ let controls
 			controls.save_it()
 		},
 		insert: () => {
+			const space_name = random(2)
 			// prompt for weave ala picker
+			weave.write({
+				[cuid()]: {
+					type: `space`,
+					value: {
+						"!name": space_name
+					}
+				}
+			})
 
+			requestAnimationFrame(() => {
+				goto(`${$name}/${space_name}/!name`)
+				// edit
+				cursor.get().click()
+			})
 		},
 		del: () => {
 			Wheel.del([$name])
-		}
-	}}
 
-	on:click={() => {
-		open = !open
+			return navi.down
+		}
 	}}
 >
 	<Controls {weave} bind:this={controls}>
@@ -68,12 +79,13 @@ let controls
 	</Controls>
 </div>
 
-{#if open}
+
 	<div class="spaces">
 		{#each spacees as [s_name,space], i (s_name)}
 			<Space
 				{space}
 				{weave}
+				{i}
 				navi={{
 					up: i === 0 ? $name : get_up(i),
 					page_up: i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
@@ -82,22 +94,35 @@ let controls
 			/>
 
 		{/each}
+
 	</div>
-{/if}
+
+
+<div class="fakespace" use:dark={$name}></div>
 
 <style>
 
+.fakespace {
+	box-shadow: inset 10rem 10rem 0 rgba(0,0,0,0.25),
+		inset -10rem -10rem 0 rgba(0,0,0,0.25);
+	padding: 0.5rem;
+	padding-right: 1rem;
+	border-radius: 0.5rem;
+	margin: 0 1rem;
+}
+
 .weave {
-	align-items:center;
+	align-items: center;
 	text-align: left;
 	flex-direction: row-reverse;
 	display: flex;
 	padding: 1rem;
-	border: 0.1rem solid rgba(0,0, 0,0.2);
-	border-bottom: none;
-	margin-top: -0.25rem;
-	border-right: none;
 	font-size: 2rem;
+	box-shadow: inset 0rem 5rem 0 rgba(255,255,255,0.05),
+		inset 0rem -5rem 0 rgba(255,255,255,0.05),
+		inset 5rem 0 0 rgba(255,255,255,0.05),
+		inset -5rem 0 0 rgba(255,255,255,0.05);
+
 	border-radius: 0.5rem;
 }
 
@@ -106,6 +131,15 @@ let controls
 }
 
 .namezor {
+	margin: 0 1rem;
 	flex: 1;
+}
+
+:global(.nav).weave {
+	box-shadow:
+		inset 0 0.5rem 0 rgba(224, 168, 83,0.5),
+		inset 0 -0.5rem 0 rgba(224, 168, 83,0.5),
+		inset 5rem 0 0 rgba(224, 168, 83,1),
+		inset -5rem 0 0 rgba(224, 168, 83,1) !important;
 }
 </style>

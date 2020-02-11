@@ -2,7 +2,7 @@
 import SpriteEditor from "/_client/editor/SpriteEditor.svelte"
 import ColorEditor from "/_client/editor/ColorEditor.svelte"
 import color from "/_client/action/color.js"
-import nav from "/_client/action/nav.js"
+import nav, { cursor, goto } from "/_client/action/nav.js"
 
 import Thread from "./Thread.svelte"
 
@@ -16,6 +16,8 @@ export let side = `in`
 export let focus = false
 export let executed = () => {}
 export let navi
+
+let key_editing = false
 
 $: [key, value] = channel
 
@@ -34,8 +36,18 @@ const cancel = () => {
 const execute = () => {
 	editing = false
 
+	// renaming ourselves
+
 	try {
 		value.set(json(val))
+
+		const new_address = `${weave.name.get()}/${value.get()}/!name`
+
+		if (key === `!name` && $cursor.id === address) {
+			requestAnimationFrame(() => {
+				goto(new_address)
+			})
+		}
 	} catch (ex) {
 		// no boggie
 	}
@@ -46,10 +58,27 @@ const execute = () => {
 const focusd = (node) => {
 	requestAnimationFrame(() => node.focus())
 }
-
+let edit_sprite = false
+const edit_color = false
 let thread_left
 let thread_right
+let value_node
+let key_new
 
+const new_key = () => {
+	key_editing = false
+
+	if (key_new === ``) return
+	space.remove(key)
+	space.write({
+		[key_new]: value.get()
+	})
+
+	requestAnimationFrame(() => {
+		goto(`${space.address()}/${key_new}`)
+		key_new = ``
+	})
+}
 </script>
 
 <div
@@ -62,27 +91,67 @@ let thread_right
 		},
 		right: () => {
 			thread_right.do_edit()
+		},
+		insert: () => {
+			key_editing = true
+		},
+		del: () => {
+			// don't delete !name
+			if (key === `!name`) return
+
+			space.remove(key)
+			goto(navi.down === `/` ? navi.up : navi.down)
 		}
 	}}
-	on:click={() => {
+
+	on:click={(e) => {
+		if (key === `sprite`) {
+			edit_sprite = true
+			requestAnimationFrame(() => {
+				cursor.set(value_node)
+			})
+			return
+		}
 		editing = true
 		val = JSON.stringify($value)
 	}}
 >
 
 <Thread {channel} {space} {weave} {nothread} bind:this={thread_left}/>
+{#if key_editing}
+	<input type="text" class="edit" autofocus
+		bind:value={key_new}
+		on:keydown={({ which, code }) => {
+			if (code === `End`) {
+				key_editing = false
+				return
+			}
 
-{#if !editing}
+			if (which !== 13 && code !== `ControlRight`) return
+
+			new_key()
+		}}
+
+		on:blur={() => {
+			key_editing = false
+		}}
+	/>
+{:else if !editing}
 <div class="dataset">
 	<div class="key">
 		{key}
 	</div>
 
 	{#if key === `sprite`}
-		<SpriteEditor {value} />
+		<SpriteEditor
+			{value}
+			back={address}
+			editing={edit_sprite}
+			bind:this={value_node}
+		/>
 		<div class="flex"/>
 	{:else if key === `color`}
-		<ColorEditor {value} />
+		<ColorEditor {value} editing={edit_color} />
 		<div class="flex"/>
 	{:else}
 	<div class="value">
@@ -109,6 +178,7 @@ let thread_right
 		}}
 	/>
 {/if}
+
 <Thread {channel} {space} {weave} {nothread} right={true} bind:this={thread_right} />
 
 </div>
@@ -129,8 +199,6 @@ let thread_right
 	display: flex;
 	overflow: hidden;
 	margin-left: 1rem;
-	border-right: 0.1rem solid rgba(0,0, 0,0.2);
-	border-left: 0.1rem solid rgba(0,0, 0,0.2);
 	margin-right: 2rem;
 	transition: all 250ms ease-in-out;
 }

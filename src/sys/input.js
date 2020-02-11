@@ -2,6 +2,7 @@
 import * as Mouse from "/sys/mouse.js"
 import * as Key from "/sys/key.js"
 import * as Time from "/sys/time.js"
+import * as Gamepad from "/sys/gamepad.js"
 
 import { v3 } from "twgl.js"
 
@@ -60,3 +61,43 @@ Mouse.scroll.listen((vel) => {
 })
 
 export const focus = write(``)
+
+// input to replicate to remotes
+const button_map = {
+	home: ({ home }, { start }) => home || start,
+	up: ({ arrowup, tab, shift }, { up }) => arrowup || (tab && shift) || up,
+	down: ({ arrowdown, tab, shift }, { down }) => arrowdown || (tab && shift) || down,
+	pagedown: ({ pagedown }, { righttrigger }) => pagedown || righttrigger,
+	pageup: ({ pageup }, { rightshoulder }) => pageup || rightshoulder,
+	insert: ({ insert }, { x }) => insert || x,
+	delete: ({ delete: del }, { y }) => del || y,
+	left: ({ arrowleft }, { left }) => arrowleft || left,
+	right: ({ arrowright }, { right }) => arrowright || right,
+	confirm: ({ enter }, { a }) => a || enter,
+	cancel: ({ end, escape }, { b }) => end || b || escape,
+	editor: ({ pause, tilde }, { select }) => tilde || pause || select,
+	avatar_up: ({ w }) => w,
+	avatar_down: ({ s }) => s,
+	avatar_left: ({ a }) => a,
+	avatar_right: ({ d }) => d,
+	avatar_jump: ({ " ": space }) => space,
+	avatar_sprint: ({ shift }) => shift,
+	avatar_left_arm: ({ q }) => q,
+	avatar_right_arm: ({ e }) => e,
+	undo: ({ control, z, backspace }) => (control && z) || backspace,
+	redo: ({ shift, control, z, backspace }) => (shift && control && z) || (shift && backspace)
+}
+
+export const buttons = read({}, (set) => {
+	const values = {}
+	Time.tick.listen(() => {
+		const $keys = Key.keys.get()
+		const $buttons = Gamepad.buttons.get()
+
+		Object.entries(button_map).forEach(([key, fn]) => {
+			values[key] = fn($keys, $buttons)
+		})
+
+		set(values)
+	})
+})

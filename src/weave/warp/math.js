@@ -20,6 +20,8 @@ const escape = (str) =>
 
 const type = read(`math`)
 
+const lookup = {}
+
 const proto_math = extend(proto_warp, {
 	run (expression) {
 		const matches = expression.match(Wheel.REG_ID)
@@ -27,6 +29,9 @@ const proto_math = extend(proto_warp, {
 
 		const leaf = this.weave.chain(this.id.get(), true).shift()
 		let space_addr = this.weave.to_address(leaf)
+
+		// nad address
+		if (!space_addr) return
 
 		const space = Wheel.get(space_addr)
 
@@ -52,6 +57,8 @@ const proto_math = extend(proto_warp, {
 				.replace(path_space, `dot`)
 				.replace(path_weave, `weave`)
 				.replace(bad_variable_characters, `z`)
+
+			lookup[name] = item
 
 			expression = expression.replace(
 				new RegExp(escape(item), `g`),
@@ -89,7 +96,7 @@ const proto_math = extend(proto_warp, {
 					this.value.set(this.value.last)
 				}))
 			})
-		})
+		})	// do latter once setup
 	},
 
 	derez () {
@@ -107,14 +114,14 @@ const proto_math = extend(proto_warp, {
 })
 
 const proto_math_value = extend(proto_write, {
-	set (expression) {
-		this.warp.run(expression)
-		return expression
+	set (expression, silent) {
+		proto_write.set.call(this, expression, silent)
+		if (!silent) this.warp.run(expression)
 	}
 })
 
 const proto_value = extend(proto_write, {
-	set (value) {
+	set (value, silent) {
 		this.last = value
 
 		const vs = this.warp.values.get()
@@ -133,18 +140,36 @@ const proto_value = extend(proto_write, {
 			value
 		}
 
-		try {
-			params.null = null
-			params.delay = false
+		params.null = null
+		params.delay = false
 
-			const result = this.warp.fn(params)
+		const result = this.warp.fn(params)
 
-			// null or undefined means do nothing
-			if (result === null || result === undefined) return
-			proto_write.set.call(this, result)
-		} catch (ex) {
-			if (ex.message !== `stop`) console.warn(`math error`, ex)
+		Object.entries(vs).forEach(([key, { warp }]) => {
+			const original = warp.toJSON()
+			const value = params[key]
+
+			if (
+				Array.isArray(original) &&
+				Array.isArray(value) &&
+				original.some((x, i) => x !== value[key]) === false
+			) return
+
+			if (original === value) return
+			vs[key].warp.value.set(value)
+		})
+
+		// null or undefined means do nothing
+		if (result === null || result === undefined) return
+		if (params.delay) {
+			requestAnimationFrame(() => {
+				proto_write.set.call(this, result)
+			})
+
+			return this
 		}
+
+		proto_write.set.call(this, result, silent)
 
 		return this
 	}
@@ -174,10 +199,7 @@ export default ({
 		warp: m
 	})
 
-	// do latter once setup
-	requestAnimationFrame(() => {
-		m.math.set(math)
-	})
+	requestAnimationFrame(() => m.math.set(math, true))
 
 	return m
 }

@@ -17,7 +17,8 @@ export default {
 		`color`,
 		`tone`,
 		`twgl`,
-		`piexifjs`
+		`piexifjs`,
+		`scribbletune`
 	],
 	output: {
 		sourcemap: !production,
@@ -30,7 +31,8 @@ export default {
 			tone: `Tone`,
 			"expr-eval": `exprEval`,
 			twgl: `twgl`,
-			piexifjs: `EXT.piexifjs`
+			piexifjs: `EXT.piexifjs`,
+			scribbletune: `scribble`
 		}
 	},
 

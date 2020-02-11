@@ -132,7 +132,7 @@ const proto_weave = {
 
 			if (!k) {
 				data.value = data.value || {}
-				data.value[`!name`] = key
+				data.value[`!name`] = data.value[`!name`] || key
 
 				const warp = this.add(data)
 				if (!warp) return [key, false]
@@ -225,6 +225,7 @@ const proto_weave = {
 		const [warp] = id_path.split(`/`)
 
 		const space = this.get_id(warp)
+		if (!space) return
 
 		return `/${this.name.get()}/${space.id.get()}`
 	},
@@ -339,7 +340,6 @@ export default ({
 
 		// not saved
 		names: write({}),
-		spaces: write(new Map()),
 		destroys: []
 	})
 

@@ -77,7 +77,7 @@ const proto_math = extend(proto_warp, {
 			this.values.set(vs)
 		} catch (ex) {
 			// TODO: Alert user of math error here
-			// console.warn(`MATH`, ex)
+			console.warn(`Math parse error`, ex)
 		}
 	},
 
@@ -145,22 +145,24 @@ const proto_value = extend(proto_write, {
 
 		const result = this.warp.fn(params)
 
-		Object.entries(vs).forEach(([key, { warp }]) => {
-			const original = warp.toJSON()
-			const value = params[key]
+		// allow for setting multiple values
+		// Object.entries(vs).forEach(([key, { warp }]) => {
+		// 	const original = warp.toJSON()
+		// 	const value = params[key]
 
-			if (
-				Array.isArray(original) &&
-				Array.isArray(value) &&
-				original.some((x, i) => x !== value[key]) === false
-			) return
+		// 	if (
+		// 		Array.isArray(original) &&
+		// 		Array.isArray(value) &&
+		// 		original.some((x, i) => x !== value[key]) === false
+		// 	) return
 
-			if (original === value) return
-			vs[key].warp.value.set(value)
-		})
+		// 	if (original === value) return
+		// 	vs[key].warp.value.set(value)
+		// })
 
 		// null or undefined means do nothing
 		if (result === null || result === undefined) return
+
 		if (params.delay) {
 			requestAnimationFrame(() => {
 				proto_write.set.call(this, result)

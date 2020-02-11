@@ -82,7 +82,10 @@ const proto_math = extend(proto_warp, {
 	},
 
 	rez () {
-		this.run(this.math.get())
+		requestAnimationFrame(() => {
+			this.run(this.math.get())
+		})
+
 		this.cancels = new Set()
 
 		this.cancel_vs = this.values.listen((vs) => {

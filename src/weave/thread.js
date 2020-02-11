@@ -124,7 +124,7 @@ export const compile = ({
 		.split(`=>`)
 
 	if (!right) parts = parts.reverse()
-`
+
 	const wefts_update = weave.wefts.get()
 
 	// remove old thread

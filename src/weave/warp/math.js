@@ -99,6 +99,7 @@ const proto_math = extend(proto_warp, {
 					this.value.set(this.value.last)
 				}))
 			})
+			this.value.set(this.value.last)
 		})	// do latter once setup
 	},
 
@@ -133,50 +134,29 @@ const proto_value = extend(proto_write, {
 			: value
 
 		// could be faster
-		const params = {
-			...Object.fromEntries(Object.entries(vs).map(
-				([key, { warp }]) => [key, warp.toJSON() === undefined
-					? null
-					: warp.toJSON()
-				]
+		const params = Object.assign(
+			Object.fromEntries(Object.entries(vs).map(
+				([key, { warp }]) =>
+					[
+						key,
+						warp.toJSON() === undefined
+							? null
+							: warp.toJSON()
+					]
 			)),
-			value
-		}
-
-		params.null = null
-		params.delay = false
+			{
+				value
+			}
+		)
 
 		const result = this.warp.fn(params)
-
-		// allow for setting multiple values
-		// Object.entries(vs).forEach(([key, { warp }]) => {
-		// 	const original = warp.toJSON()
-		// 	const value = params[key]
-
-		// 	if (
-		// 		Array.isArray(original) &&
-		// 		Array.isArray(value) &&
-		// 		original.some((x, i) => x !== value[key]) === false
-		// 	) return
-
-		// 	if (original === value) return
-		// 	vs[key].warp.value.set(value)
-		// })
 
 		// null or undefined means do nothing
 		if (result === null || result === undefined) return
 
-		if (params.delay) {
-			requestAnimationFrame(() => {
-				proto_write.set.call(this, result)
-			})
-
-			return this
-		}
-
-		proto_write.set.call(this, result, silent)
-
-		return this
+		requestAnimationFrame(() => {
+			proto_write.set.call(this, result)
+		})
 	}
 })
 

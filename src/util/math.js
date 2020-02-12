@@ -33,13 +33,25 @@ export const math = (formula) => {
 		maths[formula] = p
 	}
 
+	let keys
+	let fn
 	return (variables) => {
+		if (
+			!keys ||
+			Object.keys(variables).length !== keys.length
+		) {
+			keys = Object.keys(variables)
+			fn = p.toJSFunction(keys.join(`,`))
+		}
+
+		let result = null
 		try {
-			p.evaluate(variables)
+			result = fn(...keys.map((k) => variables[k]))
 		} catch (er) {
 			console.warn(`Math script error`, er)
 			console.log(variables)
 		}
-		return variables.return
+
+		return result
 	}
 }

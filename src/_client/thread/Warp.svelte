@@ -2,6 +2,7 @@
 import { read } from "/store.js"
 import { condense } from "/weave/thread.js"
 
+import color from "/_client/action/color.js"
 import ColorEditor from "/_client/editor/ColorEditor.svelte"
 import SpriteEditor from "/_client/editor/SpriteEditor.svelte"
 
@@ -39,6 +40,7 @@ $: condensed = condense(id, weave, $value)
 	class="warp"
 	class:changed
 	use:change={value}
+	use:color={$value}
 >
 	{#if warp_view[$type]}
 		<svelte:component this={warp_view[$type]} value={k.value} />
@@ -49,7 +51,7 @@ $: condensed = condense(id, weave, $value)
 
 <style>
 .warp {
-	transition: box-shadow 250ms ease-in-out;
+	transition: box-shadow 250ms ease-in-out, background-color 100ms linear;
 }
 
 .changed {

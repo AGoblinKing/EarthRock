@@ -71,6 +71,7 @@ const play_it = () => {
 		}
 	})
 
+	Wheel.start(name)
 	nameit = false
 }
 let name

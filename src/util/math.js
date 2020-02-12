@@ -29,17 +29,28 @@ export const math = (formula) => {
 	let p = maths[formula]
 
 	if (!p) {
-		p = parser.parse(formula)
-		maths[formula] = p
+		maths[formula] = p = parser.parse(formula)
 	}
 
+	let fn
+	let fn_vars
+
 	return (variables) => {
+		if (
+			!fn ||
+      Object.keys(variables).length !== fn_vars.length
+		) {
+			fn_vars = Object.keys(variables)
+			fn = p.toJSFunction(fn_vars.join(`,`))
+		}
+
 		try {
-			p.evaluate(variables)
+			fn(...fn_vars.map((key) => variables[key]))
 		} catch (er) {
-			console.warn(`Math script error`, er)
+			console.wa`rn(`Math script error`, er)
 			console.log(variables)
 		}
+
 		return variables.return
 	}
 }

@@ -24,7 +24,7 @@ export const TILE_COLUMNS = read(32)
 export const THEME_COLOR = write(`rgb(224, 168, 83)`)
 export const THEME_BG = write(`#033`)
 export const THEME_GLOW = write(`green`)
-export const CLEAR_COLOR = write(`#023d55`)
+export const CLEAR_COLOR = write(`#001000`)
 
 export const CURSOR = write(`/sys`)
 

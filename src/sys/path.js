@@ -5,7 +5,7 @@ export const path = transformer((path_new) => {
 		return path_new
 	}
 
-	return path_new.split(`/`)
+	return path_new.split(Wheel.DENOTE)
 })
 
 window.addEventListener(`popstate`, (e) => {

@@ -4,9 +4,9 @@ export const proto_warp = {
 		let space_id
 
 		const finder = (spx) => {
-			if (spx.indexOf(`/`) === -1) return
+			if (spx.indexOf(Wheel.DENOTE) === -1) return
 
-			space_id = spx.split(`/`)[0]
+			space_id = spx.split(Wheel.DENOTE)[0]
 			return true
 		}
 

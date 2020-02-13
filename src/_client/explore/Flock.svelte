@@ -40,7 +40,7 @@ $: {
 			class="button"
 			on:click={() => {
 				let bird_new = birdex - 1
-				if (bird_new < 0) bird_new = $birds.length - 1
+				if (bird_new < 0) bird_new = $birds.length === 0 ? 0 : $birds.length - 1
 				if ($birds.length === undefined) bird_new = 0
 
 				birdex = bird_new
@@ -48,7 +48,7 @@ $: {
 
 			use:color={$bird_name}
 		>&lt;</div>
-		<div class="flex">{`~~${$bird_name}~~`} : {birdex + 1} : {$birds.length} </div>
+		<div class="flex">{`~~${$bird_name}~~`} : {birdex} : {$birds.length} </div>
 		<div
 			class="button"
 			use:color={$bird_name}
@@ -77,13 +77,6 @@ $: {
 .button	 {
 	padding: 0;
 
-}
-
-.name {
-	text-align: center;
-	padding: 0.5rem 0;
-	margin: 0 3rem;
-	font-size: 2rem;
 }
 
 .button:hover {

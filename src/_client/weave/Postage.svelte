@@ -5,7 +5,7 @@ export let address = ``
 
 $: running = Wheel.running
 
-const [, w_id, k_id] = address.split(`/`)
+const [, w_id, k_id] = address.split(Wheel.DENOTE)
 
 $: weave = Wheel.get(w_id) || Wheel.get(Wheel.SYSTEM)
 $: names = weave.names

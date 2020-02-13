@@ -117,7 +117,7 @@ path.listen(async ($path) => {
 
 		await github($path, { autorun: true })
 
-		Wheel.name.set($path.join(`/`))
-		watch = savewatch($path.join(`/`))
+		Wheel.name.set($path.join(Wheel.DENOTE))
+		watch = savewatch($path.join(Wheel.DENOTE))
 	}
 })

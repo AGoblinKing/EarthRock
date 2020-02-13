@@ -12,7 +12,7 @@ export default extend({
 
 				$value.forEach((item) => {
 					if (typeof item !== `string`) return
-					const components = item.split(`/`)
+					const components = item.split(Wheel.DENOTE)
 					// if the dep is already loaded don't bother
 					if (Wheel.get(components[components.length - 1])) return
 					github(components)

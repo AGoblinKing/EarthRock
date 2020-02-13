@@ -1,6 +1,7 @@
 <script>
 import color from "/_client/action/color.js"
 import { read, write } from "/store.js"
+import { random } from "/text.js"
 
 import nav, { goto, cursor } from "/_client/action/nav.js"
 import Flock from "./Flock.svelte"
@@ -38,11 +39,11 @@ $: rezed = $w_rezed[$id]
 
 const get_nav = (idx) => {
 	const self = chans[idx][0]
-	const down = chans[idx + 1]
+	const down = () => chans[idx + 1]
 		? `${space.address()}/${chans[idx + 1][0]}`
 		: navi.down
 
-	const up = chans[idx - 1]
+	const up = () => chans[idx - 1]
 		? `${space.address()}/${chans[idx - 1][0]}`
 		: space.address()
 
@@ -89,23 +90,25 @@ const space_bird = write(false)
 			page_down: navi.down,
 			del: () => {
 				weave.remove($id)
-				return navi.down === `/` ? navi.up : navi.down
+				return navi.down === Wheel.DENOTE ? navi.up : navi.down
 			},
 			insert: () => {
+				const idx = random(1)
 				space.write({
-					"": ``
+					[idx]: ``
 				})
+				debugger
 
 				// now put that node in edit mode
 				requestAnimationFrame(() => {
-					goto(`${space.address()}/`)
+					goto(`${space.address()}${Wheel.DENOTE}${idx}`)
 					cursor.get().insert()
 				})
 			}
 		}}
 	>
 		<div class="postage" on:click={toggle}>
-			<Postage address={`/${$w_name}/${$name}`}/>
+			<Postage address={`${$w_name}${Wheel.DENOTE}${$name}`}/>
 		</div>
 		<div class="name">
 			{$name}

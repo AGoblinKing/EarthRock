@@ -36,10 +36,10 @@ let controls
 	use:dark={$name}
 	use:nav={{
 		id: $name,
-		up: () => navi.up,
-		down: () => spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
-		page_down: () => spacees.length > 0 ? `${$name}/${spacees[0][0]}` : navi.down,
-		page_up: () => navi.up,
+		up: () => navi.up(),
+		down: () => spacees.length > 0 ? `${$name}${Wheel.DENOTE}${spacees[0][0]}` : navi.down,
+		page_down: () => spacees.length > 0 ? `${$name}${Wheel.DENOTE}${spacees[0][0]}` : navi.down,
+		page_up: () => navi.up(),
 		origin: $name === `sys`,
 		left: () => {
 			controls.toggle()

@@ -18,7 +18,7 @@ import "/sys/physics.js"
 
 const normalize = (sys) => map(flag)(
 	([k, entry]) => [
-		k.replace(/_/g, ` `).toLowerCase(),
+		k.replace(/ /g, `_`).toLowerCase(),
 		entry
 	]
 )

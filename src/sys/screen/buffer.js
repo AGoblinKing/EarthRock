@@ -1,5 +1,8 @@
 import * as twgl from "twgl"
-import { TIME_TICK_RATE } from "/sys/flag.js"
+import Color from "color"
+
+import { color as txt_color } from "/text.js"
+import { TIME_TICK_RATE, THEME_BG } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 import { visible } from "/weave/twist/visible.js"
 import { map, values, each, keys } from "/object.js"
@@ -196,9 +199,10 @@ let last_update
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
 	if (!buffer_info) return
-
+	const bg = Color(THEME_BG.get())
 	// grab the shiz
 	const { update, remove, add } = visible.hey()
+	const vis = visible.get()
 
 	// add all the defaults for each one
 	add.forEach((key) => {
@@ -230,21 +234,30 @@ tick.listen(() => requestAnimationFrame(() => {
 
 			// alias positon to translate
 			const space_key = key_b === `translate` ? `position` : key_b
-			const twist = space[space_key]
+			if (!vis[key]) return
+			const twist = vis[key].get_value(space_key)
 
 			let update_set
 			// TODO: Maybe store all values in twists as TypeArrays?
-			if (typeof twist === `number`) {
+
+			if (key_b === `color` || key_b === `color_last`) {
+				const { red, green, blue } = Color(twist).toRGB()
+
+				update_set = [blue * 255 + green * 256 * 255 + red * 256 * 256 * 255]
+				if (red + green + blue === 0 && twist !== `black`) {
+					const { red, green, blue } = Color(txt_color(JSON.stringify(twist))).blend(bg, 0.8).toRGB()
+					update_set = [blue + green * 256 + red * 256 * 256]
+				}
+			} else if (typeof twist === `number`) {
 				update_set = [...Array(numComponents)].fill(twist)
 			} else if (Array.isArray(twist)) {
+				update_set = []
 				// assume under not over
 				if (twist.length < numComponents) {
 					for (let i = numComponents - twist.length; i < twist.length; i++) {
-						twist[i] = defaults[space_key][i]
+						update_set[i] = defaults[space_key][i]
 					}
 				}
-
-				update_set = twist.slice(0, numComponents)
 			} else {
 				// otherwise wtf was that? lets set default
 				update_set = [...data.subarray(bdx, bdx + numComponents)]

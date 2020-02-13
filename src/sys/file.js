@@ -46,7 +46,7 @@ const garden = img_load({
 })
 
 export const image = async (name) => {
-	const tn = tile(`/${name}`)
+	const tn = tile(`${Wheel.DENOTE}${name}`)
 
 	const img_tile = img_load({
 		width: 1,
@@ -94,7 +94,7 @@ export const github = async ($path, {
 				"!info": {
 					type: `space`,
 					value: {
-						from: $path.join(`/`),
+						from: $path.join(Wheel.DENOTE),
 						url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`
 					}
 				}

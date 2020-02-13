@@ -66,10 +66,23 @@ const proto_space = extend(proto_warp, {
 
 	remove (...keys) {
 		const $space = this.value.get()
+
 		keys.forEach((key) => {
 			delete $space[key]
+			this.weave.remove(
+				this.scripts(key)
+			)
 		})
+
 		this.value.set($space)
+	},
+
+	scripts (key) {
+		const id = this.id.get()
+		return 	[
+			...this.weave.chain(`${id}/${key}`).slice(0, -1),
+			...this.weave.chain(`${id}/${key}`, true).slice(1)
+		]
 	},
 
 	destroy () {

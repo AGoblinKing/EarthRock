@@ -331,7 +331,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 	const THEME_COLOR = write(`rgb(224, 168, 83)`);
 	const THEME_BG = write(`#033`);
 	const THEME_GLOW = write(`green`);
-	const CLEAR_COLOR = write(`#023d55`);
+	const CLEAR_COLOR = write(`#001000`);
 
 	const CURSOR = write(`/sys`);
 
@@ -367,7 +367,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 	const random = (count) => Array
 		.from(new Array(count))
 		.map(() => words[Math.floor(Math.random() * words.length)])
-		.join(` `);
+		.join(`_`);
 
 	const proto_warp = {
 		get_space () {
@@ -375,9 +375,9 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 			let space_id;
 
 			const finder = (spx) => {
-				if (spx.indexOf(`/`) === -1) return
+				if (spx.indexOf(Wheel.DENOTE) === -1) return
 
-				space_id = spx.split(`/`)[0];
+				space_id = spx.split(Wheel.DENOTE)[0];
 				return true
 			};
 
@@ -592,7 +592,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		// remove old thread
 		weave.remove(...chain(weave, address, right));
 
-		const space = weave.get_id(address.split(`/`)[0]);
+		const space = weave.get_id(address.split(Wheel.DENOTE)[0]);
 
 		let connection = address;
 
@@ -1230,7 +1230,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 					"!info": {
 						type: `space`,
 						value: {
-							from: $path.join(`/`),
+							from: $path.join(Wheel.DENOTE),
 							url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`
 						}
 					}
@@ -1256,7 +1256,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 					$value.forEach((item) => {
 						if (typeof item !== `string`) return
-						const components = item.split(`/`);
+						const components = item.split(Wheel.DENOTE);
 						// if the dep is already loaded don't bother
 						if (Wheel.get(components[components.length - 1])) return
 						github(components);
@@ -1349,10 +1349,23 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		remove (...keys) {
 			const $space = this.value.get();
+
 			keys.forEach((key) => {
 				delete $space[key];
+				this.weave.remove(
+					this.scripts(key)
+				);
 			});
+
 			this.value.set($space);
+		},
+
+		scripts (key) {
+			const id = this.id.get();
+			return 	[
+				...this.weave.chain(`${id}/${key}`).slice(0, -1),
+				...this.weave.chain(`${id}/${key}`, true).slice(1)
+			]
 		},
 
 		destroy () {
@@ -1504,7 +1517,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 	twgl.v3.setDefaultType(Array);
 
 	const maths = {};
-
+	const fns = {};
 	const parser = new expr.Parser({
 		in: true,
 		assignment: true
@@ -1533,19 +1546,24 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 
 		let keys;
-		let fn;
 		return (variables) => {
 			if (
 				!keys ||
-				Object.keys(variables).length !== keys.length
+				variables.length !== keys.length ||
+				!fns[formula]
 			) {
-				keys = Object.keys(variables);
-				fn = p.toJSFunction(keys.join(`,`));
+				keys = variables.map(([k]) => k);
+				try {
+					fns[formula] = p.toJSFunction(keys.join(`,`));
+				} catch (ex) {
+					console.warn(`math compile error`, ex);
+					return
+				}
 			}
 
 			let result = null;
 			try {
-				result = fn(...keys.map((k) => variables[k]));
+				result = fns[formula](...variables.map(([_, v]) => v));
 			} catch (er) {
 				console.warn(`Math script error`, er);
 				console.log(variables);
@@ -1576,8 +1594,11 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 			const matches = expression.match(Wheel.REG_ID);
 			const vs = {};
 
-			const leaf = this.weave.chain(this.id.get(), true).shift();
-			let space_addr = this.weave.to_address(leaf);
+			const leaf = this.weave.chain(this.id.get(), true)
+				.filter((k) => k.indexOf(Wheel.DENOTE) !== -1).pop();
+
+			let space_addr;
+			if (leaf) space_addr = this.weave.to_address(leaf);
 
 			// nad address
 			if (!space_addr) return
@@ -1585,22 +1606,25 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 			const space = Wheel.get(space_addr);
 
 			if (space.type.get() !== `space`) {
-				const leaf_right = this.weave.chain(this.id.get()).shift();
+				const leaf_right = this.weave.chain(this.id.get())
+					.filter((k) => k.indexOf(Wheel.DENOTE) !== -1).pop();
 				space_addr = this.weave.to_address(leaf_right);
 			}
 
+			let fail;
 			new Set(matches).forEach((item) => {
 				const shh = item[0] === `$`;
 				const gette = item
-					.replace(path_space, `${space_addr}/`)
-					.replace(path_weave, `/${this.weave.name.get()}/`)
+					.replace(path_space, `${space_addr}${Wheel.DENOTE}`)
+					.replace(path_weave, `${Wheel.DENOTE}${this.weave.name.get()}${Wheel.DENOTE}`)
 					.replace(path_ssh, ``)
 					.trim();
 
 				const warp = Wheel.get(gette);
-
-				// not an id or invalid
-				if (!warp) return
+				if (!warp) {
+					fail = true;
+					return
+				}
 
 				const name = item
 					.replace(path_space, `dot`)
@@ -1617,6 +1641,8 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 					shh
 				};
 			});
+
+			if (fail) return
 
 			try {
 				this.fn = math(expression);
@@ -1680,22 +1706,17 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 				? null
 				: value;
 
-			// could be faster
-			const params = Object.assign(
-				Object.fromEntries(Object.entries(vs).map(
-					([key, { warp }]) =>
-						[
-							key,
-							warp.toJSON() === undefined
-								? null
-								: warp.toJSON()
-						]
-				)),
-				{
-					value
-				}
+			const params = Object.entries(vs).map(
+				([key, { warp }]) =>
+					[
+						key,
+						warp.toJSON() === undefined
+							? null
+							: warp.toJSON()
+					]
 			);
 
+			params.push([`value`, value]);
 			const result = this.warp.fn(params);
 
 			// null or undefined means do nothing
@@ -1744,8 +1765,8 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 			return address
 				.replace(`$`, ``)
-				.replace(`~`, `/${this.weave.name.get()}`)
-				.replace(`.`, `${this.weave.name.get()}/${space ? space.get_value(`!name`) : `not connected`}`)
+				.replace(`~`, `${Wheel.DENOTE}${this.weave.name.get()}`)
+				.replace(`.`, `${this.weave.name.get()}${Wheel.DENOTE}${space ? space.get_value(`!name`) : `not connected`}`)
 		},
 
 		clear () {
@@ -1815,7 +1836,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	// instead use the weave messaging channel
 	var mail = ({
-		whom = `/sys/mouse/position`,
+		whom = `${Wheel.DENOTE}sys${Wheel.DENOTE}mouse${Wheel.DENOTE}position`,
 		weave,
 		id
 	}) => {
@@ -2029,7 +2050,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		},
 
 		exists (address) {
-			const [warp, weft] = address.split(`/`);
+			const [warp, weft] = address.split(Wheel.DENOTE);
 
 			const k = this.warps.get()[warp];
 
@@ -2051,8 +2072,8 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (k.type.get() === `space`) return
 
 				const chain = this.chain(k.id.get(), true);
-				const last = chain[chain.length - 1].split(`/`)[0];
-				const first = chain[0].split(`/`)[0];
+				const last = chain[chain.length - 1].split(Wheel.DENOTE)[0];
+				const first = chain[0].split(Wheel.DENOTE)[0];
 				const k_last = warps[last];
 				const k_first = warps[first];
 
@@ -2093,12 +2114,12 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		},
 
 		to_address (id_path) {
-			const [warp] = id_path.split(`/`);
+			const [warp] = id_path.split(Wheel.DENOTE);
 
 			const space = this.get_id(warp);
 			if (!space) return
 
-			return `/${this.name.get()}/${space.id.get()}`
+			return `${Wheel.DENOTE}${this.name.get()}${Wheel.DENOTE}${space.id.get()}`
 		},
 
 		get_name (name) {
@@ -2108,9 +2129,9 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		},
 
 		get_id (id) {
-			if (!id) return
+			if (!id || typeof id !== `string`) return
 
-			const [k_id, chan_name] = id.split(`/`);
+			const [k_id, chan_name] = id.split(Wheel.DENOTE);
 			const k = this.warps.get()[k_id];
 
 			if (!chan_name) return k
@@ -2262,6 +2283,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return weave
 	};
 
+	const DENOTE = `/`;
 	const SYSTEM = `sys`;
 
 	// weaves [name]weave
@@ -2284,7 +2306,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 	const trash = write();
 
 	const addr = (address) => {
-		let path = address.split(`/`);
+		let path = address.split(DENOTE);
 		if (path[0] === ``) path = path.slice(1);
 		return path
 	};
@@ -2395,7 +2417,7 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 				}
 
 				if (weft_cancels[reader]) weft_cancels[reader]();
-				const space = weave.get_id(reader.split(`/`)[0]);
+				const space = weave.get_id(reader.split(Wheel.DENOTE)[0]);
 
 				weft_cancels[reader] = r.value.subscribe(($val) => {
 					if (!space.rezed) return
@@ -2537,10 +2559,11 @@ var app = (function (exports, Color, uuid, scribble, Tone, exif, expr, twgl) {
 		running: running.toJSON()
 	});
 
-	const REG_ID = /\$?[~.]?\/[a-zA-Z 0-9!%&/]+/g;
+	const REG_ID = /\$?[~.]?\/[a-zA-Z0-9!%&_\-/|]{2,}/g;
 
 	const shared = {};
 
+	exports.DENOTE = DENOTE;
 	exports.REG_ID = REG_ID;
 	exports.SYSTEM = SYSTEM;
 	exports.chain = chain;

@@ -11,8 +11,8 @@ const proto_mail = extend(proto_warp, {
 
 		return address
 			.replace(`$`, ``)
-			.replace(`~`, `/${this.weave.name.get()}`)
-			.replace(`.`, `${this.weave.name.get()}/${space ? space.get_value(`!name`) : `not connected`}`)
+			.replace(`~`, `${Wheel.DENOTE}${this.weave.name.get()}`)
+			.replace(`.`, `${this.weave.name.get()}${Wheel.DENOTE}${space ? space.get_value(`!name`) : `not connected`}`)
 	},
 
 	clear () {
@@ -82,7 +82,7 @@ const proto_remote = extend(proto_write, {
 
 // instead use the weave messaging channel
 export default ({
-	whom = `/sys/mouse/position`,
+	whom = `${Wheel.DENOTE}sys${Wheel.DENOTE}mouse${Wheel.DENOTE}position`,
 	weave,
 	id
 }) => {

@@ -2,11 +2,12 @@
 import { github } from "/sys/file.js"
 import { key } from "/sys/key.js"
 import { button } from "/sys/gamepad.js"
+import { random } from "/text.js"
 
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
 
 import nav, { cursor } from "/_client/action/nav.js"
-import Omni from "/_client/explore/Omni.svelte"
+
 import Weave from "/_client/explore/Weave.svelte"
 import Github from "./Github.svelte"
 import Picker from "./Picker.svelte"
@@ -22,6 +23,7 @@ button.listen(button => {
 	hidden = !hidden
 })
 
+let name = ``
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
 	const $a = a.get()
@@ -53,7 +55,7 @@ const command = ([action, ...details], msg) => {
 					msg(`Added ${name} from Github. `)
 				})
 				.catch(ex => {
-					msg(`Couldn't add ${details.join(`/`)}. `)
+					msg(`Couldn't add ${details.join(Wheel.DENOTE)}. `)
 				})
 		}
 	}
@@ -74,11 +76,31 @@ const top_space = () => {
 
 	return `${weave.name.get()}/${space_key}/${twists[twists.length - 1]}`
 }
+
+const expand = (name) => {
+	const weave = Wheel.get(name)
+	if (!weave) return name
+
+	const $names = weave.names.get()
+	const name_keys = Object.keys($names).sort()
+	if (name_keys.length === 0) return name
+
+	console.log(name_keys)
+	const name_key = name_keys[name_keys.length - 1]
+	const named = $names[name_key]
+	name = `${name}${Wheel.DENOTE}${name_key}`
+
+	const v = named.value.get()
+	const v_keys = Object.keys(v).sort()
+	if (v_keys.length === 0) return name
+
+	return `${name}${Wheel.DENOTE}${v_keys[v_keys.length - 1]}`
+}
 </script>
 
 <MainScreen {hidden} />
 
-<Picker {nameit} bind:this={picker}>
+<Picker {nameit} bind:this={picker} {name}>
 {#if !hidden}
 	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
 	<div class="explore" style="color: {$THEME_COLOR};" >
@@ -90,29 +112,25 @@ const top_space = () => {
 			href="https://www.patreon.com/earthrock"
 			target="_new"
 			use:nav={{
-				id: `/`,
-				up: top_space,
+				id: Wheel.DENOTE,
+				up: () => top_space,
 				down: `sys`,
 				page_up: ws[ws.length - 1].name.get(),
 				page_down: `sys`,
 				insert: () => {
 					// pop up picker with a blank
 					nameit = {}
+					name = random(1)
 					cursor.set(picker)
 				}
 			}}
 		>[ I S E K A I ]</a>
 
-
-		<div class="events">
-			<Omni {command} />
-		</div>
-
 		<div class="weaves">
 			{#each ws as weave, i (weave.id.get())}
 				<Weave {weave} navi={{
-					up: ws[i - 1] ? ws[i - 1].name.get() : `/`,
-					down: ws[i + 1] ? ws[i + 1].name.get() : `/`
+					up: () => ws[i - 1] ? expand(ws[i - 1].name.get()) : Wheel.DENOTE,
+					down: () => ws[i + 1] ? ws[i + 1].name.get() : Wheel.DENOTE
 				}}/>
 			{/each}
 		</div>

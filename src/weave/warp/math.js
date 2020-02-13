@@ -27,8 +27,11 @@ const proto_math = extend(proto_warp, {
 		const matches = expression.match(Wheel.REG_ID)
 		const vs = {}
 
-		const leaf = this.weave.chain(this.id.get(), true).shift()
-		let space_addr = this.weave.to_address(leaf)
+		const leaf = this.weave.chain(this.id.get(), true)
+			.filter((k) => k.indexOf(Wheel.DENOTE) !== -1).pop()
+
+		let space_addr
+		if (leaf) space_addr = this.weave.to_address(leaf)
 
 		// nad address
 		if (!space_addr) return
@@ -36,22 +39,25 @@ const proto_math = extend(proto_warp, {
 		const space = Wheel.get(space_addr)
 
 		if (space.type.get() !== `space`) {
-			const leaf_right = this.weave.chain(this.id.get()).shift()
+			const leaf_right = this.weave.chain(this.id.get())
+				.filter((k) => k.indexOf(Wheel.DENOTE) !== -1).pop()
 			space_addr = this.weave.to_address(leaf_right)
 		}
 
+		let fail
 		new Set(matches).forEach((item) => {
 			const shh = item[0] === `$`
 			const gette = item
-				.replace(path_space, `${space_addr}/`)
-				.replace(path_weave, `/${this.weave.name.get()}/`)
+				.replace(path_space, `${space_addr}${Wheel.DENOTE}`)
+				.replace(path_weave, `${Wheel.DENOTE}${this.weave.name.get()}${Wheel.DENOTE}`)
 				.replace(path_ssh, ``)
 				.trim()
 
 			const warp = Wheel.get(gette)
-
-			// not an id or invalid
-			if (!warp) return
+			if (!warp) {
+				fail = true
+				return
+			}
 
 			const name = item
 				.replace(path_space, `dot`)
@@ -70,6 +76,8 @@ const proto_math = extend(proto_warp, {
 				shh
 			}
 		})
+
+		if (fail) return
 
 		try {
 			this.fn = math_js(expression)
@@ -133,22 +141,17 @@ const proto_value = extend(proto_write, {
 			? null
 			: value
 
-		// could be faster
-		const params = Object.assign(
-			Object.fromEntries(Object.entries(vs).map(
-				([key, { warp }]) =>
-					[
-						key,
-						warp.toJSON() === undefined
-							? null
-							: warp.toJSON()
-					]
-			)),
-			{
-				value
-			}
+		const params = Object.entries(vs).map(
+			([key, { warp }]) =>
+				[
+					key,
+					warp.toJSON() === undefined
+						? null
+						: warp.toJSON()
+				]
 		)
 
+		params.push([`value`, value])
 		const result = this.warp.fn(params)
 
 		// null or undefined means do nothing

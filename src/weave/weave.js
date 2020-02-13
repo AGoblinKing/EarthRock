@@ -158,7 +158,7 @@ const proto_weave = {
 	},
 
 	exists (address) {
-		const [warp, weft] = address.split(`/`)
+		const [warp, weft] = address.split(Wheel.DENOTE)
 
 		const k = this.warps.get()[warp]
 
@@ -180,8 +180,8 @@ const proto_weave = {
 			if (k.type.get() === `space`) return
 
 			const chain = this.chain(k.id.get(), true)
-			const last = chain[chain.length - 1].split(`/`)[0]
-			const first = chain[0].split(`/`)[0]
+			const last = chain[chain.length - 1].split(Wheel.DENOTE)[0]
+			const first = chain[0].split(Wheel.DENOTE)[0]
 			const k_last = warps[last]
 			const k_first = warps[first]
 
@@ -222,12 +222,12 @@ const proto_weave = {
 	},
 
 	to_address (id_path) {
-		const [warp] = id_path.split(`/`)
+		const [warp] = id_path.split(Wheel.DENOTE)
 
 		const space = this.get_id(warp)
 		if (!space) return
 
-		return `/${this.name.get()}/${space.id.get()}`
+		return `${Wheel.DENOTE}${this.name.get()}${Wheel.DENOTE}${space.id.get()}`
 	},
 
 	get_name (name) {
@@ -237,9 +237,9 @@ const proto_weave = {
 	},
 
 	get_id (id) {
-		if (!id) return
+		if (!id || typeof id !== `string`) return
 
-		const [k_id, chan_name] = id.split(`/`)
+		const [k_id, chan_name] = id.split(Wheel.DENOTE)
 		const k = this.warps.get()[k_id]
 
 		if (!chan_name) return k

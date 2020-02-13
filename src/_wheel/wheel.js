@@ -4,6 +4,7 @@ import { values, keys, map, store_JSON } from "/object.js"
 
 export * from "/weave/thread.js"
 
+export const DENOTE = `/`
 export const SYSTEM = `sys`
 
 // weaves [name]weave
@@ -26,7 +27,7 @@ export const running = read({
 export const trash = write()
 
 const addr = (address) => {
-	let path = address.split(`/`)
+	let path = address.split(DENOTE)
 	if (path[0] === ``) path = path.slice(1)
 	return path
 }
@@ -137,7 +138,7 @@ const start_wefts = (weave) => {
 			}
 
 			if (weft_cancels[reader]) weft_cancels[reader]()
-			const space = weave.get_id(reader.split(`/`)[0])
+			const space = weave.get_id(reader.split(Wheel.DENOTE)[0])
 
 			weft_cancels[reader] = r.value.subscribe(($val) => {
 				if (!space.rezed) return
@@ -279,6 +280,6 @@ export const toJSON = () => ({
 	running: running.toJSON()
 })
 
-export const REG_ID = /\$?[~.]?\/[a-zA-Z 0-9!%&/]+/g
+export const REG_ID = /\$?[~.]?\/[a-zA-Z0-9!%&_\-/|]{2,}/g
 
 export const shared = {}

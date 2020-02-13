@@ -130,7 +130,7 @@ export const compile = ({
 	// remove old thread
 	weave.remove(...chain(weave, address, right))
 
-	const space = weave.get_id(address.split(`/`)[0])
+	const space = weave.get_id(address.split(Wheel.DENOTE)[0])
 
 	let connection = address
 

@@ -51,6 +51,9 @@ $: condensed = condense(id, weave, $value)
 
 <style>
 .warp {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	transition: box-shadow 250ms ease-in-out, background-color 100ms linear;
 }
 

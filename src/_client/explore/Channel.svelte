@@ -39,7 +39,7 @@ const execute = () => {
 	// renaming ourselves
 
 	try {
-		value.set(json(val))
+		value.set(json(val.trim()))
 
 		const new_address = `${weave.name.get()}/${value.get()}/!name`
 
@@ -59,7 +59,6 @@ const focusd = (node) => {
 	requestAnimationFrame(() => node.focus())
 }
 let edit_sprite = false
-const edit_color = false
 let thread_left
 let thread_right
 let value_node
@@ -67,8 +66,31 @@ let key_new
 
 const new_key = () => {
 	key_editing = false
-
+	const id = space.id.get()
 	if (key_new === ``) return
+
+	const old_addr = `${id}/${key}`
+	const new_addr = `${id}/${key_new}`
+
+	// grab scripts
+	const $wefts = weave.wefts.get()
+	const left = weave.chain(old_addr).slice(0, -1).pop()
+	const right = weave.chain(old_addr, true).slice(1)
+
+	if (left) {
+		$wefts[left] = new_addr
+	}
+
+	if (right) {
+		delete $wefts[old_addr]
+		$wefts[new_addr] = right
+	}
+
+	if (left || right) {
+		weave.wefts.set($wefts, true)
+	}
+
+	// rename
 	space.remove(key)
 	space.write({
 		[key_new]: value.get()
@@ -100,7 +122,7 @@ const new_key = () => {
 			if (key === `!name`) return
 
 			space.remove(key)
-			goto(navi.down === `/` ? navi.up : navi.down)
+			goto(navi.down === Wheel.DENOTE ? navi.up : navi.down)
 		}
 	}}
 
@@ -151,7 +173,7 @@ const new_key = () => {
 		/>
 		<div class="flex"/>
 	{:else if key === `color`}
-		<ColorEditor {value} editing={edit_color} />
+		<ColorEditor {value} />
 		<div class="flex"/>
 	{:else}
 	<div class="value">
@@ -188,7 +210,10 @@ const new_key = () => {
 	display: flex;
 	border-top: 0.1rem solid rgba(0,0, 0,0.2);
 	flex: 1;
+	justify-content: center;
+	align-items: center;
 }
+
 
 .edit {
 	padding: 0.5rem;

@@ -11,7 +11,7 @@ $: arr_warps = Object.entries(warps)
 let last = {}
 let files
 export let nameit = false
-export const id = `/picker`
+export const id = `${Wheel.DENOTE}picker`
 
 const drop = (e) => {
 	e.preventDefault()
@@ -24,7 +24,7 @@ const drop = (e) => {
 			last = files[i]
 			nameit = load(e.target.result)
 			if (!nameit) return
-			name = `${nameit.name}`
+			name = nameit.name.replace(/ /g, `_`)
 		}
 		reader.readAsDataURL(files[i])
 	}
@@ -32,8 +32,8 @@ const drop = (e) => {
 
 // prevent a dead zone
 $: {
-	if (nameit === false && $cursor && $cursor.id === `/picker`) {
-		goto(`/`)
+	if (nameit === false && $cursor && $cursor.id === `${Wheel.DENOTE}picker`) {
+		goto(Wheel.DENOTE)
 	}
 }
 
@@ -54,6 +54,7 @@ export const click = () => {
 const play_it = () => {
 	delete nameit.id
 
+	name = name.trim().toLowerCase().replace(/ /g, `_`)
 	Wheel.spawn({
 		[name]: nameit
 	})
@@ -80,7 +81,7 @@ let name
 {#if nameit}
 <div
 	class="nameprompt"
-	use:color={`/${name}`}
+	use:color={`${Wheel.DENOTE}${name}`}
 >
 	<h2>Name It!</h2>
 

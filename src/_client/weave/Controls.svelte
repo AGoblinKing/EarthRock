@@ -40,7 +40,7 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 >
  <div class="postage" on:click={toggle}>
     <Postage
-      address={`/${$name}`}
+      address={`${Wheel.DENOTE}${$name}`}
     />
   </div>
   <slot/>

@@ -40,4 +40,4 @@ export const tile = (str) => {
 export const random = (count) => Array
 	.from(new Array(count))
 	.map(() => words[Math.floor(Math.random() * words.length)])
-	.join(` `)
+	.join(`_`)

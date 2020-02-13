@@ -5,7 +5,7 @@ import Color from "color"
 v3.setDefaultType(Array)
 
 const maths = {}
-
+const fns = {}
 export const parser = new expr.Parser({
 	in: true,
 	assignment: true
@@ -34,19 +34,24 @@ export const math = (formula) => {
 	}
 
 	let keys
-	let fn
 	return (variables) => {
 		if (
 			!keys ||
-			Object.keys(variables).length !== keys.length
+			variables.length !== keys.length ||
+			!fns[formula]
 		) {
-			keys = Object.keys(variables)
-			fn = p.toJSFunction(keys.join(`,`))
+			keys = variables.map(([k]) => k)
+			try {
+				fns[formula] = p.toJSFunction(keys.join(`,`))
+			} catch (ex) {
+				console.warn(`math compile error`, ex)
+				return
+			}
 		}
 
 		let result = null
 		try {
-			result = fn(...keys.map((k) => variables[k]))
+			result = fns[formula](...variables.map(([_, v]) => v))
 		} catch (er) {
 			console.warn(`Math script error`, er)
 			console.log(variables)

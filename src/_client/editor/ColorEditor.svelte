@@ -4,75 +4,27 @@ import Color from "color"
 export let value
 
 const to_css = (col) => {
-	return Color([
-		(col >> 16) & 0x0ff,
-		(col >> 8) & 0x0ff,
-		(col) & 0x0ff
-	]).toCSS()
-}
-
-export let editing = false
-const pick = (e) => {
-	e.preventDefault()
-	e.stopPropagation()
-	editing = true
-}
-
-const move = ({ x, y, target }) => {
-	const { top, left, width, height } = target.getBoundingClientRect()
-	const hue = (x - left) / width
-	const lightness = (y - top) / height
-
-	const { red, green, blue } = Color({ hue, lightness, saturation: 1 }).toRGB()
-	const rgb = [red, green, blue].map((c) => Math.round(c * 255))
-	console.log(rgb)
+	return Color(col).toCSS()
 }
 </script>
 
-{#if editing}
-<div
-	class="dopick"
-	style="background-color: {to_css($value)};"
-	on:click={(e) => {
-		e.preventDefault()
-		e.stopPropagation()
-		editing = false
-	}}
-	on:mousemove={move}
->
-
+<div class="color">
+{$value}
 </div>
-{/if}
-
 <div
-  type="color"
-  style="background-color: {to_css($value)};"
-  class="picker"
-  on:click={pick}
+ 	style="background-color: {to_css($value)};"
+	class="block"
 >
-
 </div>
-
-<svelte:window on:click={() => {
-	if (editing) editing = false
-}}/>
-
 <style>
-.dopick {
-	z-index: 100;
-	position: fixed;
-	left: 50%;
-	top: 50%;
-	width: 20%;
-	height: 20%;
-	border: 1rem solid black;
-	transform: translate(-50%, -50%);
+
+.color {
+	margin-left: 1rem;
 }
 
-.picker {
-  border: 0.2rem solid rgba(0,0,0,0.5);
-  height: 1.5rem;
-  width: 1.5rem;
-  margin: 0.25rem;
+.block {
+	width: 1.25rem;
+	height: 1.25rem;
+	margin: 0 1rem;
 }
 </style>

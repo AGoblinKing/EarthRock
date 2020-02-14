@@ -4,6 +4,9 @@ import Tile from "/_client/image/Tile.svelte"
 export let address = ``
 
 $: running = Wheel.running
+if (address[0] !== Wheel.DENOTE) {
+	address = `${Wheel.DENOTE}${address}`
+}
 
 const [, w_id, k_id] = address.split(Wheel.DENOTE)
 

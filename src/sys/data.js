@@ -7,13 +7,15 @@ const VERSION = 2
 const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60)
 let db
 
+const store_name = `wheel`
+
 export const loaded = write(false)
 export const data = new Promise((resolve) => {
 	const req = window.indexedDB.open(`isekai`, VERSION)
 
 	req.onupgradeneeded = async (e) => {
 		db = e.target.result
-		await db.createObjectStore(`wheel`, { keyPath: `name` })
+		await db.createObjectStore(store_name, { keyPath: `name` })
 	}
 
 	req.onsuccess = (e) => {
@@ -24,7 +26,7 @@ export const data = new Promise((resolve) => {
 })
 
 export const query = ({
-	store = `wheel`,
+	store = store_name,
 	action = `get`,
 	args = [],
 	foronly = `readwrite`

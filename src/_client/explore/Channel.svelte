@@ -75,7 +75,7 @@ const new_key = () => {
 	// grab scripts
 	const $wefts = weave.wefts.get()
 	const left = weave.chain(old_addr).slice(0, -1).pop()
-	const right = weave.chain(old_addr, true).slice(1)
+	const right = weave.chain(old_addr, true).slice(1).pop()
 
 	if (left) {
 		$wefts[left] = new_addr
@@ -101,10 +101,12 @@ const new_key = () => {
 		key_new = ``
 	})
 }
+let chan_node
 </script>
 
 <div
 	class="channel {side}"
+  bind:this={chan_node}
 	use:color={space.name().get()}
 	use:nav={{
 		...navi,
@@ -115,18 +117,30 @@ const new_key = () => {
 			thread_right.do_edit()
 		},
 		insert: () => {
-			key_editing = true
+      if (key === `!name`) return
+
+ 			key_editing = true
+      key_new = key
 		},
 		del: () => {
 			// don't delete !name
 			if (key === `!name`) return
 
 			space.remove(key)
-			goto(navi.down === Wheel.DENOTE ? navi.up : navi.down)
+      const up = navi.up()
+      const down = navi.down()
+      // exhaust upwards then try downwards
+			goto(up === `${space.address()}/!name` && down.indexOf(space.address()) !== -1 ? down : up)
 		}
 	}}
 
 	on:click={(e) => {
+    if (e) {
+      console.log(e)
+      cursor.set(chan_node)
+      return
+    }
+
 		if (key === `sprite`) {
 			edit_sprite = true
 			requestAnimationFrame(() => {
@@ -141,7 +155,7 @@ const new_key = () => {
 
 <Thread {channel} {space} {weave} {nothread} bind:this={thread_left}/>
 {#if key_editing}
-	<input type="text" class="edit" autofocus
+	<input type="text" class="edit" autofocus````
 		bind:value={key_new}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) {
@@ -221,6 +235,7 @@ const new_key = () => {
 }
 
 .channel {
+  user-select: none;
 	display: flex;
 	overflow: hidden;
 	margin-left: 1rem;

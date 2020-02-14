@@ -11,6 +11,10 @@ $: arr_warps = Object.entries(warps)
 let last = {}
 let files
 export let nameit = false
+$: name = nameit.name
+  ? nameit.name.replace(/ /g, `_`)
+  : ``
+
 export const id = `${Wheel.DENOTE}picker`
 
 const drop = (e) => {
@@ -23,8 +27,6 @@ const drop = (e) => {
 		reader.onloadend = (e) => {
 			last = files[i]
 			nameit = load(e.target.result)
-			if (!nameit) return
-			name = nameit.name.replace(/ /g, `_`)
 		}
 		reader.readAsDataURL(files[i])
 	}
@@ -75,7 +77,7 @@ const play_it = () => {
 	Wheel.start(name)
 	nameit = false
 }
-let name
+
 </script>
 
 {#if nameit}

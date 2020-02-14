@@ -1,5 +1,4 @@
 <script>
-import { github } from "/sys/file.js"
 import { key } from "/sys/key.js"
 import { button } from "/sys/gamepad.js"
 import { random } from "/text.js"
@@ -17,13 +16,14 @@ key.listen(char => {
 	if (char !== `\``) return
 	hidden = !hidden
 })
+
 button.listen(button => {
 	if (button !== `select`) return
 
 	hidden = !hidden
 })
 
-let name = ``
+const name = ``
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
 	const $a = a.get()
@@ -36,30 +36,6 @@ $: ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
 export let hidden = window.location.hash.indexOf(`dev`) === -1
 
 let nameit = false
-const command = ([action, ...details], msg) => {
-	switch (action) {
-	case `-`:
-		Wheel.del({
-			[details[0]]: true
-		})
-		return
-	case `+`:
-		if (details.length === 1) {
-			Wheel.spawn({
-				[details[0]]: {}
-			})
-		}
-		if (details.length === 3) {
-			github(details)
-				.then(name => {
-					msg(`Added ${name} from Github. `)
-				})
-				.catch(ex => {
-					msg(`Couldn't add ${details.join(Wheel.DENOTE)}. `)
-				})
-		}
-	}
-}
 let picker
 
 const top_space = () => {
@@ -100,7 +76,7 @@ const expand = (name) => {
 
 <MainScreen {hidden} />
 
-<Picker {nameit} bind:this={picker} {name}>
+<Picker {nameit} bind:this={picker}>
 {#if !hidden}
 	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
 	<div class="explore" style="color: {$THEME_COLOR};" >
@@ -119,9 +95,10 @@ const expand = (name) => {
 				page_down: `sys`,
 				insert: () => {
 					// pop up picker with a blank
-					nameit = {}
-					name = random(1)
-					cursor.set(picker)
+					nameit = { name: random(2) }
+          requestAnimationFrame(() => {
+            cursor.set(picker)
+          })
 				}
 			}}
 		>[ I S E K A I ]</a>

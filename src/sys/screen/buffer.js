@@ -1,8 +1,6 @@
 import * as twgl from "twgl"
-import Color from "color"
 
-import { color as txt_color } from "/text.js"
-import { TIME_TICK_RATE, THEME_BG } from "/sys/flag.js"
+import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"
 import { visible } from "/weave/twist/visible.js"
 import { map, values, each, keys } from "/object.js"
@@ -11,9 +9,8 @@ const defaults = {
 	position: [0, 0, 0],
 	sprite: [0],
 	scale: [1],
-	color: [0xFFFFFF],
+	color: [255, 255, 255, 1],
 	rotation: [0],
-	alpha: [1],
 	flags: [0]
 }
 
@@ -48,24 +45,14 @@ const buffer = {
 		data: new Float32Array(1),
 		divisor: 1
 	},
-	alpha: {
-		numComponents: 1,
-		data: new Float32Array(1),
-		divisor: 1
-	},
-	alpha_last: {
-		numComponents: 1,
-		data: new Float32Array(1),
-		divisor: 1
-	},
 	color: {
-		numComponents: 1,
-		data: new Int32Array(1),
+		numComponents: 4,
+		data: new Int32Array(4),
 		divisor: 1
 	},
 	color_last: {
-		numComponents: 1,
-		data: new Int32Array(1),
+		numComponents: 4,
+		data: new Int32Array(4),
 		divisor: 1
 	},
 	sprite: {
@@ -179,6 +166,13 @@ const to_idx = (key) => {
 	return keydex[key]
 }
 
+const details = (idx) => {
+	Object.entries(buffer).forEach(([key, { numComponents, data }]) => {
+		if (!data) return
+		console.log(key, data.slice(idx * numComponents, numComponents))
+	})
+}
+
 // free the key value and make the idx available
 const free = (key) => {
 	const idx = keydex[key]
@@ -199,7 +193,7 @@ let last_update
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
 	if (!buffer_info) return
-	const bg = Color(THEME_BG.get())
+	console.log(details(0))
 	// grab the shiz
 	const { update, remove, add } = visible.hey()
 	const vis = visible.get()
@@ -225,7 +219,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 	each(update)(([key, space]) => {
 		const idx = to_idx(key)
-		last_update.delete(key)
+		last_update && last_update.delete(key)
 
 		each(buffer)(([key_b, { data, divisor, numComponents }]) => {
 			if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
@@ -239,16 +233,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 			let update_set
 			// TODO: Maybe store all values in twists as TypeArrays?
-
-			if (key_b === `color` || key_b === `color_last`) {
-				const { red, green, blue } = Color(twist).toRGB()
-
-				update_set = [blue * 255 + green * 256 * 255 + red * 256 * 256 * 255]
-				if (red + green + blue === 0 && twist !== `black`) {
-					const { red, green, blue } = Color(txt_color(JSON.stringify(twist))).blend(bg, 0.8).toRGB()
-					update_set = [blue + green * 256 + red * 256 * 256]
-				}
-			} else if (typeof twist === `number`) {
+			if (typeof twist === `number`) {
 				update_set = [...Array(numComponents)].fill(twist)
 			} else if (Array.isArray(twist)) {
 				update_set = []
@@ -275,7 +260,7 @@ tick.listen(() => requestAnimationFrame(() => {
 	})
 
 	remove.forEach((key) => {
-		last_update.delete(key)
+		last_update && last_update.delete(key)
 		free(key)
 	})
 

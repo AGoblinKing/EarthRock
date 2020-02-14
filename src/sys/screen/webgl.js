@@ -1,20 +1,13 @@
 import * as twgl from "twgl"
-import Color from "color"
 
 import { write } from "/store.js"
 import { frame } from "/sys/time.js"
 import { sprite } from "/sys/shader.js"
 import { camera, position, look } from "/sys/camera.js"
-import { SPRITES, CLEAR_COLOR } from "/sys/flag.js"
-
+import { SPRITES } from "/sys/flag.js"
 import { snapshot } from "./buffer.js"
 
-let clear_color = [0, 0, 0, 1]
-
-CLEAR_COLOR.listen((txt) => {
-	const { red, green, blue } = Color(txt).toRGB()
-	clear_color = [red, green, blue, 1]
-})
+export const clear_color = write([0, 0, 0, 1])
 
 const { m4 } = twgl
 const up = [0, 1, 0]
@@ -66,6 +59,7 @@ export default () => {
 		sprite.get()
 	)
 
+	if (!program_info) return
 	canvas.snap = write(snapshot(gl))
 
 	const view = m4.identity()
@@ -87,8 +81,9 @@ export default () => {
 	gl.useProgram(program_info.program)
 
 	canvas.cancel = frame.listen(([time, t]) => {
+		const $clear_color = clear_color.get()
 		gl.viewport(0, 0, canvas.width, canvas.height)
-		gl.clearColor(...clear_color)
+		gl.clearColor(...$clear_color.slice(0, 4))
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
 		const snap = snapshot(gl)
@@ -113,10 +108,7 @@ export default () => {
 			u_time: snap.time,
 			u_sprite_size: 16,
 			u_sprite_columns: 32,
-			u_view_projection: view_projection,
-			u_background_color: Math.round(clear_color[0] * 256 * 256) +
-				Math.round(clear_color[1] * 256) +
-				clear_color[2]
+			u_view_projection: view_projection
 		}
 
 		twgl.drawObjectList(gl, drawObjects)

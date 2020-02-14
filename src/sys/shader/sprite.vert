@@ -5,7 +5,6 @@ uniform mat4 u_view_projection;
 uniform float u_sprite_size;
 uniform float u_sprite_columns;
 uniform float u_time;
-uniform float u_background_color;
 
 in vec3 translate;
 in vec3 translate_last;
@@ -16,11 +15,8 @@ in float scale_last;
 in float rotation;
 in float rotation_last;
 
-in float alpha;
-in float alpha_last;
-
-in int color;
-in int color_last;
+in vec4 color;
+in vec4 color_last;
 
 in float sprite;
 
@@ -34,8 +30,8 @@ out vec4 v_color;
 void main() {
 	// mix the last color and the new color
 	v_color = mix(
-		vec4((color_last>>16) &0x0ff, (color_last>>8) &0x0ff, (color_last) & 0x0ff, alpha_last),
-		vec4((color>>16) &0x0ff, (color>>8) &0x0ff, (color) & 0x0ff, alpha),
+		color,
+		color_last,
 		u_time
 	);
 
@@ -48,14 +44,6 @@ void main() {
 
 	vec2 pos_scale = position * s;
 	vec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;
-
-	if((flags & 0x1) == 1) {
-		coords[0] = -1.0 * coords[0];
-	}
-
-	if((flags & 0x2) == 2) {
-		coords[1] = 1.0 - coords[1];
-	}
 
 	v_sprite = coords;
 

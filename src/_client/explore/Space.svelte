@@ -92,12 +92,12 @@ const space_bird = write(false)
 				weave.remove($id)
 				return navi.down === Wheel.DENOTE ? navi.up : navi.down
 			},
+
 			insert: () => {
-				const idx = random(1)
+				const idx = random(2)
 				space.write({
 					[idx]: ``
 				})
-				debugger
 
 				// now put that node in edit mode
 				requestAnimationFrame(() => {

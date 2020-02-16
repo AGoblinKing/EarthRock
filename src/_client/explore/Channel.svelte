@@ -106,7 +106,7 @@ let chan_node
 
 <div
 	class="channel {side}"
-  bind:this={chan_node}
+  	bind:this={chan_node}
 	use:color={space.name().get()}
 	use:nav={{
 		...navi,
@@ -117,40 +117,41 @@ let chan_node
 			thread_right.do_edit()
 		},
 		insert: () => {
-      if (key === `!name`) return
+      		if (key === `!name`) return
 
  			key_editing = true
-      key_new = key
+      		key_new = key
 		},
 		del: () => {
 			// don't delete !name
 			if (key === `!name`) return
 
 			space.remove(key)
-      const up = navi.up()
-      const down = navi.down()
-      // exhaust upwards then try downwards
+			const up = navi.up()
+			const down = navi.down()
+			// exhaust upwards then try downwards
 			goto(up === `${space.address()}/!name` && down.indexOf(space.address()) !== -1 ? down : up)
 		}
 	}}
 
 	on:click={(e) => {
-    if (e) {
-      console.log(e)
-      cursor.set(chan_node)
-      return
-    }
-
-		if (key === `sprite`) {
-			edit_sprite = true
-			requestAnimationFrame(() => {
-				cursor.set(value_node)
-			})
+		if (e) {
+			console.log(e)
+			cursor.set(chan_node)
 			return
 		}
-		editing = true
-		val = JSON.stringify($value)
-	}}
+
+			if (key === `sprite`) {
+				edit_sprite = true
+				requestAnimationFrame(() => {
+					cursor.set(value_node)
+				})
+				return
+			}
+
+			editing = true
+			val = JSON.stringify($value)
+		}}
 >
 
 <Thread {channel} {space} {weave} {nothread} bind:this={thread_left}/>

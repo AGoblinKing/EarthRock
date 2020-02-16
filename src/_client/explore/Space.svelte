@@ -41,7 +41,7 @@ const get_nav = (idx) => {
 	const self = chans[idx][0]
 	const down = () => chans[idx + 1]
 		? `${space.address()}/${chans[idx + 1][0]}`
-		: navi.down
+		: navi.down()
 
 	const up = () => chans[idx - 1]
 		? `${space.address()}/${chans[idx - 1][0]}`
@@ -51,9 +51,9 @@ const get_nav = (idx) => {
 		id: `${space.address()}/${self}`,
 		down,
 		up,
-		page_up: space.address(),
-		page_down: navi.down,
-		home: space.address()
+		page_up: () => space.address(),
+		page_down: () => navi.down(),
+		home: () => space.address()
 	}
 }
 
@@ -85,7 +85,7 @@ const space_bird = write(false)
 			id: space.address(),
 			up: navi.up,
 			left: toggle,
-			down: chans.length > 0 ? `${space.address()}/${chans[0][0]}` : navi.down,
+			down: () => chans.length > 0 ? `${space.address()}/${chans[0][0]}` : navi.down(),
 			page_up: navi.page_up,
 			page_down: navi.down,
 			del: () => {

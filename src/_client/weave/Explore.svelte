@@ -23,7 +23,6 @@ button.listen(button => {
 	hidden = !hidden
 })
 
-const name = ``
 $: weaves = Wheel.weaves
 $: ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
 	const $a = a.get()
@@ -61,7 +60,6 @@ const expand = (name) => {
 	const name_keys = Object.keys($names).sort()
 	if (name_keys.length === 0) return name
 
-	console.log(name_keys)
 	const name_key = name_keys[name_keys.length - 1]
 	const named = $names[name_key]
 	name = `${name}${Wheel.DENOTE}${name_key}`
@@ -90,15 +88,15 @@ const expand = (name) => {
 			use:nav={{
 				id: Wheel.DENOTE,
 				up: () => top_space,
-				down: `sys`,
-				page_up: ws[ws.length - 1].name.get(),
-				page_down: `sys`,
+				down: () => ws[0].name.get(),
+				page_up: () => ws[ws.length - 1].name.get(),
+				page_down: () => ws[0].name.get(),
 				insert: () => {
 					// pop up picker with a blank
 					nameit = { name: random(2) }
-          requestAnimationFrame(() => {
-            cursor.set(picker)
-          })
+					requestAnimationFrame(() => {
+						cursor.set(picker)
+					})
 				}
 			}}
 		>[ I S E K A I ]</a>

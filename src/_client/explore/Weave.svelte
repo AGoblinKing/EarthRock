@@ -87,9 +87,9 @@ let controls
 				{weave}
 				{i}
 				navi={{
-					up: i === 0 ? $name : get_up(i),
-					page_up: i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
-					down: i === spacees.length - 1 ? navi.down : `${$name}/${spacees[i + 1][0]}`
+					up: () => i === 0 ? $name : get_up(i),
+					page_up: () => i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
+					down: () => i === spacees.length - 1 ? navi.down : `${$name}/${spacees[i + 1][0]}`
 				}}
 			/>
 

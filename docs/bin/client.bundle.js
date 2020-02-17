@@ -2691,9 +2691,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		scroll: scroll
 	});
 
-	var sprite_frag = "#version 300 es\nprecision lowp float;\n#define GLSLIFY 1\n\nuniform sampler2D u_map;\n\nin vec2 v_sprite;\nin vec4 v_color;\n\nout vec4 f_color;\n\nvoid main() {\n\tf_color = texture(u_map, v_sprite);\n\n\t// grayscale to remove any color from the image\n\tfloat gray = dot(f_color.rgb, vec3(0.299, 0.587, 0.114));\n\tf_color = gray * vec4(v_color.rgb, v_color.a);\n\n\t// super important, removes low opacity frags\n\tif(f_color.a < 0.1) discard;\n}\n"; // eslint-disable-line
+	var sprite_frag = "precision lowp float;\n#define GLSLIFY 1\n\nuniform sampler2D u_map;\n\nvarying vec2 v_sprite;\nvarying vec4 v_color;\n\nvoid main() {\n\tvec4 f_color = texture2D(u_map, v_sprite);\n\n\tf_color = f_color * v_color;\n\n\t// super important, removes low opacity frags\n\tif(f_color.a < 0.1) discard;\n\n\tgl_FragColor = f_color;\n}\n"; // eslint-disable-line
 
-	var sprite_vert = "#version 300 es\nprecision lowp float;\n#define GLSLIFY 1\n\nuniform mat4 u_view_projection;\nuniform float u_sprite_size;\nuniform float u_sprite_columns;\nuniform float u_time;\n\nin vec3 translate;\nin vec3 translate_last;\n\nin float scale;\nin float scale_last;\n\nin float rotation;\nin float rotation_last;\n\nin vec4 color;\nin vec4 color_last;\n\nin float sprite;\n\nin vec2 position;\n\nin int flags;\n\nout vec2 v_sprite;\nout vec4 v_color;\n\nvoid main() {\n\t// mix the last color and the new color\n\tv_color = mix(\n\t\tcolor,\n\t\tcolor_last,\n\t\tu_time\n\t);\n\n\t// scale\n\tfloat s = mix(scale_last, scale, u_time);\n\n\t// Grabbing the tile\n\tfloat x = mod(sprite, u_sprite_columns);\n\tfloat y = floor(sprite / u_sprite_columns);\n\n\tvec2 pos_scale = position * s;\n\tvec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;\n\n\tv_sprite = coords;\n\n\t// position\n\tvec3 t = mix(translate_last, translate, u_time);\n\n\tmat4 mv = u_view_projection;\n\tvec3 pos = vec3(pos_scale, 0.0) + t;\n\n\tgl_Position = mv * vec4(\n\t\tpos,\n\t\t1.0\n\t);\n}\n"; // eslint-disable-line
+	var sprite_vert = "precision lowp float;\n#define GLSLIFY 1\n\nuniform mat4 u_view_projection;\nuniform float u_sprite_size;\nuniform float u_sprite_columns;\nuniform float u_time;\n\nattribute vec3 translate;\nattribute vec3 translate_last;\n\nattribute float scale;\nattribute float scale_last;\n\nattribute float rotation;\nattribute float rotation_last;\n\nattribute vec4 color;\nattribute vec4 color_last;\n\nattribute float sprite;\nattribute vec2 position;\n\nvarying vec2 v_sprite;\nvarying vec4 v_color;\n\nvoid main() {\n\t// color\n\tv_color = mix(color, color_last, u_time);\n\n\t// scale\n\tfloat s = mix(scale_last, scale, u_time);\n\n\t// Grabbattributeg the tile\n\tfloat x = mod(sprite, u_sprite_columns);\n\tfloat y = floor(sprite / u_sprite_columns);\n\n\tvec2 pos_scale = position * s;\n\tvec2 coords = (position + vec2(0.5, 0.5) + vec2(x, y))/u_sprite_columns;\n\n\tv_sprite = coords;\n\n\t// position\n\tvec3 t = mix(translate_last, translate, u_time);\n\n\tmat4 mv = u_view_projection;\n\tvec3 pos = vec3(pos_scale, 0.0) + t;\n\n\tgl_Position = mv * vec4(\n\t\tpos,\n\t\t1.0\n\t);\n}\n"; // eslint-disable-line
 
 	const sprite$1 = read([
 		sprite_vert,
@@ -2739,8 +2739,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		sprite: [0],
 		scale: [1],
 		color: [255, 255, 255, 1],
-		rotation: [0],
-		flags: [0]
+		rotation: [0]
 	};
 
 	const verts = twgl.primitives.createXYQuadVertices(1);
@@ -2776,7 +2775,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		},
 		color: {
 			numComponents: 4,
-			data: new Int32Array(4),
+			data: new Int32Array([1.0, 1.0, 1.0, 1.0]),
 			divisor: 1
 		},
 		color_last: {
@@ -2789,19 +2788,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			data: new Float32Array(1),
 			divisor: 1
 		},
-		flags: {
-			numComponents: 1,
-			data: new Int32Array(1),
-			divisor: 1
-		},
 		scale: {
 			numComponents: 1,
-			data: new Float32Array(1),
+			data: new Float32Array([1.0]),
 			divisor: 1
 		},
 		scale_last: {
 			numComponents: 1,
-			data: new Float32Array(1),
+			data: new Float32Array([1.0]),
 			divisor: 1
 		}
 	};
@@ -2895,13 +2889,6 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return keydex[key]
 	};
 
-	const details = (idx) => {
-		Object.entries(buffer).forEach(([key, { numComponents, data }]) => {
-			if (!data) return
-			console.log(key, data.slice(idx * numComponents, numComponents));
-		});
-	};
-
 	// free the key value and make the idx available
 	const free = (key) => {
 		const idx = keydex[key];
@@ -2918,11 +2905,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		});
 	};
 
+	// setInterval(() => details(0), 5000)
+
 	let last_update;
 	// RAF so it happens at end of frame
 	tick.listen(() => requestAnimationFrame(() => {
 		if (!buffer_info) return
-		console.log(details(0));
+
 		// grab the shiz
 		const { update, remove, add } = visible.hey();
 		const vis = visible.get();
@@ -2940,8 +2929,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				// already set
 				if (update[key] && update[key][key_d] !== undefined) return
 
-				update[key][key_d] = visible.value[key][key_d] === undefined
-					? visible.value[key].get_value(key_d)
+				update[key][key_d] = vis[key][key_d] === undefined
+					? vis[key].get_value(key_d)
 					: [...val];
 			});
 		});
@@ -2952,7 +2941,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 			each(buffer)(([key_b, { data, divisor, numComponents }]) => {
 				if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
-
+				console.log(key_b);
 				const bdx = idx * numComponents;
 
 				// alias positon to translate
@@ -2965,13 +2954,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (typeof twist === `number`) {
 					update_set = [...Array(numComponents)].fill(twist);
 				} else if (Array.isArray(twist)) {
-					update_set = [];
-					// assume under not over
-					if (twist.length < numComponents) {
-						for (let i = numComponents - twist.length; i < twist.length; i++) {
-							update_set[i] = defaults[space_key][i];
-						}
-					}
+					update_set = [...twist.slice(0, numComponents)];
 				} else {
 					// otherwise wtf was that? lets set default
 					update_set = [...data.subarray(bdx, bdx + numComponents)];
@@ -2983,7 +2966,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 					data_last.set([...data.subarray(bdx, bdx + numComponents)], bdx);
 				}
-
+				console.log(update_set);
 				return data.set(update_set, bdx)
 			});
 		});
@@ -3867,6 +3850,18 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		buttons: buttons$1
 	});
 
+	const screen_ui_regex = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i;
+	const agent = navigator.userAgent || navigator.vendor || window.opera;
+
+	const no_keyboard = write(
+		(a) => screen_ui_regex.test(a.substr(0, 4))(agent)
+	);
+
+	var device = /*#__PURE__*/Object.freeze({
+		__proto__: null,
+		no_keyboard: no_keyboard
+	});
+
 	const path = transformer((path_new) => {
 		if (Array.isArray(path_new)) {
 			return path_new
@@ -4033,6 +4028,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		input,
 		key: key$1,
 		gamepad,
+		device,
 		flag: normalize$1(),
 		camera: camera$1
 	};
@@ -6417,10 +6413,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t1 = space$1();
 				div1 = element("div");
 				attr_dev(div0, "class", "color svelte-1vdb1i1");
-				add_location(div0, file$5, 10, 0, 130);
+				add_location(div0, file$5, 13, 0, 194);
 				set_style(div1, "background-color", /*to_css*/ ctx[2](/*$value*/ ctx[1]));
 				attr_dev(div1, "class", "block svelte-1vdb1i1");
-				add_location(div1, file$5, 13, 0, 169);
+				add_location(div1, file$5, 16, 0, 233);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -6469,7 +6465,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		$$subscribe_value();
 
 		const to_css = col => {
-			return Color(col).toCSS();
+			return Color(col.map((x, i) => {
+				if (i === 3) return x;
+				return x * 255;
+			})).toCSS();
 		};
 
 		const writable_props = ["value"];
@@ -8053,11 +8052,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	/* src\_client\explore\Channel.svelte generated by Svelte v3.16.7 */
-
-	const { console: console_1 } = globals;
 	const file$9 = "src\\_client\\explore\\Channel.svelte";
 
-	// (201:0) {:else}
+	// (200:0) {:else}
 	function create_else_block_1$1(ctx) {
 		let input;
 		let focusd_action;
@@ -8069,7 +8066,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				attr_dev(input, "class", "edit svelte-15ldvd0");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "JSON PLZ");
-				add_location(input, file$9, 201, 1, 3748);
+				add_location(input, file$9, 200, 1, 3740);
 
 				dispose = [
 					action_destroyer(focusd_action = /*focusd*/ ctx[22].call(null, input)),
@@ -8099,14 +8096,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_else_block_1$1.name,
 			type: "else",
-			source: "(201:0) {:else}",
+			source: "(200:0) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (176:19) 
+	// (175:19) 
 	function create_if_block_1$2(ctx) {
 		let div1;
 		let div0;
@@ -8135,9 +8132,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t1 = space$1();
 				if_block.c();
 				attr_dev(div0, "class", "key svelte-15ldvd0");
-				add_location(div0, file$9, 177, 1, 3374);
+				add_location(div0, file$9, 176, 1, 3366);
 				attr_dev(div1, "class", "dataset svelte-15ldvd0");
-				add_location(div1, file$9, 176, 0, 3350);
+				add_location(div1, file$9, 175, 0, 3342);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div1, anchor);
@@ -8192,14 +8189,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_1$2.name,
 			type: "if",
-			source: "(176:19) ",
+			source: "(175:19) ",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (158:0) {#if key_editing}
+	// (157:0) {#if key_editing}
 	function create_if_block$4(ctx) {
 		let input;
 		let dispose;
@@ -8209,8 +8206,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				input = element("input");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "class", "edit svelte-15ldvd0");
-				attr_dev(input, "autofocus````", "");
-				add_location(input, file$9, 158, 1, 3014);
+				input.autofocus = true;
+				add_location(input, file$9, 157, 1, 3010);
 
 				dispose = [
 					listen_dev(input, "input", /*input_input_handler*/ ctx[28]),
@@ -8221,6 +8218,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			m: function mount(target, anchor) {
 				insert_dev(target, input, anchor);
 				set_input_value(input, /*key_new*/ ctx[12]);
+				input.focus();
 			},
 			p: function update(ctx, dirty) {
 				if (dirty[0] & /*key_new*/ 4096 && input.value !== /*key_new*/ ctx[12]) {
@@ -8239,14 +8237,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block$4.name,
 			type: "if",
-			source: "(158:0) {#if key_editing}",
+			source: "(157:0) {#if key_editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (193:1) {:else}
+	// (192:1) {:else}
 	function create_else_block$2(ctx) {
 		let div;
 		let t_value = JSON.stringify(/*edit*/ ctx[16]) + "";
@@ -8257,7 +8255,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				div = element("div");
 				t = text(t_value);
 				attr_dev(div, "class", "value svelte-15ldvd0");
-				add_location(div, file$9, 193, 1, 3658);
+				add_location(div, file$9, 192, 1, 3650);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -8277,14 +8275,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_else_block$2.name,
 			type: "else",
-			source: "(193:1) {:else}",
+			source: "(192:1) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (190:27) 
+	// (189:27) 
 	function create_if_block_3$1(ctx) {
 		let t;
 		let div;
@@ -8301,7 +8299,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t = space$1();
 				div = element("div");
 				attr_dev(div, "class", "flex svelte-15ldvd0");
-				add_location(div, file$9, 191, 2, 3626);
+				add_location(div, file$9, 190, 2, 3618);
 			},
 			m: function mount(target, anchor) {
 				mount_component(coloreditor, target, anchor);
@@ -8334,14 +8332,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_3$1.name,
 			type: "if",
-			source: "(190:27) ",
+			source: "(189:27) ",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (182:1) {#if key === `sprite`}
+	// (181:1) {#if key === `sprite`}
 	function create_if_block_2$1(ctx) {
 		let t;
 		let div;
@@ -8366,7 +8364,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t = space$1();
 				div = element("div");
 				attr_dev(div, "class", "flex svelte-15ldvd0");
-				add_location(div, file$9, 188, 2, 3547);
+				add_location(div, file$9, 187, 2, 3539);
 			},
 			m: function mount(target, anchor) {
 				mount_component(spriteeditor, target, anchor);
@@ -8402,7 +8400,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_2$1.name,
 			type: "if",
-			source: "(182:1) {#if key === `sprite`}",
+			source: "(181:1) {#if key === `sprite`}",
 			ctx
 		});
 
@@ -8672,7 +8670,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const writable_props = ["space", "nothread", "weave", "channel", "side", "focus", "executed", "navi"];
 
 		Object.keys($$props).forEach(key => {
-			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Channel> was created with unknown prop '${key}'`);
+			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Channel> was created with unknown prop '${key}'`);
 		});
 
 		function thread0_binding($$value) {
@@ -8759,8 +8757,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		};
 
 		const click_handler = e => {
-			if (e) {
-				console.log(e);
+			if (e && e.isTrusted) {
 				cursor.set(chan_node);
 				return;
 			}
@@ -8948,23 +8945,23 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			const props = options.props || ({});
 
 			if (/*space*/ ctx[0] === undefined && !("space" in props)) {
-				console_1.warn("<Channel> was created without expected prop 'space'");
+				console.warn("<Channel> was created without expected prop 'space'");
 			}
 
 			if (/*nothread*/ ctx[1] === undefined && !("nothread" in props)) {
-				console_1.warn("<Channel> was created without expected prop 'nothread'");
+				console.warn("<Channel> was created without expected prop 'nothread'");
 			}
 
 			if (/*weave*/ ctx[2] === undefined && !("weave" in props)) {
-				console_1.warn("<Channel> was created without expected prop 'weave'");
+				console.warn("<Channel> was created without expected prop 'weave'");
 			}
 
 			if (/*channel*/ ctx[3] === undefined && !("channel" in props)) {
-				console_1.warn("<Channel> was created without expected prop 'channel'");
+				console.warn("<Channel> was created without expected prop 'channel'");
 			}
 
 			if (/*navi*/ ctx[5] === undefined && !("navi" in props)) {
-				console_1.warn("<Channel> was created without expected prop 'navi'");
+				console.warn("<Channel> was created without expected prop 'navi'");
 			}
 		}
 
@@ -9922,7 +9919,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				t = text(/*$name*/ ctx[6]);
-				attr_dev(div, "class", "namezor svelte-967sk2");
+				attr_dev(div, "class", "namezor svelte-45a3on");
 				add_location(div, file$b, 75, 2, 1651);
 			},
 			m: function mount(target, anchor) {
@@ -10067,11 +10064,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				t1 = space$1();
 				div2 = element("div");
-				attr_dev(div0, "class", "weave svelte-967sk2");
+				attr_dev(div0, "class", "weave svelte-45a3on");
 				add_location(div0, file$b, 33, 0, 767);
 				attr_dev(div1, "class", "spaces");
 				add_location(div1, file$b, 82, 1, 1723);
-				attr_dev(div2, "class", "fakespace svelte-967sk2");
+				attr_dev(div2, "class", "fakespace svelte-45a3on");
 				add_location(div2, file$b, 100, 0, 2102);
 
 				dispose = [
@@ -10474,7 +10471,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	/* src\_client\weave\Picker.svelte generated by Svelte v3.16.7 */
 
-	const { Object: Object_1$2, console: console_1$1 } = globals;
+	const { Object: Object_1$2, console: console_1 } = globals;
 	const file$d = "src\\_client\\weave\\Picker.svelte";
 
 	// (83:0) {#if nameit}
@@ -10833,7 +10830,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const writable_props = ["nameit"];
 
 		Object_1$2.keys($$props).forEach(key => {
-			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Picker> was created with unknown prop '${key}'`);
+			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Picker> was created with unknown prop '${key}'`);
 		});
 
 		let { $$slots = {}, $$scope } = $$props;
@@ -11143,7 +11140,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return child_ctx;
 	}
 
-	// (78:0) {#if !hidden}
+	// (79:0) {#if !hidden}
 	function create_if_block$7(ctx) {
 		let div0;
 		let a0;
@@ -11188,21 +11185,21 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				attr_dev(a0, "href", "https://github.com/agoblinking/earthrock");
 				attr_dev(a0, "target", "_new");
-				add_location(a0, file$f, 78, 22, 1998);
+				add_location(a0, file$f, 79, 22, 2042);
 				attr_dev(div0, "class", "github svelte-14p6qu8");
-				add_location(div0, file$f, 78, 1, 1977);
+				add_location(div0, file$f, 79, 1, 2021);
 				attr_dev(a1, "class", "logo svelte-14p6qu8");
 				attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[6]);
 				attr_dev(a1, "href", "https://www.patreon.com/earthrock");
 				attr_dev(a1, "target", "_new");
-				add_location(a1, file$f, 82, 2, 2173);
+				add_location(a1, file$f, 83, 2, 2217);
 				attr_dev(div1, "class", "weaves svelte-14p6qu8");
-				add_location(div1, file$f, 103, 2, 2676);
+				add_location(div1, file$f, 104, 2, 2720);
 				attr_dev(div2, "class", "partial svelte-14p6qu8");
-				add_location(div2, file$f, 80, 2, 2146);
+				add_location(div2, file$f, 81, 2, 2190);
 				attr_dev(div3, "class", "explore svelte-14p6qu8");
 				set_style(div3, "color", /*$THEME_COLOR*/ ctx[5]);
-				add_location(div3, file$f, 79, 1, 2089);
+				add_location(div3, file$f, 80, 1, 2133);
 
 				dispose = action_destroyer(nav_action = nav.call(null, a1, {
 					id: Wheel.DENOTE,
@@ -11291,14 +11288,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block$7.name,
 			type: "if",
-			source: "(78:0) {#if !hidden}",
+			source: "(79:0) {#if !hidden}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (105:3) {#each ws as weave, i (weave.id.get())}
+	// (106:3) {#each ws as weave, i (weave.id.get())}
 	function create_each_block$3(key_2, ctx) {
 		let first;
 		let current;
@@ -11358,14 +11355,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_each_block$3.name,
 			type: "each",
-			source: "(105:3) {#each ws as weave, i (weave.id.get())}",
+			source: "(106:3) {#each ws as weave, i (weave.id.get())}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (77:0) <Picker {nameit} bind:this={picker}>
+	// (78:0) <Picker {nameit} bind:this={picker}>
 	function create_default_slot$2(ctx) {
 		let if_block_anchor;
 		let current;
@@ -11421,7 +11418,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_default_slot$2.name,
 			type: "slot",
-			source: "(77:0) <Picker {nameit} bind:this={picker}>",
+			source: "(78:0) <Picker {nameit} bind:this={picker}>",
 			ctx
 		});
 

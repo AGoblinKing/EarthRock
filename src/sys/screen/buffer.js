@@ -10,8 +10,7 @@ const defaults = {
 	sprite: [0],
 	scale: [1],
 	color: [255, 255, 255, 1],
-	rotation: [0],
-	flags: [0]
+	rotation: [0]
 }
 
 const verts = twgl.primitives.createXYQuadVertices(1)
@@ -47,7 +46,7 @@ const buffer = {
 	},
 	color: {
 		numComponents: 4,
-		data: new Int32Array(4),
+		data: new Int32Array([1.0, 1.0, 1.0, 1.0]),
 		divisor: 1
 	},
 	color_last: {
@@ -60,19 +59,14 @@ const buffer = {
 		data: new Float32Array(1),
 		divisor: 1
 	},
-	flags: {
-		numComponents: 1,
-		data: new Int32Array(1),
-		divisor: 1
-	},
 	scale: {
 		numComponents: 1,
-		data: new Float32Array(1),
+		data: new Float32Array([1.0]),
 		divisor: 1
 	},
 	scale_last: {
 		numComponents: 1,
-		data: new Float32Array(1),
+		data: new Float32Array([1.0]),
 		divisor: 1
 	}
 }
@@ -189,11 +183,13 @@ const free = (key) => {
 	})
 }
 
+// setInterval(() => details(0), 5000)
+
 let last_update
 // RAF so it happens at end of frame
 tick.listen(() => requestAnimationFrame(() => {
 	if (!buffer_info) return
-	console.log(details(0))
+
 	// grab the shiz
 	const { update, remove, add } = visible.hey()
 	const vis = visible.get()
@@ -211,8 +207,8 @@ tick.listen(() => requestAnimationFrame(() => {
 			// already set
 			if (update[key] && update[key][key_d] !== undefined) return
 
-			update[key][key_d] = visible.value[key][key_d] === undefined
-				? visible.value[key].get_value(key_d)
+			update[key][key_d] = vis[key][key_d] === undefined
+				? vis[key].get_value(key_d)
 				: [...val]
 		})
 	})
@@ -223,7 +219,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 		each(buffer)(([key_b, { data, divisor, numComponents }]) => {
 			if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
-
+			console.log(key_b)
 			const bdx = idx * numComponents
 
 			// alias positon to translate
@@ -236,13 +232,7 @@ tick.listen(() => requestAnimationFrame(() => {
 			if (typeof twist === `number`) {
 				update_set = [...Array(numComponents)].fill(twist)
 			} else if (Array.isArray(twist)) {
-				update_set = []
-				// assume under not over
-				if (twist.length < numComponents) {
-					for (let i = numComponents - twist.length; i < twist.length; i++) {
-						update_set[i] = defaults[space_key][i]
-					}
-				}
+				update_set = [...twist.slice(0, numComponents)]
 			} else {
 				// otherwise wtf was that? lets set default
 				update_set = [...data.subarray(bdx, bdx + numComponents)]
@@ -254,7 +244,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 				data_last.set([...data.subarray(bdx, bdx + numComponents)], bdx)
 			}
-
+			console.log(update_set)
 			return data.set(update_set, bdx)
 		})
 	})

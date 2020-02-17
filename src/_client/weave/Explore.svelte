@@ -4,6 +4,7 @@ import { button } from "/sys/gamepad.js"
 import { random } from "/text.js"
 
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
+import { screen_ui } from "/sys/device.js"
 
 import nav, { cursor } from "/_client/action/nav.js"
 

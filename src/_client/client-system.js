@@ -11,6 +11,7 @@ import * as key from "/sys/key.js"
 import * as gamepad from "/sys/gamepad.js"
 import * as flag from "/sys/flag.js"
 import * as camera from "/sys/camera.js"
+import * as device from "/sys/device.js"
 
 // private sytems
 import "/sys/data.js"
@@ -42,6 +43,7 @@ const systems = {
 	input,
 	key,
 	gamepad,
+	device,
 	flag: normalize(flag),
 	camera
 }

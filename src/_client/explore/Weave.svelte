@@ -132,6 +132,7 @@ let controls
 
 .namezor {
 	margin: 0 1rem;
+	user-select: none;
 	flex: 1;
 }
 

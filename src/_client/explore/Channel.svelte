@@ -135,8 +135,7 @@ let chan_node
 	}}
 
 	on:click={(e) => {
-		if (e) {
-			console.log(e)
+		if (e && e.isTrusted) {
 			cursor.set(chan_node)
 			return
 		}
@@ -156,7 +155,7 @@ let chan_node
 
 <Thread {channel} {space} {weave} {nothread} bind:this={thread_left}/>
 {#if key_editing}
-	<input type="text" class="edit" autofocus````
+	<input type="text" class="edit" autofocus
 		bind:value={key_new}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) {

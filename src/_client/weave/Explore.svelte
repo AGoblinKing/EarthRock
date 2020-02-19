@@ -1,26 +1,24 @@
-<script>
+ <script>
 import { key } from "/sys/key.js"
 import { button } from "/sys/gamepad.js"
 import { random } from "/text.js"
 
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
-import { screen_ui } from "/sys/device.js"
-
 import nav, { cursor } from "/_client/action/nav.js"
 
+import Control from "/_client/control/Control.svelte"
 import Weave from "/_client/explore/Weave.svelte"
 import Github from "./Github.svelte"
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
 
 key.listen(char => {
-	if (char !== `\``) return
+	if (char !== `\`` && char !== `pause`) return
 	hidden = !hidden
 })
 
 button.listen(button => {
 	if (button !== `select`) return
-
 	hidden = !hidden
 })
 
@@ -71,10 +69,21 @@ const expand = (name) => {
 
 	return `${name}${Wheel.DENOTE}${v_keys[v_keys.length - 1]}`
 }
+
+let last
+let patreon
+$: {
+	if ($cursor !== last) {
+		patreon = 0
+	}
+	last = $cursor
+}
 </script>
 
-<MainScreen {hidden} />
 
+
+<MainScreen {hidden} />
+<Control />
 <Picker {nameit} bind:this={picker}>
 {#if !hidden}
 	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
@@ -86,15 +95,23 @@ const expand = (name) => {
 			style={$THEME_STYLE}
 			href="https://www.patreon.com/earthrock"
 			target="_new"
+      on:click={(e) => {
+        if (patreon !== 0) return
+        patreon++
+        e.preventDefault()
+      }}
+
 			use:nav={{
 				id: Wheel.DENOTE,
 				up: () => top_space,
+        origin: true,
 				down: () => ws[0].name.get(),
 				page_up: () => ws[ws.length - 1].name.get(),
 				page_down: () => ws[0].name.get(),
 				insert: () => {
 					// pop up picker with a blank
 					nameit = { name: random(2) }
+
 					requestAnimationFrame(() => {
 						cursor.set(picker)
 					})
@@ -138,7 +155,7 @@ const expand = (name) => {
 	padding: 0.5rem;
 	text-align: center;
 	color: rgb(224, 168, 83);
-	transition: all 250ms cubic-bezier(0.165, 0.84, 0.44, 1);
+	transition: all 250ms linear;
 }
 
 .logo:hover {

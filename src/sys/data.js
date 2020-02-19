@@ -11,7 +11,7 @@ const store_name = `wheel`
 
 export const loaded = write(false)
 export const data = new Promise((resolve) => {
-	const req = window.indexedDB.open(`isekai`, VERSION)
+	const req = window.indexedDB.open(`earthrock`, VERSION)
 
 	req.onupgradeneeded = async (e) => {
 		db = e.target.result
@@ -81,7 +81,7 @@ const savewatch = async ($name) => {
 		})
 	}
 
-	loaded.set(true)
+	requestAnimationFrame(() => loaded.set(true))
 
 	const cancel = tick.listen((t) => {
 		if (

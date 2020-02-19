@@ -311,9 +311,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	const TIME_TICK_RATE = write(100);
 
 	const SPRITES = read(`/sheets/default_2.png`);
-
+	const SPRITES_COLOR = read(`/sheets/default_2_color.png`);
 	const IS_DEV = read(window.location.host === `localhost:5000`);
-	const SOUND_ON = write(true);
 
 	const SVELTE_ANIMATION = write({ delay: 100, duration: 300 });
 
@@ -324,7 +323,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	const THEME_BG = write(`#033`);
 	const THEME_GLOW = write(`green`);
 
-	const CURSOR = write(`/sys`);
+	const CURSOR = write(`/`);
 
 	const THEME_BORDER = read(``, (set) =>
 		THEME_BG.listen(($THEME_BG) => set(Color($THEME_BG)
@@ -349,8 +348,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		__proto__: null,
 		TIME_TICK_RATE: TIME_TICK_RATE,
 		SPRITES: SPRITES,
+		SPRITES_COLOR: SPRITES_COLOR,
 		IS_DEV: IS_DEV,
-		SOUND_ON: SOUND_ON,
 		SVELTE_ANIMATION: SVELTE_ANIMATION,
 		TILE_COUNT: TILE_COUNT,
 		TILE_COLUMNS: TILE_COLUMNS,
@@ -1127,7 +1126,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	const ready = new Promise((resolve) => {
 		const tiles = new Image();
-		tiles.src = `/sheets/default_2.png`;
+		tiles.src = `/sheets/default_2_color.png`;
 
 		tiles.onload = () => {
 			const canvas = document.createElement(`canvas`);
@@ -3120,7 +3119,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			? height
 			: width;
 
-		scale.set(target / 100);
+		scale.set(target / 80);
 		window.document.documentElement.style.fontSize = `${Math.round(scale.get())}px`;
 	});
 
@@ -3135,7 +3134,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		clear_color: clear_color
 	});
 
+	const key_virtual = write(``);
+
 	const key = read(``, (set) => {
+		key_virtual.listen((k) => set(k));
+
 		window.addEventListener(`keyup`, (e) => {
 			// always allow keyup
 			e.preventDefault();
@@ -3190,6 +3193,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	var key$1 = /*#__PURE__*/Object.freeze({
 		__proto__: null,
+		key_virtual: key_virtual,
 		key: key,
 		keys: keys$1
 	});
@@ -3749,7 +3753,16 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	const { length, add: add$2, mulScalar: mulScalar$1 } = v3;
 
-	const zoom = write(0.75);
+	document.addEventListener(`touchmove`, event => {
+		if (event.scale !== 1) { event.preventDefault(); }
+	}, { passive: false });
+
+	let lastTouchEnd = 0;
+	document.addEventListener(`touchend`, event => {
+		const now = (new Date()).getTime();
+		if (now - lastTouchEnd <= 500) event.preventDefault();
+		lastTouchEnd = now;
+	}, { passive: false });
 
 	// raw translate commands
 	const translate$1 = read([0, 0, 0], (set) => {
@@ -3799,8 +3812,6 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		scroll_velocity = add$2(scroll_velocity, vel);
 	});
 
-	const focus = write(``);
-
 	// input to replicate to remotes
 	const button_map = {
 		home: ({ home }, { start }) => home || start,
@@ -3815,16 +3826,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		confirm: ({ enter }, { a }) => a || enter,
 		cancel: ({ end, escape }, { b }) => end || b || escape,
 		editor: ({ pause, tilde }, { select }) => tilde || pause || select,
-		avatar_up: ({ w }) => w,
-		avatar_down: ({ s }) => s,
-		avatar_left: ({ a }) => a,
-		avatar_right: ({ d }) => d,
-		avatar_jump: ({ " ": space }) => space,
-		avatar_sprint: ({ shift }) => shift,
-		avatar_left_arm: ({ q }) => q,
-		avatar_right_arm: ({ e }) => e,
 		undo: ({ control, z, backspace }) => (control && z) || backspace,
-		redo: ({ shift, control, z, backspace }) => (shift && control && z) || (shift && backspace)
+		redo: ({ shift, control, z, backspace, redo }) => redo || (shift && control && z) || (shift && backspace)
 	};
 
 	const buttons$1 = read({}, (set) => {
@@ -3843,23 +3846,26 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	var input = /*#__PURE__*/Object.freeze({
 		__proto__: null,
-		zoom: zoom,
 		translate: translate$1,
 		scroll: scroll$1,
-		focus: focus,
 		buttons: buttons$1
 	});
 
-	const screen_ui_regex = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i;
-	const agent = navigator.userAgent || navigator.vendor || window.opera;
+	const screen_ui_regex = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i;
 
-	const no_keyboard = write(
-		(a) => screen_ui_regex.test(a.substr(0, 4))(agent)
+	const agent = write((navigator.userAgent || navigator.vendor || window.opera).toLowerCase());
+
+	const keyboard = write(
+		!screen_ui_regex.test(agent.get())
 	);
+
+	const sound$1 = write(true);
 
 	var device = /*#__PURE__*/Object.freeze({
 		__proto__: null,
-		no_keyboard: no_keyboard
+		agent: agent,
+		keyboard: keyboard,
+		sound: sound$1
 	});
 
 	const path = transformer((path_new) => {
@@ -3894,7 +3900,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	const loaded = write(false);
 	const data = new Promise((resolve) => {
-		const req = window.indexedDB.open(`isekai`, VERSION);
+		const req = window.indexedDB.open(`earthrock`, VERSION);
 
 		req.onupgradeneeded = async (e) => {
 			db = e.target.result;
@@ -3959,7 +3965,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			});
 		}
 
-		loaded.set(true);
+		requestAnimationFrame(() => loaded.set(true));
 
 		const cancel = tick.listen((t) => {
 			if (
@@ -4730,10 +4736,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return nav
 	};
 
-	/* src\_client\image\Tile.svelte generated by Svelte v3.16.7 */
-	const file = "src\\_client\\image\\Tile.svelte";
+	/* src/_client/image/Tile.svelte generated by Svelte v3.16.7 */
+	const file = "src/_client/image/Tile.svelte";
 
-	// (1:0) <script>  import { tile }
+	// (1:0) <script> import { tile }
 	function create_catch_block(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -4741,14 +4747,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_catch_block.name,
 			type: "catch",
-			source: "(1:0) <script>  import { tile }",
+			source: "(1:0) <script> import { tile }",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (24:28)   <img      class="tileset"      alt="tileset image"      {src}
+	// (24:28)  <img     class="tileset"     alt="tileset image"     {src}
 	function create_then_block(ctx) {
 		let img;
 		let img_src_value;
@@ -4756,10 +4762,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const block = {
 			c: function create() {
 				img = element("img");
-				attr_dev(img, "class", "tileset svelte-1jo87w8");
+				attr_dev(img, "class", "tileset svelte-1ifhj4a");
 				attr_dev(img, "alt", "tileset image");
 				if (img.src !== (img_src_value = /*src*/ ctx[7])) attr_dev(img, "src", img_src_value);
-				add_location(img, file, 24, 0, 374);
+				add_location(img, file, 24, 0, 350);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, img, anchor);
@@ -4778,14 +4784,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_then_block.name,
 			type: "then",
-			source: "(24:28)   <img      class=\\\"tileset\\\"      alt=\\\"tileset image\\\"      {src}",
+			source: "(24:28)  <img     class=\\\"tileset\\\"     alt=\\\"tileset image\\\"     {src}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (1:0) <script>  import { tile }
+	// (1:0) <script> import { tile }
 	function create_pending_block(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -4793,7 +4799,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_pending_block.name,
 			type: "pending",
-			source: "(1:0) <script>  import { tile }",
+			source: "(1:0) <script> import { tile }",
 			ctx
 		});
 
@@ -4980,10 +4986,710 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\weave\Postage.svelte generated by Svelte v3.16.7 */
-	const file$1 = "src\\_client\\weave\\Postage.svelte";
+	/* src/_client/control/Buttons.svelte generated by Svelte v3.16.7 */
+
+	const { console: console_1 } = globals;
+	const file$1 = "src/_client/control/Buttons.svelte";
+
+	function get_each_context_1(ctx, list, i) {
+		const child_ctx = ctx.slice();
+		child_ctx[8] = list[i][0];
+		child_ctx[9] = list[i][1];
+		return child_ctx;
+	}
+
+	function get_each_context(ctx, list, i) {
+		const child_ctx = ctx.slice();
+		child_ctx[5] = list[i];
+		return child_ctx;
+	}
+
+	// (49:4) {:else}
+	function create_else_block(ctx) {
+		let div;
+
+		const block = {
+			c: function create() {
+				div = element("div");
+				attr_dev(div, "class", "button noactive svelte-zidjk4");
+				add_location(div, file$1, 49, 5, 1111);
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div, anchor);
+			},
+			p: noop$1,
+			i: noop$1,
+			o: noop$1,
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_else_block.name,
+			type: "else",
+			source: "(49:4) {:else}",
+			ctx
+		});
+
+		return block;
+	}
+
+	// (39:4) {#if command}
+	function create_if_block(ctx) {
+		let div;
+		let current;
+		let dispose;
+
+		const tile = new Tile_1({
+				props: {
+					width: 1,
+					height: 1,
+					data: `${/*tile*/ ctx[9]}`
+				},
+				$$inline: true
+			});
+
+		const block = {
+			c: function create() {
+				div = element("div");
+				create_component(tile.$$.fragment);
+				attr_dev(div, "class", "button svelte-zidjk4");
+				toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[8]));
+				add_location(div, file$1, 39, 2, 849);
+
+				dispose = [
+					listen_dev(
+						div,
+						"touchmove",
+						function () {
+							if (is_function(/*move*/ ctx[3](/*command*/ ctx[8]))) /*move*/ ctx[3](/*command*/ ctx[8]).apply(this, arguments);
+						},
+						false,
+						false,
+						false
+					),
+					listen_dev(
+						div,
+						"touchstart",
+						function () {
+							if (is_function(/*press*/ ctx[2](/*command*/ ctx[8]))) /*press*/ ctx[2](/*command*/ ctx[8]).apply(this, arguments);
+						},
+						false,
+						false,
+						false
+					),
+					listen_dev(
+						div,
+						"touchend",
+						function () {
+							if (is_function(/*unpress*/ ctx[4](/*command*/ ctx[8]))) /*unpress*/ ctx[4](/*command*/ ctx[8]).apply(this, arguments);
+						},
+						false,
+						false,
+						false
+					)
+				];
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div, anchor);
+				mount_component(tile, div, null);
+				current = true;
+			},
+			p: function update(new_ctx, dirty) {
+				ctx = new_ctx;
+				const tile_changes = {};
+				if (dirty & /*keys*/ 1) tile_changes.data = `${/*tile*/ ctx[9]}`;
+				tile.$set(tile_changes);
+
+				if (dirty & /*pressed, keys*/ 3) {
+					toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[8]));
+				}
+			},
+			i: function intro(local) {
+				if (current) return;
+				transition_in(tile.$$.fragment, local);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(tile.$$.fragment, local);
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div);
+				destroy_component(tile);
+				run_all(dispose);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_if_block.name,
+			type: "if",
+			source: "(39:4) {#if command}",
+			ctx
+		});
+
+		return block;
+	}
+
+	// (38:1) {#each row as [command, tile]}
+	function create_each_block_1(ctx) {
+		let current_block_type_index;
+		let if_block;
+		let if_block_anchor;
+		let current;
+		const if_block_creators = [create_if_block, create_else_block];
+		const if_blocks = [];
+
+		function select_block_type(ctx, dirty) {
+			if (/*command*/ ctx[8]) return 0;
+			return 1;
+		}
+
+		current_block_type_index = select_block_type(ctx);
+		if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+
+		const block = {
+			c: function create() {
+				if_block.c();
+				if_block_anchor = empty();
+			},
+			m: function mount(target, anchor) {
+				if_blocks[current_block_type_index].m(target, anchor);
+				insert_dev(target, if_block_anchor, anchor);
+				current = true;
+			},
+			p: function update(ctx, dirty) {
+				let previous_block_index = current_block_type_index;
+				current_block_type_index = select_block_type(ctx);
+
+				if (current_block_type_index === previous_block_index) {
+					if_blocks[current_block_type_index].p(ctx, dirty);
+				} else {
+					group_outros();
+
+					transition_out(if_blocks[previous_block_index], 1, 1, () => {
+						if_blocks[previous_block_index] = null;
+					});
+
+					check_outros();
+					if_block = if_blocks[current_block_type_index];
+
+					if (!if_block) {
+						if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+						if_block.c();
+					}
+
+					transition_in(if_block, 1);
+					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+				}
+			},
+			i: function intro(local) {
+				if (current) return;
+				transition_in(if_block);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(if_block);
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if_blocks[current_block_type_index].d(detaching);
+				if (detaching) detach_dev(if_block_anchor);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_each_block_1.name,
+			type: "each",
+			source: "(38:1) {#each row as [command, tile]}",
+			ctx
+		});
+
+		return block;
+	}
+
+	// (36:0) {#each keys as row}
+	function create_each_block(ctx) {
+		let div;
+		let t;
+		let current;
+		let each_value_1 = /*row*/ ctx[5];
+		let each_blocks = [];
+
+		for (let i = 0; i < each_value_1.length; i += 1) {
+			each_blocks[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
+		}
+
+		const out = i => transition_out(each_blocks[i], 1, 1, () => {
+			each_blocks[i] = null;
+		});
+
+		const block = {
+			c: function create() {
+				div = element("div");
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					each_blocks[i].c();
+				}
+
+				t = space$1();
+				attr_dev(div, "class", "row svelte-zidjk4");
+				add_location(div, file$1, 36, 2, 779);
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div, anchor);
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					each_blocks[i].m(div, null);
+				}
+
+				append_dev(div, t);
+				current = true;
+			},
+			p: function update(ctx, dirty) {
+				if (dirty & /*keys, pressed, move, press, unpress*/ 31) {
+					each_value_1 = /*row*/ ctx[5];
+					let i;
+
+					for (i = 0; i < each_value_1.length; i += 1) {
+						const child_ctx = get_each_context_1(ctx, each_value_1, i);
+
+						if (each_blocks[i]) {
+							each_blocks[i].p(child_ctx, dirty);
+							transition_in(each_blocks[i], 1);
+						} else {
+							each_blocks[i] = create_each_block_1(child_ctx);
+							each_blocks[i].c();
+							transition_in(each_blocks[i], 1);
+							each_blocks[i].m(div, t);
+						}
+					}
+
+					group_outros();
+
+					for (i = each_value_1.length; i < each_blocks.length; i += 1) {
+						out(i);
+					}
+
+					check_outros();
+				}
+			},
+			i: function intro(local) {
+				if (current) return;
+
+				for (let i = 0; i < each_value_1.length; i += 1) {
+					transition_in(each_blocks[i]);
+				}
+
+				current = true;
+			},
+			o: function outro(local) {
+				each_blocks = each_blocks.filter(Boolean);
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					transition_out(each_blocks[i]);
+				}
+
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div);
+				destroy_each(each_blocks, detaching);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_each_block.name,
+			type: "each",
+			source: "(36:0) {#each keys as row}",
+			ctx
+		});
+
+		return block;
+	}
 
 	function create_fragment$1(ctx) {
+		let div;
+		let current;
+		let each_value = /*keys*/ ctx[0];
+		let each_blocks = [];
+
+		for (let i = 0; i < each_value.length; i += 1) {
+			each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+		}
+
+		const out = i => transition_out(each_blocks[i], 1, 1, () => {
+			each_blocks[i] = null;
+		});
+
+		const block = {
+			c: function create() {
+				div = element("div");
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					each_blocks[i].c();
+				}
+
+				attr_dev(div, "class", "group");
+				add_location(div, file$1, 34, 0, 737);
+			},
+			l: function claim(nodes) {
+				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div, anchor);
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					each_blocks[i].m(div, null);
+				}
+
+				current = true;
+			},
+			p: function update(ctx, [dirty]) {
+				if (dirty & /*keys, pressed, move, press, unpress*/ 31) {
+					each_value = /*keys*/ ctx[0];
+					let i;
+
+					for (i = 0; i < each_value.length; i += 1) {
+						const child_ctx = get_each_context(ctx, each_value, i);
+
+						if (each_blocks[i]) {
+							each_blocks[i].p(child_ctx, dirty);
+							transition_in(each_blocks[i], 1);
+						} else {
+							each_blocks[i] = create_each_block(child_ctx);
+							each_blocks[i].c();
+							transition_in(each_blocks[i], 1);
+							each_blocks[i].m(div, null);
+						}
+					}
+
+					group_outros();
+
+					for (i = each_value.length; i < each_blocks.length; i += 1) {
+						out(i);
+					}
+
+					check_outros();
+				}
+			},
+			i: function intro(local) {
+				if (current) return;
+
+				for (let i = 0; i < each_value.length; i += 1) {
+					transition_in(each_blocks[i]);
+				}
+
+				current = true;
+			},
+			o: function outro(local) {
+				each_blocks = each_blocks.filter(Boolean);
+
+				for (let i = 0; i < each_blocks.length; i += 1) {
+					transition_out(each_blocks[i]);
+				}
+
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div);
+				destroy_each(each_blocks, detaching);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_fragment$1.name,
+			type: "component",
+			source: "",
+			ctx
+		});
+
+		return block;
+	}
+
+	function instance$1($$self, $$props, $$invalidate) {
+		const pressed = new Set();
+
+		const press = command => {
+			pressed.add(command);
+			if (typeof command === `string`) return key_virtual.set(command);
+		};
+
+		const move = command => {
+			let center;
+
+			return e => {
+				center = [
+					e.target.offsetLeft + e.target.offsetWidth / 2,
+					e.target.offsetTop + e.target.offsetHeight / 2
+				];
+
+				if (typeof command === `string`) return;
+				console.log(e, center);
+			};
+		};
+
+		const unpress = command => () => {
+			pressed.delete(command);
+			if (typeof command === `string`) key_virtual.set(`${command}!`);
+		};
+
+		let { keys = [] } = $$props;
+		const writable_props = ["keys"];
+
+		Object.keys($$props).forEach(key => {
+			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Buttons> was created with unknown prop '${key}'`);
+		});
+
+		$$self.$set = $$props => {
+			if ("keys" in $$props) $$invalidate(0, keys = $$props.keys);
+		};
+
+		$$self.$capture_state = () => {
+			return { keys };
+		};
+
+		$$self.$inject_state = $$props => {
+			if ("keys" in $$props) $$invalidate(0, keys = $$props.keys);
+		};
+
+		return [keys, pressed, press, move, unpress];
+	}
+
+	class Buttons extends SvelteComponentDev {
+		constructor(options) {
+			super(options);
+			init(this, options, instance$1, create_fragment$1, safe_not_equal, { keys: 0 });
+
+			dispatch_dev("SvelteRegisterComponent", {
+				component: this,
+				tagName: "Buttons",
+				options,
+				id: create_fragment$1.name
+			});
+		}
+
+		get keys() {
+			throw new Error("<Buttons>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+		}
+
+		set keys(value) {
+			throw new Error("<Buttons>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+		}
+	}
+
+	/* src/_client/control/Control.svelte generated by Svelte v3.16.7 */
+	const file$2 = "src/_client/control/Control.svelte";
+
+	// (40:0) {#if !$keyboard}
+	function create_if_block$1(ctx) {
+		let div3;
+		let div0;
+		let t0;
+		let div1;
+		let t1;
+		let div2;
+		let current;
+
+		const buttons0 = new Buttons({
+				props: { keys: /*buttons_left*/ ctx[1] },
+				$$inline: true
+			});
+
+		const buttons1 = new Buttons({
+				props: { keys: /*buttons_right*/ ctx[2] },
+				$$inline: true
+			});
+
+		const block = {
+			c: function create() {
+				div3 = element("div");
+				div0 = element("div");
+				create_component(buttons0.$$.fragment);
+				t0 = space$1();
+				div1 = element("div");
+				t1 = space$1();
+				div2 = element("div");
+				create_component(buttons1.$$.fragment);
+				attr_dev(div0, "class", "left svelte-zpdtch");
+				add_location(div0, file$2, 41, 2, 805);
+				attr_dev(div1, "class", "flex svelte-zpdtch");
+				add_location(div1, file$2, 44, 2, 871);
+				attr_dev(div2, "class", "right svelte-zpdtch");
+				add_location(div2, file$2, 45, 2, 898);
+				attr_dev(div3, "class", "control svelte-zpdtch");
+				add_location(div3, file$2, 40, 0, 781);
+			},
+			m: function mount(target, anchor) {
+				insert_dev(target, div3, anchor);
+				append_dev(div3, div0);
+				mount_component(buttons0, div0, null);
+				append_dev(div3, t0);
+				append_dev(div3, div1);
+				append_dev(div3, t1);
+				append_dev(div3, div2);
+				mount_component(buttons1, div2, null);
+				current = true;
+			},
+			p: noop$1,
+			i: function intro(local) {
+				if (current) return;
+				transition_in(buttons0.$$.fragment, local);
+				transition_in(buttons1.$$.fragment, local);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(buttons0.$$.fragment, local);
+				transition_out(buttons1.$$.fragment, local);
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if (detaching) detach_dev(div3);
+				destroy_component(buttons0);
+				destroy_component(buttons1);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_if_block$1.name,
+			type: "if",
+			source: "(40:0) {#if !$keyboard}",
+			ctx
+		});
+
+		return block;
+	}
+
+	function create_fragment$2(ctx) {
+		let if_block_anchor;
+		let current;
+		let if_block = !/*$keyboard*/ ctx[0] && create_if_block$1(ctx);
+
+		const block = {
+			c: function create() {
+				if (if_block) if_block.c();
+				if_block_anchor = empty();
+			},
+			l: function claim(nodes) {
+				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+			},
+			m: function mount(target, anchor) {
+				if (if_block) if_block.m(target, anchor);
+				insert_dev(target, if_block_anchor, anchor);
+				current = true;
+			},
+			p: function update(ctx, [dirty]) {
+				if (!/*$keyboard*/ ctx[0]) {
+					if (if_block) {
+						if_block.p(ctx, dirty);
+						transition_in(if_block, 1);
+					} else {
+						if_block = create_if_block$1(ctx);
+						if_block.c();
+						transition_in(if_block, 1);
+						if_block.m(if_block_anchor.parentNode, if_block_anchor);
+					}
+				} else if (if_block) {
+					group_outros();
+
+					transition_out(if_block, 1, 1, () => {
+						if_block = null;
+					});
+
+					check_outros();
+				}
+			},
+			i: function intro(local) {
+				if (current) return;
+				transition_in(if_block);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(if_block);
+				current = false;
+			},
+			d: function destroy(detaching) {
+				if (if_block) if_block.d(detaching);
+				if (detaching) detach_dev(if_block_anchor);
+			}
+		};
+
+		dispatch_dev("SvelteRegisterBlock", {
+			block,
+			id: create_fragment$2.name,
+			type: "component",
+			source: "",
+			ctx
+		});
+
+		return block;
+	}
+
+	function instance$2($$self, $$props, $$invalidate) {
+		let $keyboard;
+		validate_store(keyboard, "keyboard");
+		component_subscribe($$self, keyboard, $$value => $$invalidate(0, $keyboard = $$value));
+
+		const commands = {
+			_: [undefined, 0],
+			u: [`arrowup`, 668],
+			d: [`arrowdown`, 670],
+			l: [`arrowleft`, 671],
+			r: [`arrowright`, 669],
+			___: [undefined, 0],
+			pdn: [`pagedown`, 702],
+			pup: [`pageup`, 700],
+			ins: [`insert`, 858],
+			del: [`delete`, 857],
+			yes: [`enter`, 855],
+			noo: [`end`, 856],
+			exp: [`pause`, 820],
+			und: [`backspace`, 12],
+			red: [`redo`, 13],
+			mod: [`shift`, 14],
+			joy: [[`arrowup`, `arrowdown`, `arrowleft`, `arrowright`], 796]
+		};
+
+		const { _, u, d, r, l, joy, pup, pdn, noo, ins, del, yes, exp } = commands;
+		const buttons_left = [[_, u, pup], [l, joy, r], [_, d, pdn]];
+		const buttons_right = [[_, del, _], [yes, exp, noo], [_, ins, _]];
+
+		$$self.$capture_state = () => {
+			return {};
+		};
+
+		$$self.$inject_state = $$props => {
+			if ("$keyboard" in $$props) keyboard.set($keyboard = $$props.$keyboard);
+		};
+
+		return [$keyboard, buttons_left, buttons_right];
+	}
+
+	class Control extends SvelteComponentDev {
+		constructor(options) {
+			super(options);
+			init(this, options, instance$2, create_fragment$2, safe_not_equal, {});
+
+			dispatch_dev("SvelteRegisterComponent", {
+				component: this,
+				tagName: "Control",
+				options,
+				id: create_fragment$2.name
+			});
+		}
+	}
+
+	/* src/_client/weave/Postage.svelte generated by Svelte v3.16.7 */
+	const file$3 = "src/_client/weave/Postage.svelte";
+
+	function create_fragment$3(ctx) {
 		let div;
 		let current;
 
@@ -5000,11 +5706,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				create_component(tile.$$.fragment);
-				attr_dev(div, "class", "postage svelte-1qad2nn");
+				attr_dev(div, "class", "postage svelte-fim77v");
 				toggle_class(div, "isrunning", /*isrunning*/ ctx[4]);
 				toggle_class(div, "isrezed", /*isrezed*/ ctx[6]);
 				toggle_class(div, "issystem", /*issystem*/ ctx[5]);
-				add_location(div, file$1, 29, 0, 586);
+				add_location(div, file$3, 29, 0, 557);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5048,7 +5754,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$1.name,
+			id: create_fragment$3.name,
 			type: "component",
 			source: "",
 			ctx
@@ -5057,7 +5763,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$1($$self, $$props, $$invalidate) {
+	function instance$3($$self, $$props, $$invalidate) {
 		let $names,
 			$$unsubscribe_names = noop$1,
 			$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate(9, $names = $$value)), names);
@@ -5169,13 +5875,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Postage extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$1, create_fragment$1, safe_not_equal, { address: 0 });
+			init(this, options, instance$3, create_fragment$3, safe_not_equal, { address: 0 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Postage",
 				options,
-				id: create_fragment$1.name
+				id: create_fragment$3.name
 			});
 		}
 
@@ -5188,11 +5894,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\weave\Controls.svelte generated by Svelte v3.16.7 */
-	const file$2 = "src\\_client\\weave\\Controls.svelte";
+	/* src/_client/weave/Controls.svelte generated by Svelte v3.16.7 */
+	const file$4 = "src/_client/weave/Controls.svelte";
 
 	// (47:2) {#if $name !== Wheel.SYSTEM}
-	function create_if_block(ctx) {
+	function create_if_block$2(ctx) {
 		let div;
 		let promise;
 		let dispose;
@@ -5213,8 +5919,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				info.block.c();
-				attr_dev(div, "class", "save svelte-1gi8jdd");
-				add_location(div, file$2, 47, 2, 864);
+				attr_dev(div, "class", "save svelte-1vied37");
+				add_location(div, file$4, 47, 2, 817);
 				dispose = listen_dev(div, "click", /*save_it*/ ctx[2], false, false, false);
 			},
 			m: function mount(target, anchor) {
@@ -5244,7 +5950,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block.name,
+			id: create_if_block$2.name,
 			type: "if",
 			source: "(47:2) {#if $name !== Wheel.SYSTEM}",
 			ctx
@@ -5253,7 +5959,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	// (1:0) <script>  import { save, image }
+	// (1:0) <script> import { save, image }
 	function create_catch_block$1(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -5261,14 +5967,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_catch_block$1.name,
 			type: "catch",
-			source: "(1:0) <script>  import { save, image }",
+			source: "(1:0) <script> import { save, image }",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (52:45)         <img {src}
+	// (52:45)        <img {src}
 	function create_then_block$1(ctx) {
 		let img;
 		let img_src_value;
@@ -5278,8 +5984,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				img = element("img");
 				if (img.src !== (img_src_value = /*src*/ ctx[13])) attr_dev(img, "src", img_src_value);
 				attr_dev(img, "alt", "save");
-				attr_dev(img, "class", "svelte-1gi8jdd");
-				add_location(img, file$2, 52, 6, 970);
+				attr_dev(img, "class", "svelte-1vied37");
+				add_location(img, file$4, 52, 6, 918);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, img, anchor);
@@ -5298,14 +6004,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_then_block$1.name,
 			type: "then",
-			source: "(52:45)         <img {src}",
+			source: "(52:45)        <img {src}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (1:0) <script>  import { save, image }
+	// (1:0) <script> import { save, image }
 	function create_pending_block$1(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -5313,14 +6019,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_pending_block$1.name,
 			type: "pending",
-			source: "(1:0) <script>  import { save, image }",
+			source: "(1:0) <script> import { save, image }",
 			ctx
 		});
 
 		return block;
 	}
 
-	function create_fragment$2(ctx) {
+	function create_fragment$4(ctx) {
 		let div1;
 		let div0;
 		let t0;
@@ -5337,7 +6043,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		const default_slot_template = /*$$slots*/ ctx[12].default;
 		const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[11], null);
-		let if_block = /*$name*/ ctx[5] !== Wheel.SYSTEM && create_if_block(ctx);
+		let if_block = /*$name*/ ctx[5] !== Wheel.SYSTEM && create_if_block$2(ctx);
 
 		const block = {
 			c: function create() {
@@ -5348,10 +6054,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (default_slot) default_slot.c();
 				t1 = space$1();
 				if (if_block) if_block.c();
-				attr_dev(div0, "class", "postage svelte-1gi8jdd");
-				add_location(div0, file$2, 40, 1, 703);
-				attr_dev(div1, "class", "controls svelte-1gi8jdd");
-				add_location(div1, file$2, 37, 0, 673);
+				attr_dev(div0, "class", "postage svelte-1vied37");
+				add_location(div0, file$4, 40, 1, 663);
+				attr_dev(div1, "class", "controls svelte-1vied37");
+				add_location(div1, file$4, 37, 0, 636);
 				dispose = listen_dev(div0, "click", /*toggle*/ ctx[1], false, false, false);
 			},
 			l: function claim(nodes) {
@@ -5384,7 +6090,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					if (if_block) {
 						if_block.p(ctx, dirty);
 					} else {
-						if_block = create_if_block(ctx);
+						if_block = create_if_block$2(ctx);
 						if_block.c();
 						if_block.m(div1, null);
 					}
@@ -5415,7 +6121,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$2.name,
+			id: create_fragment$4.name,
 			type: "component",
 			source: "",
 			ctx
@@ -5424,7 +6130,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$2($$self, $$props, $$invalidate) {
+	function instance$4($$self, $$props, $$invalidate) {
 		let $running,
 			$$unsubscribe_running = noop$1,
 			$$subscribe_running = () => ($$unsubscribe_running(), $$unsubscribe_running = subscribe(running, $$value => $$invalidate(7, $running = $$value)), running);
@@ -5547,13 +6253,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Controls extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$2, create_fragment$2, safe_not_equal, { weave: 0, toggle: 1, save_it: 2 });
+			init(this, options, instance$4, create_fragment$4, safe_not_equal, { weave: 0, toggle: 1, save_it: 2 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Controls",
 				options,
-				id: create_fragment$2.name
+				id: create_fragment$4.name
 			});
 
 			const { ctx } = this.$$;
@@ -5619,10 +6325,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	};
 
-	/* src\_client\explore\Flock.svelte generated by Svelte v3.16.7 */
-	const file$3 = "src\\_client\\explore\\Flock.svelte";
+	/* src/_client/explore/Flock.svelte generated by Svelte v3.16.7 */
+	const file$5 = "src/_client/explore/Flock.svelte";
 
-	function create_fragment$3(ctx) {
+	function create_fragment$5(ctx) {
 		let div4;
 		let div3;
 		let div0;
@@ -5663,17 +6369,17 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				div2.textContent = ">";
 				t9 = space$1();
 				if (default_slot) default_slot.c();
-				attr_dev(div0, "class", "button svelte-yp66uk");
-				add_location(div0, file$3, 38, 2, 724);
-				attr_dev(div1, "class", "flex svelte-yp66uk");
-				add_location(div1, file$3, 50, 2, 1010);
-				attr_dev(div2, "class", "button svelte-yp66uk");
-				add_location(div2, file$3, 51, 2, 1089);
-				attr_dev(div3, "class", "navigation svelte-yp66uk");
+				attr_dev(div0, "class", "button svelte-1hb83nq");
+				add_location(div0, file$5, 38, 2, 686);
+				attr_dev(div1, "class", "flex svelte-1hb83nq");
+				add_location(div1, file$5, 50, 2, 960);
+				attr_dev(div2, "class", "button svelte-1hb83nq");
+				add_location(div2, file$5, 51, 2, 1038);
+				attr_dev(div3, "class", "navigation svelte-1hb83nq");
 				set_style(div3, "background-color", /*$THEME_BORDER*/ ctx[4]);
-				add_location(div3, file$3, 36, 1, 651);
-				attr_dev(div4, "class", "sub_space svelte-yp66uk");
-				add_location(div4, file$3, 32, 0, 619);
+				add_location(div3, file$5, 36, 1, 615);
+				attr_dev(div4, "class", "sub_space svelte-1hb83nq");
+				add_location(div4, file$5, 32, 0, 587);
 
 				dispose = [
 					listen_dev(div0, "click", /*click_handler*/ ctx[12], false, false, false),
@@ -5739,7 +6445,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$3.name,
+			id: create_fragment$5.name,
 			type: "component",
 			source: "",
 			ctx
@@ -5748,7 +6454,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$3($$self, $$props, $$invalidate) {
+	function instance$5($$self, $$props, $$invalidate) {
 		let $birds,
 			$$unsubscribe_birds = noop$1,
 			$$subscribe_birds = () => ($$unsubscribe_birds(), $$unsubscribe_birds = subscribe(birds, $$value => $$invalidate(2, $birds = $$value)), birds);
@@ -5879,13 +6585,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Flock extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$3, create_fragment$3, safe_not_equal, { weave: 6, birds: 0, set_bird: 7 });
+			init(this, options, instance$5, create_fragment$5, safe_not_equal, { weave: 6, birds: 0, set_bird: 7 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Flock",
 				options,
-				id: create_fragment$3.name
+				id: create_fragment$5.name
 			});
 
 			const { ctx } = this.$$;
@@ -5925,8 +6631,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\editor\SpriteEditor.svelte generated by Svelte v3.16.7 */
-	const file$4 = "src\\_client\\editor\\SpriteEditor.svelte";
+	/* src/_client/editor/SpriteEditor.svelte generated by Svelte v3.16.7 */
+	const file$6 = "src/_client/editor/SpriteEditor.svelte";
 
 	// (87:0) {#if editing}
 	function create_if_block_1(ctx) {
@@ -5940,18 +6646,18 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div1 = element("div");
 				div0 = element("div");
-				attr_dev(div0, "class", "cursor svelte-prlsd3");
+				attr_dev(div0, "class", "cursor svelte-196hawm");
 				set_style(div0, "transform", "translate(" + /*x*/ ctx[2] + "px," + /*y*/ ctx[3] + "px)");
-				add_location(div0, file$4, 106, 1, 2238);
-				attr_dev(div1, "class", "edit svelte-prlsd3");
+				add_location(div0, file$6, 106, 1, 2144);
+				attr_dev(div1, "class", "edit svelte-196hawm");
 
 				attr_dev(div1, "style", div1_style_value = [
-					`background-image: url('${/*$SPRITES*/ ctx[6]}');`,
+					`background-image: url('${/*$SPRITES_COLOR*/ ctx[6]}');`,
 					`background-color: ${/*$THEME_BG*/ ctx[7]};`,
 					`border: 1rem solid ${/*$THEME_BORDER*/ ctx[8]};`
 				].join(``));
 
-				add_location(div1, file$4, 87, 0, 1913);
+				add_location(div1, file$6, 87, 0, 1832);
 
 				dispose = [
 					action_destroyer(arrows_action = /*arrows*/ ctx[12].call(null, div1)),
@@ -5969,8 +6675,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					set_style(div0, "transform", "translate(" + /*x*/ ctx[2] + "px," + /*y*/ ctx[3] + "px)");
 				}
 
-				if (dirty & /*$SPRITES, $THEME_BG, $THEME_BORDER*/ 448 && div1_style_value !== (div1_style_value = [
-					`background-image: url('${/*$SPRITES*/ ctx[6]}');`,
+				if (dirty & /*$SPRITES_COLOR, $THEME_BG, $THEME_BORDER*/ 448 && div1_style_value !== (div1_style_value = [
+					`background-image: url('${/*$SPRITES_COLOR*/ ctx[6]}');`,
 					`background-color: ${/*$THEME_BG*/ ctx[7]};`,
 					`border: 1rem solid ${/*$THEME_BORDER*/ ctx[8]};`
 				].join(``))) {
@@ -5996,7 +6702,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (123:1) {#if value}
-	function create_if_block$1(ctx) {
+	function create_if_block$3(ctx) {
 		let current;
 
 		const tile = new Tile_1({
@@ -6037,7 +6743,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$1.name,
+			id: create_if_block$3.name,
 			type: "if",
 			source: "(123:1) {#if value}",
 			ctx
@@ -6046,13 +6752,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function create_fragment$4(ctx) {
+	function create_fragment$6(ctx) {
 		let t;
 		let div;
 		let current;
 		let dispose;
 		let if_block0 = /*editing*/ ctx[0] && create_if_block_1(ctx);
-		let if_block1 = /*value*/ ctx[1] && create_if_block$1(ctx);
+		let if_block1 = /*value*/ ctx[1] && create_if_block$3(ctx);
 
 		const block = {
 			c: function create() {
@@ -6060,8 +6766,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t = space$1();
 				div = element("div");
 				if (if_block1) if_block1.c();
-				attr_dev(div, "class", "tile svelte-prlsd3");
-				add_location(div, file$4, 114, 0, 2365);
+				attr_dev(div, "class", "tile svelte-196hawm");
+				add_location(div, file$6, 114, 0, 2263);
 
 				dispose = [
 					listen_dev(window, "click", /*blur*/ ctx[11], false, false, false),
@@ -6097,7 +6803,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						if_block1.p(ctx, dirty);
 						transition_in(if_block1, 1);
 					} else {
-						if_block1 = create_if_block$1(ctx);
+						if_block1 = create_if_block$3(ctx);
 						if_block1.c();
 						transition_in(if_block1, 1);
 						if_block1.m(div, null);
@@ -6132,7 +6838,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$4.name,
+			id: create_fragment$6.name,
 			type: "component",
 			source: "",
 			ctx
@@ -6141,22 +6847,22 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$4($$self, $$props, $$invalidate) {
+	function instance$6($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(5, $value = $$value)), value);
 
 		let $TILE_COLUMNS;
 		let $buttons;
-		let $SPRITES;
+		let $SPRITES_COLOR;
 		let $THEME_BG;
 		let $THEME_BORDER;
 		validate_store(TILE_COLUMNS, "TILE_COLUMNS");
 		component_subscribe($$self, TILE_COLUMNS, $$value => $$invalidate(18, $TILE_COLUMNS = $$value));
 		validate_store(buttons$1, "buttons");
 		component_subscribe($$self, buttons$1, $$value => $$invalidate(19, $buttons = $$value));
-		validate_store(SPRITES, "SPRITES");
-		component_subscribe($$self, SPRITES, $$value => $$invalidate(6, $SPRITES = $$value));
+		validate_store(SPRITES_COLOR, "SPRITES_COLOR");
+		component_subscribe($$self, SPRITES_COLOR, $$value => $$invalidate(6, $SPRITES_COLOR = $$value));
 		validate_store(THEME_BG, "THEME_BG");
 		component_subscribe($$self, THEME_BG, $$value => $$invalidate(7, $THEME_BG = $$value));
 		validate_store(THEME_BORDER, "THEME_BORDER");
@@ -6284,7 +6990,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				$value,
 				$TILE_COLUMNS,
 				$buttons,
-				$SPRITES,
+				$SPRITES_COLOR,
 				$THEME_BG,
 				$THEME_BORDER
 			};
@@ -6303,7 +7009,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if ("$value" in $$props) value.set($value = $$props.$value);
 			if ("$TILE_COLUMNS" in $$props) TILE_COLUMNS.set($TILE_COLUMNS = $$props.$TILE_COLUMNS);
 			if ("$buttons" in $$props) buttons$1.set($buttons = $$props.$buttons);
-			if ("$SPRITES" in $$props) SPRITES.set($SPRITES = $$props.$SPRITES);
+			if ("$SPRITES_COLOR" in $$props) SPRITES_COLOR.set($SPRITES_COLOR = $$props.$SPRITES_COLOR);
 			if ("$THEME_BG" in $$props) THEME_BG.set($THEME_BG = $$props.$THEME_BG);
 			if ("$THEME_BORDER" in $$props) THEME_BORDER.set($THEME_BORDER = $$props.$THEME_BORDER);
 		};
@@ -6315,7 +7021,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			y,
 			selections,
 			$value,
-			$SPRITES,
+			$SPRITES_COLOR,
 			$THEME_BG,
 			$THEME_BORDER,
 			track,
@@ -6342,7 +7048,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		constructor(options) {
 			super(options);
 
-			init(this, options, instance$4, create_fragment$4, safe_not_equal, {
+			init(this, options, instance$6, create_fragment$6, safe_not_equal, {
 				back: 13,
 				value: 1,
 				editing: 0,
@@ -6353,7 +7059,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				component: this,
 				tagName: "SpriteEditor",
 				options,
-				id: create_fragment$4.name
+				id: create_fragment$6.name
 			});
 
 			const { ctx } = this.$$;
@@ -6397,10 +7103,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\editor\ColorEditor.svelte generated by Svelte v3.16.7 */
-	const file$5 = "src\\_client\\editor\\ColorEditor.svelte";
+	/* src/_client/editor/ColorEditor.svelte generated by Svelte v3.16.7 */
+	const file$7 = "src/_client/editor/ColorEditor.svelte";
 
-	function create_fragment$5(ctx) {
+	function create_fragment$7(ctx) {
 		let div0;
 		let t0;
 		let t1;
@@ -6412,11 +7118,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t0 = text(/*$value*/ ctx[1]);
 				t1 = space$1();
 				div1 = element("div");
-				attr_dev(div0, "class", "color svelte-1vdb1i1");
-				add_location(div0, file$5, 13, 0, 194);
+				attr_dev(div0, "class", "color svelte-1ghdkyg");
+				add_location(div0, file$7, 15, 0, 227);
 				set_style(div1, "background-color", /*to_css*/ ctx[2](/*$value*/ ctx[1]));
-				attr_dev(div1, "class", "block svelte-1vdb1i1");
-				add_location(div1, file$5, 16, 0, 233);
+				attr_dev(div1, "class", "block svelte-1ghdkyg");
+				add_location(div1, file$7, 18, 0, 263);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -6445,7 +7151,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$5.name,
+			id: create_fragment$7.name,
 			type: "component",
 			source: "",
 			ctx
@@ -6454,7 +7160,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$5($$self, $$props, $$invalidate) {
+	function instance$7($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(1, $value = $$value)), value);
@@ -6465,6 +7171,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		$$subscribe_value();
 
 		const to_css = col => {
+			if (Array.isArray(col) === false) return ``;
+
 			return Color(col.map((x, i) => {
 				if (i === 3) return x;
 				return x * 255;
@@ -6496,13 +7204,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class ColorEditor extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$5, create_fragment$5, safe_not_equal, { value: 0 });
+			init(this, options, instance$7, create_fragment$7, safe_not_equal, { value: 0 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "ColorEditor",
 				options,
-				id: create_fragment$5.name
+				id: create_fragment$7.name
 			});
 
 			const { ctx } = this.$$;
@@ -6522,10 +7230,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\editor\ThreadEditor.svelte generated by Svelte v3.16.7 */
-	const file$6 = "src\\_client\\editor\\ThreadEditor.svelte";
+	/* src/_client/editor/ThreadEditor.svelte generated by Svelte v3.16.7 */
+	const file$8 = "src/_client/editor/ThreadEditor.svelte";
 
-	function create_fragment$6(ctx) {
+	function create_fragment$8(ctx) {
 		let textarea;
 		let textarea_style_value;
 		let focus_action;
@@ -6535,10 +7243,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				textarea = element("textarea");
 				attr_dev(textarea, "spellcheck", "false");
-				attr_dev(textarea, "class", "edit svelte-18o22ik");
+				attr_dev(textarea, "class", "edit svelte-5lrf43");
 				attr_dev(textarea, "type", "text");
 				attr_dev(textarea, "style", textarea_style_value = `background-color: ${/*$THEME_BG*/ ctx[3]}; border:0.5rem solid ${/*$THEME_BORDER*/ ctx[4]};`);
-				add_location(textarea, file$6, 26, 0, 484);
+				add_location(textarea, file$8, 26, 0, 458);
 
 				dispose = [
 					action_destroyer(focus_action = /*focus*/ ctx[5].call(null, textarea)),
@@ -6574,7 +7282,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$6.name,
+			id: create_fragment$8.name,
 			type: "component",
 			source: "",
 			ctx
@@ -6585,7 +7293,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	const click_handler = e => e.stopPropagation();
 
-	function instance$6($$self, $$props, $$invalidate) {
+	function instance$8($$self, $$props, $$invalidate) {
 		let $THEME_BG;
 		let $THEME_BORDER;
 		validate_store(THEME_BG, "THEME_BG");
@@ -6695,7 +7403,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		constructor(options) {
 			super(options);
 
-			init(this, options, instance$6, create_fragment$6, safe_not_equal, {
+			init(this, options, instance$8, create_fragment$8, safe_not_equal, {
 				code: 0,
 				weave: 7,
 				address: 8,
@@ -6707,7 +7415,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				component: this,
 				tagName: "ThreadEditor",
 				options,
-				id: create_fragment$6.name
+				id: create_fragment$8.name
 			});
 
 			const { ctx } = this.$$;
@@ -6771,11 +7479,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\thread\Warp.svelte generated by Svelte v3.16.7 */
-	const file$7 = "src\\_client\\thread\\Warp.svelte";
+	/* src/_client/thread/Warp.svelte generated by Svelte v3.16.7 */
+	const file$9 = "src/_client/thread/Warp.svelte";
 
 	// (47:1) {:else}
-	function create_else_block(ctx) {
+	function create_else_block$1(ctx) {
 		let div;
 		let t;
 
@@ -6784,8 +7492,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				div = element("div");
 				t = text(/*condensed*/ ctx[4]);
 				attr_dev(div, "data:type", /*$type*/ ctx[6]);
-				attr_dev(div, "class", "pad svelte-1bv9x4m");
-				add_location(div, file$7, 47, 2, 973);
+				attr_dev(div, "class", "pad svelte-1kmbqhj");
+				add_location(div, file$9, 47, 2, 926);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -6807,7 +7515,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_else_block.name,
+			id: create_else_block$1.name,
 			type: "else",
 			source: "(47:1) {:else}",
 			ctx
@@ -6817,7 +7525,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (45:1) {#if warp_view[$type]}
-	function create_if_block$2(ctx) {
+	function create_if_block$4(ctx) {
 		let switch_instance_anchor;
 		let current;
 		var switch_value = /*warp_view*/ ctx[7][/*$type*/ ctx[6]];
@@ -6891,7 +7599,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$2.name,
+			id: create_if_block$4.name,
 			type: "if",
 			source: "(45:1) {#if warp_view[$type]}",
 			ctx
@@ -6900,7 +7608,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function create_fragment$7(ctx) {
+	function create_fragment$9(ctx) {
 		let div;
 		let current_block_type_index;
 		let if_block;
@@ -6908,7 +7616,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		let color_action;
 		let current;
 		let dispose;
-		const if_block_creators = [create_if_block$2, create_else_block];
+		const if_block_creators = [create_if_block$4, create_else_block$1];
 		const if_blocks = [];
 
 		function select_block_type(ctx, dirty) {
@@ -6923,9 +7631,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				if_block.c();
-				attr_dev(div, "class", "warp svelte-1bv9x4m");
+				attr_dev(div, "class", "warp svelte-1kmbqhj");
 				toggle_class(div, "changed", /*changed*/ ctx[0]);
-				add_location(div, file$7, 38, 0, 790);
+				add_location(div, file$9, 38, 0, 752);
 
 				dispose = [
 					action_destroyer(change_action = /*change*/ ctx[8].call(null, div, /*value*/ ctx[2])),
@@ -6990,7 +7698,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$7.name,
+			id: create_fragment$9.name,
 			type: "component",
 			source: "",
 			ctx
@@ -6999,7 +7707,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$7($$self, $$props, $$invalidate) {
+	function instance$9($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(5, $value = $$value)), value);
@@ -7109,13 +7817,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Warp$1 extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$7, create_fragment$7, safe_not_equal, { id: 9, weave: 10 });
+			init(this, options, instance$9, create_fragment$9, safe_not_equal, { id: 9, weave: 10 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Warp",
 				options,
-				id: create_fragment$7.name
+				id: create_fragment$9.name
 			});
 
 			const { ctx } = this.$$;
@@ -7147,10 +7855,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\explore\Thread.svelte generated by Svelte v3.16.7 */
-	const file$8 = "src\\_client\\explore\\Thread.svelte";
+	/* src/_client/explore/Thread.svelte generated by Svelte v3.16.7 */
+	const file$a = "src/_client/explore/Thread.svelte";
 
-	function get_each_context(ctx, list, i) {
+	function get_each_context$1(ctx, list, i) {
 		const child_ctx = ctx.slice();
 		child_ctx[21] = list[i];
 		return child_ctx;
@@ -7234,8 +7942,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t = space$1();
 				div = element("div");
 				if_block1.c();
-				attr_dev(div, "class", "cap svelte-1j3z045");
-				add_location(div, file$8, 126, 1, 2254);
+				attr_dev(div, "class", "cap svelte-1whn9tp");
+				add_location(div, file$a, 126, 1, 2128);
 				dispose = listen_dev(div, "click", /*do_edit*/ ctx[3], false, false, false);
 			},
 			m: function mount(target, anchor) {
@@ -7308,12 +8016,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (90:0) {#if nothread}
-	function create_if_block$3(ctx) {
+	function create_if_block$5(ctx) {
 		let div;
 
 		function select_block_type_1(ctx, dirty) {
 			if (/*chain*/ ctx[5].length > 0) return create_if_block_1$1;
-			return create_else_block$1;
+			return create_else_block$2;
 		}
 
 		let current_block_type = select_block_type_1(ctx);
@@ -7323,9 +8031,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				if_block.c();
-				attr_dev(div, "class", "cap svelte-1j3z045");
+				attr_dev(div, "class", "cap svelte-1whn9tp");
 				toggle_class(div, "nothread", /*nothread*/ ctx[1]);
-				add_location(div, file$8, 90, 1, 1730);
+				add_location(div, file$a, 90, 1, 1640);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -7358,7 +8066,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$3.name,
+			id: create_if_block$5.name,
 			type: "if",
 			source: "(90:0) {#if nothread}",
 			ctx
@@ -7376,7 +8084,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		let each_blocks = [];
 
 		for (let i = 0; i < each_value.length; i += 1) {
-			each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+			each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
 		}
 
 		const out = i => transition_out(each_blocks[i], 1, 1, () => {
@@ -7391,9 +8099,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(div, "class", "spot svelte-1j3z045");
+				attr_dev(div, "class", "spot svelte-1whn9tp");
 				toggle_class(div, "right", /*right*/ ctx[2]);
-				add_location(div, file$8, 102, 2, 1894);
+				add_location(div, file$a, 102, 2, 1792);
 				dispose = listen_dev(div, "click", /*do_edit*/ ctx[3], false, false, false);
 			},
 			m: function mount(target, anchor) {
@@ -7411,13 +8119,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					let i;
 
 					for (i = 0; i < each_value.length; i += 1) {
-						const child_ctx = get_each_context(ctx, each_value, i);
+						const child_ctx = get_each_context$1(ctx, each_value, i);
 
 						if (each_blocks[i]) {
 							each_blocks[i].p(child_ctx, dirty);
 							transition_in(each_blocks[i], 1);
 						} else {
-							each_blocks[i] = create_each_block(child_ctx);
+							each_blocks[i] = create_each_block$1(child_ctx);
 							each_blocks[i].c();
 							transition_in(each_blocks[i], 1);
 							each_blocks[i].m(div, null);
@@ -7474,7 +8182,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (108:2) {#each chain as link}
-	function create_each_block(ctx) {
+	function create_each_block$1(ctx) {
 		let div0;
 		let color_action;
 		let t0;
@@ -7497,15 +8205,15 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				create_component(warp.$$.fragment);
 				t0 = space$1();
 				div1 = element("div");
-				t1 = text(">\r\n\t\t\t");
-				attr_dev(div0, "class", "thread svelte-1j3z045");
+				t1 = text(">\n\t\t\t");
+				attr_dev(div0, "class", "thread svelte-1whn9tp");
 				attr_dev(div0, "style", /*style*/ ctx[9]);
 				toggle_class(div0, "active", /*active*/ ctx[10]);
-				add_location(div0, file$8, 108, 3, 1989);
-				attr_dev(div1, "class", "after-thread svelte-1j3z045");
+				add_location(div0, file$a, 108, 3, 1881);
+				attr_dev(div1, "class", "after-thread svelte-1whn9tp");
 				attr_dev(div1, "style", /*style*/ ctx[9]);
 				toggle_class(div1, "active", /*active*/ ctx[10]);
-				add_location(div1, file$8, 116, 3, 2137);
+				add_location(div1, file$a, 116, 3, 2021);
 				dispose = action_destroyer(color_action = color$2.call(null, div0, condense(/*link*/ ctx[21], /*weave*/ ctx[0])));
 			},
 			m: function mount(target, anchor) {
@@ -7561,7 +8269,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_each_block.name,
+			id: create_each_block$1.name,
 			type: "each",
 			source: "(108:2) {#each chain as link}",
 			ctx
@@ -7630,7 +8338,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (97:2) {:else}
-	function create_else_block$1(ctx) {
+	function create_else_block$2(ctx) {
 		let t;
 
 		const block = {
@@ -7648,7 +8356,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_else_block$1.name,
+			id: create_else_block$2.name,
 			type: "else",
 			source: "(97:2) {:else}",
 			ctx
@@ -7688,14 +8396,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function create_fragment$8(ctx) {
+	function create_fragment$a(ctx) {
 		let t;
 		let current_block_type_index;
 		let if_block1;
 		let if_block1_anchor;
 		let current;
 		let if_block0 = /*editing*/ ctx[4] && create_if_block_4(ctx);
-		const if_block_creators = [create_if_block$3, create_else_block_1];
+		const if_block_creators = [create_if_block$5, create_else_block_1];
 		const if_blocks = [];
 
 		function select_block_type(ctx, dirty) {
@@ -7789,7 +8497,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$8.name,
+			id: create_fragment$a.name,
 			type: "component",
 			source: "",
 			ctx
@@ -7798,7 +8506,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$8($$self, $$props, $$invalidate) {
+	function instance$a($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(14, $value = $$value)), value);
@@ -7966,7 +8674,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		constructor(options) {
 			super(options);
 
-			init(this, options, instance$8, create_fragment$8, safe_not_equal, {
+			init(this, options, instance$a, create_fragment$a, safe_not_equal, {
 				channel: 12,
 				space: 13,
 				weave: 0,
@@ -7979,7 +8687,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				component: this,
 				tagName: "Thread",
 				options,
-				id: create_fragment$8.name
+				id: create_fragment$a.name
 			});
 
 			const { ctx } = this.$$;
@@ -8051,10 +8759,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\explore\Channel.svelte generated by Svelte v3.16.7 */
-	const file$9 = "src\\_client\\explore\\Channel.svelte";
+	/* src/_client/explore/Channel.svelte generated by Svelte v3.16.7 */
+	const file$b = "src/_client/explore/Channel.svelte";
 
-	// (200:0) {:else}
+	// (207:0) {:else}
 	function create_else_block_1$1(ctx) {
 		let input;
 		let focusd_action;
@@ -8063,16 +8771,18 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const block = {
 			c: function create() {
 				input = element("input");
-				attr_dev(input, "class", "edit svelte-15ldvd0");
+				attr_dev(input, "autocapitalize", "none");
+				attr_dev(input, "class", "edit svelte-2p10p8");
 				attr_dev(input, "type", "text");
 				attr_dev(input, "placeholder", "JSON PLZ");
-				add_location(input, file$9, 200, 1, 3740);
+				add_location(input, file$b, 207, 1, 3676);
 
 				dispose = [
-					action_destroyer(focusd_action = /*focusd*/ ctx[22].call(null, input)),
-					listen_dev(input, "input", /*input_input_handler_1*/ ctx[32]),
-					listen_dev(input, "keydown", /*keydown_handler_1*/ ctx[33], false, false, false),
-					listen_dev(input, "blur", /*blur_handler_1*/ ctx[34], false, false, false)
+					action_destroyer(focusd_action = /*focusd*/ ctx[23].call(null, input)),
+					listen_dev(input, "input", /*input_input_handler_1*/ ctx[33]),
+					listen_dev(input, "focus", /*do_focus*/ ctx[20], false, false, false),
+					listen_dev(input, "keydown", /*keydown_handler_1*/ ctx[34], false, false, false),
+					listen_dev(input, "blur", /*blur_handler_1*/ ctx[35], false, false, false)
 				];
 			},
 			m: function mount(target, anchor) {
@@ -8096,14 +8806,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_else_block_1$1.name,
 			type: "else",
-			source: "(200:0) {:else}",
+			source: "(207:0) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (175:19) 
+	// (182:19) 
 	function create_if_block_1$2(ctx) {
 		let div1;
 		let div0;
@@ -8112,7 +8822,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		let current_block_type_index;
 		let if_block;
 		let current;
-		const if_block_creators = [create_if_block_2$1, create_if_block_3$1, create_else_block$2];
+		const if_block_creators = [create_if_block_2$1, create_if_block_3$1, create_else_block$3];
 		const if_blocks = [];
 
 		function select_block_type_1(ctx, dirty) {
@@ -8131,10 +8841,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t0 = text(/*key*/ ctx[14]);
 				t1 = space$1();
 				if_block.c();
-				attr_dev(div0, "class", "key svelte-15ldvd0");
-				add_location(div0, file$9, 176, 1, 3366);
-				attr_dev(div1, "class", "dataset svelte-15ldvd0");
-				add_location(div1, file$9, 175, 0, 3342);
+				attr_dev(div0, "class", "key svelte-2p10p8");
+				add_location(div0, file$b, 183, 1, 3326);
+				attr_dev(div1, "class", "dataset svelte-2p10p8");
+				add_location(div1, file$b, 182, 0, 3303);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div1, anchor);
@@ -8189,15 +8899,15 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_1$2.name,
 			type: "if",
-			source: "(175:19) ",
+			source: "(182:19) ",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (157:0) {#if key_editing}
-	function create_if_block$4(ctx) {
+	// (162:0) {#if key_editing}
+	function create_if_block$6(ctx) {
 		let input;
 		let dispose;
 
@@ -8205,14 +8915,16 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				input = element("input");
 				attr_dev(input, "type", "text");
-				attr_dev(input, "class", "edit svelte-15ldvd0");
+				attr_dev(input, "class", "edit svelte-2p10p8");
 				input.autofocus = true;
-				add_location(input, file$9, 157, 1, 3010);
+				attr_dev(input, "autocapitalize", "none");
+				add_location(input, file$b, 162, 1, 2939);
 
 				dispose = [
-					listen_dev(input, "input", /*input_input_handler*/ ctx[28]),
-					listen_dev(input, "keydown", /*keydown_handler*/ ctx[29], false, false, false),
-					listen_dev(input, "blur", /*blur_handler*/ ctx[30], false, false, false)
+					listen_dev(input, "input", /*input_input_handler*/ ctx[29]),
+					listen_dev(input, "focus", /*do_focus*/ ctx[20], false, false, false),
+					listen_dev(input, "keydown", /*keydown_handler*/ ctx[30], false, false, false),
+					listen_dev(input, "blur", /*blur_handler*/ ctx[31], false, false, false)
 				];
 			},
 			m: function mount(target, anchor) {
@@ -8235,17 +8947,17 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$4.name,
+			id: create_if_block$6.name,
 			type: "if",
-			source: "(157:0) {#if key_editing}",
+			source: "(162:0) {#if key_editing}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (192:1) {:else}
-	function create_else_block$2(ctx) {
+	// (199:1) {:else}
+	function create_else_block$3(ctx) {
 		let div;
 		let t_value = JSON.stringify(/*edit*/ ctx[16]) + "";
 		let t;
@@ -8254,8 +8966,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				t = text(t_value);
-				attr_dev(div, "class", "value svelte-15ldvd0");
-				add_location(div, file$9, 192, 1, 3650);
+				attr_dev(div, "class", "value svelte-2p10p8");
+				add_location(div, file$b, 199, 1, 3594);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -8273,16 +8985,16 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_else_block$2.name,
+			id: create_else_block$3.name,
 			type: "else",
-			source: "(192:1) {:else}",
+			source: "(199:1) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (189:27) 
+	// (196:27) 
 	function create_if_block_3$1(ctx) {
 		let t;
 		let div;
@@ -8298,8 +9010,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				create_component(coloreditor.$$.fragment);
 				t = space$1();
 				div = element("div");
-				attr_dev(div, "class", "flex svelte-15ldvd0");
-				add_location(div, file$9, 190, 2, 3618);
+				attr_dev(div, "class", "flex svelte-2p10p8");
+				add_location(div, file$b, 197, 2, 3564);
 			},
 			m: function mount(target, anchor) {
 				mount_component(coloreditor, target, anchor);
@@ -8332,14 +9044,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_3$1.name,
 			type: "if",
-			source: "(189:27) ",
+			source: "(196:27) ",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (181:1) {#if key === `sprite`}
+	// (188:1) {#if key === `sprite`}
 	function create_if_block_2$1(ctx) {
 		let t;
 		let div;
@@ -8356,15 +9068,15 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				$$inline: true
 			});
 
-		/*spriteeditor_binding*/ ctx[31](spriteeditor);
+		/*spriteeditor_binding*/ ctx[32](spriteeditor);
 
 		const block = {
 			c: function create() {
 				create_component(spriteeditor.$$.fragment);
 				t = space$1();
 				div = element("div");
-				attr_dev(div, "class", "flex svelte-15ldvd0");
-				add_location(div, file$9, 187, 2, 3539);
+				attr_dev(div, "class", "flex svelte-2p10p8");
+				add_location(div, file$b, 194, 2, 3488);
 			},
 			m: function mount(target, anchor) {
 				mount_component(spriteeditor, target, anchor);
@@ -8389,7 +9101,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				current = false;
 			},
 			d: function destroy(detaching) {
-				/*spriteeditor_binding*/ ctx[31](null);
+				/*spriteeditor_binding*/ ctx[32](null);
 				destroy_component(spriteeditor, detaching);
 				if (detaching) detach_dev(t);
 				if (detaching) detach_dev(div);
@@ -8400,14 +9112,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block_2$1.name,
 			type: "if",
-			source: "(181:1) {#if key === `sprite`}",
+			source: "(188:1) {#if key === `sprite`}",
 			ctx
 		});
 
 		return block;
 	}
 
-	function create_fragment$9(ctx) {
+	function create_fragment$b(ctx) {
 		let div;
 		let t0;
 		let current_block_type_index;
@@ -8427,8 +9139,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		};
 
 		const thread0 = new Thread({ props: thread0_props, $$inline: true });
-		/*thread0_binding*/ ctx[27](thread0);
-		const if_block_creators = [create_if_block$4, create_if_block_1$2, create_else_block_1$1];
+		/*thread0_binding*/ ctx[28](thread0);
+		const if_block_creators = [create_if_block$6, create_if_block_1$2, create_else_block_1$1];
 		const if_blocks = [];
 
 		function select_block_type(ctx, dirty) {
@@ -8449,7 +9161,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		};
 
 		const thread1 = new Thread({ props: thread1_props, $$inline: true });
-		/*thread1_binding*/ ctx[35](thread1);
+		/*thread1_binding*/ ctx[36](thread1);
 
 		const block = {
 			c: function create() {
@@ -8459,19 +9171,19 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if_block.c();
 				t1 = space$1();
 				create_component(thread1.$$.fragment);
-				attr_dev(div, "class", div_class_value = "channel " + /*side*/ ctx[4] + " svelte-15ldvd0");
-				add_location(div, file$9, 106, 0, 1991);
+				attr_dev(div, "class", div_class_value = "channel " + /*side*/ ctx[4] + " svelte-2p10p8");
+				add_location(div, file$b, 111, 0, 1971);
 
 				dispose = [
 					action_destroyer(color_action = color$2.call(null, div, /*space*/ ctx[0].name().get())),
 					action_destroyer(nav_action = nav.call(null, div, {
 						.../*navi*/ ctx[5],
-						left: /*nav_function*/ ctx[37],
-						right: /*nav_function_1*/ ctx[38],
-						insert: /*nav_function_2*/ ctx[39],
-						del: /*nav_function_3*/ ctx[40]
+						left: /*nav_function*/ ctx[38],
+						right: /*nav_function_1*/ ctx[39],
+						insert: /*nav_function_2*/ ctx[40],
+						del: /*nav_function_3*/ ctx[41]
 					})),
-					listen_dev(div, "click", /*click_handler*/ ctx[41], false, false, false)
+					listen_dev(div, "click", /*click_handler*/ ctx[42], false, false, false)
 				];
 			},
 			l: function claim(nodes) {
@@ -8484,7 +9196,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if_blocks[current_block_type_index].m(div, null);
 				append_dev(div, t1);
 				mount_component(thread1, div, null);
-				/*div_binding*/ ctx[36](div);
+				/*div_binding*/ ctx[37](div);
 				current = true;
 			},
 			p: function update(ctx, dirty) {
@@ -8525,7 +9237,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (dirty[0] & /*nothread*/ 2) thread1_changes.nothread = /*nothread*/ ctx[1];
 				thread1.$set(thread1_changes);
 
-				if (!current || dirty[0] & /*side*/ 16 && div_class_value !== (div_class_value = "channel " + /*side*/ ctx[4] + " svelte-15ldvd0")) {
+				if (!current || dirty[0] & /*side*/ 16 && div_class_value !== (div_class_value = "channel " + /*side*/ ctx[4] + " svelte-2p10p8")) {
 					attr_dev(div, "class", div_class_value);
 				}
 
@@ -8533,10 +9245,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				if (nav_action && is_function(nav_action.update) && dirty[0] & /*navi, thread_left, thread_right, key, key_editing, key_new, space*/ 22113) nav_action.update.call(null, {
 					.../*navi*/ ctx[5],
-					left: /*nav_function*/ ctx[37],
-					right: /*nav_function_1*/ ctx[38],
-					insert: /*nav_function_2*/ ctx[39],
-					del: /*nav_function_3*/ ctx[40]
+					left: /*nav_function*/ ctx[38],
+					right: /*nav_function_1*/ ctx[39],
+					insert: /*nav_function_2*/ ctx[40],
+					del: /*nav_function_3*/ ctx[41]
 				});
 			},
 			i: function intro(local) {
@@ -8554,19 +9266,19 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			},
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div);
-				/*thread0_binding*/ ctx[27](null);
+				/*thread0_binding*/ ctx[28](null);
 				destroy_component(thread0);
 				if_blocks[current_block_type_index].d();
-				/*thread1_binding*/ ctx[35](null);
+				/*thread1_binding*/ ctx[36](null);
 				destroy_component(thread1);
-				/*div_binding*/ ctx[36](null);
+				/*div_binding*/ ctx[37](null);
 				run_all(dispose);
 			}
 		};
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$9.name,
+			id: create_fragment$b.name,
 			type: "component",
 			source: "",
 			ctx
@@ -8575,14 +9287,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$9($$self, $$props, $$invalidate) {
+	function instance$b($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(17, $value = $$value)), value);
 
 		let $cursor;
 		validate_store(cursor, "cursor");
-		component_subscribe($$self, cursor, $$value => $$invalidate(26, $cursor = $$value));
+		component_subscribe($$self, cursor, $$value => $$invalidate(27, $cursor = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_value());
 		let { space } = $$props;
 		let { nothread } = $$props;
@@ -8597,6 +9309,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		let { navi } = $$props;
 		let key_editing = false;
+
+		const do_focus = ({ target }) => {
+			target.click();
+			target.select();
+			target.focus();
+		};
+
 		let val = ``;
 
 		const cancel = () => {
@@ -8782,8 +9501,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if ("weave" in $$props) $$invalidate(2, weave = $$props.weave);
 			if ("channel" in $$props) $$invalidate(3, channel = $$props.channel);
 			if ("side" in $$props) $$invalidate(4, side = $$props.side);
-			if ("focus" in $$props) $$invalidate(24, focus = $$props.focus);
-			if ("executed" in $$props) $$invalidate(25, executed = $$props.executed);
+			if ("focus" in $$props) $$invalidate(25, focus = $$props.focus);
+			if ("executed" in $$props) $$invalidate(26, executed = $$props.executed);
 			if ("navi" in $$props) $$invalidate(5, navi = $$props.navi);
 		};
 
@@ -8821,8 +9540,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if ("weave" in $$props) $$invalidate(2, weave = $$props.weave);
 			if ("channel" in $$props) $$invalidate(3, channel = $$props.channel);
 			if ("side" in $$props) $$invalidate(4, side = $$props.side);
-			if ("focus" in $$props) $$invalidate(24, focus = $$props.focus);
-			if ("executed" in $$props) $$invalidate(25, executed = $$props.executed);
+			if ("focus" in $$props) $$invalidate(25, focus = $$props.focus);
+			if ("executed" in $$props) $$invalidate(26, executed = $$props.executed);
 			if ("navi" in $$props) $$invalidate(5, navi = $$props.navi);
 			if ("key_editing" in $$props) $$invalidate(6, key_editing = $$props.key_editing);
 			if ("val" in $$props) $$invalidate(7, val = $$props.val);
@@ -8856,7 +9575,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				 $$invalidate(16, edit = $value);
 			}
 
-			if ($$self.$$.dirty[0] & /*focus*/ 16777216) {
+			if ($$self.$$.dirty[0] & /*focus*/ 33554432) {
 				 $$invalidate(18, editing = focus);
 			}
 
@@ -8886,6 +9605,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			$value,
 			editing,
 			address,
+			do_focus,
 			cancel,
 			execute,
 			focusd,
@@ -8918,8 +9638,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			init(
 				this,
 				options,
-				instance$9,
-				create_fragment$9,
+				instance$b,
+				create_fragment$b,
 				safe_not_equal,
 				{
 					space: 0,
@@ -8927,8 +9647,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					weave: 2,
 					channel: 3,
 					side: 4,
-					focus: 24,
-					executed: 25,
+					focus: 25,
+					executed: 26,
 					navi: 5
 				},
 				[-1, -1]
@@ -8938,7 +9658,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				component: this,
 				tagName: "Channel",
 				options,
-				id: create_fragment$9.name
+				id: create_fragment$b.name
 			});
 
 			const { ctx } = this.$$;
@@ -9030,12 +9750,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\explore\Space.svelte generated by Svelte v3.16.7 */
+	/* src/_client/explore/Space.svelte generated by Svelte v3.16.7 */
 
 	const { Object: Object_1 } = globals;
-	const file$a = "src\\_client\\explore\\Space.svelte";
+	const file$c = "src/_client/explore/Space.svelte";
 
-	function get_each_context$1(ctx, list, i) {
+	function get_each_context$2(ctx, list, i) {
 		const child_ctx = ctx.slice();
 		child_ctx[27] = list[i];
 		child_ctx[4] = i;
@@ -9069,14 +9789,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				t0 = space$1();
 				div1 = element("div");
 				t1 = text(/*$name*/ ctx[14]);
-				attr_dev(div0, "class", "postage svelte-oq6z61");
-				add_location(div0, file$a, 109, 2, 2215);
-				attr_dev(div1, "class", "name svelte-oq6z61");
-				add_location(div1, file$a, 112, 2, 2329);
-				attr_dev(div2, "class", "space svelte-oq6z61");
+				attr_dev(div0, "class", "postage svelte-1qjnye4");
+				add_location(div0, file$c, 109, 2, 2106);
+				attr_dev(div1, "class", "name svelte-1qjnye4");
+				add_location(div1, file$c, 112, 2, 2217);
+				attr_dev(div2, "class", "space svelte-1qjnye4");
 				toggle_class(div2, "open", open$1);
 				toggle_class(div2, "zero", /*i*/ ctx[4] === 0);
-				add_location(div2, file$a, 78, 1, 1536);
+				add_location(div2, file$c, 78, 1, 1458);
 
 				dispose = [
 					listen_dev(div0, "click", /*toggle*/ ctx[18], false, false, false),
@@ -9165,9 +9885,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const get_key = ctx => /*channel*/ ctx[27][0];
 
 		for (let i = 0; i < each_value.length; i += 1) {
-			let child_ctx = get_each_context$1(ctx, each_value, i);
+			let child_ctx = get_each_context$2(ctx, each_value, i);
 			let key = get_key(child_ctx);
-			each_1_lookup.set(key, each_blocks[i] = create_each_block$1(key, child_ctx));
+			each_1_lookup.set(key, each_blocks[i] = create_each_block$2(key, child_ctx));
 		}
 
 		const block = {
@@ -9178,8 +9898,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					each_blocks[i].c();
 				}
 
-				attr_dev(div, "class", "chans svelte-oq6z61");
-				add_location(div, file$a, 119, 0, 2401);
+				attr_dev(div, "class", "chans svelte-1qjnye4");
+				add_location(div, file$c, 119, 0, 2282);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -9193,7 +9913,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			p: function update(ctx, dirty) {
 				const each_value = /*chans*/ ctx[11];
 				group_outros();
-				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$1, null, get_each_context$1);
+				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$2, null, get_each_context$2);
 				check_outros();
 			},
 			i: function intro(local) {
@@ -9233,7 +9953,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (121:1) {#each chans as channel, i (channel[0])}
-	function create_each_block$1(key_1, ctx) {
+	function create_each_block$2(key_1, ctx) {
 		let first;
 		let current;
 
@@ -9287,7 +10007,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_each_block$1.name,
+			id: create_each_block$2.name,
 			type: "each",
 			source: "(121:1) {#each chans as channel, i (channel[0])}",
 			ctx
@@ -9297,7 +10017,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	}
 
 	// (133:0) {#if birds && rezed}
-	function create_if_block$5(ctx) {
+	function create_if_block$7(ctx) {
 		let current;
 
 		const flock = new Flock({
@@ -9346,7 +10066,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$5.name,
+			id: create_if_block$7.name,
 			type: "if",
 			source: "(133:0) {#if birds && rezed}",
 			ctx
@@ -9470,14 +10190,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function create_fragment$a(ctx) {
+	function create_fragment$c(ctx) {
 		let t0;
 		let t1;
 		let if_block2_anchor;
 		let current;
 		let if_block0 = !/*is_bird*/ ctx[2] && create_if_block_3$2(ctx);
 		let if_block1 =  create_if_block_2$2(ctx);
-		let if_block2 = /*birds*/ ctx[10] && /*rezed*/ ctx[12] && create_if_block$5(ctx);
+		let if_block2 = /*birds*/ ctx[10] && /*rezed*/ ctx[12] && create_if_block$7(ctx);
 
 		const block = {
 			c: function create() {
@@ -9528,7 +10248,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						if_block2.p(ctx, dirty);
 						transition_in(if_block2, 1);
 					} else {
-						if_block2 = create_if_block$5(ctx);
+						if_block2 = create_if_block$7(ctx);
 						if_block2.c();
 						transition_in(if_block2, 1);
 						if_block2.m(if_block2_anchor.parentNode, if_block2_anchor);
@@ -9568,7 +10288,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$a.name,
+			id: create_fragment$c.name,
 			type: "component",
 			source: "",
 			ctx
@@ -9579,7 +10299,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	const open$1 = true;
 
-	function instance$a($$self, $$props, $$invalidate) {
+	function instance$c($$self, $$props, $$invalidate) {
 		let $value,
 			$$unsubscribe_value = noop$1,
 			$$subscribe_value = () => ($$unsubscribe_value(), $$unsubscribe_value = subscribe(value, $$value => $$invalidate(20, $value = $$value)), value);
@@ -9825,7 +10545,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		constructor(options) {
 			super(options);
 
-			init(this, options, instance$a, create_fragment$a, safe_not_equal, {
+			init(this, options, instance$c, create_fragment$c, safe_not_equal, {
 				space: 0,
 				weave: 1,
 				is_bird: 2,
@@ -9837,7 +10557,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				component: this,
 				tagName: "Space",
 				options,
-				id: create_fragment$a.name
+				id: create_fragment$c.name
 			});
 
 			const { ctx } = this.$$;
@@ -9897,12 +10617,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\explore\Weave.svelte generated by Svelte v3.16.7 */
+	/* src/_client/explore/Weave.svelte generated by Svelte v3.16.7 */
 
 	const { Object: Object_1$1 } = globals;
-	const file$b = "src\\_client\\explore\\Weave.svelte";
+	const file$d = "src/_client/explore/Weave.svelte";
 
-	function get_each_context$2(ctx, list, i) {
+	function get_each_context$3(ctx, list, i) {
 		const child_ctx = ctx.slice();
 		child_ctx[22] = list[i][0];
 		child_ctx[23] = list[i][1];
@@ -9910,7 +10630,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return child_ctx;
 	}
 
-	// (75:1) <Controls {weave} bind:this={controls}>
+	// (74:1) <Controls {weave} bind:this={controls}>
 	function create_default_slot$1(ctx) {
 		let div;
 		let t;
@@ -9919,8 +10639,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			c: function create() {
 				div = element("div");
 				t = text(/*$name*/ ctx[6]);
-				attr_dev(div, "class", "namezor svelte-45a3on");
-				add_location(div, file$b, 75, 2, 1651);
+				attr_dev(div, "class", "namezor svelte-7rgkof");
+				add_location(div, file$d, 74, 2, 1549);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -9938,15 +10658,15 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_default_slot$1.name,
 			type: "slot",
-			source: "(75:1) <Controls {weave} bind:this={controls}>",
+			source: "(74:1) <Controls {weave} bind:this={controls}>",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (84:2) {#each spacees as [s_name,space], i (s_name)}
-	function create_each_block$2(key_1, ctx) {
+	// (83:2) {#each spacees as [s_name,space], i (s_name)}
+	function create_each_block$3(key_1, ctx) {
 		let first;
 		let current;
 
@@ -10011,16 +10731,16 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_each_block$2.name,
+			id: create_each_block$3.name,
 			type: "each",
-			source: "(84:2) {#each spacees as [s_name,space], i (s_name)}",
+			source: "(83:2) {#each spacees as [s_name,space], i (s_name)}",
 			ctx
 		});
 
 		return block;
 	}
 
-	function create_fragment$b(ctx) {
+	function create_fragment$d(ctx) {
 		let div0;
 		let dark_action;
 		let nav_action;
@@ -10046,9 +10766,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const get_key = ctx => /*s_name*/ ctx[22];
 
 		for (let i = 0; i < each_value.length; i += 1) {
-			let child_ctx = get_each_context$2(ctx, each_value, i);
+			let child_ctx = get_each_context$3(ctx, each_value, i);
 			let key = get_key(child_ctx);
-			each_1_lookup.set(key, each_blocks[i] = create_each_block$2(key, child_ctx));
+			each_1_lookup.set(key, each_blocks[i] = create_each_block$3(key, child_ctx));
 		}
 
 		const block = {
@@ -10064,12 +10784,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				t1 = space$1();
 				div2 = element("div");
-				attr_dev(div0, "class", "weave svelte-45a3on");
-				add_location(div0, file$b, 33, 0, 767);
+				attr_dev(div0, "class", "weave svelte-7rgkof");
+				add_location(div0, file$d, 33, 0, 734);
 				attr_dev(div1, "class", "spaces");
-				add_location(div1, file$b, 82, 1, 1723);
-				attr_dev(div2, "class", "fakespace svelte-45a3on");
-				add_location(div2, file$b, 100, 0, 2102);
+				add_location(div1, file$d, 81, 1, 1614);
+				attr_dev(div2, "class", "fakespace svelte-7rgkof");
+				add_location(div2, file$d, 99, 0, 1977);
 
 				dispose = [
 					action_destroyer(dark_action = dark.call(null, div0, /*$name*/ ctx[6])),
@@ -10079,7 +10799,6 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						down: /*nav_function_1*/ ctx[12],
 						page_down: /*nav_function_2*/ ctx[13],
 						page_up: /*nav_function_3*/ ctx[14],
-						origin: /*$name*/ ctx[6] === `sys`,
 						left: /*nav_function_4*/ ctx[15],
 						right: /*nav_function_5*/ ctx[16],
 						insert: /*nav_function_6*/ ctx[17],
@@ -10122,7 +10841,6 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					down: /*nav_function_1*/ ctx[12],
 					page_down: /*nav_function_2*/ ctx[13],
 					page_up: /*nav_function_3*/ ctx[14],
-					origin: /*$name*/ ctx[6] === `sys`,
 					left: /*nav_function_4*/ ctx[15],
 					right: /*nav_function_5*/ ctx[16],
 					insert: /*nav_function_6*/ ctx[17],
@@ -10131,7 +10849,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				const each_value = /*spacees*/ ctx[5];
 				group_outros();
-				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div1, outro_and_destroy_block, create_each_block$2, null, get_each_context$2);
+				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div1, outro_and_destroy_block, create_each_block$3, null, get_each_context$3);
 				check_outros();
 				if (dark_action_1 && is_function(dark_action_1.update) && dirty & /*$name*/ 64) dark_action_1.update.call(null, /*$name*/ ctx[6]);
 			},
@@ -10173,7 +10891,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$b.name,
+			id: create_fragment$d.name,
 			type: "component",
 			source: "",
 			ctx
@@ -10182,7 +10900,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$b($$self, $$props, $$invalidate) {
+	function instance$d($$self, $$props, $$invalidate) {
 		let $names,
 			$$unsubscribe_names = noop$1,
 			$$subscribe_names = () => ($$unsubscribe_names(), $$unsubscribe_names = subscribe(names, $$value => $$invalidate(8, $names = $$value)), names);
@@ -10263,7 +10981,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const func_1 = i => i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`;
 
 		const func_2 = i => i === spacees.length - 1
-		? navi.down
+		? navi.down()
 		: `${$name}/${spacees[i + 1][0]}`;
 
 		$$self.$set = $$props => {
@@ -10353,13 +11071,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Weave$1 extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$b, create_fragment$b, safe_not_equal, { weave: 0, navi: 1 });
+			init(this, options, instance$d, create_fragment$d, safe_not_equal, { weave: 0, navi: 1 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Weave",
 				options,
-				id: create_fragment$b.name
+				id: create_fragment$d.name
 			});
 
 			const { ctx } = this.$$;
@@ -10387,11 +11105,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\weave\Github.svelte generated by Svelte v3.16.7 */
+	/* src/_client/weave/Github.svelte generated by Svelte v3.16.7 */
 
-	const file$c = "src\\_client\\weave\\Github.svelte";
+	const file$e = "src/_client/weave/Github.svelte";
 
-	function create_fragment$c(ctx) {
+	function create_fragment$e(ctx) {
 		let svg;
 		let path0;
 		let path1;
@@ -10403,18 +11121,18 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				path0 = svg_element("path");
 				path1 = svg_element("path");
 				path2 = svg_element("path");
-				attr_dev(path0, "class", "bg svelte-op8pzp");
+				attr_dev(path0, "class", "bg svelte-xku1ud");
 				attr_dev(path0, "d", "M0 0l115 115h15l12 27 108 108V0z");
 				attr_dev(path0, "fill", "#fff");
-				add_location(path0, file$c, 1, 2, 161);
-				attr_dev(path1, "class", "octo-arm svelte-op8pzp");
+				add_location(path0, file$e, 1, 2, 160);
+				attr_dev(path1, "class", "octo-arm svelte-xku1ud");
 				attr_dev(path1, "d", "M128 109c-15-9-9-19-9-19 3-7 2-11 2-11-1-7 3-2 3-2 4 5 2 11 2 11-3 10 5 15 9 16");
 				set_style(path1, "-webkit-transform-origin", "130px 106px");
 				set_style(path1, "transform-origin", "130px 106px");
-				add_location(path1, file$c, 2, 2, 233);
-				attr_dev(path2, "class", "octo-body svelte-op8pzp");
+				add_location(path1, file$e, 2, 2, 231);
+				attr_dev(path2, "class", "octo-body svelte-xku1ud");
 				attr_dev(path2, "d", "M115 115s4 2 5 0l14-14c3-2 6-3 8-3-8-11-15-24 2-41 5-5 10-7 16-7 1-2 3-7 12-11 0 0 5 3 7 16 4 2 8 5 12 9s7 8 9 12c14 3 17 7 17 7-4 8-9 11-11 11 0 6-2 11-7 16-16 16-30 10-41 2 0 3-1 7-5 11l-12 11c-1 1 1 5 1 5z");
-				add_location(path2, file$c, 3, 2, 422);
+				add_location(path2, file$e, 3, 2, 419);
 				attr_dev(svg, "id", "github");
 				attr_dev(svg, "xmlns", "http://www.w3.org/2000/svg");
 				attr_dev(svg, "width", "80");
@@ -10424,8 +11142,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				set_style(svg, "position", "absolute");
 				set_style(svg, "top", "0");
 				set_style(svg, "right", "0");
-				attr_dev(svg, "class", "svelte-op8pzp");
-				add_location(svg, file$c, 0, 0, 0);
+				attr_dev(svg, "class", "svelte-xku1ud");
+				add_location(svg, file$e, 0, 0, 0);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10446,7 +11164,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$c.name,
+			id: create_fragment$e.name,
 			type: "component",
 			source: "",
 			ctx
@@ -10458,37 +11176,36 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Github extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, null, create_fragment$c, safe_not_equal, {});
+			init(this, options, null, create_fragment$e, safe_not_equal, {});
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Github",
 				options,
-				id: create_fragment$c.name
+				id: create_fragment$e.name
 			});
 		}
 	}
 
-	/* src\_client\weave\Picker.svelte generated by Svelte v3.16.7 */
+	/* src/_client/weave/Picker.svelte generated by Svelte v3.16.7 */
 
-	const { Object: Object_1$2, console: console_1 } = globals;
-	const file$d = "src\\_client\\weave\\Picker.svelte";
+	const { Object: Object_1$2, console: console_1$1 } = globals;
+	const file$f = "src/_client/weave/Picker.svelte";
 
-	// (83:0) {#if nameit}
-	function create_if_block$6(ctx) {
+	// (84:0) {#if nameit}
+	function create_if_block$8(ctx) {
 		let div4;
-		let h2;
-		let t1;
 		let div0;
 		let promise;
-		let t2;
+		let t0;
 		let input;
-		let t3;
+		let t1;
 		let div3;
 		let div1;
-		let t5;
+		let t2;
 		let div2;
 		let color_action;
+		let current;
 		let dispose;
 
 		let info = {
@@ -10503,42 +11220,50 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		handle_promise(promise = image(/*name*/ ctx[2]), info);
 
+		const tile0 = new Tile_1({
+				props: { width: 1, height: 1, data: "823" },
+				$$inline: true
+			});
+
+		const tile1 = new Tile_1({
+				props: { width: 1, height: 1, data: "823" },
+				$$inline: true
+			});
+
 		const block = {
 			c: function create() {
 				div4 = element("div");
-				h2 = element("h2");
-				h2.textContent = "Name It!";
-				t1 = space$1();
 				div0 = element("div");
 				info.block.c();
-				t2 = space$1();
+				t0 = space$1();
 				input = element("input");
-				t3 = space$1();
+				t1 = space$1();
 				div3 = element("div");
 				div1 = element("div");
-				div1.textContent = "Cancel";
-				t5 = space$1();
+				create_component(tile0.$$.fragment);
+				t2 = space$1();
 				div2 = element("div");
-				div2.textContent = "Plant";
-				add_location(h2, file$d, 87, 1, 1562);
-				attr_dev(div0, "class", "spirit svelte-vktjrt");
-				add_location(div0, file$d, 89, 1, 1584);
-				attr_dev(input, "class", "nameit svelte-vktjrt");
+				create_component(tile1.$$.fragment);
+				attr_dev(div0, "class", "spirit svelte-qytr2e");
+				add_location(div0, file$f, 88, 1, 1521);
+				attr_dev(input, "class", "nameit svelte-qytr2e");
 				input.autofocus = true;
 				attr_dev(input, "type", "text");
+				attr_dev(input, "autocapitalize", "none");
 				attr_dev(input, "placeholder", "Name it");
-				add_location(input, file$d, 95, 1, 1706);
-				attr_dev(div1, "class", "false svelte-vktjrt");
-				add_location(div1, file$d, 111, 2, 1992);
-				attr_dev(div2, "class", "true svelte-vktjrt");
-				add_location(div2, file$d, 112, 2, 2063);
-				attr_dev(div3, "class", "controls svelte-vktjrt");
-				add_location(div3, file$d, 110, 1, 1966);
-				attr_dev(div4, "class", "nameprompt svelte-vktjrt");
-				add_location(div4, file$d, 83, 0, 1492);
+				add_location(input, file$f, 94, 1, 1637);
+				attr_dev(div1, "class", "false svelte-qytr2e");
+				add_location(div1, file$f, 115, 2, 2010);
+				attr_dev(div2, "class", "true svelte-qytr2e");
+				add_location(div2, file$f, 118, 2, 2126);
+				attr_dev(div3, "class", "controls svelte-qytr2e");
+				add_location(div3, file$f, 114, 1, 1985);
+				attr_dev(div4, "class", "nameprompt svelte-qytr2e");
+				add_location(div4, file$f, 84, 0, 1455);
 
 				dispose = [
 					listen_dev(input, "keydown", /*keydown_handler*/ ctx[14], false, false, false),
+					listen_dev(input, "focus", focus_handler, false, false, false),
 					listen_dev(input, "input", /*input_input_handler*/ ctx[15]),
 					listen_dev(div1, "click", /*click_handler*/ ctx[16], false, false, false),
 					listen_dev(div2, "click", /*play_it*/ ctx[5], false, false, false),
@@ -10547,20 +11272,21 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div4, anchor);
-				append_dev(div4, h2);
-				append_dev(div4, t1);
 				append_dev(div4, div0);
 				info.block.m(div0, info.anchor = null);
 				info.mount = () => div0;
 				info.anchor = null;
-				append_dev(div4, t2);
+				append_dev(div4, t0);
 				append_dev(div4, input);
 				set_input_value(input, /*name*/ ctx[2]);
-				append_dev(div4, t3);
+				append_dev(div4, t1);
 				append_dev(div4, div3);
 				append_dev(div3, div1);
-				append_dev(div3, t5);
+				mount_component(tile0, div1, null);
+				append_dev(div3, t2);
 				append_dev(div3, div2);
+				mount_component(tile1, div2, null);
+				current = true;
 				input.focus();
 			},
 			p: function update(new_ctx, dirty) {
@@ -10579,27 +11305,40 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				if (color_action && is_function(color_action.update) && dirty & /*name*/ 4) color_action.update.call(null, `${Wheel.DENOTE}${/*name*/ ctx[2]}`);
 			},
+			i: function intro(local) {
+				if (current) return;
+				transition_in(tile0.$$.fragment, local);
+				transition_in(tile1.$$.fragment, local);
+				current = true;
+			},
+			o: function outro(local) {
+				transition_out(tile0.$$.fragment, local);
+				transition_out(tile1.$$.fragment, local);
+				current = false;
+			},
 			d: function destroy(detaching) {
 				if (detaching) detach_dev(div4);
 				info.block.d();
 				info.token = null;
 				info = null;
+				destroy_component(tile0);
+				destroy_component(tile1);
 				run_all(dispose);
 			}
 		};
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$6.name,
+			id: create_if_block$8.name,
 			type: "if",
-			source: "(83:0) {#if nameit}",
+			source: "(84:0) {#if nameit}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (1:0) <script>  import { load, image }
+	// (1:0) <script> import Tile from "/_client/image/Tile.svelte" import { load, image }
 	function create_catch_block$2(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -10607,14 +11346,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_catch_block$2.name,
 			type: "catch",
-			source: "(1:0) <script>  import { load, image }",
+			source: "(1:0) <script> import Tile from \\\"/_client/image/Tile.svelte\\\" import { load, image }",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (91:30)     <img  class="flex" {src}
+	// (90:30)    <img  class="flex" {src}
 	function create_then_block$2(ctx) {
 		let img;
 		let img_src_value;
@@ -10622,10 +11361,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const block = {
 			c: function create() {
 				img = element("img");
-				attr_dev(img, "class", "flex svelte-vktjrt");
+				attr_dev(img, "class", "flex svelte-qytr2e");
 				if (img.src !== (img_src_value = /*src*/ ctx[19])) attr_dev(img, "src", img_src_value);
 				attr_dev(img, "alt", "fileicon");
-				add_location(img, file$d, 91, 2, 1640);
+				add_location(img, file$f, 90, 2, 1575);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, img, anchor);
@@ -10644,14 +11383,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_then_block$2.name,
 			type: "then",
-			source: "(91:30)     <img  class=\\\"flex\\\" {src}",
+			source: "(90:30)    <img  class=\\\"flex\\\" {src}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (1:0) <script>  import { load, image }
+	// (1:0) <script> import Tile from "/_client/image/Tile.svelte" import { load, image }
 	function create_pending_block$2(ctx) {
 		const block = { c: noop$1, m: noop$1, p: noop$1, d: noop$1 };
 
@@ -10659,21 +11398,21 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_pending_block$2.name,
 			type: "pending",
-			source: "(1:0) <script>  import { load, image }",
+			source: "(1:0) <script> import Tile from \\\"/_client/image/Tile.svelte\\\" import { load, image }",
 			ctx
 		});
 
 		return block;
 	}
 
-	function create_fragment$d(ctx) {
+	function create_fragment$f(ctx) {
 		let t0;
 		let div;
 		let t1;
 		let input;
 		let current;
 		let dispose;
-		let if_block = /*nameit*/ ctx[0] && create_if_block$6(ctx);
+		let if_block = /*nameit*/ ctx[0] && create_if_block$8(ctx);
 		const default_slot_template = /*$$slots*/ ctx[13].default;
 		const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[12], null);
 
@@ -10685,12 +11424,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (default_slot) default_slot.c();
 				t1 = space$1();
 				input = element("input");
-				attr_dev(div, "class", "picker svelte-vktjrt");
-				add_location(div, file$d, 117, 0, 2139);
+				attr_dev(div, "class", "picker svelte-qytr2e");
+				add_location(div, file$f, 125, 0, 2244);
 				attr_dev(input, "type", "file");
-				attr_dev(input, "class", "file svelte-vktjrt");
+				attr_dev(input, "class", "file svelte-qytr2e");
 				input.multiple = "multiple";
-				add_location(input, file$d, 125, 0, 2259);
+				add_location(input, file$f, 133, 0, 2356);
 
 				dispose = [
 					listen_dev(div, "drop", /*drop*/ ctx[3], false, false, false),
@@ -10720,14 +11459,21 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				if (/*nameit*/ ctx[0]) {
 					if (if_block) {
 						if_block.p(ctx, dirty);
+						transition_in(if_block, 1);
 					} else {
-						if_block = create_if_block$6(ctx);
+						if_block = create_if_block$8(ctx);
 						if_block.c();
+						transition_in(if_block, 1);
 						if_block.m(t0.parentNode, t0);
 					}
 				} else if (if_block) {
-					if_block.d(1);
-					if_block = null;
+					group_outros();
+
+					transition_out(if_block, 1, 1, () => {
+						if_block = null;
+					});
+
+					check_outros();
 				}
 
 				if (default_slot && default_slot.p && dirty & /*$$scope*/ 4096) {
@@ -10736,10 +11482,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			},
 			i: function intro(local) {
 				if (current) return;
+				transition_in(if_block);
 				transition_in(default_slot, local);
 				current = true;
 			},
 			o: function outro(local) {
+				transition_out(if_block);
 				transition_out(default_slot, local);
 				current = false;
 			},
@@ -10757,7 +11505,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$d.name,
+			id: create_fragment$f.name,
 			type: "component",
 			source: "",
 			ctx
@@ -10766,7 +11514,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$c($$self, $$props, $$invalidate) {
+	const focus_handler = e => {
+		e.target.click();
+		e.target.select();
+	};
+
+	function instance$e($$self, $$props, $$invalidate) {
 		let $cursor;
 		validate_store(cursor, "cursor");
 		component_subscribe($$self, cursor, $$value => $$invalidate(11, $cursor = $$value));
@@ -10830,7 +11583,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const writable_props = ["nameit"];
 
 		Object_1$2.keys($$props).forEach(key => {
-			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Picker> was created with unknown prop '${key}'`);
+			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Picker> was created with unknown prop '${key}'`);
 		});
 
 		let { $$slots = {}, $$scope } = $$props;
@@ -10934,13 +11687,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Picker extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$c, create_fragment$d, safe_not_equal, { nameit: 0, id: 6, cancel: 7, click: 8 });
+			init(this, options, instance$e, create_fragment$f, safe_not_equal, { nameit: 0, id: 6, cancel: 7, click: 8 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Picker",
 				options,
-				id: create_fragment$d.name
+				id: create_fragment$f.name
 			});
 		}
 
@@ -10977,10 +11730,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\weave\MainScreen.svelte generated by Svelte v3.16.7 */
-	const file$e = "src\\_client\\weave\\MainScreen.svelte";
+	/* src/_client/weave/MainScreen.svelte generated by Svelte v3.16.7 */
+	const file$g = "src/_client/weave/MainScreen.svelte";
 
-	function create_fragment$e(ctx) {
+	function create_fragment$g(ctx) {
 		let div;
 		let insert_action;
 		let sizer_action;
@@ -10989,10 +11742,10 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const block = {
 			c: function create() {
 				div = element("div");
-				attr_dev(div, "class", "main svelte-jdwyal");
+				attr_dev(div, "class", "main svelte-1v6ja3v");
 				toggle_class(div, "full", /*full*/ ctx[0]);
 				toggle_class(div, "hidden", !/*hidden*/ ctx[1]);
-				add_location(div, file$e, 37, 0, 564);
+				add_location(div, file$g, 37, 0, 527);
 
 				dispose = [
 					action_destroyer(insert_action = /*insert*/ ctx[3].call(null, div)),
@@ -11025,7 +11778,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$e.name,
+			id: create_fragment$g.name,
 			type: "component",
 			source: "",
 			ctx
@@ -11034,7 +11787,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$d($$self, $$props, $$invalidate) {
+	function instance$f($$self, $$props, $$invalidate) {
 		let { full = false } = $$props;
 		let { hidden } = $$props;
 
@@ -11094,13 +11847,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class MainScreen extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$d, create_fragment$e, safe_not_equal, { full: 0, hidden: 1 });
+			init(this, options, instance$f, create_fragment$g, safe_not_equal, { full: 0, hidden: 1 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "MainScreen",
 				options,
-				id: create_fragment$e.name
+				id: create_fragment$g.name
 			});
 
 			const { ctx } = this.$$;
@@ -11128,20 +11881,20 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\weave\Explore.svelte generated by Svelte v3.16.7 */
+	/* src/_client/weave/Explore.svelte generated by Svelte v3.16.7 */
 
 	const { Object: Object_1$3 } = globals;
-	const file$f = "src\\_client\\weave\\Explore.svelte";
+	const file$h = "src/_client/weave/Explore.svelte";
 
-	function get_each_context$3(ctx, list, i) {
+	function get_each_context$4(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[18] = list[i];
-		child_ctx[20] = i;
+		child_ctx[22] = list[i];
+		child_ctx[24] = i;
 		return child_ctx;
 	}
 
-	// (79:0) {#if !hidden}
-	function create_if_block$7(ctx) {
+	// (88:0) {#if !hidden}
+	function create_if_block$9(ctx) {
 		let div0;
 		let a0;
 		let t0;
@@ -11157,13 +11910,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		let current;
 		let dispose;
 		const github = new Github({ $$inline: true });
-		let each_value = /*ws*/ ctx[4];
-		const get_key = ctx => /*weave*/ ctx[18].id.get();
+		let each_value = /*ws*/ ctx[5];
+		const get_key = ctx => /*weave*/ ctx[22].id.get();
 
 		for (let i = 0; i < each_value.length; i += 1) {
-			let child_ctx = get_each_context$3(ctx, each_value, i);
+			let child_ctx = get_each_context$4(ctx, each_value, i);
 			let key = get_key(child_ctx);
-			each_1_lookup.set(key, each_blocks[i] = create_each_block$3(key, child_ctx));
+			each_1_lookup.set(key, each_blocks[i] = create_each_block$4(key, child_ctx));
 		}
 
 		const block = {
@@ -11185,30 +11938,34 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 				attr_dev(a0, "href", "https://github.com/agoblinking/earthrock");
 				attr_dev(a0, "target", "_new");
-				add_location(a0, file$f, 79, 22, 2042);
-				attr_dev(div0, "class", "github svelte-14p6qu8");
-				add_location(div0, file$f, 79, 1, 2021);
-				attr_dev(a1, "class", "logo svelte-14p6qu8");
-				attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[6]);
+				add_location(a0, file$h, 88, 22, 2093);
+				attr_dev(div0, "class", "github svelte-8mbfr8");
+				add_location(div0, file$h, 88, 1, 2072);
+				attr_dev(a1, "class", "logo svelte-8mbfr8");
+				attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[7]);
 				attr_dev(a1, "href", "https://www.patreon.com/earthrock");
 				attr_dev(a1, "target", "_new");
-				add_location(a1, file$f, 83, 2, 2217);
-				attr_dev(div1, "class", "weaves svelte-14p6qu8");
-				add_location(div1, file$f, 104, 2, 2720);
-				attr_dev(div2, "class", "partial svelte-14p6qu8");
-				add_location(div2, file$f, 81, 2, 2190);
-				attr_dev(div3, "class", "explore svelte-14p6qu8");
-				set_style(div3, "color", /*$THEME_COLOR*/ ctx[5]);
-				add_location(div3, file$f, 80, 1, 2133);
+				add_location(a1, file$h, 92, 2, 2264);
+				attr_dev(div1, "class", "weaves svelte-8mbfr8");
+				add_location(div1, file$h, 121, 2, 2883);
+				attr_dev(div2, "class", "partial svelte-8mbfr8");
+				add_location(div2, file$h, 90, 2, 2239);
+				attr_dev(div3, "class", "explore svelte-8mbfr8");
+				set_style(div3, "color", /*$THEME_COLOR*/ ctx[6]);
+				add_location(div3, file$h, 89, 1, 2183);
 
-				dispose = action_destroyer(nav_action = nav.call(null, a1, {
-					id: Wheel.DENOTE,
-					up: /*nav_function*/ ctx[10],
-					down: /*nav_function_1*/ ctx[11],
-					page_up: /*nav_function_2*/ ctx[12],
-					page_down: /*nav_function_3*/ ctx[13],
-					insert: /*nav_function_4*/ ctx[14]
-				}));
+				dispose = [
+					listen_dev(a1, "click", /*click_handler*/ ctx[13], false, false, false),
+					action_destroyer(nav_action = nav.call(null, a1, {
+						id: Wheel.DENOTE,
+						up: /*nav_function*/ ctx[14],
+						origin: true,
+						down: /*nav_function_1*/ ctx[15],
+						page_up: /*nav_function_2*/ ctx[16],
+						page_down: /*nav_function_3*/ ctx[17],
+						insert: /*nav_function_4*/ ctx[18]
+					}))
+				];
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div0, anchor);
@@ -11229,26 +11986,27 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				current = true;
 			},
 			p: function update(ctx, dirty) {
-				if (!current || dirty & /*$THEME_STYLE*/ 64) {
-					attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[6]);
+				if (!current || dirty & /*$THEME_STYLE*/ 128) {
+					attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[7]);
 				}
 
-				if (nav_action && is_function(nav_action.update) && dirty & /*ws, nameit, picker*/ 22) nav_action.update.call(null, {
+				if (nav_action && is_function(nav_action.update) && dirty & /*ws, nameit, picker*/ 38) nav_action.update.call(null, {
 					id: Wheel.DENOTE,
-					up: /*nav_function*/ ctx[10],
-					down: /*nav_function_1*/ ctx[11],
-					page_up: /*nav_function_2*/ ctx[12],
-					page_down: /*nav_function_3*/ ctx[13],
-					insert: /*nav_function_4*/ ctx[14]
+					up: /*nav_function*/ ctx[14],
+					origin: true,
+					down: /*nav_function_1*/ ctx[15],
+					page_up: /*nav_function_2*/ ctx[16],
+					page_down: /*nav_function_3*/ ctx[17],
+					insert: /*nav_function_4*/ ctx[18]
 				});
 
-				const each_value = /*ws*/ ctx[4];
+				const each_value = /*ws*/ ctx[5];
 				group_outros();
-				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div1, outro_and_destroy_block, create_each_block$3, null, get_each_context$3);
+				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div1, outro_and_destroy_block, create_each_block$4, null, get_each_context$4);
 				check_outros();
 
-				if (!current || dirty & /*$THEME_COLOR*/ 32) {
-					set_style(div3, "color", /*$THEME_COLOR*/ ctx[5]);
+				if (!current || dirty & /*$THEME_COLOR*/ 64) {
+					set_style(div3, "color", /*$THEME_COLOR*/ ctx[6]);
 				}
 			},
 			i: function intro(local) {
@@ -11280,37 +12038,37 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					each_blocks[i].d();
 				}
 
-				dispose();
+				run_all(dispose);
 			}
 		};
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_if_block$7.name,
+			id: create_if_block$9.name,
 			type: "if",
-			source: "(79:0) {#if !hidden}",
+			source: "(88:0) {#if !hidden}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (106:3) {#each ws as weave, i (weave.id.get())}
-	function create_each_block$3(key_2, ctx) {
+	// (123:3) {#each ws as weave, i (weave.id.get())}
+	function create_each_block$4(key_2, ctx) {
 		let first;
 		let current;
 
 		function func(...args) {
-			return /*func*/ ctx[15](/*i*/ ctx[20], ...args);
+			return /*func*/ ctx[19](/*i*/ ctx[24], ...args);
 		}
 
 		function func_1(...args) {
-			return /*func_1*/ ctx[16](/*i*/ ctx[20], ...args);
+			return /*func_1*/ ctx[20](/*i*/ ctx[24], ...args);
 		}
 
 		const weave = new Weave$1({
 				props: {
-					weave: /*weave*/ ctx[18],
+					weave: /*weave*/ ctx[22],
 					navi: { up: func, down: func_1 }
 				},
 				$$inline: true
@@ -11332,8 +12090,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			p: function update(new_ctx, dirty) {
 				ctx = new_ctx;
 				const weave_changes = {};
-				if (dirty & /*ws*/ 16) weave_changes.weave = /*weave*/ ctx[18];
-				if (dirty & /*ws*/ 16) weave_changes.navi = { up: func, down: func_1 };
+				if (dirty & /*ws*/ 32) weave_changes.weave = /*weave*/ ctx[22];
+				if (dirty & /*ws*/ 32) weave_changes.navi = { up: func, down: func_1 };
 				weave.$set(weave_changes);
 			},
 			i: function intro(local) {
@@ -11353,20 +12111,20 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_each_block$3.name,
+			id: create_each_block$4.name,
 			type: "each",
-			source: "(106:3) {#each ws as weave, i (weave.id.get())}",
+			source: "(123:3) {#each ws as weave, i (weave.id.get())}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (78:0) <Picker {nameit} bind:this={picker}>
+	// (87:0) <Picker {nameit} bind:this={picker}>
 	function create_default_slot$2(ctx) {
 		let if_block_anchor;
 		let current;
-		let if_block = !/*hidden*/ ctx[0] && create_if_block$7(ctx);
+		let if_block = !/*hidden*/ ctx[0] && create_if_block$9(ctx);
 
 		const block = {
 			c: function create() {
@@ -11384,7 +12142,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						if_block.p(ctx, dirty);
 						transition_in(if_block, 1);
 					} else {
-						if_block = create_if_block$7(ctx);
+						if_block = create_if_block$9(ctx);
 						if_block.c();
 						transition_in(if_block, 1);
 						if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -11418,21 +12176,25 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_default_slot$2.name,
 			type: "slot",
-			source: "(78:0) <Picker {nameit} bind:this={picker}>",
+			source: "(87:0) <Picker {nameit} bind:this={picker}>",
 			ctx
 		});
 
 		return block;
 	}
 
-	function create_fragment$f(ctx) {
-		let t;
+	function create_fragment$h(ctx) {
+		let t0;
+		let t1;
+		let t2;
 		let current;
 
 		const mainscreen = new MainScreen({
 				props: { hidden: /*hidden*/ ctx[0] },
 				$$inline: true
 			});
+
+		const control = new Control({ $$inline: true });
 
 		let picker_1_props = {
 			nameit: /*nameit*/ ctx[1],
@@ -11441,20 +12203,26 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		};
 
 		const picker_1 = new Picker({ props: picker_1_props, $$inline: true });
-		/*picker_1_binding*/ ctx[17](picker_1);
+		/*picker_1_binding*/ ctx[21](picker_1);
 
 		const block = {
 			c: function create() {
+				t0 = text(" \n\n\n\n");
 				create_component(mainscreen.$$.fragment);
-				t = space$1();
+				t1 = space$1();
+				create_component(control.$$.fragment);
+				t2 = space$1();
 				create_component(picker_1.$$.fragment);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
 			},
 			m: function mount(target, anchor) {
+				insert_dev(target, t0, anchor);
 				mount_component(mainscreen, target, anchor);
-				insert_dev(target, t, anchor);
+				insert_dev(target, t1, anchor);
+				mount_component(control, target, anchor);
+				insert_dev(target, t2, anchor);
 				mount_component(picker_1, target, anchor);
 				current = true;
 			},
@@ -11465,7 +12233,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				const picker_1_changes = {};
 				if (dirty & /*nameit*/ 2) picker_1_changes.nameit = /*nameit*/ ctx[1];
 
-				if (dirty & /*$$scope, hidden, $THEME_COLOR, ws, $THEME_STYLE, nameit, picker*/ 2097271) {
+				if (dirty & /*$$scope, hidden, $THEME_COLOR, ws, $THEME_STYLE, nameit, picker, patreon*/ 33554671) {
 					picker_1_changes.$$scope = { dirty, ctx };
 				}
 
@@ -11474,25 +12242,30 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			i: function intro(local) {
 				if (current) return;
 				transition_in(mainscreen.$$.fragment, local);
+				transition_in(control.$$.fragment, local);
 				transition_in(picker_1.$$.fragment, local);
 				current = true;
 			},
 			o: function outro(local) {
 				transition_out(mainscreen.$$.fragment, local);
+				transition_out(control.$$.fragment, local);
 				transition_out(picker_1.$$.fragment, local);
 				current = false;
 			},
 			d: function destroy(detaching) {
+				if (detaching) detach_dev(t0);
 				destroy_component(mainscreen, detaching);
-				if (detaching) detach_dev(t);
-				/*picker_1_binding*/ ctx[17](null);
+				if (detaching) detach_dev(t1);
+				destroy_component(control, detaching);
+				if (detaching) detach_dev(t2);
+				/*picker_1_binding*/ ctx[21](null);
 				destroy_component(picker_1, detaching);
 			}
 		};
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$f.name,
+			id: create_fragment$h.name,
 			type: "component",
 			source: "",
 			ctx
@@ -11501,21 +12274,24 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		return block;
 	}
 
-	function instance$e($$self, $$props, $$invalidate) {
+	function instance$g($$self, $$props, $$invalidate) {
 		let $weaves,
 			$$unsubscribe_weaves = noop$1,
-			$$subscribe_weaves = () => ($$unsubscribe_weaves(), $$unsubscribe_weaves = subscribe(weaves, $$value => $$invalidate(9, $weaves = $$value)), weaves);
+			$$subscribe_weaves = () => ($$unsubscribe_weaves(), $$unsubscribe_weaves = subscribe(weaves, $$value => $$invalidate(11, $weaves = $$value)), weaves);
 
+		let $cursor;
 		let $THEME_COLOR;
 		let $THEME_STYLE;
+		validate_store(cursor, "cursor");
+		component_subscribe($$self, cursor, $$value => $$invalidate(12, $cursor = $$value));
 		validate_store(THEME_COLOR, "THEME_COLOR");
-		component_subscribe($$self, THEME_COLOR, $$value => $$invalidate(5, $THEME_COLOR = $$value));
+		component_subscribe($$self, THEME_COLOR, $$value => $$invalidate(6, $THEME_COLOR = $$value));
 		validate_store(THEME_STYLE, "THEME_STYLE");
-		component_subscribe($$self, THEME_STYLE, $$value => $$invalidate(6, $THEME_STYLE = $$value));
+		component_subscribe($$self, THEME_STYLE, $$value => $$invalidate(7, $THEME_STYLE = $$value));
 		$$self.$$.on_destroy.push(() => $$unsubscribe_weaves());
 
 		key.listen(char => {
-			if (char !== `\``) return;
+			if (char !== `\`` && char !== `pause`) return;
 			$$invalidate(0, hidden = !hidden);
 		});
 
@@ -11555,11 +12331,19 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			return `${name}${Wheel.DENOTE}${v_keys[v_keys.length - 1]}`;
 		};
 
+		let last;
+		let patreon;
 		const writable_props = ["hidden"];
 
 		Object_1$3.keys($$props).forEach(key => {
 			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Explore> was created with unknown prop '${key}'`);
 		});
+
+		const click_handler = e => {
+			if (patreon !== 0) return;
+			$$invalidate(3, patreon++, patreon);
+			e.preventDefault();
+		};
 
 		const nav_function = () => top_space;
 		const nav_function_1 = () => ws[0].name.get();
@@ -11592,9 +12376,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				hidden,
 				nameit,
 				picker,
+				last,
+				patreon,
 				weaves,
 				ws,
 				$weaves,
+				$cursor,
 				$THEME_COLOR,
 				$THEME_STYLE
 			};
@@ -11604,9 +12391,12 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if ("hidden" in $$props) $$invalidate(0, hidden = $$props.hidden);
 			if ("nameit" in $$props) $$invalidate(1, nameit = $$props.nameit);
 			if ("picker" in $$props) $$invalidate(2, picker = $$props.picker);
-			if ("weaves" in $$props) $$subscribe_weaves($$invalidate(3, weaves = $$props.weaves));
-			if ("ws" in $$props) $$invalidate(4, ws = $$props.ws);
+			if ("last" in $$props) $$invalidate(10, last = $$props.last);
+			if ("patreon" in $$props) $$invalidate(3, patreon = $$props.patreon);
+			if ("weaves" in $$props) $$subscribe_weaves($$invalidate(4, weaves = $$props.weaves));
+			if ("ws" in $$props) $$invalidate(5, ws = $$props.ws);
 			if ("$weaves" in $$props) weaves.set($weaves = $$props.$weaves);
+			if ("$cursor" in $$props) cursor.set($cursor = $$props.$cursor);
 			if ("$THEME_COLOR" in $$props) THEME_COLOR.set($THEME_COLOR = $$props.$THEME_COLOR);
 			if ("$THEME_STYLE" in $$props) THEME_STYLE.set($THEME_STYLE = $$props.$THEME_STYLE);
 		};
@@ -11615,8 +12405,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		let ws;
 
 		$$self.$$.update = () => {
-			if ($$self.$$.dirty & /*$weaves*/ 512) {
-				 $$invalidate(4, ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
+			if ($$self.$$.dirty & /*$weaves*/ 2048) {
+				 $$invalidate(5, ws = Object.values($weaves).sort(({ name: a }, { name: b }) => {
 					const $a = a.get();
 					const $b = b.get();
 					if ($a > $b) return 1;
@@ -11624,21 +12414,35 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 					return 0;
 				}));
 			}
+
+			if ($$self.$$.dirty & /*$cursor, last*/ 5120) {
+				 {
+					if ($cursor !== last) {
+						$$invalidate(3, patreon = 0);
+					}
+
+					$$invalidate(10, last = $cursor);
+				}
+			}
 		};
 
-		 $$subscribe_weaves($$invalidate(3, weaves = Wheel.weaves));
+		 $$subscribe_weaves($$invalidate(4, weaves = Wheel.weaves));
 
 		return [
 			hidden,
 			nameit,
 			picker,
+			patreon,
 			weaves,
 			ws,
 			$THEME_COLOR,
 			$THEME_STYLE,
 			top_space,
 			expand,
+			last,
 			$weaves,
+			$cursor,
+			click_handler,
 			nav_function,
 			nav_function_1,
 			nav_function_2,
@@ -11653,13 +12457,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class Explore extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, instance$e, create_fragment$f, safe_not_equal, { hidden: 0 });
+			init(this, options, instance$g, create_fragment$h, safe_not_equal, { hidden: 0 });
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "Explore",
 				options,
-				id: create_fragment$f.name
+				id: create_fragment$h.name
 			});
 		}
 
@@ -11672,9 +12476,9 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		}
 	}
 
-	/* src\_client\app\app.svelte generated by Svelte v3.16.7 */
+	/* src/_client/app/app.svelte generated by Svelte v3.16.7 */
 
-	function create_fragment$g(ctx) {
+	function create_fragment$i(ctx) {
 		let current;
 		const explore = new Explore({ $$inline: true });
 
@@ -11706,7 +12510,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		dispatch_dev("SvelteRegisterBlock", {
 			block,
-			id: create_fragment$g.name,
+			id: create_fragment$i.name,
 			type: "component",
 			source: "",
 			ctx
@@ -11718,13 +12522,13 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 	class App extends SvelteComponentDev {
 		constructor(options) {
 			super(options);
-			init(this, options, null, create_fragment$g, safe_not_equal, {});
+			init(this, options, null, create_fragment$i, safe_not_equal, {});
 
 			dispatch_dev("SvelteRegisterComponent", {
 				component: this,
 				tagName: "App",
 				options,
-				id: create_fragment$g.name
+				id: create_fragment$i.name
 			});
 		}
 	}

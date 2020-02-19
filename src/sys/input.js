@@ -8,9 +8,18 @@ import { v3 } from "twgl.js"
 
 const { length, add, mulScalar } = v3
 
-import { read, write, transformer } from "/store.js"
+import { read, transformer } from "/store.js"
 
-export const zoom = write(0.75)
+document.addEventListener(`touchmove`, event => {
+	if (event.scale !== 1) { event.preventDefault() }
+}, { passive: false })
+
+let lastTouchEnd = 0
+document.addEventListener(`touchend`, event => {
+	const now = (new Date()).getTime()
+	if (now - lastTouchEnd <= 500) event.preventDefault()
+	lastTouchEnd = now
+}, { passive: false })
 
 // raw translate commands
 export const translate = read([0, 0, 0], (set) => {
@@ -60,8 +69,6 @@ Mouse.scroll.listen((vel) => {
 	scroll_velocity = add(scroll_velocity, vel)
 })
 
-export const focus = write(``)
-
 // input to replicate to remotes
 const button_map = {
 	home: ({ home }, { start }) => home || start,
@@ -76,16 +83,8 @@ const button_map = {
 	confirm: ({ enter }, { a }) => a || enter,
 	cancel: ({ end, escape }, { b }) => end || b || escape,
 	editor: ({ pause, tilde }, { select }) => tilde || pause || select,
-	avatar_up: ({ w }) => w,
-	avatar_down: ({ s }) => s,
-	avatar_left: ({ a }) => a,
-	avatar_right: ({ d }) => d,
-	avatar_jump: ({ " ": space }) => space,
-	avatar_sprint: ({ shift }) => shift,
-	avatar_left_arm: ({ q }) => q,
-	avatar_right_arm: ({ e }) => e,
 	undo: ({ control, z, backspace }) => (control && z) || backspace,
-	redo: ({ shift, control, z, backspace }) => (shift && control && z) || (shift && backspace)
+	redo: ({ shift, control, z, backspace, redo }) => redo || (shift && control && z) || (shift && backspace)
 }
 
 export const buttons = read({}, (set) => {

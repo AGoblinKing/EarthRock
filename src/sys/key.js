@@ -1,6 +1,10 @@
-import { read } from "/store.js"
+import { read, write } from "/store.js"
+
+export const key_virtual = write(``)
 
 export const key = read(``, (set) => {
+	key_virtual.listen((k) => set(k))
+
 	window.addEventListener(`keyup`, (e) => {
 		// always allow keyup
 		e.preventDefault()

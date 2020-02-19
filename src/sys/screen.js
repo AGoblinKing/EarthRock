@@ -16,7 +16,7 @@ size.subscribe(([width, height]) => {
 		? height
 		: width
 
-	scale.set(target / 100)
+	scale.set(target / 80)
 	window.document.documentElement.style.fontSize = `${Math.round(scale.get())}px`
 })
 

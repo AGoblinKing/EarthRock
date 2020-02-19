@@ -1,6 +1,6 @@
 <script>
 import Tile from "/_client/image/Tile.svelte"
-import { SPRITES, THEME_BG, THEME_BORDER, TILE_COLUMNS } from "/sys/flag.js"
+import { SPRITES_COLOR, THEME_BG, THEME_BORDER, TILE_COLUMNS } from "/sys/flag.js"
 import { buttons } from "/sys/input.js"
 import { tick } from "/sys/time.js"
 
@@ -99,7 +99,7 @@ let selections
 	on:mousemove={track}
 
 	style={[
-		`background-image: url('${$SPRITES}');`,
+		`background-image: url('${$SPRITES_COLOR}');`,
 		`background-color: ${$THEME_BG};`,
 		`border: 1rem solid ${$THEME_BORDER};`
 	].join(``)}

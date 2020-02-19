@@ -7,7 +7,7 @@ const COUNT = TILE_COUNT.get()
 
 const ready = new Promise((resolve) => {
 	const tiles = new Image()
-	tiles.src = `/sheets/default_2.png`
+	tiles.src = `/sheets/default_2_color.png`
 
 	tiles.onload = () => {
 		const canvas = document.createElement(`canvas`)

@@ -148,6 +148,7 @@ const space_bird = write(false)
 }
 
 .postage {
+  display: flex;
 	width: 2rem;
 	height: 2rem;
 	margin: 0.5rem 1rem;
@@ -176,5 +177,12 @@ const space_bird = write(false)
 .zero {
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
+}
+:global(.nav).space {
+	box-shadow:
+		inset 0 0.5rem 0 rgba(224, 168, 83,0.5),
+		inset 0 -0.5rem 0 rgba(224, 168, 83,0.5),
+		inset 3rem 0 0 rgba(224, 168, 83,1),
+		inset -3rem 0 0 rgba(224, 168, 83,1) !important;
 }
 </style>

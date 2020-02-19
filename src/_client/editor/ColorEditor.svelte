@@ -4,6 +4,8 @@ import Color from "color"
 export let value
 
 const to_css = (col) => {
+	if (Array.isArray(col) === false) return ``
+
 	return Color(col.map((x, i) => {
 		if (i === 3) return x
 		return x * 255

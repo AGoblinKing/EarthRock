@@ -40,7 +40,6 @@ let controls
 		down: () => spacees.length > 0 ? `${$name}${Wheel.DENOTE}${spacees[0][0]}` : navi.down,
 		page_down: () => spacees.length > 0 ? `${$name}${Wheel.DENOTE}${spacees[0][0]}` : navi.down,
 		page_up: () => navi.up(),
-		origin: $name === `sys`,
 		left: () => {
 			controls.toggle()
 		},
@@ -89,7 +88,7 @@ let controls
 				navi={{
 					up: () => i === 0 ? $name : get_up(i),
 					page_up: () => i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
-					down: () => i === spacees.length - 1 ? navi.down : `${$name}/${spacees[i + 1][0]}`
+					down: () => i === spacees.length - 1 ? navi.down() : `${$name}/${spacees[i + 1][0]}`
 				}}
 			/>
 
@@ -112,10 +111,8 @@ let controls
 }
 
 .weave {
-	align-items: center;
 	text-align: left;
-	flex-direction: row-reverse;
-	display: flex;
+	display: block;
 	padding: 1rem;
 	font-size: 2rem;
 	box-shadow: inset 0rem 5rem 0 rgba(255,255,255,0.05),
@@ -132,6 +129,7 @@ let controls
 
 .namezor {
 	margin: 0 1rem;
+  padding: 0.5 1rem;
 	user-select: none;
 	flex: 1;
 }

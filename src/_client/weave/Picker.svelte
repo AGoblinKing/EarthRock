@@ -1,4 +1,5 @@
 <script>
+import Tile from "/_client/image/Tile.svelte"
 import { load, image } from "/sys/file.js"
 
 import * as warps from "/weave/warps.js"
@@ -85,8 +86,6 @@ const play_it = () => {
 	class="nameprompt"
 	use:color={`${Wheel.DENOTE}${name}`}
 >
-	<h2>Name It!</h2>
-
 	<div class="spirit">
 	{#await image(name) then src}
 		<img  class="flex" {src} alt="fileicon"/>
@@ -105,12 +104,21 @@ const play_it = () => {
 		}}
 		autofocus
 		type="text"
+    autocapitalize="none"
+    on:focus={(e) => {
+      e.target.click()
+      e.target.select()
+    }}
 		bind:value={name}
 		placeholder="Name it"
 	/>
 	<div class="controls">
-		<div class="false" on:click={() => { nameit = false }}>Cancel</div>
-		<div class="true" on:click={play_it}>Plant</div>
+		<div class="false" on:click={() => { nameit = false }}>
+      <Tile width={1} height={1} data="823" />
+    </div>
+		<div class="true" on:click={play_it}>
+      <Tile width={1} height={1} data="823" />
+    </div>
 	</div>
 </div>
 {/if}
@@ -169,9 +177,12 @@ const play_it = () => {
   background-color: blue;
 }
 .false, .true {
-  padding: 1rem;
-  border: 0.25rem solid #333;
+  display: flex;
+  padding: 0.25rem;
   margin: 0.25rem;
+  height: 3rem;
+  width: 3rem;
+  border-radius: 2rem;
 }
 .false {
   background-color: red;

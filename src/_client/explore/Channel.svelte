@@ -26,6 +26,11 @@ $: editing = focus
 
 $: address = `${space.address()}/${key}`
 
+const do_focus = ({ target }) => {
+	target.click()
+	target.select()
+	target.focus()
+}
 let val = ``
 
 const cancel = () => {
@@ -157,6 +162,8 @@ let chan_node
 {#if key_editing}
 	<input type="text" class="edit" autofocus
 		bind:value={key_new}
+    on:focus={do_focus}
+    autocapitalize="none"
 		on:keydown={({ which, code }) => {
 			if (code === `End`) {
 				key_editing = false
@@ -199,11 +206,13 @@ let chan_node
 </div>
 {:else}
 	<input
+    autocapitalize="none"
 		class="edit"
 		use:focusd
 		type="text"
 		bind:value={val}
 		placeholder="JSON PLZ"
+    on:focus={do_focus}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) return cancel()
 			if (which !== 13 && code !== `ControlRight`) return
@@ -276,8 +285,8 @@ let chan_node
 .channel:hover {
 	color: white;
 	box-shadow:
-	inset 0 2rem  0 rgba(224, 168, 83,0.5),
-	inset 0 -2rem  0 rgba(224, 168, 83,0.5);
+	inset 0 2rem  0 rgba(81, 200, 51, 0.5),
+	inset 0 -2rem  0 rgba(81, 200, 51, 0.5);
 }
 
 

@@ -1,7 +1,7 @@
 import Tone from "tone"
-import { SOUND_ON } from "./flag.js"
+import { sound } from "./device.js"
 
-SOUND_ON.listen(($on) => {
+sound.listen(($on) => {
 	Tone.Master.mute = !$on
 })
 

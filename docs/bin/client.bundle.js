@@ -4993,26 +4993,26 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 	function get_each_context_1(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[8] = list[i][0];
-		child_ctx[9] = list[i][1];
+		child_ctx[9] = list[i][0];
+		child_ctx[10] = list[i][1];
 		return child_ctx;
 	}
 
 	function get_each_context(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[5] = list[i];
+		child_ctx[6] = list[i];
 		return child_ctx;
 	}
 
-	// (49:4) {:else}
+	// (57:4) {:else}
 	function create_else_block(ctx) {
 		let div;
 
 		const block = {
 			c: function create() {
 				div = element("div");
-				attr_dev(div, "class", "button noactive svelte-zidjk4");
-				add_location(div, file$1, 49, 5, 1111);
+				attr_dev(div, "class", "button noactive svelte-ie07yb");
+				add_location(div, file$1, 57, 5, 1296);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -5029,24 +5029,30 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_else_block.name,
 			type: "else",
-			source: "(49:4) {:else}",
+			source: "(57:4) {:else}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (39:4) {#if command}
+	// (40:4) {#if command}
 	function create_if_block(ctx) {
 		let div;
+		let input;
+		let t;
 		let current;
 		let dispose;
+
+		function focus_handler(...args) {
+			return /*focus_handler*/ ctx[5](/*command*/ ctx[9], ...args);
+		}
 
 		const tile = new Tile_1({
 				props: {
 					width: 1,
 					height: 1,
-					data: `${/*tile*/ ctx[9]}`
+					data: `${/*tile*/ ctx[10]}`
 				},
 				$$inline: true
 			});
@@ -5054,17 +5060,23 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const block = {
 			c: function create() {
 				div = element("div");
+				input = element("input");
+				t = space$1();
 				create_component(tile.$$.fragment);
-				attr_dev(div, "class", "button svelte-zidjk4");
-				toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[8]));
-				add_location(div, file$1, 39, 2, 849);
+				attr_dev(input, "type", "text");
+				attr_dev(input, "class", "foo svelte-ie07yb");
+				add_location(input, file$1, 48, 6, 1077);
+				attr_dev(div, "class", "button svelte-ie07yb");
+				toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[9]));
+				add_location(div, file$1, 41, 2, 888);
 
 				dispose = [
+					listen_dev(input, "focus", focus_handler, false, false, false),
 					listen_dev(
 						div,
 						"touchmove",
 						function () {
-							if (is_function(/*move*/ ctx[3](/*command*/ ctx[8]))) /*move*/ ctx[3](/*command*/ ctx[8]).apply(this, arguments);
+							if (is_function(/*move*/ ctx[3](/*command*/ ctx[9]))) /*move*/ ctx[3](/*command*/ ctx[9]).apply(this, arguments);
 						},
 						false,
 						false,
@@ -5074,7 +5086,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						div,
 						"touchstart",
 						function () {
-							if (is_function(/*press*/ ctx[2](/*command*/ ctx[8]))) /*press*/ ctx[2](/*command*/ ctx[8]).apply(this, arguments);
+							if (is_function(/*press*/ ctx[2](/*command*/ ctx[9]))) /*press*/ ctx[2](/*command*/ ctx[9]).apply(this, arguments);
 						},
 						false,
 						false,
@@ -5084,7 +5096,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 						div,
 						"touchend",
 						function () {
-							if (is_function(/*unpress*/ ctx[4](/*command*/ ctx[8]))) /*unpress*/ ctx[4](/*command*/ ctx[8]).apply(this, arguments);
+							if (is_function(/*unpress*/ ctx[4](/*command*/ ctx[9]))) /*unpress*/ ctx[4](/*command*/ ctx[9]).apply(this, arguments);
 						},
 						false,
 						false,
@@ -5094,17 +5106,19 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
+				append_dev(div, input);
+				append_dev(div, t);
 				mount_component(tile, div, null);
 				current = true;
 			},
 			p: function update(new_ctx, dirty) {
 				ctx = new_ctx;
 				const tile_changes = {};
-				if (dirty & /*keys*/ 1) tile_changes.data = `${/*tile*/ ctx[9]}`;
+				if (dirty & /*keys*/ 1) tile_changes.data = `${/*tile*/ ctx[10]}`;
 				tile.$set(tile_changes);
 
 				if (dirty & /*pressed, keys*/ 3) {
-					toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[8]));
+					toggle_class(div, "active", /*pressed*/ ctx[1].has(/*command*/ ctx[9]));
 				}
 			},
 			i: function intro(local) {
@@ -5127,14 +5141,14 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_if_block.name,
 			type: "if",
-			source: "(39:4) {#if command}",
+			source: "(40:4) {#if command}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (38:1) {#each row as [command, tile]}
+	// (39:1) {#each row as [command, tile]}
 	function create_each_block_1(ctx) {
 		let current_block_type_index;
 		let if_block;
@@ -5144,7 +5158,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 		const if_blocks = [];
 
 		function select_block_type(ctx, dirty) {
-			if (/*command*/ ctx[8]) return 0;
+			if (/*command*/ ctx[9]) return 0;
 			return 1;
 		}
 
@@ -5205,19 +5219,19 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_each_block_1.name,
 			type: "each",
-			source: "(38:1) {#each row as [command, tile]}",
+			source: "(39:1) {#each row as [command, tile]}",
 			ctx
 		});
 
 		return block;
 	}
 
-	// (36:0) {#each keys as row}
+	// (37:0) {#each keys as row}
 	function create_each_block(ctx) {
 		let div;
 		let t;
 		let current;
-		let each_value_1 = /*row*/ ctx[5];
+		let each_value_1 = /*row*/ ctx[6];
 		let each_blocks = [];
 
 		for (let i = 0; i < each_value_1.length; i += 1) {
@@ -5237,8 +5251,8 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				}
 
 				t = space$1();
-				attr_dev(div, "class", "row svelte-zidjk4");
-				add_location(div, file$1, 36, 2, 779);
+				attr_dev(div, "class", "row svelte-ie07yb");
+				add_location(div, file$1, 37, 2, 817);
 			},
 			m: function mount(target, anchor) {
 				insert_dev(target, div, anchor);
@@ -5252,7 +5266,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			},
 			p: function update(ctx, dirty) {
 				if (dirty & /*keys, pressed, move, press, unpress*/ 31) {
-					each_value_1 = /*row*/ ctx[5];
+					each_value_1 = /*row*/ ctx[6];
 					let i;
 
 					for (i = 0; i < each_value_1.length; i += 1) {
@@ -5306,7 +5320,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			block,
 			id: create_each_block.name,
 			type: "each",
-			source: "(36:0) {#each keys as row}",
+			source: "(37:0) {#each keys as row}",
 			ctx
 		});
 
@@ -5336,7 +5350,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				}
 
 				attr_dev(div, "class", "group");
-				add_location(div, file$1, 34, 0, 737);
+				add_location(div, file$1, 35, 0, 775);
 			},
 			l: function claim(nodes) {
 				throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5447,6 +5461,11 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Buttons> was created with unknown prop '${key}'`);
 		});
 
+		const focus_handler = command => {
+			press(command)();
+			unpress(command)();
+		};
+
 		$$self.$set = $$props => {
 			if ("keys" in $$props) $$invalidate(0, keys = $$props.keys);
 		};
@@ -5459,7 +5478,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 			if ("keys" in $$props) $$invalidate(0, keys = $$props.keys);
 		};
 
-		return [keys, pressed, press, move, unpress];
+		return [keys, pressed, press, move, unpress, focus_handler];
 	}
 
 	class Buttons extends SvelteComponentDev {
@@ -5659,7 +5678,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 
 		const { _, u, d, r, l, joy, pup, pdn, noo, ins, del, yes, exp } = commands;
 		const buttons_left = [[_, u, pup], [l, joy, r], [_, d, pdn]];
-		const buttons_right = [[_, del, _], [yes, exp, noo], [_, ins, _]];
+		const buttons_right = [[_, del, _], [ins, exp, noo], [_, yes, _]];
 
 		$$self.$capture_state = () => {
 			return {};
@@ -11928,7 +11947,7 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				div3 = element("div");
 				div2 = element("div");
 				a1 = element("a");
-				t1 = text("[ I S E K A I ]");
+				t1 = text("EARTHROCK");
 				t2 = space$1();
 				div1 = element("div");
 
@@ -11939,18 +11958,18 @@ var app = (function (Color, uuid, scribble, Tone, exif, expr, twgl) {
 				attr_dev(a0, "href", "https://github.com/agoblinking/earthrock");
 				attr_dev(a0, "target", "_new");
 				add_location(a0, file$h, 88, 22, 2093);
-				attr_dev(div0, "class", "github svelte-8mbfr8");
+				attr_dev(div0, "class", "github svelte-164ueav");
 				add_location(div0, file$h, 88, 1, 2072);
-				attr_dev(a1, "class", "logo svelte-8mbfr8");
+				attr_dev(a1, "class", "logo svelte-164ueav");
 				attr_dev(a1, "style", /*$THEME_STYLE*/ ctx[7]);
 				attr_dev(a1, "href", "https://www.patreon.com/earthrock");
 				attr_dev(a1, "target", "_new");
 				add_location(a1, file$h, 92, 2, 2264);
-				attr_dev(div1, "class", "weaves svelte-8mbfr8");
-				add_location(div1, file$h, 121, 2, 2883);
-				attr_dev(div2, "class", "partial svelte-8mbfr8");
+				attr_dev(div1, "class", "weaves svelte-164ueav");
+				add_location(div1, file$h, 121, 2, 2877);
+				attr_dev(div2, "class", "partial svelte-164ueav");
 				add_location(div2, file$h, 90, 2, 2239);
-				attr_dev(div3, "class", "explore svelte-8mbfr8");
+				attr_dev(div3, "class", "explore svelte-164ueav");
 				set_style(div3, "color", /*$THEME_COLOR*/ ctx[6]);
 				add_location(div3, file$h, 89, 1, 2183);
 

@@ -1,6 +1,7 @@
 <script>
 import { key_virtual } from "/sys/key.js"
 import Tile from "/_client/image/Tile.svelte"
+import { CURSOR } from "/sys/flag.js"
 
 const pressed = new Set()
 
@@ -37,6 +38,7 @@ export let keys = []
   <div class="row">
 	{#each row as [command, tile]}
     {#if command}
+
 		<div
       class="button"
       class:active={pressed.has(command)}
@@ -44,8 +46,14 @@ export let keys = []
       on:touchstart={press(command)}
       on:touchend={unpress(command)}
     >
+      <input type="text" class="foo" on:focus={() => {
+        press(command)()
+        unpress(command)()
+        // $CURSOR.focus()
+      }}/>
       <Tile width={1} height={1} data={`${tile}`} />
 		</div>
+
     {:else}
     	<div class="button noactive" />
     {/if}
@@ -76,7 +84,13 @@ export let keys = []
   background-color: yellow;
   opacity: 1;
 }
-
+.foo {
+  pointer-events: all;
+  position: absolute;
+  width: 7rem;
+  height: 7rem;
+  z-index: 2;
+}
 .button.noactive:active {
   background-color: none;
 }

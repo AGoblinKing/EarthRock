@@ -32,8 +32,8 @@ const buttons_left = [
 
 const buttons_right = [
 	[_, del, _],
-	[yes, exp, noo],
-	[_, ins, _]
+	[ins, exp, noo],
+	[_, yes, _]
 ]
 </script>
 

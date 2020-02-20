@@ -117,7 +117,7 @@ $: {
 					})
 				}
 			}}
-		>[ I S E K A I ]</a>
+		>EARTHROCK</a>
 
 		<div class="weaves">
 			{#each ws as weave, i (weave.id.get())}
@@ -151,9 +151,14 @@ $: {
 }
 
 .logo {
-	color: white;
-	padding: 0.5rem;
+	color: white !important;
+	padding: 0.25rem;
+  font-size: 2rem;
+  font-weight: bold;
+  text-decoration: none;
+  outline: none;
 	text-align: center;
+  letter-spacing: 0.5rem;
 	color: rgb(224, 168, 83);
 	transition: all 250ms linear;
 }

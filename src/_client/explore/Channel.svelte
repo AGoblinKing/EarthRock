@@ -63,6 +63,7 @@ const execute = () => {
 const focusd = (node) => {
 	requestAnimationFrame(() => node.focus())
 }
+
 let edit_sprite = false
 let thread_left
 let thread_right
@@ -206,13 +207,13 @@ let chan_node
 </div>
 {:else}
 	<input
-    autocapitalize="none"
+    	autocapitalize="none"
 		class="edit"
 		use:focusd
 		type="text"
 		bind:value={val}
 		placeholder="JSON PLZ"
-    on:focus={do_focus}
+   		on:focus={do_focus}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) return cancel()
 			if (which !== 13 && code !== `ControlRight`) return
@@ -244,7 +245,7 @@ let chan_node
 }
 
 .channel {
-  user-select: none;
+  	user-select: none;
 	display: flex;
 	overflow: hidden;
 	margin-left: 1rem;
@@ -275,10 +276,11 @@ let chan_node
 	flex: 1;
 	max-height: 1rem;
 	user-select: all;
-	padding: 0.5rem;
+	padding: 0.25rem;
 	overflow: hidden;
 	word-break: break-all;
 	text-align: left;
+	align-items: center;
 	opacity: 0.75;
 }
 

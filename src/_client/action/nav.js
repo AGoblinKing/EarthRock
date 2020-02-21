@@ -113,7 +113,7 @@ export default (node, opts) => {
 
 	nav_map[id] = node
 	if (id === `sys` && cursor.get() === false) cursor.set(node)
-	node.style.transition = `all 250ms linear`
+	node.style.transition = `all 250ms ease-out`
 
 	const listener = (e = false) => {
 		cursor.set(node)
@@ -134,7 +134,6 @@ export default (node, opts) => {
 
 	if (origin) {
 		origin_addr = id
-		listener()
 	}
 
 	return nav

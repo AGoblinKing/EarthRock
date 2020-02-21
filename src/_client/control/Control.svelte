@@ -19,10 +19,11 @@ const commands = {
 	und: [`backspace`, 12],
 	red: [`redo`, 13],
 	mod: [`shift`, 14],
+	key: [`keyboard`, 511],
 	joy: [[`arrowup`, `arrowdown`, `arrowleft`, `arrowright`], 796]
 }
 
-const { _, u, d, r, l, joy, pup, pdn, noo, ins, del, yes, exp } = commands
+const { _, u, d, r, l, joy, key, pup, pdn, noo, ins, del, yes, exp } = commands
 
 const buttons_left = [
 	[_, u, pup],
@@ -33,11 +34,11 @@ const buttons_left = [
 const buttons_right = [
 	[_, del, _],
 	[ins, exp, noo],
-	[_, yes, _]
+	[_, yes, key]
 ]
 </script>
 
-{#if !$keyboard}
+{#if !$keyboard }
 <div class="control">
   <div class="left">
     <Buttons keys={buttons_left} />

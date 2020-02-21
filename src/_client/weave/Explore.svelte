@@ -1,10 +1,11 @@
  <script>
+import { blur } from "svelte/transition"
 import { key } from "/sys/key.js"
 import { button } from "/sys/gamepad.js"
 import { random } from "/text.js"
 
 import { THEME_STYLE, THEME_COLOR } from "/sys/flag.js"
-import nav, { cursor } from "/_client/action/nav.js"
+import nav, { cursor, goto } from "/_client/action/nav.js"
 
 import Control from "/_client/control/Control.svelte"
 import Weave from "/_client/explore/Weave.svelte"
@@ -12,9 +13,24 @@ import Github from "./Github.svelte"
 import Picker from "./Picker.svelte"
 import MainScreen from "./MainScreen.svelte"
 
+// explore ele
+let explore
+
+let last_cursor
 key.listen(char => {
 	if (char !== `\`` && char !== `pause`) return
 	hidden = !hidden
+	if (hidden) {
+		last_cursor = cursor.get().id
+		cursor.set({})
+	} else {
+		requestAnimationFrame(() => {
+			goto(last_cursor)
+			const ele = cursor.get()
+			explore.scrollTo({ top: ele.getBoundingClientRect().top })
+			console.log(`hit`)
+		})
+	}
 })
 
 button.listen(button => {
@@ -78,33 +94,57 @@ $: {
 	}
 	last = $cursor
 }
+
+let boxed = false
+let attempting = false
+$: {
+	if (!hidden && !boxed && !attempting) {
+		attempting = true
+		requestAnimationFrame(() => {
+			boxed = !boxed
+		})
+	}
+
+	if (hidden && attempting) {
+		boxed = false
+		attempting = false
+	}
+}
 </script>
-
-
 
 <MainScreen {hidden} />
 <Control />
 <Picker {nameit} bind:this={picker}>
 {#if !hidden}
-	<div class="github"> <a href="https://github.com/agoblinking/earthrock" target="_new"> <Github /> </a> </div>
-	<div class="explore" style="color: {$THEME_COLOR};" >
+
+	<a class="github" href="https://github.com/agoblinking/earthrock" target="_new">
+		<Github />
+	</a>
+
+	<div
+		class="explore"
+		class:boxed
+		style="color: {$THEME_COLOR};"
+		transition:blur={{ duration: 250, amount: 2 }}
+		bind:this={explore}
+	>
 		<div class="partial">
 
 		<a
 			class="logo"
-			style={$THEME_STYLE}
+
 			href="https://www.patreon.com/earthrock"
 			target="_new"
-      on:click={(e) => {
-        if (patreon !== 0) return
-        patreon++
-        e.preventDefault()
-      }}
+			on:click={(e) => {
+				if (patreon !== 0) return
+				patreon++
+				e.preventDefault()
+			}}
 
 			use:nav={{
 				id: Wheel.DENOTE,
 				up: () => top_space,
-        origin: true,
+        		origin: true,
 				down: () => ws[0].name.get(),
 				page_up: () => ws[ws.length - 1].name.get(),
 				page_down: () => ws[0].name.get(),
@@ -133,6 +173,7 @@ $: {
 </Picker>
 
 <style>
+
 :global(.nav) {
 	z-index: 2;
 	color: white;
@@ -153,14 +194,14 @@ $: {
 .logo {
 	color: white !important;
 	padding: 0.25rem;
-  font-size: 2rem;
-  font-weight: bold;
-  text-decoration: none;
-  outline: none;
+  	font-size: 2rem;
+  	font-weight: bold;
+  	text-decoration: none;
+  	outline: none;
 	text-align: center;
-  letter-spacing: 0.5rem;
+  	letter-spacing: 0.5rem;
 	color: rgb(224, 168, 83);
-	transition: all 250ms linear;
+	margin: 0 2rem;
 }
 
 .logo:hover {
@@ -171,6 +212,16 @@ $: {
 	width: 25rem;
 	display: flex;
 	flex-direction: column;
+	box-shadow: 0 0 5rem rgba(38, 0, 255, 0.1),
+	inset 0 0 5rem rgba(38, 0, 255, 0.1);
+}
+
+.boxed {
+	box-shadow:
+		inset 0 5vh 5rem rgba(38, 0, 255, 0.2),
+		inset 0 -5vh 5rem rgba(38, 0, 255, 0.2),
+		inset 40vw 0 5rem rgba(38, 0, 255,  0.2),
+		inset -40vw 0 5rem rgba(38, 0, 255, 0.2) !important;
 }
 
 .explore {
@@ -189,17 +240,12 @@ $: {
 	display: flex;
 	flex-direction: column;
 	z-index: 5;
-	transition: all 50ms linear;
 }
 
 .weaves {
 	display: flex;
 	pointer-events: all;
 	flex-direction: column;
-}
-.events {
-	pointer-events: all;
-	display: flex;
 }
 
 .github {

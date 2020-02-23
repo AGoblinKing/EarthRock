@@ -1,11 +1,11 @@
 import svelte from 'rollup-plugin-svelte'
 import commonjs from 'rollup-plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
-import replaceHtmlVars from 'rollup-plugin-replace-html-vars'
 import rootImport from 'rollup-plugin-root-import'
 import resolve from 'rollup-plugin-node-resolve'
 import glslify from 'rollup-plugin-glslify'
 import visualizer from 'rollup-plugin-visualizer'
+import replace from "replace-in-file"
 
 const production = !process.env.ROLLUP_WATCH
 
@@ -64,11 +64,14 @@ export default {
 			basedir: `src/sys/shader`
 		}),
 
-		replaceHtmlVars({
-			files: `${output}/*.html`,
-			from: /.js\?t=[0-9]+/g,
-			to: `.js?t=${Date.now()}`
-		}),
+		{
+			buildEnd: () =>
+				replace({
+					files: `${output}/*.html`,
+					from: /.js\?t=[0-9]+/g,
+					to: `.js?t=${Date.now()}`
+				})
+		},
 
 		commonjs({
 			namedExports: {

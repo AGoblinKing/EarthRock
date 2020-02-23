@@ -79,6 +79,9 @@ const savewatch = async ($name) => {
 			if (!Wheel.get(id)) return
 			Wheel.start(id)
 		})
+
+
+		
 	}
 
 	requestAnimationFrame(() => loaded.set(true))

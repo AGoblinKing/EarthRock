@@ -38,7 +38,7 @@ const buttons_right = [
 ]
 </script>
 
-{#if !$keyboard }
+{#if !$keyboard}
 <div class="control">
   <div class="left">
     <Buttons keys={buttons_left} />

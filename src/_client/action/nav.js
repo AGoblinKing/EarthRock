@@ -1,13 +1,13 @@
 import { buttons } from "/sys/input.js"
 
-import { write } from "/store.js"
 import { tick } from "/sys/time.js"
+export { cursor } from "/sys/nav.js"
+import { cursor } from "/sys/nav.js"
 
 export const nav_map = {}
 export const goto = (key) => {
 	cursor.set(nav_map[key])
 }
-export const cursor = write(false)
 
 window.addEventListener(`contextmenu`, (e) => {
 	e.preventDefault()

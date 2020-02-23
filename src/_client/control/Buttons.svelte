@@ -1,5 +1,6 @@
 <script>
 import { key_virtual } from "/sys/key.js"
+import { cursor } from "/sys/nav.js"
 import Tile from "/_client/image/Tile.svelte"
 
 import { write } from "/store.js"
@@ -50,8 +51,14 @@ export let keys = []
 			on:touchstart={press(command)}
 			on:touchend={unpress(command)}
 		>
-
-		<Tile width={1} height={1} data={`${tile}`} />
+      {#if command === `keyboard`}
+        <input type="text" class="phantom"
+          on:click={() => {
+            $cursor.focus && $cursor.focus()
+          }}
+        />
+      {/if}
+		  <Tile width={1} height={1} data={`${tile}`} />
 		</div>
     {:else}
     	<div class="button noactive" />

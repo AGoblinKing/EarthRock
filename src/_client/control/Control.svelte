@@ -1,4 +1,5 @@
 <script>
+import { cursor } from "/sys/nav.js"
 import Buttons from "./Buttons.svelte"
 import { keyboard } from "/sys/device.js"
 
@@ -6,24 +7,23 @@ const commands = {
 	_: [undefined, 0],
 	u: [`arrowup`, 668],
 	d: [`arrowdown`, 670],
-	l: [`arrowleft`, 671],
-	r: [`arrowright`, 669],
+	l: [`arrowleft`, 671, () => $cursor.keyboard],
+	r: [`arrowright`, 669, () => $cursor.keyboard],
 	___: [undefined, 0],
 	pdn: [`pagedown`, 702],
 	pup: [`pageup`, 700],
-	ins: [`insert`, 858],
+	ins: [`insert`, 858, () => true],
 	del: [`delete`, 857],
-	yes: [`enter`, 855],
+	yes: [`enter`, 855, () => $cursor.keyboard],
 	noo: [`end`, 856],
 	exp: [`pause`, 820],
 	und: [`backspace`, 12],
 	red: [`redo`, 13],
 	mod: [`shift`, 14],
-	key: [`keyboard`, 511],
 	joy: [[`arrowup`, `arrowdown`, `arrowleft`, `arrowright`], 796]
 }
 
-const { _, u, d, r, l, joy, key, pup, pdn, noo, ins, del, yes, exp } = commands
+const { _, u, d, r, l, joy, pup, pdn, noo, ins, del, yes, exp } = commands
 
 const buttons_left = [
 	[_, u, pup],
@@ -34,7 +34,7 @@ const buttons_left = [
 const buttons_right = [
 	[_, del, _],
 	[ins, exp, noo],
-	[_, yes, key]
+	[_, yes, _]
 ]
 </script>
 

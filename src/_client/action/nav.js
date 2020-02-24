@@ -92,7 +92,7 @@ export default (node, opts) => {
 	node.id = id
 
 	const nav = {
-		update: ({ up, down, page_up, page_down, insert, del, left, right }) => {
+		update: ({ up, down, page_up, page_down, insert, del, left, right, keyboard }) => {
 			// TODO: update to use button defs
 			node.up = up || node.up
 			node.left = left || node.left
@@ -102,6 +102,7 @@ export default (node, opts) => {
 			node.page_up = page_up || node.page_up
 			node.insert = insert || node.insert
 			node.del = del || node.del
+			node.keyboard = keyboard || node.keyboard
 		},
 		destroy: () => {
 			node.removeEventListener(`mousedown`, listener)

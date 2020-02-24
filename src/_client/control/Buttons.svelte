@@ -19,13 +19,12 @@ const move = (command) => {
 
 	return (e) => {
 		center = [
-			e.target.offsetLeft + e.target.offsetWidth / 2,
-			e.target.offsetTop + e.target.offsetHeight / 2
+			e.$cursor.offsetLeft + e.$cursor.offsetWidth / 2,
+			e.$cursor.offsetTop + e.$cursor.offsetHeight / 2
 		]
 
 		if (typeof command === `string`) return
 		const [up, down, left, right] = command
-		console.log(e, center)
 		last_move = [up, left]
 	}
 }
@@ -42,7 +41,7 @@ export let keys = []
 <div class="group">
 {#each keys as row}
   <div class="row">
-	{#each row as [command, tile]}
+	{#each row as [command, tile, keyboard]}
     {#if command}
 		<div
 			class="button"
@@ -51,11 +50,13 @@ export let keys = []
 			on:touchstart={press(command)}
 			on:touchend={unpress(command)}
 		>
-      {#if command === `keyboard`}
+      {#if keyboard && keyboard() && $cursor}
         <input type="text" class="phantom"
           on:click={() => {
-            $cursor.focus && $cursor.focus()
-          }}
+            press(command)
+            unpress(command)
+            $cursor.focus()
+          }}\
         />
       {/if}
 		  <Tile width={1} height={1} data={`${tile}`} />
@@ -70,6 +71,12 @@ export let keys = []
 
 
 <style>
+.phantom {
+  position: absolute;
+  width: 5.5rem;
+  height: 6rem;
+}
+
 .row {
 	display: flex;
 }

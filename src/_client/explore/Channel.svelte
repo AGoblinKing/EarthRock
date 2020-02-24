@@ -28,6 +28,7 @@ $: address = `${space.address()}/${key}`
 
 const do_focus = ({ target }) => {
 	target.click()
+	target.click()
 	target.select()
 	target.focus()
 }
@@ -112,21 +113,22 @@ let chan_node
 
 <div
 	class="channel {side}"
-  	bind:this={chan_node}
+  bind:this={chan_node}
 	use:color={space.name().get()}
 	use:nav={{
 		...navi,
 		left: () => {
 			thread_left.do_edit()
 		},
+    keyboard: true,
 		right: () => {
 			thread_right.do_edit()
 		},
 		insert: () => {
-      		if (key === `!name`) return
+      if (key === `!name`) return
 
- 			key_editing = true
-      		key_new = key
+      key_editing = true
+      key_new = key
 		},
 		del: () => {
 			// don't delete !name
@@ -141,22 +143,23 @@ let chan_node
 	}}
 
 	on:click={(e) => {
-		if (e && e.isTrusted) {
-			cursor.set(chan_node)
-			return
-		}
+    if (e && e.isTrusted) {
+      cursor.set(chan_node)
+      return
+    }
 
-			if (key === `sprite`) {
-				edit_sprite = true
-				requestAnimationFrame(() => {
-					cursor.set(value_node)
-				})
-				return
-			}
+    if (key === `sprite`) {
+      edit_sprite = true
+      requestAnimationFrame(() => {
+        cursor.set(value_node)
+      })
+      return
+    }
 
-			editing = true
-			val = JSON.stringify($value)
-		}}
+    editing = true
+    val = JSON.stringify($value)
+  }}
+
 >
 
 <Thread {channel} {space} {weave} {nothread} bind:this={thread_left}/>
@@ -213,7 +216,7 @@ let chan_node
 		type="text"
 		bind:value={val}
 		placeholder="JSON PLZ"
-   		on:focus={do_focus}
+   	on:focus={do_focus}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) return cancel()
 			if (which !== 13 && code !== `ControlRight`) return

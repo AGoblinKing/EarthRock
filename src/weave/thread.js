@@ -79,7 +79,7 @@ const warp_create = (data) => {
 
 export const chain = (weave, address, right) => {
 	if (right) {
-		return weave.chain(address, true).slice(1)
+		return weave.chain(address, true).slice(0, -1)
 	}
 	return weave.chain(address).slice(0, -1)
 }

@@ -84,7 +84,7 @@ const space_bird = write(false)
 		use:nav={{
 			id: space.address(),
 			up: navi.up,
-			left: toggle,
+			right: toggle,
 			down: () => chans.length > 0 ? `${space.address()}/${chans[0][0]}` : navi.down(),
 			page_up: navi.page_up,
 			page_down: navi.down,
@@ -106,13 +106,15 @@ const space_bird = write(false)
 				})
 			}
 		}}
-	>
-		<div class="postage" on:click={toggle}>
-			<Postage address={`${$w_name}${Wheel.DENOTE}${$name}`}/>
-		</div>
+>
 		<div class="name">
 			{$name}
 		</div>
+
+		<div class="postage" on:click={toggle}>
+			<Postage address={`${$w_name}${Wheel.DENOTE}${$name}`}/>
+		</div>
+
 	</div>
 {/if}
 
@@ -155,8 +157,10 @@ const space_bird = write(false)
 }
 
 .space {
-	box-shadow: inset 10rem 10rem 0 rgba(0,0,0,0.25),
-		inset -10rem -10rem 0 rgba(0,0,0,0.25);
+	box-shadow: inset 0rem 5rem 0 rgba(0,0,0,0.1),
+		inset 0rem -5rem 0 rgba(0,0,0,0.1),
+		inset 13rem 0 0 rgba(0,0,0,0.1),
+		inset -13rem 0 0 rgba(0,0,0,0.1);
 	display: flex;
 	align-items: center;
 	padding: 0.5rem;
@@ -166,6 +170,7 @@ const space_bird = write(false)
 }
 
 .name {
+
 	flex: 1;
 	font-size: 2rem;
 }
@@ -180,9 +185,9 @@ const space_bird = write(false)
 }
 :global(.nav).space {
 	box-shadow:
-		inset 0 0.5rem 0 rgba(224, 168, 83,0.5),
-		inset 0 -0.5rem 0 rgba(224, 168, 83,0.5),
-		inset 3rem 0 0 rgba(224, 168, 83,1),
-		inset -3rem 0 0 rgba(224, 168, 83,1) !important;
+		inset 0 1rem 0 rgba(224, 168, 83,0.5),
+		inset 0 -1rem 0 rgba(224, 168, 83,0.5),
+		inset 13rem 0 0 rgba(224, 168, 83,1),
+		inset -13rem 0 0 rgba(224, 168, 83,1) !important;
 }
 </style>

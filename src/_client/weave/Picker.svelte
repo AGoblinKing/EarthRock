@@ -1,6 +1,6 @@
 <script>
 	import Tile from "/_client/image/Tile.svelte"
-	import { load, image } from "/sys/file.js"
+	import { load } from "/sys/file.js"
 
 	import * as warps from "/weave/warps.js"
 
@@ -73,11 +73,11 @@ $: {
 		weave.write({
 			"!info": {
 				type: `space`,
-				value: {
+				value: last.name ? {
 					from: last.name,
 					"save last": last.lastModified,
 					size: last.size
-				}
+				} : {}
 			}
 		})
 
@@ -91,14 +91,12 @@ $: {
 	class="nameprompt"
 
 >
-	<div class="spirit" 	use:color={`${Wheel.DENOTE}${name}`}>
-	{#await image(name) then src}
-		<img  class="flex" {src} alt="fileicon"/>
-	{/await}
+	<div class="spirit" use:color={`${Wheel.DENOTE}${name}`}>
+		<Tile width={1} height={1} text={name} />
 	</div>
 
 	<input
-  	use:color={`${Wheel.DENOTE}${name}`}
+  		use:color={`${Wheel.DENOTE}${name}`}
 		class="nameit"
 		on:keydown={(e) => {
 			if (e.key.toLowerCase() === `end`) {
@@ -110,22 +108,15 @@ $: {
 		}}
 		autofocus
 		type="text"
-    autocapitalize="none"
-    on:focus={(e) => {
-      e.target.click()
-      e.target.select()
-    }}
+		autocapitalize="none"
+		on:focus={(e) => {
+			e.target.click()
+			e.target.select()
+		}}
 		bind:value={name}
 		placeholder="Name it"
 	/>
-	<div class="controls" 	use:color={`${Wheel.DENOTE}${name}`}>
-		<div class="false" on:click={() => { nameit = false }}>
-      <Tile width={1} height={1} data="856" />
-    </div>
-		<div class="true" on:click={play_it}>
-      <Tile width={1} height={1} data="855" />
-    </div>
-	</div>
+
 </div>
 {/if}
 
@@ -149,15 +140,20 @@ $: {
 
 <style>
   .spirit {
-    margin: 1rem;
+	padding: 5rem;
     height: 10rem;
     display: flex;
     width: 10rem;
-    border: 5rem solid rgba(0,0,0,0.5);
+	border-radius: 2rem;
+	background-color: #0c4213;
+	box-shadow: 0 0 2rem #0c4213;
   }
   .nameit {
-    background-color: #111;
-    border: 0.25rem solid #333;
+	position: absolute;
+	margin-top: 7rem;
+	padding: 0.2rem;
+	padding: 0rem;
+	border-radius: none !important;
   }
   .file {
     display: none;
@@ -173,27 +169,11 @@ $: {
     bottom: 0;
     z-index: 4;
     color: #0c4213;
+	box-shadow: inset 0 5vh 5rem rgba(255, 255, 255, 0.01),
+	    inset 0 -5vh 5rem rgba(255, 255, 255, 0.01),
+	    inset 90vw 0 5rem rgba(255, 255, 255, 0.01),
+	    inset -90vw 0 5rem rgba(255, 255, 255, 0.01) !important;
   }
-
-  .controls {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .false:hover,
-  .true:hover {
-    background-color: blue;
-  }
-  .false,
-  .true {
-    display: flex;
-    padding: 0.25rem;
-    margin: 0.25rem;
-    height: 3rem;
-    width: 3rem;
-    border-radius: 2rem;
-    background-color: rgba(224, 168, 83,0.1);
-  }
-
   .nameprompt {
     flex-direction: column;
     display: flex;
@@ -201,7 +181,6 @@ $: {
     justify-content: center;
     position: absolute;
     top: 50%;
-
     left: 50%;
     transform: translate(-50%, -50%);
 

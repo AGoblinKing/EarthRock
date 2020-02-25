@@ -41,10 +41,10 @@ let controls
 		page_down: () => spacees.length > 0 ? `${$name}${Wheel.DENOTE}${spacees[0][0]}` : navi.down,
 		page_up: () => navi.up(),
 		left: () => {
-			controls.toggle()
+			controls.save_it()
 		},
 		right: () => {
-			controls.save_it()
+			controls.toggle()
 		},
 		insert: () => {
 			const space_name = random(2)
@@ -71,31 +71,28 @@ let controls
 		}
 	}}
 >
-	<Controls {weave} bind:this={controls}>
-		<div class="namezor">
+	<div class="namezor">
 			{$name}
-		</div>
-	</Controls>
-</div>
-
-
-	<div class="spaces">
-		{#each spacees as [s_name,space], i (s_name)}
-			<Space
-				{space}
-				{weave}
-				{i}
-				navi={{
-					up: () => i === 0 ? $name : get_up(i),
-					page_up: () => i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
-					down: () => i === spacees.length - 1 ? navi.down() : `${$name}/${spacees[i + 1][0]}`
-				}}
-			/>
-
-		{/each}
-
 	</div>
+	<Controls {weave} bind:this={controls}/>
 
+</div>
+<div class="spaces">
+	{#each spacees as [s_name,space], i (s_name)}
+		<Space
+			{space}
+			{weave}
+			{i}
+			navi={{
+				up: () => i === 0 ? $name : get_up(i),
+				page_up: () => i === 0 ? $name : `${$name}/${spacees[i - 1][0]}`,
+				down: () => i === spacees.length - 1 ? navi.down() : `${$name}/${spacees[i + 1][0]}`
+			}}
+		/>
+
+	{/each}
+
+</div>
 
 <div class="fakespace" use:dark={$name}></div>
 
@@ -111,14 +108,15 @@ let controls
 }
 
 .weave {
-	text-align: left;
 	display: block;
+
+	align-items: center;
 	padding: 1rem;
 	font-size: 2rem;
 	box-shadow: inset 0rem 5rem 0 rgba(255,255,255,0.05),
 		inset 0rem -5rem 0 rgba(255,255,255,0.05),
-		inset 5rem 0 0 rgba(255,255,255,0.05),
-		inset -5rem 0 0 rgba(255,255,255,0.05);
+		inset 15rem 0 0 rgba(255,255,255,0.05),
+		inset -15rem 0 0 rgba(255,255,255,0.05);
 
 	border-radius: 0.5rem;
 }
@@ -128,17 +126,18 @@ let controls
 }
 
 .namezor {
-	margin: 0 1rem;
-  padding: 0.5 1rem;
+ 	padding: 0.5 1rem;
 	user-select: none;
-	flex: 1;
+	margin-top: 0.5rem;
+	width: 15.25rem;
+	float: left;
 }
 
 :global(.nav).weave {
 	box-shadow:
-		inset 0 0.5rem 0 rgba(224, 168, 83,0.5),
-		inset 0 -0.5rem 0 rgba(224, 168, 83,0.5),
-		inset 5rem 0 0 rgba(224, 168, 83,1),
-		inset -5rem 0 0 rgba(224, 168, 83,1) !important;
+		inset 0 -0.75rem 0 rgba(224, 168, 83,1),
+		inset 0 0.75rem 0 rgba(224, 168, 83,1),
+		inset 12.5rem 0 0 rgba(224, 168, 83,0.5),
+		inset -12.5rem 0 0 rgba(224, 168, 83,0.5) !important;
 }
 </style>

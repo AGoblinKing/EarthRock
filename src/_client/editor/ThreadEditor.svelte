@@ -1,5 +1,5 @@
 <script>
-import { THEME_BG, THEME_BORDER } from "/sys/flag.js"
+import { THEME_BG } from "/sys/flag.js"
 import { compile } from "/weave/thread.js"
 
 export let code
@@ -25,15 +25,18 @@ const execute = () => {
 
 
 <textarea
-	spellcheck="false"
+	spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
 	class="edit"
 	type="text"
-	style={`background-color: ${$THEME_BG}; border:0.5rem solid ${$THEME_BORDER};`}
+	style={`background-color: ${$THEME_BG};`}
 	use:focus
 	bind:value={code}
+	color={code}
 	on:click={(e) => e.stopPropagation()}
 	on:keydown={(e) => {
-		if (e.key.toLowerCase() === `end`) {
+		switch (e.key.toLowerCase()) {
+			case `escape`:
+			case `end`:
 			e.preventDefault()
 			e.stopPropagation()
 
@@ -41,6 +44,7 @@ const execute = () => {
 			ondone()
 			return
 		}
+
 		if (e.ctrlKey && e.which === 13) {
 			execute()
 			e.preventDefault()
@@ -54,15 +58,18 @@ const execute = () => {
 
 <style>
 .edit {
-  position: fixed;
-  left: 25%;
-  top: 20%;
-  width: 60rem;
-  height: 60rem;
-  z-index: 3;
-  margin: 0;
-  padding: 1rem;
-  color: rgb(224, 168, 83);
-  user-select: all !important;
+	position: fixed;
+	left: 25%;
+	right: 0;
+	top: calc(25%/2);
+	bottom: 0;
+	z-index: 3;
+	margin: 0;
+	width: 50%;
+	height: 75%;
+	padding: 3rem;
+	color: rgb(224, 168, 83);
+	border-radius: 2rem;
+	user-select: all !important;
 }
 </style>

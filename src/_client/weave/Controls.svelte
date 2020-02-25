@@ -38,12 +38,6 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 <div
   class="controls"
 >
- <div class="postage" on:click={toggle}>
-    <Postage
-      address={`${Wheel.DENOTE}${$name}`}
-    />
-  </div>
-  <slot/>
   {#if $name !== Wheel.SYSTEM}
   <div
     class="save"
@@ -55,6 +49,11 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
   </div>
   {/if}
 
+ <div class="postage" on:click={toggle}>
+    <Postage
+      address={`${Wheel.DENOTE}${$name}`}
+    />
+  </div>
 </div>
 
 <style>
@@ -66,7 +65,7 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
 
 .controls {
   display: flex;
-  flex: 1;
+
   align-items: center;
   margin: 0 0.5rem;
 }

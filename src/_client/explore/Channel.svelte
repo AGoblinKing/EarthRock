@@ -113,22 +113,22 @@ let chan_node
 
 <div
 	class="channel {side}"
-  bind:this={chan_node}
+  	bind:this={chan_node}
 	use:color={space.name().get()}
 	use:nav={{
 		...navi,
 		left: () => {
 			thread_left.do_edit()
 		},
-    keyboard: true,
+    	keyboard: true,
 		right: () => {
 			thread_right.do_edit()
 		},
 		insert: () => {
-      if (key === `!name`) return
+			if (key === `!name`) return
 
-      key_editing = true
-      key_new = key
+			key_editing = true
+			key_new = key
 		},
 		del: () => {
 			// don't delete !name
@@ -137,7 +137,7 @@ let chan_node
 			space.remove(key)
 			const up = navi.up()
 			const down = navi.down()
-			// exhaust upwards then try downwards
+			// exhaust up+wards then try downwards
 			goto(up === `${space.address()}/!name` && down.indexOf(space.address()) !== -1 ? down : up)
 		}
 	}}
@@ -166,8 +166,8 @@ let chan_node
 {#if key_editing}
 	<input type="text" class="edit" autofocus
 		bind:value={key_new}
-    on:focus={do_focus}
-    autocapitalize="none"
+		on:focus={do_focus}
+		autocapitalize="none"
 		on:keydown={({ which, code }) => {
 			if (code === `End`) {
 				key_editing = false
@@ -210,13 +210,13 @@ let chan_node
 </div>
 {:else}
 	<input
-    	autocapitalize="none"
+    	spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
 		class="edit"
 		use:focusd
 		type="text"
 		bind:value={val}
 		placeholder="JSON PLZ"
-   	on:focus={do_focus}
+   		on:focus={do_focus}
 		on:keydown={({ which, code }) => {
 			if (code === `End`) return cancel()
 			if (which !== 13 && code !== `ControlRight`) return

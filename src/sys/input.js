@@ -3,7 +3,7 @@ import * as Mouse from "/sys/mouse.js"
 import * as Key from "/sys/key.js"
 import * as Time from "/sys/time.js"
 import * as Gamepad from "/sys/gamepad.js"
-
+import { cursor } from "/sys/nav.js"
 import { v3 } from "twgl.js"
 
 const { length, add, mulScalar } = v3
@@ -26,18 +26,17 @@ export const translate = read([0, 0, 0], (set) => {
 	const b_key = [0, 0, 0]
 	// frame stuff has to be fast :/
 	Time.frame.listen(() => {
-		const { w, a, s, d, q, e } = Key.keys.get()
+		if (cursor.get().id !== `$game`) return
+		const { up, down, left, right } = buttons.get()
 
 		b_key[0] = 0
 		b_key[1] = 0
 		b_key[2] = 0
 
-		if (w) b_key[1] -= 1
-		if (s) b_key[1] += 1
-		if (a) b_key[0] -= 1
-		if (d) b_key[0] += 1
-		if (q) b_key[2] += 1
-		if (e) b_key[2] -= 1
+		if (up) b_key[1] -= 1
+		if (down) b_key[1] += 1
+		if (left) b_key[0] -= 1
+		if (right) b_key[0] += 1
 
 		if (length(b_key) === 0) return
 
@@ -72,17 +71,20 @@ Mouse.scroll.listen((vel) => {
 // input to replicate to remotes
 const button_map = {
 	home: ({ home }, { start }) => home || start,
-	up: ({ arrowup, tab, shift }, { up }) => arrowup || (tab && shift) || up,
-	down: ({ arrowdown, tab, shift }, { down }) => arrowdown || (tab && !shift) || down,
+
+	left: ({ arrowleft, a }, { left }) => a || arrowleft || left,
+	right: ({ arrowright, d }, { right }) => d || arrowright || right,
+	up: ({ arrowup, tab, shift, w }, { up }) => arrowup || (tab && shift) || up || w,
+	down: ({ arrowdown, tab, shift, s }, { down }) => arrowdown || (tab && !shift) || down || s,
 	pagedown: ({ pagedown, ' ': space, shift }, { righttrigger }) => pagedown || righttrigger || (space && !shift),
 	pageup: ({ pageup, ' ': space, shift }, { rightshoulder }) => pageup || rightshoulder || (space && shift),
+
 	insert: ({ insert, '=': equal }, { x }) => insert || x || equal,
 	delete: ({ delete: del, backspace }, { y }) => del || y || backspace,
-	left: ({ arrowleft }, { left }) => arrowleft || left,
-	right: ({ arrowright }, { right }) => arrowright || right,
 	confirm: ({ enter }, { a }) => a || enter,
 	cancel: ({ end, escape }, { b }) => end || b || escape,
 	editor: ({ pause, tilde }, { select }) => tilde || pause || select,
+
 	undo: ({ control, z, backspace }) => (control && z) || backspace,
 	redo: ({ shift, control, z, backspace, redo }) => redo || (shift && control && z) || (shift && backspace)
 }

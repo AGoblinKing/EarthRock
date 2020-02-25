@@ -6,6 +6,8 @@ import { cursor } from "/sys/nav.js"
 
 export const nav_map = {}
 export const goto = (key) => {
+	if (!nav_map[key]) return
+
 	cursor.set(nav_map[key])
 }
 
@@ -66,6 +68,7 @@ tick.listen(() => {
 
 	// "instant" other option
 	target.scrollIntoView({ block: `center` })
+	if (target === null) return
 	cursor.set(target)
 })
 

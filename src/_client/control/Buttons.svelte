@@ -18,6 +18,7 @@ const move = (command) => {
 	let last_move
 
 	return (e) => {
+		if (!e.$cursor) return
 		center = [
 			e.$cursor.offsetLeft + e.$cursor.offsetWidth / 2,
 			e.$cursor.offsetTop + e.$cursor.offsetHeight / 2
@@ -56,7 +57,7 @@ export let keys = []
             press(command)
             unpress(command)
             $cursor.focus()
-          }}\
+          }}
         />
       {/if}
 		  <Tile width={1} height={1} data={`${tile}`} />

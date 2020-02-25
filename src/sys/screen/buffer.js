@@ -46,12 +46,12 @@ const buffer = {
 	},
 	color: {
 		numComponents: 4,
-		data: new Int32Array([1.0, 1.0, 1.0, 1.0]),
+		data: new Float32Array([1.0, 1.0, 1.0, 1.0]),
 		divisor: 1
 	},
 	color_last: {
 		numComponents: 4,
-		data: new Int32Array(4),
+		data: new Float32Array(4),
 		divisor: 1
 	},
 	sprite: {
@@ -219,7 +219,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 		each(buffer)(([key_b, { data, divisor, numComponents }]) => {
 			if (divisor !== 1 || key_b.indexOf(`_last`) !== -1) return
-			console.log(key_b)
+
 			const bdx = idx * numComponents
 
 			// alias positon to translate
@@ -244,7 +244,7 @@ tick.listen(() => requestAnimationFrame(() => {
 
 				data_last.set([...data.subarray(bdx, bdx + numComponents)], bdx)
 			}
-			console.log(update_set)
+
 			return data.set(update_set, bdx)
 		})
 	})

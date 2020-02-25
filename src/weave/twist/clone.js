@@ -14,7 +14,8 @@ export default extend({
 		//  we got a chain to clone!
 		const code = decompile({
 			address: other_id,
-			weave: weave_other
+			weave: weave_other,
+			right
 		})
 
 		const address = `${id}/${key}`

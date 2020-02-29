@@ -81,6 +81,7 @@ export const chain = (weave, address, right) => {
 	if (right) {
 		return weave.chain(address, true).slice(0, -1)
 	}
+
 	return weave.chain(address).slice(0, -1)
 }
 
@@ -122,6 +123,7 @@ export const compile = ({
 	let parts = code
 		.replace(/[\r\n]/g, ``)
 		.split(`=>`)
+		.filter((i) => i !== ``)
 
 	if (!right) parts = parts.reverse()
 
@@ -130,6 +132,10 @@ export const compile = ({
 	// remove old thread
 	weave.remove(...chain(weave, address, right))
 
+	if (parts.length === 0) {
+		return
+	}
+
 	const space = weave.get_id(address.split(Wheel.DENOTE)[0])
 
 	let connection = address
@@ -137,8 +143,6 @@ export const compile = ({
 	// lets create these warps
 	const ids = parts.map((part) => {
 		part = part.trim()
-
-		if (part === ``) return
 
 		const w_data = warp_create(part)
 		w_data.id = `${prefix}${cuid()}`

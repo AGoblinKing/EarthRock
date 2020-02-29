@@ -32,6 +32,7 @@ $: {
 				last = files[i]
 				nameit = load(e.target.result)
 			}
+	
 			reader.readAsDataURL(files[i])
 		}
 }
@@ -64,6 +65,7 @@ $: {
 			.trim()
 			.toLowerCase()
 			.replace(/ /g, `_`)
+	
 		Wheel.spawn({
 			[name]: nameit
 		})
@@ -89,7 +91,10 @@ $: {
 {#if nameit}
 <div
 	class="nameprompt"
-
+	on:mouseover={(e) => {
+		e.preventDefault()
+		e.preventPropogation()
+	}}
 >
 	<div class="spirit" use:color={`${Wheel.DENOTE}${name}`}>
 		<Tile width={1} height={1} text={name} />
@@ -101,6 +106,14 @@ $: {
 		on:keydown={(e) => {
 			if (e.key.toLowerCase() === `end`) {
 				nameit = false
+				return
+			}
+			if (e.key === ` `) {
+				e.preventDefault()
+				requestAnimationFrame(() => {
+					name += `_`
+					e.target.value = name
+				})
 				return
 			}
 			if (e.which !== 13) return
@@ -141,26 +154,26 @@ $: {
 <style>
   .spirit {
 	padding: 5rem;
-    height: 10rem;
+    height: 15rem;
     display: flex;
-    width: 10rem;
+    width: 15rem;
 	border-radius: 2rem;
 	background-color: #0c4213;
-	box-shadow: 0 0 2rem #0c4213;
+	box-shadow:inset 0 0 2rem #0c4213;
   }
+
   .nameit {
 	position: absolute;
-	margin-top: 7rem;
+	margin-top: 9rem;
 	padding: 0.2rem;
 	padding: 0rem;
 	border-radius: none !important;
   }
+
   .file {
     display: none;
   }
-  .flex {
-    flex: 1;
-  }
+
   .picker {
     position: absolute;
     top: 0;
@@ -174,6 +187,7 @@ $: {
 	    inset 90vw 0 5rem rgba(255, 255, 255, 0.01),
 	    inset -90vw 0 5rem rgba(255, 255, 255, 0.01) !important;
   }
+
   .nameprompt {
     flex-direction: column;
     display: flex;

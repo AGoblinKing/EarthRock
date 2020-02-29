@@ -21,7 +21,6 @@ let key_editing = false
 
 $: [key, value] = channel
 
-$: edit = $value
 $: editing = focus
 
 $: address = `${space.address()}/${key}`
@@ -46,17 +45,18 @@ const execute = () => {
 
 	try {
 		value.set(json(val.trim()))
-
-		const new_address = `${weave.name.get()}/${value.get()}/!name`
-
-		if (key === `!name` && $cursor.id === address) {
-			requestAnimationFrame(() => {
-				goto(new_address)
-			})
-		}
 	} catch (ex) {
-		// no boggie
+		value.set(`${val.trim()}`)
+		if (!val) debugger
 	}
+
+	if (key === `!name` && $cursor.id === address) {
+		const new_address = `${weave.name.get()}/${value.get()}/!name`
+		requestAnimationFrame(() => {
+			goto(new_address)
+		})
+	}
+
 	val = ``
 	executed()
 }
@@ -168,9 +168,20 @@ let chan_node
 		bind:value={key_new}
 		on:focus={do_focus}
 		autocapitalize="none"
-		on:keydown={({ which, code }) => {
+		on:keydown={(e) => {
+			const { which, code, key } = e
+
 			if (code === `End`) {
 				key_editing = false
+				return
+			}
+
+			if (key === ` `) {
+				e.preventDefault()
+				requestAnimationFrame(() => {
+					key_new = key_new === undefined ? `_` : `${key_new}_`
+					e.target.value = key_new
+				})
 				return
 			}
 
@@ -203,7 +214,7 @@ let chan_node
 	{:else}
 	<div class="value">
 		{
-		JSON.stringify(edit)
+		JSON.stringify($value)
 		}
 	</div>
 	{/if}
@@ -217,13 +228,27 @@ let chan_node
 		bind:value={val}
 		placeholder="JSON PLZ"
    		on:focus={do_focus}
-		on:keydown={({ which, code }) => {
+		on:keydown={(e) => {
+			const { key, which, code } = e
+
+			if (key === ` `) {
+				e.preventDefault()
+				requestAnimationFrame(() => {
+					val = val === undefined ? `_` : `${val}_`
+					e.target.value = val
+				})
+				return
+			}
+
 			if (code === `End`) return cancel()
 			if (which !== 13 && code !== `ControlRight`) return
 			execute()
 		}}
+
 		on:blur={() => {
-			execute()
+			if (editing) {
+				execute()
+			}
 		}}
 	/>
 {/if}

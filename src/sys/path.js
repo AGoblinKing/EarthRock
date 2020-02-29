@@ -19,7 +19,7 @@ const update = () => {
 		? window.location.search.slice(1)
 		: window.location.pathname.slice(1)
 
-	path.set(decodeURI(path_str))
+	path.set(decodeURI(path_str).replace(/ /g, `_`))
 }
 
 update()

@@ -72,7 +72,7 @@ let controls
 	}}
 >
 	<div class="namezor">
-			{$name}
+		{$name}
 	</div>
 	<Controls {weave} bind:this={controls}/>
 
@@ -109,7 +109,6 @@ let controls
 
 .weave {
 	display: block;
-
 	align-items: center;
 	padding: 1rem;
 	font-size: 2rem;

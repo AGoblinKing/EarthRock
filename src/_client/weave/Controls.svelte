@@ -25,6 +25,7 @@ export const toggle = (e) => {
 
 	runs = !runs
 }
+
 export const save_it = (e) => {
 	if (e) {
 		e.preventDefault()
@@ -32,13 +33,15 @@ export const save_it = (e) => {
 	}
 	save(weave)
 }
+
 $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_BG};`
 </script>
 
+{#if $name !== Wheel.SYSTEM}
 <div
   class="controls"
 >
-  {#if $name !== Wheel.SYSTEM}
+
   <div
     class="save"
     on:click={save_it}
@@ -47,15 +50,16 @@ $: style = `border: 0.25rem solid ${$THEME_BORDER}; background-color: ${$THEME_B
       <img {src} alt="save" />
     {/await}
   </div>
-  {/if}
+
 
  <div class="postage" on:click={toggle}>
     <Postage
       address={`${Wheel.DENOTE}${$name}`}
     />
   </div>
-</div>
 
+</div>
+{/if}
 <style>
 .postage {
   width: 2rem;

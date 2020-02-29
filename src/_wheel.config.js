@@ -9,7 +9,7 @@ const production = !process.env.ROLLUP_WATCH
 const output = `docs`
 
 export default {
-	input: `src/_wheel/wheel.js`,
+	input: `src/_wheel/wheel_worker.js`,
 	treeshake: true,
 	external: [
 		`cuid`,

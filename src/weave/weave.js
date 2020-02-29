@@ -57,6 +57,7 @@ const proto_weave = {
 			const $rezed = this.rezed.get()
 			const rz_self = this.is_rezed()
 			const $wefts = this.wefts.get()
+			const $wefts_r = this.wefts_r.get()
 
 			let dirty_wefts = false
 
@@ -64,6 +65,11 @@ const proto_weave = {
 				if ($wefts[id]) {
 					dirty_wefts = true
 					delete $wefts[id]
+				}
+
+				if ($wefts_r[id]) {
+					dirty_wefts = true
+					delete $wefts[$wefts_r[id]]
 				}
 
 				const k = $warps[id]

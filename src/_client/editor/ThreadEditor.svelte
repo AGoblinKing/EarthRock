@@ -39,7 +39,6 @@ const execute = () => {
 			case `end`:
 			e.preventDefault()
 			e.stopPropagation()
-
 			editing = false
 			ondone()
 			return
@@ -58,15 +57,12 @@ const execute = () => {
 
 <style>
 .edit {
-	position: fixed;
-	left: 25%;
-	right: 0;
-	top: calc(25%/2);
-	bottom: 0;
+	position: fixed; 
+	left: 10vw;
+	width: 75vw;
+	height: 75vh;
+	top: 10vh;
 	z-index: 3;
-	margin: 0;
-	width: 50%;
-	height: 75%;
 	padding: 3rem;
 	color: rgb(224, 168, 83);
 	border-radius: 2rem;

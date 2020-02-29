@@ -76,7 +76,7 @@ const button_map = {
 	right: ({ arrowright, d }, { right }) => d || arrowright || right,
 	up: ({ arrowup, tab, shift, w }, { up }) => arrowup || (tab && shift) || up || w,
 	down: ({ arrowdown, tab, shift, s }, { down }) => arrowdown || (tab && !shift) || down || s,
-	pagedown: ({ pagedown, ' ': space, shift }, { righttrigger }) => pagedown || righttrigger || (space && !shift),
+	pagedown: ({ pagedown }, { righttrigger }) => pagedown || righttrigger,
 	pageup: ({ pageup, ' ': space, shift }, { rightshoulder }) => pageup || rightshoulder || (space && shift),
 
 	insert: ({ insert, '=': equal }, { x }) => insert || x || equal,

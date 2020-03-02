@@ -1,6 +1,6 @@
-import Weave from "/weave/weave.js"
-import { write, read } from "/store.js"
-import { values, keys, map, store_JSON } from "/object.js"
+import Weave from "/weave/weave"
+import { write, read } from "/lib/store"
+import { values, keys, map, store_JSON } from "/lib/object.js"
 
 export * from "/weave/thread.js"
 

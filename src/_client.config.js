@@ -2,41 +2,28 @@ import svelte from 'rollup-plugin-svelte'
 import commonjs from 'rollup-plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
 import rootImport from 'rollup-plugin-root-import'
-import resolve from 'rollup-plugin-node-resolve'
+import resolve from '@rollup/plugin-node-resolve'
 import glslify from 'rollup-plugin-glslify'
 import visualizer from 'rollup-plugin-visualizer'
 import replace from "replace-in-file"
+import sucrase from '@rollup/plugin-sucrase'
+
+import { external } from "./_external.config"
 
 const production = !process.env.ROLLUP_WATCH
 
 const output = `docs`
 
 export default {
-	input: `src/_client/client.js`,
+	input: `src/_client/client.ts`,
 	treeshake: true,
-	external: [
-		`cuid`,
-		`expr-eval`,
-		`color`,
-		`tone`,
-		`twgl`,
-		`piexifjs`,
-		`scribbletune`
-	],
+	external,
+
 	output: {
 		sourcemap: !production,
 		format: `iife`,
 		name: `app`,
-		file: `${output}/bin/client.bundle.js`,
-		globals: {
-			cuid: `cuid`,
-			color: `Color`,
-			tone: `Tone`,
-			"expr-eval": `exprEval`,
-			twgl: `twgl`,
-			piexifjs: `EXT.piexifjs`,
-			scribbletune: `scribble`
-		}
+		file: `${output}/bin/client.bundle.js`
 	},
 
 	plugins: [
@@ -47,6 +34,16 @@ export default {
 		rootImport({
 			root: __dirname,
 			useEntry: `prepend`
+		}),
+
+		resolve({
+			browser: true,
+			extensions: [`.js`, `.ts`]
+		}),
+
+		sucrase({
+			exclude: [`node_modules/**`],
+			transforms: [`typescript`]
 		}),
 
 		svelte({
@@ -78,7 +75,7 @@ export default {
 				'svelte/easing/index.js': [`linear`]
 			}
 		}),
-		resolve({ browser: true }),
+
 		production && terser()
 	],
 

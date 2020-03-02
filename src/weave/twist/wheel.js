@@ -3,6 +3,7 @@ import { extend } from "/object.js"
 export default extend({
 	rez () {
 		this.cancel = this.value.listen((wheels) => {
+			if (typeof wheels === `string`) wheels = [wheels]
 			if (!Array.isArray(wheels)) return wheels
 			wheels = new Set(wheels)
 
@@ -19,7 +20,7 @@ export default extend({
 				})
 
 				// add all display info
-				worker.onmessage = ({ data }) => {
+				worker.onmessage = ({ data }): void => {
 					console.log(data)
 				}
 			})

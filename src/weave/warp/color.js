@@ -2,7 +2,7 @@ import { proto_warp } from "./warp.js"
 import { extend } from "/object.js"
 
 import { read, transformer } from "/store.js"
-import Color from "color"
+import Color from "color-js"
 
 const update_color = (val_n) => {
 	const c = Color(val_n)

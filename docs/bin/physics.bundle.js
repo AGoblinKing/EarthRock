@@ -7,7 +7,7 @@
 		Object.entries(obj).forEach(fn);
 	const values = Object.values;
 
-	/* @license twgl.js 4.14.1 Copyright (c) 2015, Gregg Tavares All Rights Reserved.
+	/* @license twgl.js 4.14.2 Copyright (c) 2015, Gregg Tavares All Rights Reserved.
 	Available via the MIT license.
 	see: http://github.com/greggman/twgl.js for details */
 	/*

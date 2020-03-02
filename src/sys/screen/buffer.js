@@ -1,4 +1,4 @@
-import * as twgl from "twgl"
+import * as twgl from "twgl.js"
 
 import { TIME_TICK_RATE } from "/sys/flag.js"
 import { tick } from "/sys/time.js"

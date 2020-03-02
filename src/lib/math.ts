@@ -1,6 +1,6 @@
 import expr from "expr-eval"
-import { v3, m4 } from "twgl"
-import Color from "color"
+import { v3, m4 } from "twgl.js"
+import Color from "color-js"
 
 v3.setDefaultType(Array)
 

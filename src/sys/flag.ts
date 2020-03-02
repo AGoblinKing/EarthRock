@@ -1,5 +1,5 @@
-import { write, read } from "/store.js"
-import Color from "color"
+import { write, read } from "store"
+import Color from "color-js"
 
 export const TIME_TICK_RATE = write(100)
 

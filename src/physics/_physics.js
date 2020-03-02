@@ -1,5 +1,5 @@
 import { each } from "/object.js"
-import Velocity from "./_velocity.js"
+import Velocity from "./velocity.js"
 
 const handlers = {
 	// solve for the next 100ms

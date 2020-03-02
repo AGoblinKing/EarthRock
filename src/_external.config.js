@@ -1,0 +1,50 @@
+import commonjs from 'rollup-plugin-commonjs'
+import { terser } from 'rollup-plugin-terser'
+
+import sucrase from '@rollup/plugin-sucrase'
+import resolve from '@rollup/plugin-node-resolve'
+
+import visualizer from 'rollup-plugin-visualizer'
+
+const output = `docs`
+
+export const external = [
+	`cuid`,
+	`expr-eval`,
+	`color-js`,
+	`tone`,
+	`twgl.js`,
+	`piexifjs`,
+	`scribbletune`
+]
+
+export default {
+	input: `src/_external/external.ts`,
+	treeshake: false,
+	output: {
+		sourcemap: false,
+		format: `cjs`,
+		file: `${output}/bin/external.bundle.js`
+	},
+
+	plugins: [
+		visualizer({
+			filename: `docs/external.html`
+		}),
+
+		resolve({
+			browser: true,
+			extensions: [`.js`, `.ts`]
+		}),
+		sucrase({
+			exclude: [`node_modules/**`],
+			transforms: [`typescript`]
+		}),
+		commonjs(),
+		terser()
+	],
+
+	watch: {
+		clearScreen: true
+	}
+}

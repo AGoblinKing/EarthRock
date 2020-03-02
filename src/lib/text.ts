@@ -1,4 +1,4 @@
-import { TILE_COUNT } from "/sys/flag.js"
+import { TILE_COUNT } from "sys/flag"
 
 const str_color = (str) => {
 	if (!str) return `#111`

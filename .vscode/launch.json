@@ -9,7 +9,7 @@
     "request": "launch",
     "name": "Firefox",
     "webRoot": "${workspaceFolder}",
-	"reAttach": true,
+	  "reAttach": true,
     "url": "http://localhost:5000"
   },
     {

@@ -1,4 +1,4 @@
-import * as twgl from "twgl"
+import * as twgl from "twgl.js"
 
 import { write } from "/store.js"
 import { frame } from "/sys/time.js"

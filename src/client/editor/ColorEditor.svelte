@@ -1,5 +1,5 @@
 <script>
-import Color from "color"
+import Color from "color-js"
 
 export let value
 
@@ -22,6 +22,7 @@ const to_css = (col) => {
 	class="block"
 >
 </div>
+
 <style>
 
 .color {

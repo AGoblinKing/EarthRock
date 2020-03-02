@@ -1,4 +1,4 @@
-import { m4 } from "twgl"
+import { m4 } from "twgl.js"
 import { write } from "/store.js"
 
 const validate = (thing) => {

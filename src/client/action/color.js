@@ -1,7 +1,7 @@
 import { color } from "/text.js"
 import { THEME_BG } from "/sys/flag.js"
 
-import Color from "color"
+import Color from "color-js"
 
 export default (node, txt_init) => {
 	const handler = {

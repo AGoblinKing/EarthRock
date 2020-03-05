@@ -1,26 +1,28 @@
-import commonjs from 'rollup-plugin-commonjs'
-import { terser } from 'rollup-plugin-terser'
-import rootImport from 'rollup-plugin-root-import'
+import commonjs from '@rollup/plugin-commonjs'
+
 import resolve from '@rollup/plugin-node-resolve'
 import visualizer from 'rollup-plugin-visualizer'
 import sucrase from '@rollup/plugin-sucrase'
+import path from "path"
+
 
 import { external } from "./_external.config"
-
-const production = !process.env.ROLLUP_WATCH
 
 const output = `docs`
 
 export default {
 	input: `src/test/_test.ts`,
 	treeshake: true,
-	external,
+	external: [
+		...external,
+		"ava"
+	],
 
 	output: {
-		sourcemap: !production,
-		format: `iife`,
+		sourcemap: true,
+		format: `cjs`,
 		name: `app`,
-		file: `${output}/bin/test.bundle.js`
+		file: `${output}/bin/bundle.test.js`
 	},
 
 	plugins: [
@@ -28,24 +30,20 @@ export default {
 			filename: `docs/stats/test.html`
 		}),
 
-		rootImport({
-			root: __dirname,
-			useEntry: `prepend`
-		}),
-
 		resolve({
-			browser: true,
-			extensions: [`.js`, `.ts`]
+			browser: false,
+			extensions: [`.js`, `.ts`],
+			rootDir: path.join(process.cwd(), "..")
 		}),
 
 		sucrase({
-			exclude: [`node_modules/**`],
 			transforms: [`typescript`]
 		}),
 
-		commonjs(),
+		commonjs({
+			extensions: [".js", ".ts", ".json"]
+		}),
 
-		production && terser()
 	],
 
 	watch: {

@@ -2,8 +2,8 @@
     "include": [ "src/**/*" ],
     "exclude": ["node_modules/**/*"],
     "compilerOptions": {
+        "typeRoots": ["node_modules/@types", "node_modules/ava"],
         "isolatedModules": true,
-        "baseUrl": "./src",
         "esModuleInterop": true
     }
 }

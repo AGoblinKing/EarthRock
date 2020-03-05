@@ -1,6 +1,6 @@
-import { TILE_COUNT } from "sys/flag"
+import { TILE_COUNT } from "src/sys/flag"
 
-const str_color = (str) => {
+const str_color = (str: string) => {
 	if (!str) return `#111`
 
 	let hash = 0
@@ -13,6 +13,7 @@ const str_color = (str) => {
 		const value = (hash >> (i * 8)) & 0xFF
 		color += (`00` + value.toString(16)).substr(-2)
 	}
+	
 	return color
 }
 
@@ -28,7 +29,7 @@ const words = [
 	`rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
 ]
 
-export const tile = (str) => {
+export const tile = (str: string) => {
 	let hash = 0
 	for (let i = 0; i < str.length; i++) {
 		hash = str.charCodeAt(i) + ((hash << 5) - hash)
@@ -37,7 +38,7 @@ export const tile = (str) => {
 	return `${Math.abs(hash) % TILE_COUNT.get()}`
 }
 
-export const random = (count) => Array
+export const random = (count: number) => Array
 	.from(new Array(count))
 	.map(() => words[Math.floor(Math.random() * words.length)])
 	.join(`_`)

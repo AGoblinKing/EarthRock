@@ -1,3 +1,3 @@
-import * as Wheel from "wheel/wheel"
+import * as Wheel from "src/wheel"
 
 Object.assign(window, { Wheel })

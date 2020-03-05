@@ -1,18 +1,20 @@
-import { read } from "/store.js"
-import { TIME_TICK_RATE } from "/sys/flag.js"
+import { Store, Read } from "src/store"
+import raf from "raf"
 
 let tick_set
-export const tick = read(0, (set) => {
+export const tick = new Read(0, (set) => {
 	tick_set = set
 })
 
 let last_tick = Date.now()
+export const TIME_TICK_RATE = new Store(100)
 
-export const frame = read([0, 0], (set) => {
+export const frame = new Read([0, 0], (set) => {
 	let old
+	
 	const data = [0, 0]
 	const frame_t = (ts) => {
-		requestAnimationFrame(frame_t)
+		raf(frame_t)
 
 		if (old === undefined) old = ts
 
@@ -29,5 +31,5 @@ export const frame = read([0, 0], (set) => {
 		set(data)
 	}
 
-	requestAnimationFrame(frame_t)
+	raf(frame_t)
 })

@@ -42,7 +42,6 @@ export default {
 		}),
 
 		sucrase({
-			exclude: [`node_modules/**`],
 			transforms: [`typescript`]
 		}),
 

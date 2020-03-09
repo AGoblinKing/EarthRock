@@ -7,6 +7,7 @@ export type Cancel = () => void
 export interface IStore<T> {
     get(): T;
 	set(value: T, silent: Boolean): void;
+	notify(): void;
 	listen(listener: Listener<T>): Cancel;
 	toJSON(): any;
 }
@@ -20,7 +21,7 @@ export class Store <T> implements IStore <T> {
 		this.value = value
 	}
 
-	protected notify () {
+	notify () {
 		if (!this.listeners) return
 		this.listeners.forEach((listener) => listener(this.value))
 	}

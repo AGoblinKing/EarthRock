@@ -1,5 +1,6 @@
 import { IStore, Store, Tree, ProxyTree } from "src/store"
 import { Weave } from "src/weave/weave"
+import { Space } from "src/warp/space"
 
 export enum ETwist {
     VISIBLE = "VISIBLE",
@@ -11,9 +12,10 @@ export interface TwistMap {
     [key: string]: object
 }
 
-export abstract class Twist extends ProxyTree<IStore<any>> {
-    protected value: Tree<IStore<any>>
+export abstract class Twist<T> extends ProxyTree<IStore<T>> {
+    protected value: Tree<IStore<T>>
     protected weave: Weave
+    protected space: Space
 
     static map_to_stores (twist_data: object) {
         const stores = {}
@@ -25,10 +27,11 @@ export abstract class Twist extends ProxyTree<IStore<any>> {
         return stores
     }
 
-    constructor (weave: Weave, twist_data: object) {
+    constructor (weave: Weave, space: Space) {
         super()
 
+        this.space = space
         this.weave = weave
-        this.value = new Tree(Twist.map_to_stores(twist_data))
+        this.value = new Tree({})
     }
 }

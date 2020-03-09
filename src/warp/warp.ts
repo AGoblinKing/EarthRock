@@ -1,9 +1,9 @@
-import { ID, EWarp, WarpJSON } from "src/weave/types"
+import { NAME, EWarp, WarpJSON } from "src/weave/types"
 import { Weave } from "src/weave/weave"
 import { IStore, Listener, Proxy } from "src/store"
 
 export abstract class Warp<T> extends Proxy<T> {
-    readonly id: ID
+    readonly name: NAME
     readonly type: EWarp
 
     protected weave: Weave
@@ -12,7 +12,7 @@ export abstract class Warp<T> extends Proxy<T> {
     constructor(data: WarpJSON<any>, weave: Weave) {
         super()
 
-        this.id = data.id
+        this.name = data.name
         this.type = data.type
         this.weave = weave
 
@@ -21,7 +21,7 @@ export abstract class Warp<T> extends Proxy<T> {
 
     toJSON(): WarpJSON<T> {
         return {
-            id: this.id,
+            name: this.name,
             type: this.type,
             value: this.value.toJSON()
         }

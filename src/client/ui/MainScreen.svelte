@@ -1,5 +1,5 @@
 <script>
-import { main, size } from "/sys/screen.js"
+import { main, size } from "src/client/sys/screen.js"
 
 export let full = false
 export let hidden

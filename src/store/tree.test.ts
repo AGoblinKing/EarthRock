@@ -24,7 +24,7 @@ test("store/tree/names", t => {
 
     tree.write({foo: 2})
     t.snapshot(tree.get())
-    t.snapshot(tree.get_name("foo"))
+    t.snapshot(tree.item("foo"))
 
 
     tree.write({
@@ -35,5 +35,29 @@ test("store/tree/names", t => {
 
     t.snapshot(tree.get())
     t.snapshot(tree.toJSON())
+
+
+    tree.remove("store")
+
+    t.snapshot(tree.get())
 })
 
+
+
+test("store/tree/query", t => {
+    const tree = new Tree({
+        foo: 1,
+        nest: new Tree({
+            deeper: new Tree({
+                final: 3
+            }),
+            mid: 2
+        })
+    })
+
+    t.snapshot(tree.query("foo"))
+    t.snapshot(tree.query("nest"))
+    t.snapshot(tree.query("nest", "mid"))
+    t.snapshot(tree.query("nest", "deeper"))
+    t.snapshot(tree.query("nest", "deeper", "final"))
+})

@@ -11,6 +11,7 @@
 		"@typescript-eslint/parser": "^2.21.0",
 		"ava": "^3.5.0",
 		"color-js": "^1.0.5",
+		"cross-env": "^7.0.2",
 		"cuid": "^2.1.8",
 		"eslint": "^6.8.0",
 		"eslint-config-standard": "^14.1.0",
@@ -44,6 +45,7 @@
 		"typescript": "^3.8.3"
 	},
 	"ava": {
+		"files": ["src/test/bundle.test.js"],
 		"snapshotDir": "./src/test"
 	},
 	"scripts": {
@@ -56,17 +58,17 @@
 		"build:client": "rollup -c ./src/_client.config.js",
 		"build:test": "rollup -c ./src/_test.config.js",
 		"pre:auto": "link",
-		"auto": "run-p auto:test",
-		"auto:external": "rollup -w -c ./src/_external.config.js",
+		"auto": "run-p link auto:test auto:client auto:external",
+		"auto:external": "cross-env TARGET=\"browser\" rollup -w -c ./src/_external.config.js",
 		"auto:wheel": "rollup -w -c ./src/_wheel.config.js",
 		"auto:physics": "rollup -w -c ./src/_physics.config.js",
 		"auto:client": "rollup -w -c ./src/_client.config.js",
 		"auto:test": "rollup -w -c ./src/_test.config.js",
 		"pre:dev": "link",
-		"dev": "run-p auto test:auto",
+		"dev": "run-p auto start",
 		"pre:test": "link",
 		"test": "ava --verbose",
-		"test:auto": "ava --watch --verbose",
+		"test:debug": "ava debug --verbose",
 		"start": "run-script-os",
 		"start:windows": ".\\bin\\bifrost.exe",
 		"start:macos": "bin/bifrost",

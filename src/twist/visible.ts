@@ -1,18 +1,18 @@
 import { Twist } from "src/twist/twist"
 import { Weave } from "src/weave/weave"
+import { Space } from "src/warp/space"
+import { Buffer } from "src/store"
 
 export interface IVisible {
-    sprite: Array<number>,
-    position: Array<number>,
-    color: Array<number>,
-    rotation: Array<number>,
-    scale: Array<number>
+    sprite?: Array<number>,
+    position?: Array<number>,
+    color?: Array<number>,
+    rotation?: Array<number>,
+    scale?: Array<number>
 }
 
-export class Visible extends Twist {
-    static count = 100 
-    static data = Visible.create_data(100)
-
+// Visible spaces
+export class Visible extends Twist<Float32Array> { 
     static defaults = { 
         position: [0, 0, 0],
         sprite: [0],
@@ -21,16 +21,27 @@ export class Visible extends Twist {
         rotation: [0]
     }
 
-    static create_data(size) { 
-        return {
-            position: new Float32Array(size * 3),
-            sprite: new Float32Array(size),
-            scale: new Float32Array(size),
-            color : new Float32Array(size * 4)
-        }
+    static data = new Buffer(Visible.defaults)
+
+    protected index: number
+
+    constructor(weave: Weave, space: Space, visible_data: IVisible) {
+        // set the views
+        super(weave, space)
+        const [view, idx] = Visible.data.allocate(visible_data)
+        this.index = idx
+        this.write(view)
     }
 
-    constructor(weave: Weave, visible_data: IVisible) {
-        super(weave, visible_data)
+    toJSON() {
+        const json = {}
+        const $value = this.get()
+        for(let key of Object.keys($value)) {
+            const $item = $value[key].get()
+
+            json[key] = Array.from($item)
+        }
+
+        return json
     }
 }

@@ -1,8 +1,7 @@
-import test from "ava"
-
 import "src/store/store.test"
 import "src/store/tree.test"
 import "src/store/read.test"
+import "src/store/buffer.test"
 
 import "src/lib/text.test"
 

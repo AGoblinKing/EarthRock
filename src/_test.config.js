@@ -1,18 +1,16 @@
 import commonjs from '@rollup/plugin-commonjs'
-
 import resolve from '@rollup/plugin-node-resolve'
 import visualizer from 'rollup-plugin-visualizer'
 import sucrase from '@rollup/plugin-sucrase'
 import path from "path"
-
+import npm from "npm"
 
 import { external } from "./_external.config"
 
-const output = `docs`
-
 export default {
 	input: `src/test/_test.ts`,
-	treeshake: true,
+	treeshake: false,
+	
 	external: [
 		...external,
 		"ava"
@@ -22,7 +20,7 @@ export default {
 		sourcemap: true,
 		format: `cjs`,
 		name: `app`,
-		file: `${output}/bin/bundle.test.js`
+		file: `src/test/bundle.test.js`
 	},
 
 	plugins: [
@@ -44,6 +42,11 @@ export default {
 			extensions: [".js", ".ts", ".json"]
 		}),
 
+		{
+			writeBundle() {
+				npm.load(() => npm.run("test"))
+			}
+		}
 	],
 
 	watch: {

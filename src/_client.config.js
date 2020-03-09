@@ -15,7 +15,7 @@ const production = !process.env.ROLLUP_WATCH
 const output = `docs`
 
 export default {
-	input: `src/_client/client.ts`,
+	input: `src/client/_client.ts`,
 	treeshake: true,
 	external,
 
@@ -41,10 +41,6 @@ export default {
 			extensions: [`.js`, `.ts`]
 		}),
 
-		sucrase({
-			transforms: [`typescript`]
-		}),
-
 		svelte({
 			dev: !production,
 			css: css => {
@@ -54,6 +50,10 @@ export default {
 				if (warning.message.indexOf(`Wheel`) !== -1) return
 				handler(warning)
 			}
+		}),
+
+		sucrase({
+			transforms: [`typescript`]
 		}),
 
 		glslify({

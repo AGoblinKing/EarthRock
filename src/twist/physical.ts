@@ -1,13 +1,15 @@
 
 import { Twist } from "./twist"
 import { Weave } from "src/weave"
+import { Space } from "src/warp"
 
 export interface IPhysical {
      
 }
 
-export class Physical extends Twist {
-    constructor(weave: Weave,  visible_data: IPhysical) {
-        super(weave, visible_data)
+export class Physical extends Twist<any> {
+    constructor(weave: Weave,  space: Space, physical_data: IPhysical = {}) {
+        super(weave, space)
+        this.write(Twist.map_to_stores(physical_data))
     }
 }

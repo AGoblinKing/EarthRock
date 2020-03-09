@@ -19,11 +19,12 @@ export const external = [
 ]
 
 export default {
-	input: `src/_external/external.ts`,
+	input: `src/external/_external.ts`,
 	treeshake: false,
 	output: {
+		browser: true,
 		sourcemap: false,
-		format: `cjs`,
+		format: `iife`,
 		file: `${output}/bin/external.bundle.js`
 	},
 

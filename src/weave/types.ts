@@ -1,4 +1,5 @@
-export type ID = string;
+
+export type NAME = string;
 
 export enum EWarp {
     SPACE = "SPACE",
@@ -8,7 +9,7 @@ export enum EWarp {
 }
 
 export interface WarpJSON<T> {
-    id?: ID;
+    name?: NAME;
     type?: EWarp;
     value: T;
 }
@@ -17,13 +18,13 @@ export interface WarpsJSON {
     [key: string]: WarpJSON<any>;
 }
 
-export interface WeaveJSON {
+export interface IWeaveJSON {
     name: string;
     wefts: Wefts;
     warps: WarpsJSON;
-    rezed: Array<ID>;
+    rezed: Array<NAME>;
 }
 
 export interface Wefts {
-    [key: string]: ID;
+    [key: string]: NAME;
 }

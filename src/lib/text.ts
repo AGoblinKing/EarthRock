@@ -1,4 +1,4 @@
-import { TILE_COUNT } from "src/sys/flag"
+const TILE_COUNT = 1024
 
 const str_color = (str: string) => {
 	if (!str) return `#111`
@@ -35,7 +35,7 @@ export const tile = (str: string) => {
 		hash = str.charCodeAt(i) + ((hash << 5) - hash)
 	}
 
-	return `${Math.abs(hash) % TILE_COUNT.get()}`
+	return `${Math.abs(hash) % TILE_COUNT}`
 }
 
 export const random = (count: number) => Array

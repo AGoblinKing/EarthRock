@@ -164,7 +164,7 @@ const details = (idx) => {
 	Object.entries(buffer).forEach(([key, { numComponents, data }]) => {
 		if (!data) return
 		console.log(key, data.slice(idx * numComponents, numComponents))
-	})
+	}) 
 }
 
 // free the key value and make the idx available

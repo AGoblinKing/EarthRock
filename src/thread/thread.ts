@@ -1,5 +1,6 @@
 // a textual representation of a WEAVE chain
 import cuid from "cuid"
+const REG_ID = /\$?[~.]?\/[a-zA-Z0-9!%&_\-/|]{2,}/g
 
 const warps = {
 	stream: (k) => JSON.stringify(k.value.get()),
@@ -15,7 +16,7 @@ const warps_is = {
 	color: (data) => data[0] === `#`,
 	sprite: (data) => data[0] === `@`,
 	mail: (data) => {
-		const ms = data.match(Wheel.REG_ID)
+		const ms = data.match(REG_ID)
 		if (!ms || ms.length !== 1) return false
 		if (ms[0] !== data) return false
 		return true
@@ -136,7 +137,7 @@ export const compile = ({
 		return
 	}
 
-	const space = weave.get_id(address.split(Wheel.DENOTE)[0])
+	const space = weave.get_id(address.split("/")[0])
 
 	let connection = address
 

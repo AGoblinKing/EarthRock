@@ -1,9 +1,9 @@
 import test from "ava"
 import { Weave } from "./index"
-import { EWarp, WeaveJSON } from "./types"
+import { EWarp, IWeaveJSON } from "./types"
 
 test("weave/", t => {
-    const data: WeaveJSON = {
+    const data: IWeaveJSON = {
         name: "test",
         warps: {
             foo: { type: EWarp.SPACE, value: {} },

@@ -1,7 +1,7 @@
 import cuid from "cuid"
 
-import { Store, Read, Cancel, Tree, TreeValue, IStore} from "src/store"
-import { ID, EWarp, WeaveJSON, WarpJSON, WarpsJSON, Wefts} from "src/weave/types"
+import { Store, Read, Cancel, Tree, TreeValue, IStore, ProxyTree} from "src/store"
+import { NAME, EWarp, IWeaveJSON, WarpJSON, WarpsJSON, Wefts} from "src/weave/types"
 
 import { Space, Warp } from "src/warp"
 
@@ -9,15 +9,15 @@ export interface Warps {
     [key: string]: Warp<any>;
 }
 
-export class Weave {
+export class Weave extends ProxyTree<Warp<any>>{
     readonly name: Store<string>;
-    readonly wefts: Tree<ID>;
+    readonly wefts: Tree<NAME>;
     readonly warps: Tree<Warp<any>>;
-    readonly rezed: Store<Set<ID>>;
+    readonly rezed: Store<Set<NAME>>;
 
     // caches
     readonly wefts_reverse: Read<Wefts>;
-    readonly spaces: Read<Warps>;
+    readonly spaces: Tree<Warp<any>>;
 
     // clean up
     protected readonly cancels: Set<Cancel>;
@@ -36,12 +36,14 @@ export class Weave {
         throw new Error(`warp/unknown ${$warp}`)
     }
 
-    constructor(data: WeaveJSON) {
+    constructor(data: IWeaveJSON) {
+        super()
+
         this.name = new Store(data.name)
         this.wefts = new Tree(data.wefts)
-        this.warps = new Tree({})
+        this.value = this.warps = new Tree({})
         this.rezed = new Store(new Set(data.rezed))
-
+        
         this.cancels = new Set()
 
         this.wefts_reverse = new Tree({}, set => {
@@ -63,7 +65,7 @@ export class Weave {
 
         for(let id of Object.keys(warp_data)) {
             const warp = warp_data[id]  
-            warp.id = warp.id === "cuid" ? cuid() : id
+            warp.name = warp.name === "cuid" ? cuid() : id
 
             warps[id] = this.create_warp(warp)
         }
@@ -72,7 +74,7 @@ export class Weave {
         return warps
     }
 
-    delete(...ids: ID[]) {
+    delete(...ids: NAME[]) {
         const $warps = this.warps.get()
         const $wefts = this.wefts.get()
         const $wefts_r = this.wefts_reverse.get()
@@ -103,7 +105,7 @@ export class Weave {
         this.cancels.clear()
     }
 
-    toJSON() : WeaveJSON {
+    toJSON() : IWeaveJSON {
         return {
             name: this.name.get(),
             wefts: this.wefts.get(),

@@ -1,9 +1,8 @@
 import test from "ava"
 
-import { Warp } from "./index"
-import { Weave, WeaveJSON } from "src/weave"
-import { Tree, Store } from "src/store"
-import { SpaceValue, Space } from "./space"
+import { Weave, IWeaveJSON } from "src/weave"
+import {  Store } from "src/store"
+import { Space } from "./space"
 
 test("warp/", t => {
     const weave = new Weave({
@@ -17,7 +16,7 @@ test("warp/", t => {
         },
         wefts: {},
         rezed: []
-    } as WeaveJSON)
+    } as IWeaveJSON)
 
     const { hello } = weave.warps.get()
     t.snapshot(hello.toJSON())
@@ -36,14 +35,14 @@ test("warp/space", t => {
         },
         wefts: {},
         rezed: []
-    } as WeaveJSON)
+    } as IWeaveJSON)
 
     const hello = weave.warps.get().hello as Space
 
     hello.write({ DATA: { foo: 5 } })
     t.snapshot(hello.toJSON())
 
-    const vis = hello.get_name("VISIBLE")
+    const vis = hello.item("VISIBLE")
     t.snapshot(vis.toJSON())
     vis.write({
         foo: new Store(5) 

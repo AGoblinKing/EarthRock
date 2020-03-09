@@ -3,9 +3,7 @@
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var test = _interopDefault(require('ava'));
-var Color = _interopDefault(require('color-js'));
 var cuid = _interopDefault(require('cuid'));
-require('src/sys/sys.test');
 
 // Stores are observables
 class Store  {
@@ -16,7 +14,7 @@ class Store  {
 		this.value = value;
 	}
 
-	 notify () {
+	notify () {
 		if (!this.listeners) return
 		this.listeners.forEach((listener) => listener(this.value));
 	}
@@ -80,8 +78,20 @@ class Store  {
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
+function commonjsRequire () {
+	throw new Error('Dynamic requires are not currently supported by @rollup/plugin-commonjs');
+}
+
+function unwrapExports (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+function getCjsExportFromNamespace (n) {
+	return n && n['default'] || n;
 }
 
 var performanceNow = createCommonjsModule(function (module) {
@@ -282,11 +292,11 @@ class Read extends Store {
 class Tree extends Read {
 	
 
-	constructor(tree, setter) {
+	constructor(tree = {}, setter) {
 		super(tree, setter);
 	}
 
-	get_name (name) {
+	item (name) {
 		return super.get()[name]
 	}
 
@@ -299,12 +309,25 @@ class Tree extends Read {
 		this.p_set($tree, silent);
 	}
 
-	write (tree_write, silent = false) {
+	write (tree_json, silent = false) {
 		const $tree = this.get();
-		Object.assign($tree, tree_write);
+		Object.assign($tree, tree_json);
 
 		this.p_set($tree, silent);
 	}
+
+	remove (name, silent = false) {
+		delete this.value[name];
+		if(!silent) this.notify();
+	}
+	
+	query (...steps)  {
+		
+		const cursor = this.value[steps.shift()]; 
+
+		if(steps.length === 0 || !cursor) return cursor 	
+		return cursor.query(...steps)
+    }
 }
 
 test("store/tree", t => {
@@ -328,7 +351,7 @@ test("store/tree/names", t => {
 
     tree.write({foo: 2});
     t.snapshot(tree.get());
-    t.snapshot(tree.get_name("foo"));
+    t.snapshot(tree.item("foo"));
 
 
     tree.write({
@@ -339,6 +362,31 @@ test("store/tree/names", t => {
 
     t.snapshot(tree.get());
     t.snapshot(tree.toJSON());
+
+
+    tree.remove("store");
+
+    t.snapshot(tree.get());
+});
+
+
+
+test("store/tree/query", t => {
+    const tree = new Tree({
+        foo: 1,
+        nest: new Tree({
+            deeper: new Tree({
+                final: 3
+            }),
+            mid: 2
+        })
+    });
+
+    t.snapshot(tree.query("foo"));
+    t.snapshot(tree.query("nest"));
+    t.snapshot(tree.query("nest", "mid"));
+    t.snapshot(tree.query("nest", "deeper"));
+    t.snapshot(tree.query("nest", "deeper", "final"));
 });
 
 test("store/read", t => {
@@ -367,13 +415,14 @@ class Proxy {
     listen(listen) { return this.value.listen(listen) }
     set(value, silent = false) { this.value.set(value, silent); }
     toJSON() { return this.value.toJSON() }
+    notify() { this.value.notify(); }
 }
 
 class ProxyTree extends Proxy {
     
     
-    get_name (name) {
-        return this.value.get_name(name)
+    item (name) {
+        return this.value.item(name)
     }
 
     reset (target, silent)  {
@@ -383,27 +432,162 @@ class ProxyTree extends Proxy {
     write (tree_write, silent) {
         return this.value.write(tree_write, silent)
     }
+
+    remove (name, silent) {
+        this.value.remove(name, silent);
+    }
+
+    query (...steps)  {
+        return this.value.query(...steps)
+    }
 }
 
-const TILE_COUNT = new Store(1024);
+class Buffer extends Tree {
+    
+    
+    
+    
 
-const THEME_BORDER = new Store(``, $value => Color($value)
-	.darkenByRatio(0.5)
-	.toCSS()
-);
+     create_data(size) {
+        const data = {};
+        
+        for(let key of Object.keys(this.defaults)) {
+            data[key] = new Float32Array(this.defaults[key].length * size);
 
-const THEME_STYLE = new Read(``, set => {
-	let $THEME_BORDER = ``;
+            // copy existing data
+            if(this.data) {
+                data[key].set(this.data[key]);
+            }
+        }
+        
+        if(this.available) {
+            const additions = Array.from(Array(size - this.count).keys()).map(i => i + this.count);
+            this.available = new Set([...Array.from(this.available), ...additions]);
+        } else {
+            this.available = new Set(Array(size).keys());
+        }
 
-	const update = () => set([
-		`border: 0.2rem solid ${$THEME_BORDER};`
-	].join(``));
+        this.data = data;
+        this.count = size;
+    }
 
-	THEME_BORDER.listen($val => {
-		$THEME_BORDER = $val;
-		update();
-	});
+    constructor(defaults, initial_size = 100) {
+        super();
+
+        this.defaults = defaults;
+        this.create_data(initial_size);
+    }
+    
+    allocates(...data)  {
+        const results = [];
+        for(let datum of data) {
+            results.push(this.allocate(datum));
+        }
+
+        return results
+    }
+
+    allocate(datum)  {
+        const buffer_view = {};
+        let cursor = this.available.values().next().value;
+        if(cursor === undefined) {
+            this.resize();
+            cursor = this.available.values().next().value;
+        }
+
+        this.available.delete(cursor);
+
+        for(let key of Object.keys(this.defaults)) {
+            const len = this.defaults[key].length;
+            const idx = cursor * len; 
+            const view = this.data[key].subarray(idx, idx + len);
+
+            view.set(datum[key] ? datum[key] : this.defaults[key]);
+
+            buffer_view[key] = new Store(view);
+        }
+
+        return [buffer_view, cursor]
+    }
+
+    free(idx) {
+        this.available.add(idx);
+
+        for(let key of Object.keys(this.defaults)) {    
+            const len = this.defaults[key].length;
+            this.data[key].set(Array(len).fill(0), len * idx);
+        }
+    }
+
+    resize(size) {
+        if(size === undefined) size = this.count * 2;
+        if(size < this.count) throw new Error("cannot reduce the size of a buffer")
+
+        this.create_data(size);
+        this.notify();
+    }
+
+    toJSON()  {
+        const json = {};
+        for(let key of Object.keys(this.data)) {
+            json[key] = Array.from(this.data[key]);
+        }
+
+        return json
+    }
+}
+
+test("store/buffer", t => {
+    const buffer = new Buffer({
+        test: [1, 2],
+        2: [3, 4]
+    }, 3);
+
+    t.snapshot(buffer.toJSON());
+
+    const [item, idx] = buffer.allocate({test: [0, 1]});
+    
+    t.snapshot(buffer.toJSON());
+    t.snapshot(item.test.get());
+
+    const test = item.test.get();
+    test[0] = 5;
+    item.test.notify();
+
+    t.snapshot(buffer.toJSON());
+
+    buffer.free(0);
+    t.snapshot(buffer.toJSON());
+
+    buffer.allocate({test: [1, 2]});
+    buffer.allocates({test: [3, 4]}, {test: [5, 6]}, {test: [7, 9]});
+
+    t.snapshot(buffer.toJSON(), "allocates works, and resizes");
+
+    buffer.resize();
+    t.snapshot(buffer.toJSON(), "resizeable");
 });
+
+const TILE_COUNT = 1024;
+
+const str_color = (str) => {
+	if (!str) return `#111`
+
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = str.charCodeAt(i) + ((hash << 5) - hash);
+	}
+
+	let color = `#`;
+	for (let i = 0; i < 3; i++) {
+		const value = (hash >> (i * 8)) & 0xFF;
+		color += (`00` + value.toString(16)).substr(-2);
+	}
+	
+	return color
+};
+
+const color = str_color;
 
 // whiskers on kittens
 const words = [
@@ -421,7 +605,7 @@ const tile = (str) => {
 		hash = str.charCodeAt(i) + ((hash << 5) - hash);
 	}
 
-	return `${Math.abs(hash) % TILE_COUNT.get()}`
+	return `${Math.abs(hash) % TILE_COUNT}`
 };
 
 const random = (count) => Array
@@ -480,6 +664,7 @@ var ETwist; (function (ETwist) {
 class Twist extends ProxyTree {
     
     
+    
 
     static map_to_stores (twist_data) {
         const stores = {};
@@ -491,19 +676,18 @@ class Twist extends ProxyTree {
         return stores
     }
 
-    constructor (weave, twist_data) {
+    constructor (weave, space) {
         super();
 
+        this.space = space;
         this.weave = weave;
-        this.value = new Tree(Twist.map_to_stores(twist_data));
+        this.value = new Tree({});
     }
 }
 
-class Visible extends Twist {
-    static __initStatic() {this.count = 100;} 
-    static __initStatic2() {this.data = Visible.create_data(100);}
-
-    static __initStatic3() {this.defaults = { 
+// Visible spaces
+class Visible extends Twist { 
+    static __initStatic() {this.defaults = { 
         position: [0, 0, 0],
         sprite: [0],
         scale: [1],
@@ -511,48 +695,47 @@ class Visible extends Twist {
         rotation: [0]
     };}
 
-    static create_data(size) { 
-        return {
-            position: new Float32Array(size * 3),
-            sprite: new Float32Array(size),
-            scale: new Float32Array(size),
-            color : new Float32Array(size * 4)
-        }
+    static __initStatic2() {this.data = new Buffer(Visible.defaults);}
+
+    
+
+    constructor(weave, space, visible_data) {
+        // set the views
+        super(weave, space);
+        const [view, idx] = Visible.data.allocate(visible_data);
+        this.index = idx;
+        this.write(view);
     }
 
-    constructor(weave, visible_data) {
-        super(weave, visible_data);
+    toJSON() {
+        const json = {};
+        const $value = this.get();
+        for(let key of Object.keys($value)) {
+            const $item = $value[key].get();
+
+            json[key] = Array.from($item);
+        }
+
+        return json
     }
-} Visible.__initStatic(); Visible.__initStatic2(); Visible.__initStatic3();
+} Visible.__initStatic(); Visible.__initStatic2();
 
 class Data extends Twist  {
-    constructor(weave,  data) {
-        super(weave, data);
+    constructor(weave,  space, data) {
+        super(weave, space);
+        this.write(Twist.map_to_stores(data));
     }
 }
 
 class Physical extends Twist {
-    constructor(weave,  visible_data) {
-        super(weave, visible_data);
+    constructor(weave,  space, physical_data = {}) {
+        super(weave, space);
+        this.write(Twist.map_to_stores(physical_data));
     }
 }
 
 class Space extends Warp {
     
-
-    static create (type, weave, twist_data) {
-        switch(type) {
-            case ETwist.DATA:
-                return new Data(weave, twist_data)
-            case ETwist.VISIBLE: 
-                return new Visible(weave, twist_data )
-            case ETwist.PHYSICAL:
-                return new Physical(weave, twist_data )
-        }
-
-        throw new Error(`unknown twist ${type}`)
-    }
-
 
     constructor(warp_data, weave) {
         super(warp_data, weave);
@@ -561,14 +744,14 @@ class Space extends Warp {
 
         const twists = {};
         for(let type of Object.keys(data)) {
-            twists[type] = Space.create(type, weave, data[type]);
+            twists[type] = this.add_twist(type, weave, data[type]);
         }
 
         this.value = new Tree(twists);
     }
 
-    get_name (name) {
-        return this.value.get_name(name)
+    item (name) {
+        return this.value.item(name)
     }
 
     reset (target, silent)  {
@@ -578,9 +761,34 @@ class Space extends Warp {
     write (tree_write, silent) {
         return this.value.write(tree_write, silent)
     }
+
+    remove (name, silent) {
+        this.value.remove(name, silent);
+    }
+
+    query (...steps)  {
+        return this.value.query(...steps)
+    }
+
+    add_twist (type, weave, twist_data = {}) {
+        switch(type) {
+            case ETwist.DATA:
+                return new Data(weave, this, twist_data)
+            case ETwist.VISIBLE: 
+                return new Visible(weave, this, twist_data )
+            case ETwist.PHYSICAL:
+                return new Physical(weave, this, twist_data )
+        }
+
+        throw new Error(`unknown twist ${type}`)
+    }
+
 }
 
-class Weave {
+// export * from "./mail"
+// export * from "./value"
+
+class Weave extends ProxyTree{
     
     
     
@@ -608,11 +816,13 @@ class Weave {
     }
 
     constructor(data) {
+        super();
+
         this.name = new Store(data.name);
         this.wefts = new Tree(data.wefts);
-        this.warps = new Tree({});
+        this.value = this.warps = new Tree({});
         this.rezed = new Store(new Set(data.rezed));
-
+        
         this.cancels = new Set();
 
         this.wefts_reverse = new Tree({}, set => {
@@ -762,7 +972,7 @@ test("warp/space", t => {
     hello.write({ DATA: { foo: 5 } });
     t.snapshot(hello.toJSON());
 
-    const vis = hello.get_name("VISIBLE");
+    const vis = hello.item("VISIBLE");
     t.snapshot(vis.toJSON());
     vis.write({
         foo: new Store(5) 
@@ -772,6 +982,7 @@ test("warp/space", t => {
 });
 
 test("twist/visible", t => {
+    Visible.data = new Buffer(Visible.defaults, 3);
     const weave = new Weave({
         name: "test",
         wefts: {},
@@ -788,6 +999,7 @@ test("twist/visible", t => {
     });
 
     t.snapshot(weave.toJSON());
+    t.snapshot(Visible.data.toJSON());
 });
 
 test("twist/data", t => {
@@ -801,12 +1013,23 @@ test("twist/data", t => {
                     DATA: {
                         arbitrary: "hello"
                     }
-                }
+                }   
             }
         }
     });
 
     t.snapshot(weave.toJSON());
+
+    const space = weave.warps.item("test"); 
+    const data = space.item("DATA");
+    
+    t.snapshot(data.toJSON());
+
+    data.write({
+        foo: "5"
+    });
+
+    t.snapshot(data.toJSON());
 });
 
 test("twist/physical", t => {
@@ -824,7 +1047,67 @@ test("twist/physical", t => {
             }
         }
     });
+ 
+    t.snapshot(weave.toJSON(), `should have defaults`);
+});
 
-    t.snapshot(weave.toJSON());
+let tick_set;
+const tick = new Read(0, (set) => {
+	tick_set = set;
+});
+
+let last_tick = Date.now();
+const TIME_TICK_RATE = new Store(100);
+
+const frame = new Read([0, 0], (set) => {
+	let old;
+	
+	const data = [0, 0];
+	const frame_t = (ts) => {
+		raf_1(frame_t);
+
+		if (old === undefined) old = ts;
+
+		data[0] = ts;
+		data[1] = Math.round(ts - old);
+
+		old = ts;
+		const now = Date.now();
+		if (now - last_tick >= TIME_TICK_RATE.get()) {
+			last_tick = now;
+			tick_set(tick.get() + 1);
+		}
+
+		set(data);
+	};
+
+	raf_1(frame_t);
+});
+
+var time = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	tick: tick,
+	TIME_TICK_RATE: TIME_TICK_RATE,
+	frame: frame
+});
+
+// TODO: maybe an input one that gets written to from client?
+
+var sys = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	TIME: time
+});
+
+test("sys/time", t => {
+    t.snapshot(sys);
+
+    raf_1(() => {
+        t.snapshot(tick);
+    });
+
+    return new Promise(resolve => setTimeout(() => {
+        t.snapshot(tick);
+        resolve();
+    }, 101))
 });
 //# sourceMappingURL=bundle.test.js.map

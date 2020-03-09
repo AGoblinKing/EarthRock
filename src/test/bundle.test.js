@@ -635,16 +635,21 @@ class Warp extends Proxy {
     constructor(data, weave) {
         super();
 
-        this.id = data.id;
+        this.name = data.name;
         this.type = data.type;
         this.weave = weave;
 
         // don't init value because who knows what they want
     }
 
+    destroy () { /* no-op */ }
+    create() { /* no-op */ }
+    rez () { /* no-op */ }
+    derez () { /* no-op */ }
+
     toJSON() {
         return {
-            id: this.id,
+            name: this.name,
             type: this.type,
             value: this.value.toJSON()
         }
@@ -783,6 +788,14 @@ class Space extends Warp {
         throw new Error(`unknown twist ${type}`)
     }
 
+    create() {
+        this.weave.spaces.write({ [this.name]: this });
+    }
+
+    destroy() {
+        this.weave.spaces.remove(this.name);
+    }
+
 }
 
 // export * from "./mail"
@@ -844,7 +857,7 @@ class Weave extends ProxyTree{
 
         for(let id of Object.keys(warp_data)) {
             const warp = warp_data[id];  
-            warp.id = warp.id === "cuid" ? cuid() : id;
+            warp.name = warp.name === "cuid" ? cuid() : id;
 
             warps[id] = this.create_warp(warp);
         }

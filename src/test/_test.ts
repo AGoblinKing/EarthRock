@@ -12,3 +12,5 @@ import "src/warp/warp.test"
 import "src/twist/twist.test"
 
 import "src/sys/sys.test"
+
+import "src/wheel/wheel.test"

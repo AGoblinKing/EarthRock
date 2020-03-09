@@ -49,4 +49,6 @@ test("warp/space", t => {
     })
 
     t.snapshot(vis.get())
+
+    weave.
 })

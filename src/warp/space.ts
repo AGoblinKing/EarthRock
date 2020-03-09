@@ -56,11 +56,11 @@ export class Space extends Warp<SpaceValue> implements ITree<Twist<any>> {
     }
 
     create() {
-        this.weave.spaces.write({ [this.name]
+        this.weave.spaces.write({ [this.name]: this })
     }
 
     destroy() {
-
+        this.weave.spaces.remove(this.name)
     }
 
 }

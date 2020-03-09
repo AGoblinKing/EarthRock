@@ -19,6 +19,11 @@ export abstract class Warp<T> extends Proxy<T> {
         // don't init value because who knows what they want
     }
 
+    destroy () { /* no-op */ }
+    create() { /* no-op */ }
+    rez () { /* no-op */ }
+    derez () { /* no-op */ }
+
     toJSON(): WarpJSON<T> {
         return {
             name: this.name,

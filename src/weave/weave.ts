@@ -74,31 +74,35 @@ export class Weave extends ProxyTree<Warp<any>>{
         return warps
     }
 
-    delete(...ids: NAME[]) {
+    removes(...names: NAME[]) {
         const $warps = this.warps.get()
         const $wefts = this.wefts.get()
         const $wefts_r = this.wefts_reverse.get()
         const $rezed = this.rezed.get()
 
-        for(let id of ids) {
-            delete $warps[id]
-            delete $wefts[id]
-            $rezed.delete(id)
+        for(let name of names) {
+            delete $warps[name]
+            delete $wefts[name]
+            $rezed.delete(name)
 
-            const r = $wefts_r[id]
+            const r = $wefts_r[name]
             if(r) {
                 delete $wefts[r]
             }
         }
         // TODO: Notify destruction if rezed
-
+ 
         this.warps.set($warps)
         this.wefts.set($wefts)
         this.rezed.set($rezed)
     }
 
+    remove (name: string) {
+        this.removes(name)
+    }
+
     destroy() {
-        this.delete(...Object.keys(this.warps.get()))
+        this.removes(...Object.keys(this.warps.get()))
         for(let cancel of Array.from(this.cancels)) {
             cancel()
         }

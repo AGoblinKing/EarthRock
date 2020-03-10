@@ -30,7 +30,7 @@ export class Visible extends Twist<Float32Array> {
         super(weave, space)
         const [view, idx] = Visible.data.allocate(visible_data)
         this.index = idx
-        this.write(view)
+        this.add(view)
     }
 
     toJSON() {

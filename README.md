@@ -1,5 +1,6 @@
 ![](docs/img/header.gif)
-<a href="https://www.patreon.com/bePatron?u=20264446" data-patreon-widget-type="become-patron-button">Become a Patron!</a><script async src="https://c6.patreon.com/becomePatronButton.bundle.js"></script>
+[Become a Patron!](https://www.patreon.com/bePatron?u=20264446)
+
 ## [EarthRock.run](http://EarthRock.run)
 	EarthRock.run is a playground to create and play games with your friends.
 

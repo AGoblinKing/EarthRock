@@ -15,7 +15,7 @@ const production = !process.env.ROLLUP_WATCH
 const output = `docs`
 
 export default {
-	input: `src/client/_client.ts`,
+	input: `src/client/_client.js`,
 	treeshake: true,
 	external,
 

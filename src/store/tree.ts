@@ -1,6 +1,8 @@
 import { Read, Setter } from "./read"
 import { Store, IStore  } from "./store"
 
+export type NAME = string;
+
 export interface TreeValue<T> {
 	[name: string]: T;
 }
@@ -8,7 +10,7 @@ export interface TreeValue<T> {
 export interface ITree<T> extends IStore<TreeValue<T>>{
 	item (name: string): T
 	reset (target?: TreeValue<T>, silent?: boolean)
-	write (tree_write: object, silent?: boolean)
+	add (tree_write: object, silent?: boolean)
 	query (...steps: string[]) : any 
 	remove (name: string, silent?: boolean)
 }
@@ -33,7 +35,7 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 		this.p_set($tree, silent)
 	}
 
-	write (tree_json: object, silent = false) {
+	add (tree_json: object, silent = false) {
 		const $tree = this.get()
 		Object.assign($tree, tree_json)
 
@@ -51,5 +53,5 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 
 		if(steps.length === 0 || !cursor) return cursor 	
 		return cursor.query(...steps)
-    }
+	}
 }

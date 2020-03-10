@@ -1,5 +1,5 @@
 <script>
-import Tile from "/_client/image/Tile.svelte"
+import Tile from "src/client/image/Tile.svelte"
 
 export let address = ``
 

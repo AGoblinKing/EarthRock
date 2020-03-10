@@ -1,6 +1,6 @@
 import exif from "piexifjs"
 import fs from "file-saver"
-import { tile } from "/text.js"
+import { tile } from "src/lib/text"
 import Tile from "/_client/image/tile.js"
 import { write } from "/store.js"
 

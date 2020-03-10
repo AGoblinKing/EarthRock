@@ -1,13 +1,19 @@
 import * as twgl from "twgl.js"
+import sprite_frag from "./shader/sprite.frag"
+import sprite_vert from "./shader/sprite.vert"
 
-import { write } from "/store.js"
-import { frame } from "/sys/time.js"
-import { sprite } from "/sys/shader.js"
-import { camera, position, look } from "/sys/camera.js"
-import { SPRITES } from "/sys/flag.js"
-import { snapshot } from "./buffer.js"
+import { Read, Store } from "src/store"
 
-export const clear_color = write([0, 0, 0, 1])
+import { frame } from "src/sys/time"
+import { camera, position, look } from "src/client/sys/camera"
+import { SPRITES } from "src/client/sys/flag"
+
+import { snapshot } from "./buffer"
+
+const shader = new Read([
+	sprite_vert,
+	sprite_frag
+])
 
 const { m4 } = twgl
 const up = [0, 1, 0]
@@ -56,11 +62,11 @@ export default () => {
 
 	const program_info = twgl.createProgramInfo(
 		gl,
-		sprite.get()
+		shader.get()
 	)
 
 	if (!program_info) return
-	canvas.snap = write(snapshot(gl))
+	canvas.snap = Store(snapshot(gl))
 
 	const view = m4.identity()
 	const view_projection = m4.identity()

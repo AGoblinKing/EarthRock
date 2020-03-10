@@ -1,11 +1,11 @@
-(function (color, key_js, gamepad_js, text_js, flag_js, nav, Control, Weave, Tile, file_js, warps, store_js, twgl, time_js, shader_js, camera_js, visible_js, object_js, Logo) {
+(function (store_js, time_js, Color, text_js, flag_js, input_js, nav_js, Control, Weave, Tile, file_js, warps, color$1, nav_js$1, twgl, shader_js, camera_js, visible_js, object_js, Logo) {
     'use strict';
 
-    color = color && color.hasOwnProperty('default') ? color['default'] : color;
-    var nav__default = 'default' in nav ? nav['default'] : nav;
+    Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
     Control = Control && Control.hasOwnProperty('default') ? Control['default'] : Control;
     Weave = Weave && Weave.hasOwnProperty('default') ? Weave['default'] : Weave;
     Tile = Tile && Tile.hasOwnProperty('default') ? Tile['default'] : Tile;
+    color$1 = color$1 && color$1.hasOwnProperty('default') ? color$1['default'] : color$1;
     Logo = Logo && Logo.hasOwnProperty('default') ? Logo['default'] : Logo;
 
     function noop() { }
@@ -742,6 +742,438 @@
         };
     }
 
+    // whiskers on kittens
+    const words = [
+    	`groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
+    	`goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
+    	`luna`, `ember`, `embear`, `lunatic`, `boring`, `killa`, `notice`, `thank`, `tank`,
+    	`under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`,
+    	`tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
+    	`rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
+    ];
+
+    const random = (count) => Array
+    	.from(new Array(count))
+    	.map(() => words[Math.floor(Math.random() * words.length)])
+    	.join(`_`);
+
+    const key_virtual = store_js.write(``);
+
+    const key = store_js.read(``, (set) => {
+    	key_virtual.listen((k) => set(k));
+
+    	window.addEventListener(`keyup`, (e) => {
+    		// always allow keyup
+    		e.preventDefault();
+
+    		if (e.code === `ControlRight`) return set(`enter!`)
+    		set(`${e.key.toLowerCase()}!`);
+    	});
+
+    	window.addEventListener(`keydown`, (e) => {
+    		if (
+    			e.target.tagName === `INPUT` || e.target.tagName === `TEXTAREA`
+    		) {
+    			return
+    		}
+
+    		e.preventDefault();
+
+    		if (e.code === `ControlRight`) return set(`enter`)
+
+    		set(e.key.toLowerCase());
+    	});
+    });
+
+    const keys = store_js.read({}, (set) => {
+    	const value = {};
+
+    	const clear = () => {
+    		Object.entries(value).forEach(([key, val]) => {
+    			if (val && key[key.length - 1] !== `!`) {
+    				value[key] = false;
+    			}
+    		});
+
+    		set(value);
+    	};
+
+    	key.listen((char) => {
+    		value[char] = true;
+    		if (char.length > 1 && char[char.length - 1] === `!`) {
+    			value[char.slice(0, -1)] = false;
+    		} else {
+    			value[`${char}!`] = false;
+    		}
+    		set(value);
+    	});
+
+    	// really try to avoid stuck keys
+    	window.addEventListener(`blur`, clear);
+    	document.addEventListener(`focus`, clear);
+    	document.addEventListener(`visibilitychange`, clear, false);
+    });
+
+    // eventually will want to support local multiplayer with this
+
+    const pads = {};
+
+    window.addEventListener(`gamepadconnected`, ({ gamepad }) => {
+    	pads[gamepad.id] = gamepad;
+    });
+
+    window.addEventListener(`gamepaddisconnected`, ({ gamepad }) => {
+    	delete pads[gamepad.id];
+    });
+
+    let axes_set;
+    const axes = store_js.read({}, (set) => {
+    	axes_set = set;
+    });
+
+    const xbox = {
+    	0: `a`,
+    	1: `b`,
+    	2: `x`,
+    	3: `y`,
+    	4: `leftshoulder`,
+    	5: `rightshoulder`,
+    	6: `lefttrigger`,
+    	7: `righttrigger`,
+    	8: `select`,
+    	9: `start`,
+    	10: `leftstick`,
+    	11: `rightstick`,
+    	12: `up`,
+    	13: `down`,
+    	14: `left`,
+    	15: `right`
+    };
+
+    const xbox_axis = {
+    	0: `lefthorizontal`,
+    	1: `leftvertical`,
+    	2: `righthorizontal`,
+    	3: `rightvertical`
+    };
+
+    const button = store_js.read({}, (set) => {
+    	const last = {};
+
+    	time_js.tick.listen(() => {
+    		const gps = navigator.getGamepads();
+    		for (let i = 0; i < gps.length; i++) {
+    			const pad = gps[i];
+    			if (pad === null) continue
+
+    			pad.buttons.forEach(({ pressed }, bdx) => {
+    				const key = xbox[bdx];
+    				if (key && last[key] !== pressed) {
+    					set(
+    						pressed
+    							? xbox[bdx]
+    							: `${xbox[bdx]}!`
+    					);
+
+    					last[key] = pressed;
+    				}
+    			});
+
+    			const $axes = axes.get();
+
+    			pad.axes.forEach((axis, adx) => {
+    				const key = xbox_axis[axis];
+    				if (key && $axes[key] !== axis) {
+    					$axes[key] = axis;
+    				}
+    			});
+
+    			axes_set($axes);
+    		}
+    	});
+    });
+
+    const buttons = store_js.read({}, (set) => {
+    	const value = {};
+
+    	button.listen(($button) => {
+    		if ($button[$button.length - 1] === `!`) {
+    			value[$button.slice(0, -1)] = false;
+    		} else {
+    			value[$button] = true;
+    		}
+    		set(value);
+    	});
+    });
+
+    // Stores are observables
+    class Store  {
+    	
+    	
+
+    	constructor(value) {
+    		this.value = value;
+    	}
+
+    	notify () {
+    		if (!this.listeners) return
+    		this.listeners.forEach((listener) => listener(this.value));
+    	}
+
+    	subscribe(listener) {
+    		return this.listen(listener)
+    	}
+
+    	listen (listener, no_initial = false)  { 
+    		if (!this.listeners) this.listeners = new Set();
+
+    		this.listeners.add(listener);
+    		
+    		if (!no_initial) listener(this.get());
+
+    		return () => this.listeners.delete(listener)
+    	}
+
+    	get ()  { return this.value }
+    	
+    	set (value, silent = false) {
+    		this.value = value;
+    		if(silent) return
+    		
+    		this.notify();
+    	}
+
+    	update (updator) {
+    		this.set(updator(this.value));
+    	}
+
+    	toJSON ()  {
+    		switch (typeof this.value) {
+    		case `undefined`:
+    		case `number`:
+    		case `string`:
+    			return this.value 
+
+    		case `object`:
+    			if(Set.prototype.isPrototypeOf(this.value)) {
+    				return Array.from(this.value)
+    			}
+
+    			if (
+    				Array.isArray(this.value) ||
+    				this.value === null
+    			) {
+    				return this.value
+    			}
+    			
+    			if (this.value.toJSON) {
+    				return this.value.toJSON()
+    			}
+    		}
+
+    		return JSON.parse(
+    			JSON.stringify(this.value)
+    		)
+    	}
+    }
+
+    class Read$1 extends Store {
+        constructor(value, setter) {
+            super(value);
+
+            if(setter) setter(Store.prototype.set.bind(this));
+        }
+
+         p_set(value, silent = false) {
+            super.set(value, silent);
+        }
+
+        set(value, silent = false) {
+            return
+        }
+    }
+
+    var ELivingStatus; (function (ELivingStatus) {
+        const VOID = "VOID"; ELivingStatus["VOID"] = VOID;
+        const CREATED = "CREATED"; ELivingStatus["CREATED"] = CREATED;
+        const REZED = "REZED"; ELivingStatus["REZED"] = REZED;
+    })(ELivingStatus || (ELivingStatus = {}));
+
+    const THEME_COLOR = new Store(`rgb(224, 168, 83)`);
+
+    const THEME_BORDER = new Store(``, $value => Color($value)
+    	.darkenByRatio(0.5)
+    	.toCSS()
+    );
+
+    const THEME_STYLE = new Read$1(``, set => {
+    	let $THEME_BORDER = ``;
+
+    	const update = () => set([
+    		`border: 0.2rem solid ${$THEME_BORDER};`
+    	].join(``));
+
+    	THEME_BORDER.listen($val => {
+    		$THEME_BORDER = $val;
+    		update();
+    	});
+    });
+
+    var color = (node, txt_init) => {
+    	const handler = {
+    		update: (txt) => {
+    			const bg = Color(flag_js.THEME_BG.get());
+    			const col = Color(text_js.color(JSON.stringify(txt)))
+    				.blend(bg, 0.8);
+
+    			node.style.backgroundColor = col
+    				.toCSS();
+    		}
+    	};
+
+    	handler.update(txt_init);
+    	return handler
+    };
+
+    const nav_map = {};
+    const goto = (key) => {
+    	if (!nav_map[key]) return
+
+    	nav_js.cursor.set(nav_map[key]);
+    };
+
+    window.addEventListener(`contextmenu`, (e) => {
+    	e.preventDefault();
+    	return false
+    });
+
+    let last_node;
+    let last_button = {};
+
+    let origin_addr;
+    const button_defs = {
+    	home: { repeat: true, fn: () => last_node.home || origin_addr },
+    	up: { repeat: true },
+    	down: { repeat: true },
+    	pagedown: { repeat: true, alias: `page_down` },
+    	pageup: { repeat: true, alias: `page_up` },
+    	cancel: {},
+    	insert: {},
+    	delete: { alias: `del` },
+    	left: {},
+    	right: {},
+    	confirm: { alias: `click` }
+    };
+
+    time_js.tick.listen(() => {
+    	if (!last_node) return
+
+    	const $button = input_js.buttons.get();
+
+    	let dest;
+    	Object.entries(button_defs).forEach(([key, { repeat, fn, alias }]) => {
+    		alias = alias || key;
+    		if (!$button[key] || !last_node[alias]) return
+
+    		// prevent repeat
+    		if (!repeat && last_button[key]) return
+
+    		if (fn) {
+    			dest = fn();
+    			return
+    		}
+
+    		if (typeof last_node[alias] === `function`) {
+    			dest = last_node[alias]();
+    			return
+    		}
+
+    		dest = last_node[alias];
+    	});
+
+    	last_button = { ...$button };
+    	if (!dest) return
+
+    	const target = nav_map[dest];
+    	if (!target) return
+
+    	// "instant" other option
+    	target.scrollIntoView({ block: `center` });
+    	if (target === null) return
+    	nav_js.cursor.set(target);
+    });
+
+    const current = ($node) => {
+    	// if ($node && $node.id !== undefined) window.location.hash = $node.id
+    	if (last_node) {
+    		if (last_node.classList) last_node.classList.remove(`nav`);
+    		last_node = false;
+    	}
+
+    	if (!$node) return
+
+    	last_node = $node;
+    	if ($node.focus) {
+    		$node.focus();
+    		$node.classList.add(`nav`);
+    	}
+    };
+
+    nav_js.cursor.listen(current);
+
+    var nav = (node, opts) => {
+    	const { id, origin = false } = opts;
+    	node.id = id;
+
+    	const nav = {
+    		update: ({ up, down, page_up, page_down, insert, del, left, right, keyboard }) => {
+    			// TODO: update to use button defs
+    			node.up = up || node.up;
+    			node.left = left || node.left;
+    			node.right = right || node.right;
+    			node.down = down || node.down;
+    			node.page_down = page_down || node.page_down;
+    			node.page_up = page_up || node.page_up;
+    			node.insert = insert || node.insert;
+    			node.del = del || node.del;
+    			node.keyboard = keyboard || node.keyboard;
+    		},
+    		destroy: () => {
+    			node.removeEventListener(`mousedown`, listener);
+    			delete nav_map[id];
+    		}
+    	};
+
+    	nav.update(opts);
+
+    	nav_map[id] = node;
+    	if (id === `sys` && nav_js.cursor.get() === false) nav_js.cursor.set(node);
+    	node.style.transition = `all 250ms ease-out`;
+
+    	const listener = (e = false) => {
+    		nav_js.cursor.set(node);
+
+    		if (e.which === 3) {
+    			e.preventDefault();
+    			e.stopPropagation();
+    			node.insert && node.insert();
+    			return
+    		}
+
+    		if (e.which === 2) {
+    			node.del && node.del();
+    		}
+    	};
+
+    	node.addEventListener(`mousedown`, listener);
+
+    	if (origin) {
+    		origin_addr = id;
+    	}
+
+    	return nav
+    };
+
     /* src\client\ui\Github.svelte generated by Svelte v3.19.1 */
 
     const file = "src\\client\\ui\\Github.svelte";
@@ -878,8 +1310,8 @@
     			input.focus();
 
     			dispose = [
-    				action_destroyer(color_action = color.call(null, div0, `${Wheel.DENOTE}${/*name*/ ctx[2]}`)),
-    				action_destroyer(color_action_1 = color.call(null, input, `${Wheel.DENOTE}${/*name*/ ctx[2]}`)),
+    				action_destroyer(color_action = color$1.call(null, div0, `${Wheel.DENOTE}${/*name*/ ctx[2]}`)),
+    				action_destroyer(color_action_1 = color$1.call(null, input, `${Wheel.DENOTE}${/*name*/ ctx[2]}`)),
     				listen_dev(input, "keydown", /*keydown_handler*/ ctx[14], false, false, false),
     				listen_dev(input, "focus", focus_handler, false, false, false),
     				listen_dev(input, "input", /*input_input_handler*/ ctx[15]),
@@ -1045,8 +1477,8 @@
 
     function instance($$self, $$props, $$invalidate) {
     	let $cursor;
-    	validate_store(nav.cursor, "cursor");
-    	component_subscribe($$self, nav.cursor, $$value => $$invalidate(11, $cursor = $$value));
+    	validate_store(nav_js$1.cursor, "cursor");
+    	component_subscribe($$self, nav_js$1.cursor, $$value => $$invalidate(11, $cursor = $$value));
     	let last = {};
     	let files;
     	let { nameit = false } = $$props;
@@ -1160,9 +1592,9 @@
     		Tile,
     		load: file_js.load,
     		warps,
-    		color,
-    		cursor: nav.cursor,
-    		goto: nav.goto,
+    		color: color$1,
+    		cursor: nav_js$1.cursor,
+    		goto: nav_js$1.goto,
     		last,
     		files,
     		nameit,
@@ -1208,7 +1640,7 @@
     			// prevent a dead zone
     			 {
     				if (nameit === false && $cursor && $cursor.id === `${Wheel.DENOTE}picker`) {
-    					nav.goto(Wheel.DENOTE);
+    					nav_js$1.goto(Wheel.DENOTE);
     				}
     			}
     		}
@@ -1547,6 +1979,10 @@
     	last_update = new Set(object_js.keys(update));
     }));
 
+    const shader = Read([
+    	sprite_vert,
+    	sprite_frag
+    ]);
     const clear_color = store_js.write([0, 0, 0, 1]);
 
     const { m4 } = twgl;
@@ -1657,13 +2093,13 @@
     	return canvas
     };
 
-    const size = store_js.read([window.innerWidth, window.innerHeight], (set) => {
+    const size = Read$1([window.innerWidth, window.innerHeight], (set) => {
     	window.addEventListener(`resize`, () => {
     		set([window.innerWidth, window.innerHeight]);
     	});
     });
 
-    const scale = store_js.write(1);
+    const scale = Store(1);
 
     size.subscribe(([width, height]) => {
     	const target = width > height
@@ -1675,7 +2111,7 @@
     });
 
     // main canvas
-    const main = store_js.read(webgl());
+    const main = Read$1(webgl());
 
     /* src\client\ui\MainScreen.svelte generated by Svelte v3.19.1 */
     const file$2 = "src\\client\\ui\\MainScreen.svelte";
@@ -1851,7 +2287,7 @@
     	return child_ctx;
     }
 
-    // (125:4) {#if !hidden}
+    // (129:4) {#if !hidden}
     function create_if_block$1(ctx) {
     	let div1;
     	let a0;
@@ -1923,30 +2359,30 @@
     			attr_dev(a0, "class", "github svelte-434ebw");
     			attr_dev(a0, "href", "https://github.com/agoblinking/earthrock");
     			attr_dev(a0, "target", "_new");
-    			add_location(a0, file$3, 127, 8, 3755);
+    			add_location(a0, file$3, 131, 8, 3765);
     			attr_dev(div0, "class", "workspace svelte-434ebw");
-    			add_location(div0, file$3, 130, 8, 3883);
-    			add_location(div1, file$3, 125, 8, 3687);
+    			add_location(div0, file$3, 134, 8, 3893);
+    			add_location(div1, file$3, 129, 8, 3697);
     			attr_dev(div2, "class", "logoicon svelte-434ebw");
-    			add_location(div2, file$3, 146, 16, 4294);
+    			add_location(div2, file$3, 150, 16, 4304);
     			attr_dev(i0, "class", "svelte-434ebw");
-    			add_location(i0, file$3, 176, 17, 5449);
+    			add_location(i0, file$3, 180, 17, 5459);
     			attr_dev(i1, "class", "svelte-434ebw");
-    			add_location(i1, file$3, 176, 32, 5464);
+    			add_location(i1, file$3, 180, 32, 5474);
     			attr_dev(b, "class", "svelte-434ebw");
-    			add_location(b, file$3, 176, 40, 5472);
+    			add_location(b, file$3, 180, 40, 5482);
     			attr_dev(a1, "class", "logo svelte-434ebw");
     			attr_dev(a1, "href", "https://www.patreon.com/earthrock");
     			attr_dev(a1, "target", "_new");
-    			add_location(a1, file$3, 150, 16, 4394);
+    			add_location(a1, file$3, 154, 16, 4404);
     			attr_dev(div3, "class", "weaves svelte-434ebw");
-    			add_location(div3, file$3, 178, 16, 5544);
+    			add_location(div3, file$3, 182, 16, 5554);
     			attr_dev(div4, "class", "partial svelte-434ebw");
-    			add_location(div4, file$3, 144, 12, 4249);
+    			add_location(div4, file$3, 148, 12, 4259);
     			attr_dev(div5, "class", "explore svelte-434ebw");
     			set_style(div5, "color", /*$THEME_COLOR*/ ctx[10]);
     			toggle_class(div5, "boxed", /*boxed*/ ctx[5]);
-    			add_location(div5, file$3, 137, 8, 4029);
+    			add_location(div5, file$3, 141, 8, 4039);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -1979,7 +2415,7 @@
     			dispose = [
     				action_destroyer(color_action = color.call(null, div0, /*$workspace*/ ctx[9])),
     				listen_dev(a1, "click", /*click_handler*/ ctx[18], false, false, false),
-    				action_destroyer(nav_action = nav__default.call(null, a1, {
+    				action_destroyer(nav_action = nav.call(null, a1, {
     					id: Wheel.DENOTE,
     					up: /*nav_function*/ ctx[19],
     					origin: true,
@@ -2079,14 +2515,14 @@
     		block,
     		id: create_if_block$1.name,
     		type: "if",
-    		source: "(125:4) {#if !hidden}",
+    		source: "(129:4) {#if !hidden}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (180:20) {#each ws as weave, i (weave.id.get())}
+    // (184:20) {#each ws as weave, i (weave.id.get())}
     function create_each_block(key_2, ctx) {
     	let first;
     	let current;
@@ -2146,14 +2582,14 @@
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(180:20) {#each ws as weave, i (weave.id.get())}",
+    		source: "(184:20) {#each ws as weave, i (weave.id.get())}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (124:4) <Picker {nameit} bind:this={picker}>
+    // (128:4) <Picker {nameit} bind:this={picker}>
     function create_default_slot(ctx) {
     	let if_block_anchor;
     	let current;
@@ -2209,7 +2645,7 @@
     		block,
     		id: create_default_slot.name,
     		type: "slot",
-    		source: "(124:4) <Picker {nameit} bind:this={picker}>",
+    		source: "(128:4) <Picker {nameit} bind:this={picker}>",
     		ctx
     	});
 
@@ -2315,26 +2751,26 @@
     		$$subscribe_workspace = () => ($$unsubscribe_workspace(), $$unsubscribe_workspace = subscribe(workspace, $$value => $$invalidate(9, $workspace = $$value)), workspace);
 
     	let $THEME_COLOR;
-    	validate_store(nav.cursor, "cursor");
-    	component_subscribe($$self, nav.cursor, $$value => $$invalidate(17, $cursor = $$value));
-    	validate_store(flag_js.THEME_COLOR, "THEME_COLOR");
-    	component_subscribe($$self, flag_js.THEME_COLOR, $$value => $$invalidate(10, $THEME_COLOR = $$value));
+    	validate_store(nav_js.cursor, "cursor");
+    	component_subscribe($$self, nav_js.cursor, $$value => $$invalidate(17, $cursor = $$value));
+    	validate_store(THEME_COLOR, "THEME_COLOR");
+    	component_subscribe($$self, THEME_COLOR, $$value => $$invalidate(10, $THEME_COLOR = $$value));
     	$$self.$$.on_destroy.push(() => $$unsubscribe_weaves());
     	$$self.$$.on_destroy.push(() => $$unsubscribe_workspace());
     	let explore;
     	let last_cursor;
 
-    	key_js.key.listen(char => {
+    	key.listen(char => {
     		if (char !== `\`` && char !== `pause`) return;
     		$$invalidate(0, hidden = !hidden);
 
     		if (hidden) {
-    			last_cursor = nav.cursor.get().id;
-    			nav.cursor.set({ id: `$game` });
+    			last_cursor = nav_js.cursor.get().id;
+    			nav_js.cursor.set({ id: `$game` });
     		} else {
     			requestAnimationFrame(() => {
-    				nav.goto(last_cursor);
-    				const ele = nav.cursor.get();
+    				goto(last_cursor);
+    				const ele = nav_js.cursor.get();
     				if (!ele) return;
     				const br = ele.getBoundingClientRect();
     				if (!br) return;
@@ -2343,7 +2779,7 @@
     		}
     	});
 
-    	gamepad_js.button.listen(button => {
+    	button.listen(button => {
     		if (button !== `select`) return;
     		$$invalidate(0, hidden = !hidden);
     	});
@@ -2402,10 +2838,10 @@
 
     	const nav_function_4 = () => {
     		// pop up picker with a blank
-    		$$invalidate(2, nameit = { name: text_js.random(2) });
+    		$$invalidate(2, nameit = { name: random(2) });
 
     		requestAnimationFrame(() => {
-    			nav.cursor.set(picker);
+    			nav_js.cursor.set(picker);
     		});
     	};
 
@@ -2429,15 +2865,15 @@
     	};
 
     	$$self.$capture_state = () => ({
-    		color,
     		blur,
-    		key: key_js.key,
-    		button: gamepad_js.button,
-    		random: text_js.random,
-    		THEME_COLOR: flag_js.THEME_COLOR,
-    		nav: nav__default,
-    		cursor: nav.cursor,
-    		goto: nav.goto,
+    		random,
+    		key,
+    		button,
+    		THEME_COLOR,
+    		color,
+    		nav,
+    		cursor: nav_js.cursor,
+    		goto,
     		Control,
     		Weave,
     		Github,
@@ -2591,5 +3027,5 @@
         target: document.body
     });
 
-}(color, key_js, gamepad_js, text_js, flag_js, nav, Control, Weave, Tile, file_js, warps, store_js, twgl, time_js, shader_js, camera_js, visible_js, object_js, Logo));
+}(store_js, time_js, Color, text_js, flag_js, input_js, nav_js, Control, Weave, Tile, file_js, warps, color$1, nav_js$1, twgl, shader_js, camera_js, visible_js, object_js, Logo));
 //# sourceMappingURL=client.bundle.js.map

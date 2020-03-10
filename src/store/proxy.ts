@@ -22,8 +22,8 @@ export abstract class ProxyTree<T> extends Proxy<TreeValue<T>> implements ITree<
         return this.value.reset(target, silent)
     }
 
-    write (tree_write: object, silent?: boolean) {
-        return this.value.write(tree_write, silent)
+    add (tree_write: object, silent?: boolean) {
+        return this.value.add(tree_write, silent)
     }
 
     remove (name: string, silent?: boolean) {

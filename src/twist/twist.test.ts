@@ -11,7 +11,7 @@ test("twist/visible", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     VISIBLE: {
@@ -31,7 +31,7 @@ test("twist/data", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     DATA: {
@@ -44,12 +44,12 @@ test("twist/data", t => {
 
     t.snapshot(weave.toJSON())
 
-    const space = weave.warps.item("test") as Space
+    const space = weave.value.item("test") as Space
     const data = space.item("DATA")
     
     t.snapshot(data.toJSON())
 
-    data.write({
+    data.add({
         foo: "5"
     })
 
@@ -61,7 +61,7 @@ test("twist/physical", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     PHYSICAL: {

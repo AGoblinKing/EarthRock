@@ -1,13 +1,13 @@
 <script>
-    import color from "/_client/action/color.js"
     import { blur } from "svelte/transition"
-    import { key } from "/sys/key.js"
-    import { button } from "/sys/gamepad.js"
-    import { random } from "/text.js"
-    
-    import { THEME_COLOR } from "/sys/flag.js"
-    import nav, { cursor, goto } from "/_client/action/nav.js"
-    
+    import { random } from "src/lib/text"
+    import { key } from "src/client/sys/key"
+    import { button } from "src/client/sys/gamepad"
+    import { THEME_COLOR } from "src/client/sys/flag"
+
+    import color from "./action/color"
+    import nav, { cursor, goto } from "./action/nav"
+
     import Control from "/_client/control/Control.svelte"
     import Weave from "/_client/explore/Weave.svelte"
     import Github from "./Github.svelte"

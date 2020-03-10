@@ -1,6 +1,6 @@
 import * as twgl from "twgl.js"
 
-import { TIME_TICK_RATE } from "/sys/flag.js"
+import { TIME_TICK_RATE } from "src/sys/flag.js"
 import { tick } from "/sys/time.js"
 import { visible } from "/weave/twist/visible.js"
 import { map, values, each, keys } from "/object.js"

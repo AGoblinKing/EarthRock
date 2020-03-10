@@ -1,21 +1,17 @@
-import Weave from "/weave/weave.js"
+import Weave from "/weave/weave"
 
-import { map, reduce } from "/object.js"
+import { map, reduce } from "/object"
 
 // lets grab all the systems here
-import * as mouse from "/sys/mouse.js"
-import * as time from "/sys/time.js"
-import * as screen from "/sys/screen.js"
-import * as input from "/sys/input.js"
-import * as key from "/sys/key.js"
-import * as gamepad from "/sys/gamepad.js"
-import * as flag from "/sys/flag.js"
-import * as camera from "/sys/camera.js"
-import * as device from "/sys/device.js"
-
-// private sytems
-import "/sys/data.js"
-import "/sys/physics.js"
+import * as mouse from "./mouse"
+import * as time from "src/sys/time"
+import * as screen from "./screen"
+import * as input from "./input"
+import * as keyboard from "./keyboard"
+import * as gamepad from "./gamepad"
+import * as flag from "./flag"
+import * as camera from "./camera"
+import * as device from "./device"
 
 const normalize = (sys) => map(flag)(
 	([k, entry]) => [

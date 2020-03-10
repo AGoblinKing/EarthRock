@@ -1,14 +1,16 @@
 // Collection of meta controllers
-import * as Mouse from "/sys/mouse.js"
-import * as Key from "/sys/key.js"
-import * as Time from "/sys/time.js"
-import * as Gamepad from "/sys/gamepad.js"
-import { cursor } from "/sys/nav.js"
+import * as Mouse from "./mouse"
+import * as Keyboard from "./keyboard.js"
+import * as Time from "src/sys/time"
+import * as Gamepad from "./gamepad"
+
+import { cursor } from "src/client/ui/action/nav"
+
 import { v3 } from "twgl.js"
 
 const { length, add, mulScalar } = v3
 
-import { read, transformer } from "/store.js"
+import { Read, transformer } from "src/store"
 
 document.addEventListener(`touchmove`, event => {
 	if (event.scale !== 1) { event.preventDefault() }
@@ -22,7 +24,7 @@ document.addEventListener(`touchend`, event => {
 }, { passive: false })
 
 // raw translate commands
-export const translate = read([0, 0, 0], (set) => {
+export const translate = new Read([0, 0, 0], (set) => {
 	const b_key = [0, 0, 0]
 	// frame stuff has to be fast :/
 	Time.frame.listen(() => {
@@ -89,10 +91,10 @@ const button_map = {
 	redo: ({ shift, control, z, backspace, redo }) => redo || (shift && control && z) || (shift && backspace)
 }
 
-export const buttons = read({}, (set) => {
+export const buttons = new Read<any>({}, (set) => {
 	const values = {}
 	Time.tick.listen(() => {
-		const $keys = Key.keys.get()
+		const $keys = Keyboard.keys.get()
 		const $buttons = Gamepad.buttons.get()
 
 		Object.entries(button_map).forEach(([key, fn]) => {

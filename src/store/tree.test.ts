@@ -22,12 +22,11 @@ test("store/tree/names", t => {
         stores: new Store(new Store("string"))
     })
 
-    tree.write({foo: 2})
+    tree.add({foo: 2})
     t.snapshot(tree.get())
     t.snapshot(tree.item("foo"))
 
-
-    tree.write({
+    tree.add({
         foo: 5,
         store: 1,
         new_thing: "new"
@@ -35,7 +34,6 @@ test("store/tree/names", t => {
 
     t.snapshot(tree.get())
     t.snapshot(tree.toJSON())
-
 
     tree.remove("store")
 

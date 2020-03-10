@@ -1,8 +1,9 @@
-import { buttons } from "/sys/input.js"
+import { Store } from "src/store"
 
-import { tick } from "/sys/time.js"
-export { cursor } from "/sys/nav.js"
-import { cursor } from "/sys/nav.js"
+import { buttons } from "../../sys/input"
+import { tick } from "src/sys/time"
+
+export const cursor = new Store<any>(undefined)
 
 export const nav_map = {}
 export const goto = (key) => {

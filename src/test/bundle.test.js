@@ -309,7 +309,7 @@ class Tree extends Read {
 		this.p_set($tree, silent);
 	}
 
-	write (tree_json, silent = false) {
+	add (tree_json, silent = false) {
 		const $tree = this.get();
 		Object.assign($tree, tree_json);
 
@@ -327,7 +327,7 @@ class Tree extends Read {
 
 		if(steps.length === 0 || !cursor) return cursor 	
 		return cursor.query(...steps)
-    }
+	}
 }
 
 test("store/tree", t => {
@@ -349,12 +349,11 @@ test("store/tree/names", t => {
         stores: new Store(new Store("string"))
     });
 
-    tree.write({foo: 2});
+    tree.add({foo: 2});
     t.snapshot(tree.get());
     t.snapshot(tree.item("foo"));
 
-
-    tree.write({
+    tree.add({
         foo: 5,
         store: 1,
         new_thing: "new"
@@ -362,7 +361,6 @@ test("store/tree/names", t => {
 
     t.snapshot(tree.get());
     t.snapshot(tree.toJSON());
-
 
     tree.remove("store");
 
@@ -429,8 +427,8 @@ class ProxyTree extends Proxy {
         return this.value.reset(target, silent)
     }
 
-    write (tree_write, silent) {
-        return this.value.write(tree_write, silent)
+    add (tree_write, silent) {
+        return this.value.add(tree_write, silent)
     }
 
     remove (name, silent) {
@@ -537,6 +535,164 @@ class Buffer extends Tree {
     }
 }
 
+var ELivingStatus; (function (ELivingStatus) {
+    const VOID = "VOID"; ELivingStatus["VOID"] = VOID;
+    const CREATED = "CREATED"; ELivingStatus["CREATED"] = CREATED;
+    const REZED = "REZED"; ELivingStatus["REZED"] = REZED;
+})(ELivingStatus || (ELivingStatus = {}));
+
+class Living extends ProxyTree {constructor(...args) { super(...args); Living.prototype.__init.call(this); }
+    
+     __init() {this.status = new Store(ELivingStatus.VOID);}
+
+    add (living_data, silent = false) {
+        super.add(living_data, silent);
+            
+        const items = Object.entries(living_data);
+        for(let [_, item] of items) {
+            item.create && item.create();
+        }
+
+        // if not rezed no need
+        if(this.status.get() !== ELivingStatus.REZED) return
+
+        const $rezed = this.rezed && this.rezed.get(); 
+
+        // create doesn't auto rez
+        // so you can batch creates together then rez
+        for(let [name, item] of items) {
+            if($rezed && !$rezed[name]) continue 
+            item.rez && item.rez();
+        }
+    }
+    
+    remove (name, silent = false) {
+        const $value = this.get(); 
+
+        if($value[name] && $value[name].destroy) {
+            $value[name].destroy();
+        }
+
+        const $rezed = this.rezed && this.rezed.get(); 
+        if($rezed) {
+            $rezed.delete(name);
+        }
+
+        super.remove(name, silent);
+    }
+    
+    removes(...names) {
+        for(let name of names) {
+            this.remove(name, true);
+        }
+
+        this.notify();
+    }
+
+    create () {
+        if(this.status.get() !== ELivingStatus.VOID) {
+            throw new Error("Tried to create a nonvoid living class")
+        }
+
+        // run through my tree to guarantee its destroyed
+        let sub;
+        for(sub of Object.values(this.get())) {
+            sub.create && sub.create();
+        }
+
+        this.status.set(ELivingStatus.CREATED);
+    }
+
+    destroy () {
+        if(this.status.get() === ELivingStatus.REZED) {
+            this.derez();
+        }
+
+        let sub;
+        for(sub of Object.values(this.get())) {
+            sub.destroy && sub.destroy();
+        }
+
+        this.status.set(ELivingStatus.VOID);
+    }
+    
+    rez () {
+        if(this.status.get() === ELivingStatus.VOID) {
+            this.create();
+        }
+
+        const rezed = this.rezed && this.rezed.get();        
+
+        for(let [name, sub] of Object.entries(this.get())) {
+            if(rezed && !rezed.has(name)) continue
+
+            (sub ).rez && (sub ).rez();
+        }
+
+        this.status.set(ELivingStatus.REZED);
+    }
+
+    derez () {
+        if(this.status.get() !== ELivingStatus.REZED) {
+            return   
+        }
+
+        const $rezed = this.rezed && this.rezed.get();        
+
+        for(let [name, sub] of Object.entries(this.get())) {
+            if($rezed && !$rezed.has(name)) continue
+            
+            (sub ).derez && (sub ).derez();
+        }
+
+        this.status.set(ELivingStatus.CREATED);
+    }
+
+
+    start(name) {
+        const $rezed = this.rezed && this.rezed.get();        
+        const item = this.item(name);
+
+        if(!item) return
+
+        // can only rez if I am 
+        if(this.status.get() === ELivingStatus.REZED) {
+            (item ).rez && (item ).rez();
+        }
+
+        if($rezed) {
+            $rezed.add(name);
+            this.rezed.notify();
+        }
+    }
+
+    stop(name) {
+        const item = this.item(name);
+        if(!item) return
+
+        // can derez whenever though
+        (item ).derez && (item ).derez();
+
+        const $rezed = this.rezed && this.rezed.get();   
+        if(!$rezed) return
+        
+        $rezed.delete(name);
+        this.rezed.notify();
+    }
+
+    restart (name) {
+        this.stop(name);
+        this.start(name);
+    }
+
+    toJSON() {
+        return {
+            value: this.value.toJSON(),
+            rezed: this.rezed ? this.rezed.toJSON() : undefined
+        }
+    }
+}
+
 test("store/buffer", t => {
     const buffer = new Buffer({
         test: [1, 2],
@@ -566,6 +722,109 @@ test("store/buffer", t => {
 
     buffer.resize();
     t.snapshot(buffer.toJSON(), "resizeable");
+});
+
+class Test extends Living {
+    constructor(count) {
+        super();
+        
+        const $value = {};
+        for(let i = 0; i < count; i++) {
+            $value[`${i}`] = new Test(0);
+        }
+
+        this.value = new Tree($value);
+        this.rezed = new Store(new Set(["1"]));
+    }
+}
+
+test("store/living", t => {
+    const tester = new Test(5);
+
+    t.snapshot(tester);
+
+    tester.create();
+
+    t.snapshot(tester);
+
+    tester.add({
+        6: new Test(1)
+    });
+
+    t.snapshot(tester.toJSON());
+
+    tester.remove("2");
+    t.snapshot(tester);
+
+    tester.start("6");
+
+    t.snapshot(tester);
+
+    tester.query("6").start("0");
+    tester.rez();
+
+    t.snapshot(tester);
+
+    tester.derez();
+    t.snapshot(tester);
+
+    tester.start("0");
+    tester.stop("6");
+
+    tester.rez();
+
+    t.snapshot(tester);
+
+    tester.remove("0");
+    t.snapshot(tester);
+
+    tester.destroy();
+
+    t.snapshot(tester);
+
+    tester.create();
+    tester.rez();
+
+    t.snapshot(tester);
+
+    t.snapshot(tester.query("6", "0"));
+});
+
+class TestProxy extends Proxy {constructor(...args) { super(...args); TestProxy.prototype.__init.call(this); }
+    __init() {this.value = new Store(5);}
+}
+
+class TestProxyTree extends ProxyTree {constructor(...args2) { super(...args2); TestProxyTree.prototype.__init2.call(this); }
+    __init2() {this.value = new Tree({
+        test: 5,
+        foo: 6
+    });}
+}
+
+test("store/proxy", t => {
+    const proxy = new TestProxy();
+
+    t.snapshot(proxy.get());
+    
+    proxy.set(6);
+
+    t.snapshot(proxy.toJSON());
+});
+
+test("store/proxy/tree", t => {
+    const proxy = new TestProxyTree();
+
+    t.snapshot(proxy.get());
+
+    proxy.add({
+        foos: 7
+    });
+
+    t.snapshot(proxy.toJSON());
+
+    proxy.remove("foo");
+
+    t.snapshot(proxy.get());
 });
 
 const TILE_COUNT = 1024;
@@ -618,6 +877,31 @@ test("lib/text", t => {
     t.is(typeof random(2), "string");
 });
 
+const json = (value) => {
+	if (typeof value !== `string`) return value
+
+	if (value.indexOf(`.`) === -1 && value.indexOf(`,`) === -1) {
+		const n = parseInt(value);
+		if (typeof n === `number` && !isNaN(n)) {
+			return n
+		}
+	}
+
+	try {
+		return JSON.parse(value)
+	} catch (ex) {
+		return value
+	}
+};
+
+test("lib/parse", t => {
+    t.snapshot(json("5"));
+    t.snapshot(json("5.9"));
+    t.snapshot(json("hello"));
+    t.snapshot(json("[5]"));
+    t.snapshot(json("{\"5\": 5}"));
+});
+
 var EWarp; (function (EWarp) {
     const SPACE = "SPACE"; EWarp["SPACE"] = SPACE;
     const MATH = "MATH"; EWarp["MATH"] = MATH;
@@ -625,11 +909,10 @@ var EWarp; (function (EWarp) {
     const MAIL = "MAIL"; EWarp["MAIL"] = MAIL;
 })(EWarp || (EWarp = {}));
 
-class Warp extends Proxy {
+class Warp extends Living {
     
     
 
-    
     
 
     constructor(data, weave) {
@@ -638,14 +921,9 @@ class Warp extends Proxy {
         this.name = data.name;
         this.type = data.type;
         this.weave = weave;
-
+        
         // don't init value because who knows what they want
     }
-
-    destroy () { /* no-op */ }
-    create() { /* no-op */ }
-    rez () { /* no-op */ }
-    derez () { /* no-op */ }
 
     toJSON() {
         return {
@@ -666,7 +944,7 @@ var ETwist; (function (ETwist) {
 
 
 
-class Twist extends ProxyTree {
+class Twist extends Living {
     
     
     
@@ -680,7 +958,7 @@ class Twist extends ProxyTree {
 
         return stores
     }
-
+    
     constructor (weave, space) {
         super();
 
@@ -688,6 +966,11 @@ class Twist extends ProxyTree {
         this.weave = weave;
         this.value = new Tree({});
     }
+
+    toJSON() {
+        return this.value.toJSON()
+    }
+
 }
 
 // Visible spaces
@@ -709,7 +992,7 @@ class Visible extends Twist {
         super(weave, space);
         const [view, idx] = Visible.data.allocate(visible_data);
         this.index = idx;
-        this.write(view);
+        this.add(view);
     }
 
     toJSON() {
@@ -728,14 +1011,14 @@ class Visible extends Twist {
 class Data extends Twist  {
     constructor(weave,  space, data) {
         super(weave, space);
-        this.write(Twist.map_to_stores(data));
+        this.add(Twist.map_to_stores(data));
     }
 }
 
 class Physical extends Twist {
     constructor(weave,  space, physical_data = {}) {
         super(weave, space);
-        this.write(Twist.map_to_stores(physical_data));
+        this.add(Twist.map_to_stores(physical_data));
     }
 }
 
@@ -749,60 +1032,51 @@ class Space extends Warp {
 
         const twists = {};
         for(let type of Object.keys(data)) {
-            twists[type] = this.add_twist(type, weave, data[type]);
+            twists[type] = this.create_twist(type, data[type]);
         }
 
         this.value = new Tree(twists);
     }
 
-    item (name) {
-        return this.value.item(name)
+    add (data) {
+        const adds = {};
+
+        for(let type of Object.keys(data)) {
+            if(type === "sys") continue
+            adds[type] = this.create_twist(type, data[type]);
+        }
+
+        super.add(adds);
     }
 
-    reset (target, silent)  {
-        return this.value.reset(target, silent)
-    }
-
-    write (tree_write, silent) {
-        return this.value.write(tree_write, silent)
-    }
-
-    remove (name, silent) {
-        this.value.remove(name, silent);
-    }
-
-    query (...steps)  {
-        return this.value.query(...steps)
-    }
-
-    add_twist (type, weave, twist_data = {}) {
+     create_twist (type, twist_data = {}) {
         switch(type) {
             case ETwist.DATA:
-                return new Data(weave, this, twist_data)
+                return new Data(this.weave, this, twist_data)
             case ETwist.VISIBLE: 
-                return new Visible(weave, this, twist_data )
+                return new Visible(this.weave, this, twist_data )
             case ETwist.PHYSICAL:
-                return new Physical(weave, this, twist_data )
+                return new Physical(this.weave, this, twist_data )
         }
 
         throw new Error(`unknown twist ${type}`)
-    }
+    }   
 
     create() {
-        this.weave.spaces.write({ [this.name]: this });
+        super.create();
+        this.weave.spaces.add({ [this.name]: this });
     }
 
     destroy() {
+        super.destroy();
         this.weave.spaces.remove(this.name);
     }
-
 }
 
 // export * from "./mail"
 // export * from "./value"
 
-class Weave extends ProxyTree{
-    
+class Weave extends Living {
     
     
     
@@ -819,7 +1093,7 @@ class Weave extends ProxyTree{
             case undefined:
                 $warp.type = EWarp.SPACE;
             case EWarp.SPACE:
-                return new Space($warp, this)
+                 return new Space($warp, this)
             case EWarp.MAIL:
             case EWarp.VALUE:
             case EWarp.MATH:
@@ -833,9 +1107,10 @@ class Weave extends ProxyTree{
 
         this.name = new Store(data.name);
         this.wefts = new Tree(data.wefts);
-        this.value = this.warps = new Tree({});
+        this.value = new Tree({});
         this.rezed = new Store(new Set(data.rezed));
-        
+        this.spaces = new Tree({});
+
         this.cancels = new Set();
 
         this.wefts_reverse = new Tree({}, set => {
@@ -849,59 +1124,70 @@ class Weave extends ProxyTree{
             }));
         });
 
-        this.write(data.warps);
+        this.add(data.value);
     }
 
-    write(warp_data, silent = false)  {
+    add(warp_data, silent = false)  {
+        if(!warp_data) return
         const warps = {};
 
-        for(let id of Object.keys(warp_data)) {
-            const warp = warp_data[id];  
-            warp.name = warp.name === "cuid" ? cuid() : id;
+        for(let name of Object.keys(warp_data)) {
+            const warp = warp_data[name];  
+            warp.name = warp.name === "cuid" ? cuid() : name;
 
-            warps[id] = this.create_warp(warp);
+            warps[name] = this.create_warp(warp);
         }
 
-        this.warps.set(Object.assign(this.warps.get(), warps), silent);
+        super.add(warps, silent);
+
         return warps
     }
 
-    delete(...ids) {
-        const $warps = this.warps.get();
+    removes(...names) {
+        const $warps = this.value.get();
         const $wefts = this.wefts.get();
         const $wefts_r = this.wefts_reverse.get();
         const $rezed = this.rezed.get();
 
-        for(let id of ids) {
-            delete $warps[id];
-            delete $wefts[id];
-            $rezed.delete(id);
+        for(let name of names) {
+            const warp = $warps[name];
+            if(warp) warp.destroy();
 
-            const r = $wefts_r[id];
+            delete $warps[name];
+            delete $wefts[name];
+            $rezed.delete(name);
+
+            const r = $wefts_r[name];
             if(r) {
                 delete $wefts[r];
             }
         }
-        // TODO: Notify destruction if rezed
 
-        this.warps.set($warps);
+        this.value.set($warps);
         this.wefts.set($wefts);
         this.rezed.set($rezed);
     }
 
+    remove (name) {
+        this.removes(name);
+    }
+
     destroy() {
-        this.delete(...Object.keys(this.warps.get()));
+        super.destroy();
+
         for(let cancel of Array.from(this.cancels)) {
             cancel();
         }
+
         this.cancels.clear();
     }
 
-    toJSON()  {
+    toJSON() {
         return {
             name: this.name.get(),
             wefts: this.wefts.get(),
-            warps: this.warps.toJSON(),
+
+            value: this.value.toJSON(),
             rezed: this.rezed.toJSON()
         }
     }
@@ -910,10 +1196,12 @@ class Weave extends ProxyTree{
 test("weave/", t => {
     const data = {
         name: "test",
-        warps: {
+        value: {
             foo: { type: EWarp.SPACE, value: {} },
             test: { type: EWarp.SPACE, value: {} }
         },
+
+        
         wefts: {
             foo: "test"
         },
@@ -926,18 +1214,18 @@ test("weave/", t => {
 
     t.deepEqual(data, weave.toJSON());
 
-    weave.delete("foo", "test");
+    weave.removes("foo", "test");
     
     t.snapshot(weave.toJSON());
 
-    weave.write({
+    weave.add({
         foo: { value: {}},
         bar: { type: EWarp.SPACE, value: {}}
     });
 
     t.snapshot(weave.toJSON());
 
-    weave.write({
+    weave.add({
         foo: { value: {} }
     });
     
@@ -950,7 +1238,7 @@ test("weave/", t => {
 test("warp/", t => {
     const weave = new Weave({
         name: "test",
-        warps: {
+        value: {
             hello: {
                 value: {VISIBLE: {
                     sprite: [5]
@@ -959,9 +1247,9 @@ test("warp/", t => {
         },
         wefts: {},
         rezed: []
-    } );
+    });
 
-    const { hello } = weave.warps.get();
+    const { hello } = weave.value.get();
     t.snapshot(hello.toJSON());
     weave.destroy();
 });
@@ -969,29 +1257,35 @@ test("warp/", t => {
 test("warp/space", t => {
     const weave = new Weave({
         name: "test",
-        warps: {
+        value: {
             hello: {
-                value: {VISIBLE: {
-                    sprite: [5]
-                }}
+                value: {
+                    VISIBLE: {
+                        sprite: [5]
+                    }
+                }
             }
         },
         wefts: {},
         rezed: []
-    } );
+    });
 
-    const hello = weave.warps.get().hello; 
+    const hello = weave.value.get().hello; 
 
-    hello.write({ DATA: { foo: 5 } });
+    hello.add({ DATA: { foo: 5 } });
     t.snapshot(hello.toJSON());
 
     const vis = hello.item("VISIBLE");
     t.snapshot(vis.toJSON());
-    vis.write({
+    vis.add({
         foo: new Store(5) 
     });
 
     t.snapshot(vis.get());
+
+    t.snapshot(weave.spaces.toJSON());
+    weave.remove("hello");
+    t.snapshot(weave.spaces.toJSON());
 });
 
 test("twist/visible", t => {
@@ -1000,7 +1294,7 @@ test("twist/visible", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     VISIBLE: {
@@ -1020,7 +1314,7 @@ test("twist/data", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     DATA: {
@@ -1033,12 +1327,12 @@ test("twist/data", t => {
 
     t.snapshot(weave.toJSON());
 
-    const space = weave.warps.item("test"); 
+    const space = weave.value.item("test"); 
     const data = space.item("DATA");
     
     t.snapshot(data.toJSON());
 
-    data.write({
+    data.add({
         foo: "5"
     });
 
@@ -1050,7 +1344,7 @@ test("twist/physical", t => {
         name: "test",
         wefts: {},
         rezed: [],
-        warps: {
+        value: {
             test: {
                 value: {
                     PHYSICAL: {
@@ -1113,10 +1407,6 @@ var sys = /*#__PURE__*/Object.freeze({
 
 test("sys/time", t => {
     t.snapshot(sys);
-
-    raf_1(() => {
-        t.snapshot(tick);
-    });
 
     return new Promise(resolve => setTimeout(() => {
         t.snapshot(tick);

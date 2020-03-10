@@ -1,12 +1,16 @@
-export const json = (v) => {
-	if (typeof v !== `string`) return v
+export const json = (value: any) => {
+	if (typeof value !== `string`) return value
 
-	if (v.indexOf(`.`) === -1 && v.indexOf(`,`) === -1) {
-		const n = parseInt(v)
+	if (value.indexOf(`.`) === -1 && value.indexOf(`,`) === -1) {
+		const n = parseInt(value)
 		if (typeof n === `number` && !isNaN(n)) {
 			return n
 		}
 	}
 
-	return JSON.parse(v)
+	try {
+		return JSON.parse(value)
+	} catch (ex) {
+		return value
+	}
 }

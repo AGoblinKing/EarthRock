@@ -1,14 +1,16 @@
 import test from "ava"
-import { Weave } from "./index"
-import { EWarp, IWeaveJSON } from "./types"
+import { Weave, IWeave } from "./index"
+import { EWarp } from "src/warp"
 
 test("weave/", t => {
-    const data: IWeaveJSON = {
+    const data: IWeave = {
         name: "test",
-        warps: {
+        value: {
             foo: { type: EWarp.SPACE, value: {} },
             test: { type: EWarp.SPACE, value: {} }
         },
+
+        
         wefts: {
             foo: "test"
         },
@@ -21,18 +23,18 @@ test("weave/", t => {
 
     t.deepEqual(data, weave.toJSON())
 
-    weave.delete("foo", "test")
+    weave.removes("foo", "test")
     
     t.snapshot(weave.toJSON())
 
-    weave.write({
+    weave.add({
         foo: { value: {}},
         bar: { type: EWarp.SPACE, value: {}}
     })
 
     t.snapshot(weave.toJSON())
 
-    weave.write({
+    weave.add({
         foo: { value: {} }
     })
     

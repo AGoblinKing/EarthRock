@@ -129,7 +129,7 @@ var performanceNow = createCommonjsModule(function (module) {
 
 }).call(commonjsGlobal);
 
-//# sourceMappingURL=performance-now.js.map
+
 });
 
 var root = typeof window === 'undefined' ? commonjsGlobal : window
@@ -1609,14 +1609,14 @@ class Messenger  {
     }
 }
 
-class RemoteWorker extends Messenger {
+class RemoteGoblin extends Messenger {
     __init() {this.wheel = new Wheel({
         rezed: [],
         value: {}
     });}
     
     constructor (remote) {
-        super();RemoteWorker.prototype.__init.call(this);
+        super();RemoteGoblin.prototype.__init.call(this);
         this.remote = remote;
 
         raf_1(() => {
@@ -1683,7 +1683,7 @@ class RemoteWorker extends Messenger {
 }
 
 class LocalWorker extends Messenger  {constructor(...args) { super(...args); LocalWorker.prototype.__init.call(this); }
-     __init() {this.remote = new RemoteWorker(this);}
+     __init() {this.remote = new RemoteGoblin(this);}
 
     terminate() {
         // okay
@@ -1694,7 +1694,7 @@ class LocalWorker extends Messenger  {constructor(...args) { super(...args); Loc
     }
 }  
 
-class WheelWorker extends Living {
+class Goblin extends Living {
     // this could use sharedmemory but not everyone supports it
     __init2() {this.buffer = new Tree({
         VISIBLE: Visible.data
@@ -1710,7 +1710,7 @@ class WheelWorker extends Living {
      __init5() {this.json_resolvers = [];}
 
     constructor (sys, local = false) {
-        super();WheelWorker.prototype.__init2.call(this);WheelWorker.prototype.__init3.call(this);WheelWorker.prototype.__init4.call(this);WheelWorker.prototype.__init5.call(this);WheelWorker.prototype.__init6.call(this);
+        super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);Goblin.prototype.__init6.call(this);
 
         this.sys = sys;
         this.local = local;
@@ -1860,8 +1860,8 @@ class WheelWorker extends Living {
 
 TIME_TICK_RATE.set(10);
 
-test("goblin", async t => {
-    const worker = new WheelWorker(new Tree({
+test("goblin/", async t => {
+    const worker = new Goblin(new Tree({
         test: new Tree({
             1: new Store(5)
         }),
@@ -1920,7 +1920,7 @@ class Isekai extends Living {
         const write = {};
 
         for(let [name, wheel_json] of Object.entries(wheels)) {
-            const worker = write[name] = new WheelWorker(this.sys, this.local.get());
+            const worker = write[name] = new Goblin(this.sys, this.local.get());
             worker.add(wheel_json);
         }
 

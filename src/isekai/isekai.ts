@@ -1,9 +1,10 @@
-import { WheelWorker, IWheelJSON } from "src/wheel"
+import { IWheelJSON } from "src/wheel"
+import { Goblin } from "src/goblin"
 import { IStore, Tree, Living, TreeValue, Store } from "src/store"
 
 // Starts up in the main thread
-export class Isekai extends Living<WheelWorker> {
-    protected wheels = new Tree<WheelWorker>()
+export class Isekai extends Living<Goblin> {
+    protected wheels = new Tree<Goblin>()
     protected value = this.wheels
     
     readonly sys = new Tree<Tree<IStore<any>>>()
@@ -30,7 +31,7 @@ export class Isekai extends Living<WheelWorker> {
         const write = {}
 
         for(let [name, wheel_json] of Object.entries(wheels)) {
-            const worker = write[name] = new WheelWorker(this.sys, this.local.get())
+            const worker = write[name] = new Goblin(this.sys, this.local.get())
             worker.add(wheel_json)
         }
 

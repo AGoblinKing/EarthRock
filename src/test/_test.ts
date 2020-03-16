@@ -4,6 +4,7 @@ import "src/store/read.test"
 import "src/store/buffer.test"
 import "src/store/living.test"
 import "src/store/proxy.test"
+import "src/store/transformer.test"
 
 import "src/lib/text.test"
 import "src/lib/math.test"
@@ -19,3 +20,7 @@ import "src/twist/twist.test"
 import "src/sys/sys.test"
 
 import "src/wheel/wheel.test"
+
+import "src/goblin/goblin.test"
+
+import "src/isekai/isekai.test"

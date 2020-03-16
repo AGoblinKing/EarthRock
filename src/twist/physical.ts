@@ -8,8 +8,8 @@ export interface IPhysical {
 }
 
 export class Physical extends Twist<any> {
-    constructor(weave: Weave,  space: Space, physical_data: IPhysical = {}) {
+    constructor(weave: Weave, space: Space, physical_data: IPhysical = {}) {
         super(weave, space)
-        this.add(Twist.map_to_stores(physical_data))
+        this.add(physical_data)
     }
 }

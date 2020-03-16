@@ -1,4 +1,4 @@
-import { IStore, Store, Tree, ProxyTree, Living } from "src/store"
+import { IStore, Store, Tree, Living } from "src/store"
 import { Weave } from "src/weave/weave"
 import { Space } from "src/warp/space"
 
@@ -16,16 +16,6 @@ export abstract class Twist<T> extends Living<IStore<T>> {
     protected value: Tree<IStore<T>>
     protected weave: Weave
     protected space: Space
-
-    static map_to_stores (twist_data: object) {
-        const stores = {}
-
-        for(let key of Object.keys(twist_data)) {
-            stores[key] = new Store(twist_data[key])
-        }
-
-        return stores
-    }
     
     constructor (weave: Weave, space: Space) {
         super()
@@ -35,8 +25,20 @@ export abstract class Twist<T> extends Living<IStore<T>> {
         this.value = new Tree({})
     }
 
-    toJSON() {
-        return this.value.toJSON()
+    add (data: ITwist, silent = false) {
+        const write = {}
+        for(let [name, value] of Object.entries(data)) {
+            if(value instanceof Store) {
+                write[name] = value
+            } else {
+                write[name] = new Store(value)
+            }
+        }
+
+        super.add(write, silent)
     }
 
+    toJSON () {
+        return this.value.toJSON()
+    }
 }

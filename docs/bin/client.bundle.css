@@ -1,22 +1,3 @@
-.logoicon.svelte-434ebw.svelte-434ebw{display:flex;width:25rem;align-self:center;position:absolute;left:50%;top:3.5rem;transform:translate(-50%, -50%);height:25rem;z-index:-1}.workspace.svelte-434ebw.svelte-434ebw{border-bottom-right-radius:0.5rem;padding:0.25rem 1rem 0.25rem 1rem;position:absolute;color:rgba(224, 168, 83, 1);left:0;font-size:3rem;opacity:0.75;top:0}.nav{z-index:2;color:white;box-shadow:inset 0 2rem 0 rgba(224, 168, 83, 0.5),
-        inset 0 -2rem 0 rgba(224, 168, 83, 0.5),
-        inset 1.6rem 0 0 rgba(224, 168, 83, 1),
-        inset -1.6rem 0 0 rgba(224, 168, 83, 1) !important}.nav.beat{box-shadow:inset 0 5rem 0 rgba(224, 168, 83, 0.25),
-        inset 0 -5rem 0 rgba(224, 168, 83, 0.25),
-        inset 1rem 0 0 rgba(224, 168, 83, 0.5),
-        inset -1rem 0 0 rgba(224, 168, 83, 0.5)}.logo.svelte-434ebw i.svelte-434ebw{display:inline-block;text-decoration:none;font-style:normal;font-size:3rem;vertical-align:text-top;margin-top:-0.25rem}.logo.svelte-434ebw b.svelte-434ebw{margin-top:-1.25rem;display:block;margin-left:-0.4rem;font-size:0.6rem;letter-spacing:0.075rem}.logo.svelte-434ebw.svelte-434ebw{color:white;padding:2rem 0.25rem;font-size:2rem;font-weight:bold;text-decoration:none;outline:none;filter:drop-shadow(0 0 0.5rem white);text-align:center;letter-spacing:0.5rem;margin:0 2rem}.nav.logo{box-shadow:inset 0 5rem 0 rgba(224, 168, 83, 0.5),
-        inset 0 -5rem 0 rgba(224, 168, 83, 0.5),
-        inset 1.6rem 0 0 rgba(224, 168, 83, 1),
-        inset -1.6rem 0 0 rgba(224, 168, 83, 1) !important}.logo.svelte-434ebw.svelte-434ebw:hover{color:rgba(60, 255, 0, 0.8)}.partial.svelte-434ebw.svelte-434ebw{width:25rem;display:flex;flex-direction:column;box-shadow:0 0 5rem rgba(38, 0, 255, 0.1),
-        inset 0 0 5rem rgba(38, 0, 255, 0.1)}.boxed.svelte-434ebw.svelte-434ebw{box-shadow:inset 0 5vh 5rem rgba(38, 0, 255, 0.2),
-        inset 0 -5vh 5rem rgba(38, 0, 255, 0.2),
-        inset 40vw 0 5rem rgba(38, 0, 255, 0.2),
-        inset -40vw 0 5rem rgba(38, 0, 255, 0.2) !important}.explore.svelte-434ebw.svelte-434ebw{opacity:0.95;position:absolute;align-items:center;font-size:1.25rem;scrollbar-color:#333;scrollbar-width:1rem;scroll-behavior:smooth;overflow-y:auto;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;z-index:5}.weaves.svelte-434ebw.svelte-434ebw{display:flex;pointer-events:all;flex-direction:column}.github.svelte-434ebw.svelte-434ebw{position:fixed;z-index:100;top:0;right:0}
-.octo-body.svelte-op8pzp.svelte-op8pzp,.octo-arm.svelte-op8pzp.svelte-op8pzp,.bg.svelte-op8pzp.svelte-op8pzp{transition:all 250ms ease-in-out}#github.svelte-op8pzp:hover .bg.svelte-op8pzp{fill:black}#github.svelte-op8pzp:hover .octo-arm.svelte-op8pzp,#github.svelte-op8pzp:hover .octo-body.svelte-op8pzp{fill:#0F0}
-.spirit.svelte-40qg3e{padding:5rem;height:15rem;display:flex;width:15rem;border-radius:2rem;background-color:#0c4213;box-shadow:inset 0 0 2rem #0c4213}.nameit.svelte-40qg3e{position:absolute;margin-top:9rem;padding:0.2rem;padding:0rem;border-radius:none !important}.file.svelte-40qg3e{display:none}.picker.svelte-40qg3e{position:absolute;top:0;left:0;right:0;bottom:0;z-index:4;color:#0c4213;box-shadow:inset 0 5vh 5rem rgba(255, 255, 255, 0.01),
-	    inset 0 -5vh 5rem rgba(255, 255, 255, 0.01),
-	    inset 90vw 0 5rem rgba(255, 255, 255, 0.01),
-	    inset -90vw 0 5rem rgba(255, 255, 255, 0.01) !important}.nameprompt.svelte-40qg3e{flex-direction:column;display:flex;align-items:center;justify-content:center;position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);z-index:10011}
-.hidden.svelte-jdwyal{right:30%}.main.svelte-jdwyal{z-index:1;position:absolute;width:auto;height:auto;left:0;right:0;bottom:0;user-select:none;top:0;align-items:center;justify-content:center;display:flex}
+.octo-body.svelte-sce8qg.svelte-sce8qg,.octo-arm.svelte-sce8qg.svelte-sce8qg,.bg.svelte-sce8qg.svelte-sce8qg{transition:all 250ms ease-in-out}#github.svelte-sce8qg:hover .bg.svelte-sce8qg{fill:#000}#github.svelte-sce8qg:hover .octo-arm.svelte-sce8qg,#github.svelte-sce8qg:hover .octo-body.svelte-sce8qg{fill:#0f0}
 
 /*# sourceMappingURL=client.bundle.css.map */

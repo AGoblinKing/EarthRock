@@ -3,7 +3,6 @@
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var test = _interopDefault(require('ava'));
-var cuid = _interopDefault(require('cuid'));
 
 // Stores are observables
 class Store  {
@@ -19,7 +18,7 @@ class Store  {
 		this.listeners.forEach((listener) => listener(this.value));
 	}
 
-	subscribe(listener) {
+	subscribe (listener) {
 		return this.listen(listener)
 	}
 
@@ -300,6 +299,10 @@ class Tree extends Read {
 		return super.get()[name]
 	}
 
+	has (name) {
+		return this.item(name) !== undefined
+	}
+
 	reset (target, silent = false) {
 		const $tree = {};
 		if(target) {
@@ -440,21 +443,28 @@ class ProxyTree extends Proxy {
     }
 }
 
+class BufferValue extends Store {
+    set (value, silent = false) {
+        this.get().set(value);
+        if(silent === false) this.notify();
+    }
+}
+
 class Buffer extends Tree {
     
     
     
     
 
-     create_data(size) {
+     create_data (size) {
         const data = {};
         
         for(let key of Object.keys(this.defaults)) {
             data[key] = new Float32Array(this.defaults[key].length * size);
 
             // copy existing data
-            if(this.data) {
-                data[key].set(this.data[key]);
+            if(this.value && Object.keys(this.value).length > 0) {
+                data[key].set(this.value[key]);
             }
         }
         
@@ -465,18 +475,18 @@ class Buffer extends Tree {
             this.available = new Set(Array(size).keys());
         }
 
-        this.data = data;
+        this.value = data;
         this.count = size;
     }
 
-    constructor(defaults, initial_size = 100) {
+    constructor (defaults, initial_size = 100) {
         super();
 
         this.defaults = defaults;
         this.create_data(initial_size);
     }
     
-    allocates(...data)  {
+    allocates (...data)  {
         const results = [];
         for(let datum of data) {
             results.push(this.allocate(datum));
@@ -485,7 +495,7 @@ class Buffer extends Tree {
         return results
     }
 
-    allocate(datum)  {
+    allocate (datum)  {
         const buffer_view = {};
         let cursor = this.available.values().next().value;
         if(cursor === undefined) {
@@ -498,26 +508,26 @@ class Buffer extends Tree {
         for(let key of Object.keys(this.defaults)) {
             const len = this.defaults[key].length;
             const idx = cursor * len; 
-            const view = this.data[key].subarray(idx, idx + len);
+            const view = this.value[key].subarray(idx, idx + len);
 
             view.set(datum[key] ? datum[key] : this.defaults[key]);
 
-            buffer_view[key] = new Store(view);
+            buffer_view[key] = new BufferValue(view);
         }
 
         return [buffer_view, cursor]
     }
 
-    free(idx) {
+    free (idx) {
         this.available.add(idx);
 
         for(let key of Object.keys(this.defaults)) {    
             const len = this.defaults[key].length;
-            this.data[key].set(Array(len).fill(0), len * idx);
+            this.value[key].set(Array(len).fill(0), len * idx);
         }
     }
 
-    resize(size) {
+    resize (size) {
         if(size === undefined) size = this.count * 2;
         if(size < this.count) throw new Error("cannot reduce the size of a buffer")
 
@@ -525,15 +535,30 @@ class Buffer extends Tree {
         this.notify();
     }
 
-    toJSON()  {
+    hydrate (data) {
+        for(let key of Object.keys(this.value)) {
+            this.value[key].set(data[key]);
+        }
+
+        this.notify();
+    }
+
+    toJSON ()  {
         const json = {};
-        for(let key of Object.keys(this.data)) {
-            json[key] = Array.from(this.data[key]);
+        for(let key of Object.keys(this.value)) {
+            json[key] = this.value[key];
         }
 
         return json
     }
 }
+
+var ELivingAction; (function (ELivingAction) {
+    const CREATE = "create"; ELivingAction["CREATE"] = CREATE;
+    const REZ = "rez"; ELivingAction["REZ"] = REZ;
+    const DEREZ = "derez"; ELivingAction["DEREZ"] = DEREZ;
+    const DESTROY = "destroy"; ELivingAction["DESTROY"] = DESTROY;
+})(ELivingAction || (ELivingAction = {}));
 
 var ELivingStatus; (function (ELivingStatus) {
     const VOID = "VOID"; ELivingStatus["VOID"] = VOID;
@@ -547,22 +572,25 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
 
     add (living_data, silent = false) {
         super.add(living_data, silent);
-            
+        const $status = this.status.get();
+
         const items = Object.entries(living_data);
-        for(let [_, item] of items) {
-            item.create && item.create();
-        }
 
-        // if not rezed no need
-        if(this.status.get() !== ELivingStatus.REZED) return
+        switch($status) {
+            case ELivingStatus.CREATED:
+                for(let [_, item] of items) {
+                    item.create && item.create();
+                }
 
-        const $rezed = this.rezed && this.rezed.get(); 
+            case ELivingStatus.REZED:
+                const $rezed = this.rezed && this.rezed.get(); 
 
-        // create doesn't auto rez
-        // so you can batch creates together then rez
-        for(let [name, item] of items) {
-            if($rezed && !$rezed[name]) continue 
-            item.rez && item.rez();
+                // create doesn't auto rez
+                // so you can batch creates together then rez
+                for(let [name, item] of items) {
+                    if($rezed && !$rezed[name]) continue 
+                    item.rez && item.rez();
+                }
         }
     }
     
@@ -648,6 +676,12 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
         this.status.set(ELivingStatus.CREATED);
     }
 
+    start_all(...all) {
+        all = all.length === 0 ? Object.keys(this.get()) : all;
+        for(let name of all) {
+            this.start(name);
+        }
+    }
 
     start(name) {
         const $rezed = this.rezed && this.rezed.get();        
@@ -685,11 +719,44 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
         this.start(name);
     }
 
-    toJSON() {
+    toJSON()  {
         return {
             value: this.value.toJSON(),
             rezed: this.rezed ? this.rezed.toJSON() : undefined
         }
+    }
+
+    ensure (first, ...path) {
+        let $item = this.item(first);
+
+        if($item === undefined) {
+            this.add({
+                [first]: {}
+            });
+
+            $item = this.item(first);
+        }
+
+        if(path.length === 0) return $item
+        
+        if($item instanceof Living) {
+            return $item.ensure(path[0], ...path.slice(1))
+        }
+        
+        throw new Error("tried to ensure non living item")
+    }
+}
+
+class Transformer extends Store {
+    
+
+    constructor(initial, transformer) {
+        super(transformer(initial));
+        this.transformer = transformer;
+    }
+    
+    set (value) {
+        super.set(this.transformer(value));
     }
 }
 
@@ -715,13 +782,25 @@ test("store/buffer", t => {
     buffer.free(0);
     t.snapshot(buffer.toJSON());
 
-    buffer.allocate({test: [1, 2]});
+    const [view, cursor] = buffer.allocate({test: [1, 2]});
+    t.snapshot(view, "allocates a view");
+
+    view.test.set([5, 6]);
+    t.snapshot(view, "is setable");
+
     buffer.allocates({test: [3, 4]}, {test: [5, 6]}, {test: [7, 9]});
 
     t.snapshot(buffer.toJSON(), "allocates works, and resizes");
 
     buffer.resize();
     t.snapshot(buffer.toJSON(), "resizeable");
+
+    buffer.hydrate({
+        test: [50, 60],
+        2: [50, 60]
+    });
+
+    t.snapshot(buffer.toJSON(), "hydratable");
 });
 
 class Test extends Living {
@@ -827,6 +906,15 @@ test("store/proxy/tree", t => {
     t.snapshot(proxy.get());
 });
 
+test("store/transformer", t => {
+    const store = new Transformer(1, (i) => i + 1);
+
+    t.snapshot(store.get());
+    store.set(5);
+
+    t.snapshot(store.get());
+});
+
 const TILE_COUNT = 1024;
 
 const str_color = (str) => {
@@ -877,6 +965,8 @@ test("lib/text", t => {
     t.is(typeof random(2), "string");
 });
 
+const is_character = /[a-zA-Z]/;
+
 const json = (value) => {
 	if (typeof value !== `string`) return value
 
@@ -887,8 +977,11 @@ const json = (value) => {
 		}
 	}
 
+	// is character
+	if(value[0] !== undefined && is_character.test(value[0])) return value
+
 	try {
-		return JSON.parse(value)
+		return JSON.parse(value) 
 	} catch (ex) {
 		return value
 	}
@@ -915,7 +1008,7 @@ class Warp extends Living {
 
     
 
-    constructor(data, weave) {
+    constructor (data, weave) {
         super();
 
         this.name = data.name;
@@ -925,7 +1018,7 @@ class Warp extends Living {
         // don't init value because who knows what they want
     }
 
-    toJSON() {
+    toJSON () {
         return {
             name: this.name,
             type: this.type,
@@ -948,16 +1041,6 @@ class Twist extends Living {
     
     
     
-
-    static map_to_stores (twist_data) {
-        const stores = {};
-
-        for(let key of Object.keys(twist_data)) {
-            stores[key] = new Store(twist_data[key]);
-        }
-
-        return stores
-    }
     
     constructor (weave, space) {
         super();
@@ -967,10 +1050,22 @@ class Twist extends Living {
         this.value = new Tree({});
     }
 
-    toJSON() {
-        return this.value.toJSON()
+    add (data, silent = false) {
+        const write = {};
+        for(let [name, value] of Object.entries(data)) {
+            if(value instanceof Store) {
+                write[name] = value;
+            } else {
+                write[name] = new Store(value);
+            }
+        }
+
+        super.add(write, silent);
     }
 
+    toJSON () {
+        return this.value.toJSON()
+    }
 }
 
 // Visible spaces
@@ -1011,38 +1106,30 @@ class Visible extends Twist {
 class Data extends Twist  {
     constructor(weave,  space, data) {
         super(weave, space);
-        this.add(Twist.map_to_stores(data));
+        this.add(data);
     }
 }
 
 class Physical extends Twist {
-    constructor(weave,  space, physical_data = {}) {
+    constructor(weave, space, physical_data = {}) {
         super(weave, space);
-        this.add(Twist.map_to_stores(physical_data));
+        this.add(physical_data);
     }
 }
 
 class Space extends Warp {
-    
+     __init() {this.value = new Tree();}
 
-    constructor(warp_data, weave) {
-        super(warp_data, weave);
+    constructor (warp_data, weave) {
+        super(warp_data, weave);Space.prototype.__init.call(this);
 
-        const data = warp_data.value;
-
-        const twists = {};
-        for(let type of Object.keys(data)) {
-            twists[type] = this.create_twist(type, data[type]);
-        }
-
-        this.value = new Tree(twists);
+        this.add(warp_data.value || {});
     }
 
     add (data) {
         const adds = {};
 
         for(let type of Object.keys(data)) {
-            if(type === "sys") continue
             adds[type] = this.create_twist(type, data[type]);
         }
 
@@ -1059,15 +1146,15 @@ class Space extends Warp {
                 return new Physical(this.weave, this, twist_data )
         }
 
-        throw new Error(`unknown twist ${type}`)
+        return new Store(twist_data)
     }   
 
-    create() {
+    create () {
         super.create();
         this.weave.spaces.add({ [this.name]: this });
     }
 
-    destroy() {
+    destroy () {
         super.destroy();
         this.weave.spaces.remove(this.name);
     }
@@ -1079,16 +1166,18 @@ class Space extends Warp {
 class Weave extends Living {
     
     
-    
+     __init() {this.value = new Tree({});}
 
     // caches
     
-    
+     __init2() {this.spaces = new Tree({});}
 
     // clean up
-    
+      __init3() {this.cancels = new Set();}
+     
+     __init4() {this.nerves = {};}
 
-    create_warp($warp) {
+    create_warp ($warp) {
         switch($warp.type) {
             case undefined:
                 $warp.type = EWarp.SPACE;
@@ -1102,39 +1191,42 @@ class Weave extends Living {
         throw new Error(`warp/unknown ${$warp}`)
     }
 
-    constructor(data) {
-        super();
+    constructor (data) {
+        super();Weave.prototype.__init.call(this);Weave.prototype.__init2.call(this);Weave.prototype.__init3.call(this);Weave.prototype.__init4.call(this); 
+
+        if(data.name === undefined) {
+            throw new Error("Undefined name for weave")
+        }
 
         this.name = new Store(data.name);
-        this.wefts = new Tree(data.wefts);
-        this.value = new Tree({});
-        this.rezed = new Store(new Set(data.rezed));
-        this.spaces = new Tree({});
+        this.threads = new Tree(data.thread || {});
+        this.rezed = new Store(new Set(data.rezed || []));
 
-        this.cancels = new Set();
-
-        this.wefts_reverse = new Tree({}, set => {
-            this.cancels.add(this.wefts.listen(($wefts) => {
+        this.threads_reverse = new Tree({}, set => {
+            this.cancels.add(this.threads.listen(($threads) => {
                 const w_r = {};
-                for(let key of Object.keys($wefts)) {
-                    w_r[$wefts[key]] = key;   
+                for(let key of Object.keys($threads)) {
+                    w_r[$threads[key]] = key;
                 }
 
                 set(w_r);
             }));
         });
 
-        this.add(data.value);
+        this.add(data.value || {});
     }
 
-    add(warp_data, silent = false)  {
+    add (warp_data, silent = false)  {
         if(!warp_data) return
         const warps = {};
 
-        for(let name of Object.keys(warp_data)) {
-            const warp = warp_data[name];  
-            warp.name = warp.name === "cuid" ? cuid() : name;
+        for(let [name, warp] of Object.entries(warp_data)) {
+            if (warp instanceof Warp) {
+                warps[name] = warp;
+                continue
+            }
 
+            warp.name = name;
             warps[name] = this.create_warp(warp);
         }
 
@@ -1143,10 +1235,46 @@ class Weave extends Living {
         return warps
     }
 
-    removes(...names) {
+    rez () {
+        super.rez();
+
+        // connect threads to form nerves
+        this.thread_cancel = this.threads.listen(this.thread_update.bind(this));
+    }
+
+    thread_update ($threads) {
+        for(let [name, cancel] of Object.entries(this.nerves)) {
+            if($threads[name]) {
+                delete $threads[name];
+                continue
+            }
+
+            cancel();
+            delete this.nerves[name];
+        }
+
+        for(let [from, to] of Object.entries($threads)) {
+            const f = this.query(...from.split("/"));
+            const t = this.query(...to.split("/"));
+            if(!f || !t) continue
+            this.nerves[from] = f.listen(t.set.bind(t));
+        }
+    }
+
+    derez () {
+        super.derez();
+        
+        for(let cancel of Object.values(this.nerves)) {
+            cancel();
+        }
+
+        this.thread_cancel();
+    }
+
+    removes (...names) {
         const $warps = this.value.get();
-        const $wefts = this.wefts.get();
-        const $wefts_r = this.wefts_reverse.get();
+        const $wefts = this.threads.get();
+        const $wefts_r = this.threads_reverse.get();
         const $rezed = this.rezed.get();
 
         for(let name of names) {
@@ -1164,7 +1292,7 @@ class Weave extends Living {
         }
 
         this.value.set($warps);
-        this.wefts.set($wefts);
+        this.threads.set($wefts);
         this.rezed.set($rezed);
     }
 
@@ -1182,10 +1310,10 @@ class Weave extends Living {
         this.cancels.clear();
     }
 
-    toJSON() {
+    toJSON () {
         return {
             name: this.name.get(),
-            wefts: this.wefts.get(),
+            thread: this.threads.get(),
 
             value: this.value.toJSON(),
             rezed: this.rezed.toJSON()
@@ -1200,9 +1328,7 @@ test("weave/", t => {
             foo: { type: EWarp.SPACE, value: {} },
             test: { type: EWarp.SPACE, value: {} }
         },
-
-        
-        wefts: {
+        thread: {
             foo: "test"
         },
         rezed: [
@@ -1245,7 +1371,7 @@ test("warp/", t => {
                 }}
             }
         },
-        wefts: {},
+        thread: {},
         rezed: []
     });
 
@@ -1266,7 +1392,7 @@ test("warp/space", t => {
                 }
             }
         },
-        wefts: {},
+        thread: {},
         rezed: []
     });
 
@@ -1282,7 +1408,9 @@ test("warp/space", t => {
     });
 
     t.snapshot(vis.get());
-
+    vis.create();
+    t.snapshot(vis.get());
+    
     t.snapshot(weave.spaces.toJSON());
     weave.remove("hello");
     t.snapshot(weave.spaces.toJSON());
@@ -1292,7 +1420,7 @@ test("twist/visible", t => {
     Visible.data = new Buffer(Visible.defaults, 3);
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {
@@ -1312,7 +1440,7 @@ test("twist/visible", t => {
 test("twist/data", t => {
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {
@@ -1342,7 +1470,7 @@ test("twist/data", t => {
 test("twist/physical", t => {
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {
@@ -1394,23 +1522,425 @@ const frame = new Read([0, 0], (set) => {
 var time = /*#__PURE__*/Object.freeze({
 	__proto__: null,
 	tick: tick,
-	TIME_TICK_RATE: TIME_TICK_RATE,
-	frame: frame
+	TIME_TICK_RATE: TIME_TICK_RATE
 });
 
 // TODO: maybe an input one that gets written to from client?
 
-var sys = /*#__PURE__*/Object.freeze({
-	__proto__: null,
-	TIME: time
+test("sys/time", t => {
+    t.snapshot(TIME_TICK_RATE.get());
 });
 
-test("sys/time", t => {
-    t.snapshot(sys);
+class Wheel extends Living {
+     __init() {this.value = new Tree({
+        sys: new Weave({
+            name: `sys`,
+            thread: {},
+            value: {},
+            rezed: []
+        })
+    });}
 
-    return new Promise(resolve => setTimeout(() => {
-        t.snapshot(tick);
-        resolve();
-    }, 101))
+    constructor (wheel_data) {
+        super();Wheel.prototype.__init.call(this);
+        
+        this.rezed = new Store(new Set(wheel_data.rezed));
+        
+        this.add(wheel_data.value);
+    }
+
+    add (weaves, silent = false) {
+        const write = {};
+
+        for(let [name, value] of Object.entries(weaves)) {
+            if(value instanceof Weave) {
+                write[name] = value;
+                continue
+            }
+
+            value.name = name;
+            write[name] = new Weave(value);
+        }
+
+        super.add(write, silent);
+    }
+}
+
+const simple = {
+    rezed: ["test"],
+    value: {
+        test: {
+            thread: {},
+            rezed: ["test"],
+            value: {
+                test: {
+                    type: EWarp.SPACE,
+                    value: {
+                        VISIBLE: {
+                            sprite: [ 55 ]
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+};
+
+test("wheel/", t => {
+    const wheel = new Wheel(simple);
+
+    t.snapshot(wheel.toJSON(), "loads");
+    
+    
+});
+
+class Messenger  {
+    
+
+    onmessage (event) {
+        const msg = event.data;
+        const fn = `msg_${msg.name}`;
+        if(this[fn]) this[fn](msg.data);
+    }
+
+    postMessage (message) {
+        this.remote.onmessage({ data: message });
+    }
+}
+
+class RemoteWorker extends Messenger {
+    __init() {this.wheel = new Wheel({
+        rezed: [],
+        value: {}
+    });}
+    
+    constructor (remote) {
+        super();RemoteWorker.prototype.__init.call(this);
+        this.remote = remote;
+
+        raf_1(() => {
+            this.postMessage({
+                name: "ready"
+            });
+        });
+    }
+
+     tick() {
+        raf_1(() => {
+            this.postMessage({
+                name: "buffer",
+                data: {
+                    VISIBLE: Visible.data.toJSON()
+                }
+            });
+        });
+    }
+
+     msg_toJSON () {
+        this.postMessage({
+            name: "toJSON",
+            data: this.wheel.toJSON()
+        });
+    }
+
+     msg_add (data) {
+        this.wheel.add(data.value);
+
+        for(let name of data.rezed) {
+            this.wheel.start(name);
+        }
+    }
+
+     msg_status (data) {
+        this.wheel[data]();
+        if(data !== ELivingAction.DESTROY) return
+
+        this.postMessage({
+            name: "destroy"
+        });
+    }
+
+     msg_start (data) {
+        this.wheel.start(data);
+    }
+
+     msg_stop (data) {
+        this.wheel.stop(data);
+    }
+
+     msg_update (data
+
+
+) {
+        this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value);
+    }
+
+     msg_relay () {
+        if(this.timeout) this.timeout();
+        this.timeout = this.wheel.query("sys", "time", "tick").listen(this.tick.bind(this));
+    }
+}
+
+class LocalWorker extends Messenger  {constructor(...args) { super(...args); LocalWorker.prototype.__init.call(this); }
+     __init() {this.remote = new RemoteWorker(this);}
+
+    terminate() {
+        // okay
+    }
+
+    onerror (ev) {
+        // okay
+    }
+}  
+
+class WheelWorker extends Living {
+    // this could use sharedmemory but not everyone supports it
+    __init2() {this.buffer = new Tree({
+        VISIBLE: Visible.data
+    });}
+
+    
+     __init3() {this.value = this.buffer;}
+    
+     __init4() {this.sys_cancels = {};}
+    
+    
+
+     __init5() {this.json_resolvers = [];}
+
+    constructor (sys, local = false) {
+        super();WheelWorker.prototype.__init2.call(this);WheelWorker.prototype.__init3.call(this);WheelWorker.prototype.__init4.call(this);WheelWorker.prototype.__init5.call(this);WheelWorker.prototype.__init6.call(this);
+
+        this.sys = sys;
+        this.local = local;
+    }
+
+    create () {
+        super.create();
+
+        this.worker = this.local ? new LocalWorker() : new Worker(`/bin/wheel.bundle.js`);
+
+        this.worker.onmessage = this.onmessage.bind(this);
+        this.worker.onerror = this.onerror.bind(this);
+
+        this.worker.postMessage({
+            name: "status",
+            data: ELivingAction.CREATE
+        });
+    }
+
+    rez () {
+        super.rez();
+
+        this.sys_cancel = this.sys.listen(this.sys_update.bind(this));
+
+        this.worker.postMessage({
+            name: "status",
+            data: ELivingAction.REZ
+        });
+    }
+
+    derez () {
+        super.derez();
+
+        for(let cancel of Object.values(this.sys_cancels)) {
+            cancel();
+        }
+
+        this.sys_cancel();
+
+        this.worker.postMessage({
+            name: "status",
+            data: ELivingAction.DEREZ
+        });
+    }
+
+    destroy () {
+        super.destroy();
+
+        this.worker.postMessage({
+            name: "status",
+            data: ELivingAction.DESTROY
+        });
+    }
+
+    // replicate system changes into the worker
+     sys_update ($sys) {
+        // this should happen very rarely
+        for(let cancel of Object.values(this.sys_cancels)) {
+            cancel();
+        }
+        
+        this.sys_cancels = {};
+
+        for(let [name, category] of Object.entries($sys)) {
+            this.sys_cancels[name] = category.listen(($category) => {
+                for(let [key, store] of Object.entries($category)) {
+                    this.sys_cancels[`${name}/${key}`] = store.listen($store => {
+                        this.worker.postMessage({
+                            name: "update",
+                            data: {
+                                path: [`sys`, name, key],
+                                value: $store
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    }
+
+     msg_destroy () {
+        this.worker.terminate();
+    }
+
+     msg_toJSON (json) {
+        for(let resolve of this.json_resolvers) {
+            resolve(json);
+        }
+    }
+
+     msg_buffer (data) {
+        for(let [name, buffer] of Object.entries(data)) {
+            const buff = this.buffer.item(name);
+
+            if(buff === undefined) return
+            buff.hydrate(buffer);
+        }
+
+        this.notify();
+    }
+
+     msg_ready () {
+        this.worker.postMessage({
+            name: "relay"
+        });
+    }
+
+     __init6() {this.onmessage = Messenger.prototype.onmessage;}
+
+     onerror (event) {
+        console.error(`Worker Error`, event);
+    }
+
+    async remote_toJSON () {
+        return new Promise((resolve) => {
+            this.json_resolvers.push(resolve);
+
+            if(this.json_resolvers.length !== 1) return
+
+            this.worker.postMessage({
+                name: "toJSON"
+            });
+        })
+    }
+
+    remote_add (data) {
+        this.worker.postMessage({
+            name: "add",
+            data
+        });
+    }
+
+    remote_start (data) {
+        this.worker.postMessage({
+            name: "start",
+            data
+        });
+    }
+
+    remote_stop (data) {
+        this.worker.postMessage({
+            name: "stop",
+            data
+        });
+    }
+}
+
+TIME_TICK_RATE.set(10);
+
+test("goblin", async t => {
+    const worker = new WheelWorker(new Tree({
+        test: new Tree({
+            1: new Store(5)
+        }),
+        time: new Tree(time)
+    }), true);
+
+    worker.create();
+    worker.rez();
+
+    t.snapshot(worker);
+    t.snapshot(worker.toJSON());
+
+    worker.remote_add(simple);
+
+    t.snapshot(await worker.remote_toJSON());
+
+    let count = 0;
+
+    await new Promise(resolve => {
+        const cancel = worker.listen($buffer => {
+            t.snapshot($buffer.VISIBLE.toJSON());
+
+            if(count++ < 4) return
+            cancel();
+            resolve();
+        });
+    });
+});
+
+// Starts up in the main thread
+class Isekai extends Living {
+     __init() {this.wheels = new Tree();}
+     __init2() {this.value = this.wheels;}
+    
+     __init3() {this.sys = new Tree();}
+     __init4() {this.local = new Store(false);}
+
+    constructor(sys, local = false) {
+        super();Isekai.prototype.__init.call(this);Isekai.prototype.__init2.call(this);Isekai.prototype.__init3.call(this);Isekai.prototype.__init4.call(this);
+        this.local.set(local);
+
+        const write = {};
+        for(let [name, value] of Object.entries(sys)) {
+            write[name] = new Tree(value);
+        }
+
+        this.sys.add(write);
+
+        // Check Path
+        // Check Database
+        this.create();
+        this.rez();
+    }
+
+    add (wheels) {
+        const write = {};
+
+        for(let [name, wheel_json] of Object.entries(wheels)) {
+            const worker = write[name] = new WheelWorker(this.sys, this.local.get());
+            worker.add(wheel_json);
+        }
+
+        super.add(write);
+    }
+}
+
+test("isekai/", t => {
+    const isekai = new Isekai({
+        test: {
+            there: new Store(1)
+        },
+        time
+    }, true);
+
+    t.snapshot(isekai.toJSON(), "base snapshot");
+    t.snapshot(isekai.sys.query("test", "there").get());
+
+    isekai.add({ simple });
+
+    t.snapshot(isekai);
 });
 //# sourceMappingURL=bundle.test.js.map

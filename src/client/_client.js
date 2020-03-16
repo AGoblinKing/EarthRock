@@ -1,5 +1,6 @@
-import Main from "src/client/ui/Main.svelte"
 
-const main = new Main({
+import Client from "./Client.svelte"
+
+const main = new Client({
     target: document.body
 })

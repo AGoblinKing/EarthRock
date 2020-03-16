@@ -1,5 +1,6 @@
 // a textual representation of a WEAVE chain
 import cuid from "cuid"
+
 const REG_ID = /\$?[~.]?\/[a-zA-Z0-9!%&_\-/|]{2,}/g
 
 const warps = {

@@ -2,34 +2,44 @@ import { ProxyTree } from "./proxy"
 import { Store } from "./store"
 import { TreeValue } from "./tree"
 
+export enum ELivingAction {
+    CREATE = "create",
+    REZ = "rez",
+    DEREZ = "derez",
+    DESTROY = "destroy"
+}
+
 export enum ELivingStatus {
     VOID = "VOID",
     CREATED = "CREATED",
     REZED = "REZED"
 }
 
-export abstract class Living<Thing> extends ProxyTree<Thing> {
+export abstract class Living<T> extends ProxyTree<T> {
     protected rezed: Store<Set<string>> | undefined
     readonly status = new Store(ELivingStatus.VOID)
 
     add (living_data: TreeValue<any>, silent = false) {
         super.add(living_data, silent)
-            
+        const $status = this.status.get()
+
         const items = Object.entries(living_data)
-        for(let [_, item] of items) {
-            item.create && item.create()
-        }
 
-        // if not rezed no need
-        if(this.status.get() !== ELivingStatus.REZED) return
+        switch($status) {
+            case ELivingStatus.CREATED:
+                for(let [_, item] of items) {
+                    item.create && item.create()
+                }
 
-        const $rezed = this.rezed && this.rezed.get() 
+            case ELivingStatus.REZED:
+                const $rezed = this.rezed && this.rezed.get() 
 
-        // create doesn't auto rez
-        // so you can batch creates together then rez
-        for(let [name, item] of items) {
-            if($rezed && !$rezed[name]) continue 
-            item.rez && item.rez()
+                // create doesn't auto rez
+                // so you can batch creates together then rez
+                for(let [name, item] of items) {
+                    if($rezed && !$rezed[name]) continue 
+                    item.rez && item.rez()
+                }
         }
     }
     
@@ -115,6 +125,12 @@ export abstract class Living<Thing> extends ProxyTree<Thing> {
         this.status.set(ELivingStatus.CREATED)
     }
 
+    start_all(...all: string[]) {
+        all = all.length === 0 ? Object.keys(this.get()) : all
+        for(let name of all) {
+            this.start(name)
+        }
+    }
 
     start(name: string) {
         const $rezed = this.rezed && this.rezed.get()        
@@ -152,11 +168,31 @@ export abstract class Living<Thing> extends ProxyTree<Thing> {
         this.start(name)
     }
 
-    toJSON() {
+    toJSON() : any {
         return {
             value: this.value.toJSON(),
             rezed: this.rezed ? this.rezed.toJSON() : undefined
         }
+    }
+
+    ensure (first: string, ...path: string[]) {
+        let $item = this.item(first)
+
+        if($item === undefined) {
+            this.add({
+                [first]: {}
+            })
+
+            $item = this.item(first)
+        }
+
+        if(path.length === 0) return $item
+        
+        if($item instanceof Living) {
+            return $item.ensure(path[0], ...path.slice(1))
+        }
+        
+        throw new Error("tried to ensure non living item")
     }
 }
 

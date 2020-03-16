@@ -1,6 +1,4 @@
-import Weave from "/weave/weave"
-
-import { map, reduce } from "/object"
+import {Weave} from "src/weave"
 
 // lets grab all the systems here
 import * as mouse from "./mouse"
@@ -20,7 +18,7 @@ const normalize = (sys) => map(flag)(
 	]
 )
 
-const tie = (items) => reduce(items)(
+const tie = (items) => Object.entries(items).reduce(
 	(result, [k, value]) => ({
 		...result,
 		[k]: {
@@ -37,16 +35,15 @@ const systems = {
 	time,
 	screen,
 	input,
-	key,
+	keyboard,
 	gamepad,
 	device,
 	flag: normalize(flag),
 	camera
 }
 
-export default Weave({
-	name: `sys`,
-	id: `sys`,
-	warps: tie(systems),
-	rezed: systems
+export default new Weave({
+	name: `client`,
+	value: tie(systems),
+	rezed: Object.keys(systems)
 })

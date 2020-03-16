@@ -9,7 +9,7 @@ export const tick = new Read(0, (set) => {
 let last_tick = Date.now()
 export const TIME_TICK_RATE = new Store(100)
 
-export const frame = new Read([0, 0], (set) => {
+const frame = new Read([0, 0], (set) => {
 	let old
 	
 	const data = [0, 0]

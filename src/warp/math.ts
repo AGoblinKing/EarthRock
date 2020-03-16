@@ -45,11 +45,11 @@ const proto_math = extend(proto_warp, {
 		}
 
 		let fail
-		new Set(matches).forEach((item) => {
+		new Set(matches).forEach((item: string) => {
 			const shh = item[0] === `$`
 			const gette = item
-				.replace(path_space, `${space_addr}${Wheel.DENOTE}`)
-				.replace(path_weave, `${Wheel.DENOTE}${this.weave.name.get()}${Wheel.DENOTE}`)
+				.replace(path_space, `${space_addr}/`)
+				.replace(path_weave, `/${this.weave.name.get()}/`)
 				.replace(path_ssh, ``)
 				.trim()
 

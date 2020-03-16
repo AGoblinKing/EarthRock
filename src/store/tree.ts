@@ -12,6 +12,7 @@ export interface ITree<T> extends IStore<TreeValue<T>>{
 	reset (target?: TreeValue<T>, silent?: boolean)
 	add (tree_write: object, silent?: boolean)
 	query (...steps: string[]) : any 
+	has (name: string): boolean
 	remove (name: string, silent?: boolean)
 }
 
@@ -24,6 +25,10 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 
 	item (name: string) {
 		return super.get()[name]
+	}
+
+	has (name: string) {
+		return this.item(name) !== undefined
 	}
 
 	reset (target?: TreeValue<T>, silent = false) {

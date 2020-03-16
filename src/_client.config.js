@@ -8,7 +8,9 @@ import visualizer from 'rollup-plugin-visualizer'
 import replace from "replace-in-file"
 import sucrase from '@rollup/plugin-sucrase'
 
-import { external } from "./_external.config"
+const preprocess = require("../svelte.config")
+
+import { external, globals} from "./_external.config"
 
 const production = !process.env.ROLLUP_WATCH
 
@@ -18,14 +20,14 @@ export default {
 	input: `src/client/_client.js`,
 	treeshake: true,
 	external,
-
 	output: {
 		sourcemap: !production,
 		format: `iife`,
 		name: `app`,
-		file: `${output}/bin/client.bundle.js`
+		file: `${output}/bin/client.bundle.js`,
+		globals
 	},
-
+	
 	plugins: [
 		visualizer({
 			filename: `docs/stats/client.html`
@@ -46,10 +48,7 @@ export default {
 			css: css => {
 				css.write(`${output}/bin/client.bundle.css`)
 			},
-			onwarn: (warning, handler) => {
-				if (warning.message.indexOf(`Wheel`) !== -1) return
-				handler(warning)
-			}
+			...preprocess
 		}),
 
 		sucrase({

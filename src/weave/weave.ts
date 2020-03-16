@@ -1,17 +1,17 @@
 import cuid from "cuid"
 
-import { Store, Read, Cancel, Tree, Living, NAME} from "src/store"
+import { Store, Read, ICancel, Tree, Living, NAME, TreeValue } from "src/store"
 import { Space, Warp, IWarp, EWarp } from "src/warp"
 
-export interface Wefts {
+export interface Threads {
     [key: string]: NAME;
 }
 
 export interface IWeave {
     name?: string;
-    wefts: Wefts;
-    value: IWarpTree;
-    rezed: Array<NAME>;
+    thread?: Threads;
+    value?: IWarpTree;
+    rezed?: Array<NAME>;
 }
 
 export interface IWarpTree {
@@ -24,17 +24,19 @@ export interface Warps {
 
 export class Weave extends Living<Warp<any>> {
     readonly name: Store<string>
-    readonly wefts: Tree<NAME>
-    readonly value: Tree<Warp<any>>
+    readonly threads: Tree<NAME>
+    readonly value: Tree<Warp<any>> = new Tree({})
 
     // caches
-    readonly wefts_reverse: Read<Wefts>
-    readonly spaces: Tree<Warp<any>>
+    readonly threads_reverse: Read<Threads>
+    readonly spaces: Tree<Warp<any>> = new Tree({})
 
     // clean up
-    protected readonly cancels: Set<Cancel>
+    protected readonly cancels: Set<ICancel> = new Set()
+    private thread_cancel: ICancel 
+    private nerves: {[name: string]: ICancel } = {}
 
-    create_warp($warp: IWarp<any>) {
+    create_warp ($warp: IWarp<any>) {
         switch($warp.type) {
             case undefined:
                 $warp.type = EWarp.SPACE
@@ -48,39 +50,42 @@ export class Weave extends Living<Warp<any>> {
         throw new Error(`warp/unknown ${$warp}`)
     }
 
-    constructor(data: IWeave) {
-        super()
+    constructor (data: IWeave) {
+        super() 
+
+        if(data.name === undefined) {
+            throw new Error("Undefined name for weave")
+        }
 
         this.name = new Store(data.name)
-        this.wefts = new Tree(data.wefts)
-        this.value = new Tree({})
-        this.rezed = new Store(new Set(data.rezed))
-        this.spaces = new Tree({})
+        this.threads = new Tree(data.thread || {})
+        this.rezed = new Store(new Set(data.rezed || []))
 
-        this.cancels = new Set()
-
-        this.wefts_reverse = new Tree({}, set => {
-            this.cancels.add(this.wefts.listen(($wefts) => {
+        this.threads_reverse = new Tree({}, set => {
+            this.cancels.add(this.threads.listen(($threads) => {
                 const w_r = {}
-                for(let key of Object.keys($wefts)) {
-                    w_r[$wefts[key]] = key   
+                for(let key of Object.keys($threads)) {
+                    w_r[$threads[key]] = key
                 }
 
                 set(w_r)
             }))
         })
 
-        this.add(data.value)
+        this.add(data.value || {})
     }
 
-    add(warp_data: IWarpTree, silent = false) : Warps {
+    add (warp_data: IWarpTree, silent = false) : Warps {
         if(!warp_data) return
         const warps: Warps = {}
 
-        for(let name of Object.keys(warp_data)) {
-            const warp = warp_data[name]  
-            warp.name = warp.name === "cuid" ? cuid() : name
+        for(let [name, warp] of Object.entries(warp_data)) {
+            if (warp instanceof Warp) {
+                warps[name] = warp
+                continue
+            }
 
+            warp.name = name
             warps[name] = this.create_warp(warp)
         }
 
@@ -89,10 +94,46 @@ export class Weave extends Living<Warp<any>> {
         return warps
     }
 
-    removes(...names: NAME[]) {
+    rez () {
+        super.rez()
+
+        // connect threads to form nerves
+        this.thread_cancel = this.threads.listen(this.thread_update.bind(this))
+    }
+
+    thread_update ($threads: TreeValue<string>) {
+        for(let [name, cancel] of Object.entries(this.nerves)) {
+            if($threads[name]) {
+                delete $threads[name]
+                continue
+            }
+
+            cancel()
+            delete this.nerves[name]
+        }
+
+        for(let [from, to] of Object.entries($threads)) {
+            const f = this.query(...from.split("/"))
+            const t = this.query(...to.split("/"))
+            if(!f || !t) continue
+            this.nerves[from] = f.listen(t.set.bind(t))
+        }
+    }
+
+    derez () {
+        super.derez()
+        
+        for(let cancel of Object.values(this.nerves)) {
+            cancel()
+        }
+
+        this.thread_cancel()
+    }
+
+    removes (...names: NAME[]) {
         const $warps = this.value.get()
-        const $wefts = this.wefts.get()
-        const $wefts_r = this.wefts_reverse.get()
+        const $wefts = this.threads.get()
+        const $wefts_r = this.threads_reverse.get()
         const $rezed = this.rezed.get()
 
         for(let name of names) {
@@ -110,7 +151,7 @@ export class Weave extends Living<Warp<any>> {
         }
 
         this.value.set($warps)
-        this.wefts.set($wefts)
+        this.threads.set($wefts)
         this.rezed.set($rezed)
     }
 
@@ -128,10 +169,10 @@ export class Weave extends Living<Warp<any>> {
         this.cancels.clear()
     }
 
-    toJSON() {
+    toJSON (): IWeave {
         return {
             name: this.name.get(),
-            wefts: this.wefts.get(),
+            thread: this.threads.get(),
 
             value: this.value.toJSON(),
             rezed: this.rezed.toJSON()

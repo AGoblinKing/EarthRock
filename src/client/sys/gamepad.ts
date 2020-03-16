@@ -1,20 +1,20 @@
 // eventually will want to support local multiplayer with this
 // piping input to an alias map to a controller's actions
-import { tick } from "/sys/time.js"
-import { read } from "/store.js"
+import { tick } from "src/sys/time"
+import { Read } from "src/store"
 
 const pads = {}
 
-window.addEventListener(`gamepadconnected`, ({ gamepad }) => {
+window.addEventListener(`gamepadconnected`, ({ gamepad }: any) => {
 	pads[gamepad.id] = gamepad
 })
 
-window.addEventListener(`gamepaddisconnected`, ({ gamepad }) => {
+window.addEventListener(`gamepaddisconnected`, ({ gamepad }: any) => {
 	delete pads[gamepad.id]
 })
 
 let axes_set
-export const axes = read({}, (set) => {
+export const axes = new Read({}, (set) => {
 	axes_set = set
 })
 
@@ -44,7 +44,7 @@ const xbox_axis = {
 	3: `rightvertical`
 }
 
-export const button = read({}, (set) => {
+export const button = new Read("", (set) => {
 	const last = {}
 
 	tick.listen(() => {
@@ -80,7 +80,7 @@ export const button = read({}, (set) => {
 	})
 })
 
-export const buttons = read({}, (set) => {
+export const buttons = new Read({}, (set) => {
 	const value = {}
 
 	button.listen(($button) => {

@@ -1,3 +1,5 @@
+const is_character = /[a-zA-Z]/
+
 export const json = (value: any) => {
 	if (typeof value !== `string`) return value
 
@@ -8,8 +10,11 @@ export const json = (value: any) => {
 		}
 	}
 
+	// is character
+	if(value[0] !== undefined && is_character.test(value[0])) return value
+
 	try {
-		return JSON.parse(value)
+		return JSON.parse(value) 
 	} catch (ex) {
 		return value
 	}

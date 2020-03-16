@@ -1,36 +1,43 @@
-import { Tree, Living, Store, ELivingStatus} from "src/store"
+import { Tree, Living, Store, TreeValue } from "src/store"
 import { Weave, IWeave } from "src/weave"
+import { Warp, Space } from "../warp"
 
 export interface IWheelJSON {
     value: {[name: string]: IWeave}
-    rezed: {[name: string]: boolean}
+    rezed: string[]
 }
 
 export class Wheel extends Living<Weave> {
     protected value = new Tree({
         sys: new Weave({
             name: `sys`,
-            wefts: {},
-            warps: {},
+            thread: {},
+            value: {},
             rezed: []
         })
     })
 
-    protected nerves = new Map<string, () => void>()
-
-    constructor(wheel_JSON: IWeave) {
+    constructor (wheel_data: IWheelJSON) {
         super()
-        this.status.set(ELivingStatus.REZED)
-        this.rezed = new Store(new Set(["sys"]))
         
+        this.rezed = new Store(new Set(wheel_data.rezed))
+        
+        this.add(wheel_data.value)
+    }
+
+    add (weaves: TreeValue<IWeave>, silent = false) {
         const write = {}
 
-        for(let name of Object.keys(wheel_JSON)) {
-            if(name === "sys") continue
+        for(let [name, value] of Object.entries(weaves)) {
+            if(value instanceof Weave) {
+                write[name] = value
+                continue
+            }
 
-            write[name] = new Weave(wheel_JSON[name])
+            value.name = name
+            write[name] = new Weave(value)
         }
 
-        this.value.add(write)
+        super.add(write, silent)
     }
 }

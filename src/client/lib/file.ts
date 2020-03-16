@@ -1,8 +1,9 @@
 import exif from "piexifjs"
 import fs from "file-saver"
 import { tile } from "src/lib/text"
-import Tile from "/_client/image/tile.js"
-import { write } from "/store.js"
+import Tile from "src/client/ui/image/tile"
+import { Store } from "src/store"
+import * as Wheel from "src/wheel"
 
 export const load = (img) => {
 	try {
@@ -13,7 +14,8 @@ export const load = (img) => {
 	}
 }
 
-const saved = write(false)
+const saved = new Store(false)
+
 export const save = async (weave) => {
 	const obj = {
 		"0th": {
@@ -46,7 +48,7 @@ const garden = img_load({
 })
 
 export const image = async (name) => {
-	const tn = tile(`${Wheel.DENOTE}${name}`)
+	const tn = tile(`/${name}`)
 
 	const img_tile = img_load({
 		width: 1,
@@ -70,7 +72,7 @@ export const image = async (name) => {
 
 export const github = async ($path, {
 	autorun = false
-} = false) => {
+} = {}) => {
 	const url = `https://raw.githubusercontent.com/${$path[0]}/${$path[1]}/master/${$path[2]}.jpg`
 
 	const reader = new FileReader()
@@ -82,19 +84,19 @@ export const github = async ($path, {
 	return new Promise((resolve, reject) => {
 		reader.addEventListener(`load`, () => {
 			const data = load(reader.result)
-			if (!data) return reject(new Error(404))
+			if (!data) return reject(new Error(`404`))
 
-			Wheel.spawn({
+			Wheel.add({
 				[data.name]: data
 			})
 
 			const w = Wheel.get(data.name)
 
-			w.write({
+			w.add({
 				"!info": {
 					type: `space`,
 					value: {
-						from: $path.join(Wheel.DENOTE),
+						from: $path.join(`/`),
 						url: `https://github.com/${$path[0]}/${$path[1]}/blob/master/${$path[2]}.jpg`
 					}
 				}

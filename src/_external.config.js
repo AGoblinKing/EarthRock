@@ -18,9 +18,17 @@ export const external = [
 	`scribbletune`
 ]
 
+export const globals = {
+	"color-js": "Color",
+	"twgl.js": "TWGL",
+	"cuid": "Cuid",
+	"piexifjs": "piexifjs"
+}
+
 export default {
 	input: `src/external/_external.ts`,
-	treeshake: false,
+	treeshake: true,
+
 	output: {
 		browser: true,
 		sourcemap: false,
@@ -37,10 +45,12 @@ export default {
 			browser: true,
 			extensions: [`.js`, `.ts`]
 		}),
+
 		sucrase({
 			exclude: [`node_modules/**`],
 			transforms: [`typescript`]
 		}),
+		
 		commonjs(),
 		terser()
 	],

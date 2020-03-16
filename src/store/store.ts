@@ -1,21 +1,22 @@
 import raf from "raf"
 
-export type Listener<T> = (value: T) => void
-export type Updater<T> = (value: T) => any
-export type Cancel = () => void
+export type IListen<T> = (value: T) => void
+export type IUpdate<T> = (value: T) => any
+export type ICancel = () => void
+export type ICancelMap = {[name: string]: ICancel}
 
 export interface IStore<T> {
-    get(): T;
-	set(value: T, silent: Boolean): void;
-	notify(): void;
-	listen(listener: Listener<T>): Cancel;
-	toJSON(): any;
+    get (): T
+	set (value: any, silent?: Boolean): void
+	notify (): void
+	listen (listener: IListen<T>): ICancel
+	toJSON (): any
 }
 
 // Stores are observables
 export class Store <T> implements IStore <T> {
-	protected listeners: Set<Listener<T>>;
-	protected value: any;
+	protected listeners: Set<IListen<T>>
+	protected value: any
 
 	constructor(value: T) {
 		this.value = value
@@ -26,11 +27,11 @@ export class Store <T> implements IStore <T> {
 		this.listeners.forEach((listener) => listener(this.value))
 	}
 
-	subscribe(listener: Listener<T>): Cancel {
+	subscribe (listener: IListen<T>): ICancel {
 		return this.listen(listener)
 	}
 
-	listen (listener: Listener<T>, no_initial = false) : Cancel { 
+	listen (listener: IListen<T>, no_initial = false) : ICancel { 
 		if (!this.listeners) this.listeners = new Set()
 
 		this.listeners.add(listener)
@@ -42,14 +43,14 @@ export class Store <T> implements IStore <T> {
 
 	get () : T { return this.value }
 	
-	set (value: T, silent = false) {
+	set (value: any, silent = false) {
 		this.value = value
 		if(silent) return
 		
 		this.notify()
 	}
 
-	update (updator: Updater<T>) {
+	update (updator: IUpdate<T>) {
 		this.set(updator(this.value))
 	}
 

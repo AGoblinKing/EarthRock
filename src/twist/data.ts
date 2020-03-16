@@ -5,6 +5,6 @@ import { Space } from "src/warp"
 export class Data extends Twist<any>  {
     constructor(weave: Weave,  space: Space, data: object) {
         super(weave, space)
-        this.add(Twist.map_to_stores(data))
+        this.add(data)
     }
 }

@@ -20,7 +20,7 @@ export abstract class Warp<T> extends Living<T> {
 
     protected weave: Weave
 
-    constructor(data: IWarp<any>, weave: Weave) {
+    constructor (data: IWarp<any>, weave: Weave) {
         super()
 
         this.name = data.name
@@ -30,7 +30,7 @@ export abstract class Warp<T> extends Living<T> {
         // don't init value because who knows what they want
     }
 
-    toJSON(): IWarp<T> {
+    toJSON (): IWarp<T> {
         return {
             name: this.name,
             type: this.type,

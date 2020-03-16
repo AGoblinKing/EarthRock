@@ -9,9 +9,7 @@ test("weave/", t => {
             foo: { type: EWarp.SPACE, value: {} },
             test: { type: EWarp.SPACE, value: {} }
         },
-
-        
-        wefts: {
+        thread: {
             foo: "test"
         },
         rezed: [

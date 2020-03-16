@@ -1,5 +1,5 @@
 import test from "ava"
-import { Buffer, Store } from "src/store"
+import { Buffer } from "src/store"
 
 
 test("store/buffer", t => {
@@ -24,11 +24,23 @@ test("store/buffer", t => {
     buffer.free(0)
     t.snapshot(buffer.toJSON())
 
-    buffer.allocate({test: [1, 2]})
+    const [view, cursor] = buffer.allocate({test: [1, 2]})
+    t.snapshot(view, "allocates a view")
+
+    view.test.set([5, 6])
+    t.snapshot(view, "is setable")
+
     buffer.allocates({test: [3, 4]}, {test: [5, 6]}, {test: [7, 9]})
 
     t.snapshot(buffer.toJSON(), "allocates works, and resizes")
 
     buffer.resize()
     t.snapshot(buffer.toJSON(), "resizeable")
+
+    buffer.hydrate({
+        test: [50, 60],
+        2: [50, 60]
+    })
+
+    t.snapshot(buffer.toJSON(), "hydratable")
 })

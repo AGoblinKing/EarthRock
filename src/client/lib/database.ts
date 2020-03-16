@@ -1,7 +1,5 @@
-import { tick } from "/sys/time.js"
-import { path } from "/sys/path.js"
-import { github } from "/sys/file.js"
-import { write } from "/store.js"
+import { Store } from "src/store"
+import { IWheelJSON } from "src/wheel"
 
 const VERSION = 2
 const TIME_AGO = IDBKeyRange.upperBound(Date.now() - 1000 * 60)
@@ -9,16 +7,16 @@ let db
 
 const store_name = `wheel`
 
-export const loaded = write(false)
+export const loaded = new Store(false)
 export const data = new Promise((resolve) => {
 	const req = window.indexedDB.open(`earthrock`, VERSION)
 
-	req.onupgradeneeded = async (e) => {
+	req.onupgradeneeded = async (e: any) => {
 		db = e.target.result
 		await db.createObjectStore(store_name, { keyPath: `name` })
 	}
 
-	req.onsuccess = (e) => {
+	req.onsuccess = (e: any) => {
 		db = e.target.result
 
 		resolve(db)
@@ -29,8 +27,8 @@ export const query = ({
 	store = store_name,
 	action = `get`,
 	args = [],
-	foronly = `readwrite`
-} = false) => new Promise((resolve, reject) => {
+	foronly = `readnew Store`
+} = {}) => new Promise((resolve, reject) => {
 	data.then(() => {
 		const t = db.transaction([store], foronly)
 		t.onerror = reject
@@ -38,16 +36,14 @@ export const query = ({
 	})
 })
 
-export const save = async () => {
-	const wheel = Wheel.toJSON()
-
+export const save = async (wheel: IWheelJSON ) => {
 	wheel.date = Date.now()
 
 	// update current
 	await query({
 		action: `put`,
 		args: [wheel],
-		foronly: `readwrite`
+		foronly: `readnew Store`
 	})
 }
 
@@ -56,73 +52,3 @@ export const clean = () => query({
 	args: [TIME_AGO]
 })
 
-window.query = query
-
-const savewatch = async ($name) => {
-	loaded.set(false)
-
-	const result = await query({
-		action: `get`,
-		args: [$name]
-	}).catch((e) => console.warn(`DB`, e.target.error))
-
-	if (result) {
-		const { weaves, running } = result
-		// protect system
-		delete weaves[Wheel.SYSTEM]
-
-		Wheel.name.set($name)
-		Wheel.spawn(weaves)
-
-		Object.keys(running).forEach((id) => {
-			if (id === Wheel.SYSTEM) return
-			if (!Wheel.get(id)) return
-			Wheel.start(id)
-		})
-
-
-		
-	}
-
-	requestAnimationFrame(() => loaded.set(true))
-
-	const cancel = tick.listen((t) => {
-		if (
-			t % 10 !== 0 ||
-      db === undefined ||
-      !loaded.get()
-		) return
-
-		save()
-	})
-
-	return () => {
-		Wheel.clear()
-		Wheel.name.set(`loading`)
-		cancel()
-	}
-}
-
-// init()
-
-let watch = false
-path.listen(async ($path) => {
-	// your watch has ended
-	if (watch) watch.then((w) => w())
-
-	if ($path.length === 1) {
-		Wheel.name.set($path[0])
-		watch = savewatch($path[0])
-	}
-
-	if ($path.length === 3) {
-		await loaded
-
-		Wheel.name.set(`loading`)
-
-		await github($path, { autorun: true })
-
-		Wheel.name.set($path.join(Wheel.DENOTE))
-		watch = savewatch($path.join(Wheel.DENOTE))
-	}
-})

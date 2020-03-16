@@ -1,8 +1,8 @@
-import { read, write } from "/store.js"
+import { Read, Store } from "src/store"
 
-export const key_virtual = write(``)
+export const key_virtual = new Store(``)
 
-export const key = read(``, (set) => {
+export const key = new Read(``, (set) => {
 	key_virtual.listen((k) => set(k))
 
 	window.addEventListener(`keyup`, (e) => {
@@ -28,7 +28,7 @@ export const key = read(``, (set) => {
 	})
 })
 
-export const keys = read({}, (set) => {
+export const keys = new Read({}, (set) => {
 	const value = {}
 
 	const clear = () => {

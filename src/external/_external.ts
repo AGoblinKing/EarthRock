@@ -15,3 +15,4 @@ Object.assign(window, {
 	Color,
 	Cuid
 });
+

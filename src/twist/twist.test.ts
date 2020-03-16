@@ -9,7 +9,7 @@ test("twist/visible", t => {
     Visible.data = new Buffer(Visible.defaults, 3)
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {
@@ -29,7 +29,7 @@ test("twist/visible", t => {
 test("twist/data", t => {
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {
@@ -59,7 +59,7 @@ test("twist/data", t => {
 test("twist/physical", t => {
     const weave = new Weave({
         name: "test",
-        wefts: {},
+        thread: {},
         rezed: [],
         value: {
             test: {

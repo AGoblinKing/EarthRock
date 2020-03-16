@@ -1,11 +1,11 @@
-import { IStore, Listener } from "./store"
+import { IStore, IListen } from "./store"
 import { ITree, TreeValue } from "./tree"
 
 export abstract class Proxy<T> implements IStore<T> {
     protected value: IStore<T>
 
     get() { return this.value.get() }
-    listen(listen: Listener<T>) { return this.value.listen(listen) }
+    listen(listen: IListen<T>) { return this.value.listen(listen) }
     set(value: T, silent = false) { this.value.set(value, silent) }
     toJSON() { return this.value.toJSON() }
     notify() { this.value.notify() }

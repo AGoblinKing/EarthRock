@@ -16,7 +16,7 @@ test("warp/space", t => {
                 }
             }
         },
-        wefts: {},
+        thread: {},
         rezed: []
     })
 
@@ -32,7 +32,9 @@ test("warp/space", t => {
     })
 
     t.snapshot(vis.get())
-
+    vis.create()
+    t.snapshot(vis.get())
+    
     t.snapshot(weave.spaces.toJSON())
     weave.remove("hello")
     t.snapshot(weave.spaces.toJSON())

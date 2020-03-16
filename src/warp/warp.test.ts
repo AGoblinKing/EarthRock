@@ -12,7 +12,7 @@ test("warp/", t => {
                 }}
             }
         },
-        wefts: {},
+        thread: {},
         rezed: []
     })
 

@@ -1,8 +1,8 @@
 import test from "ava"
 import { Weave } from "src/weave"
 import { Visible } from "./visible"
-import { Physical } from "./physical"
-import { Buffer, Tree } from "../store"
+
+import { Buffer } from "../store"
 import { Space } from "../warp"
 
 test("twist/visible", t => {

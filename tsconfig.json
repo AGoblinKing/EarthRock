@@ -1,10 +1,10 @@
 {
-    "include": [ "src/**/*" ],
-    "exclude": ["node_modules/**/*"],
-    "compilerOptions": {
-        "lib": ["ESNext", "WebWorker", "DOM"],
-        "typeRoots": ["node_modules/@types", "node_modules/ava"],
-        "esModuleInterop": true,
-        "types": ["svelte"]
-    }
+	"include": ["src/**/*"],
+	"exclude": ["node_modules/**/*"],
+	"compilerOptions": {
+		"lib": ["ESNext", "WebWorker", "DOM"],
+		"typeRoots": ["node_modules/@types", "node_modules/ava", "src/client"],
+		"esModuleInterop": true,
+		"types": ["svelte"]
+	}
 }

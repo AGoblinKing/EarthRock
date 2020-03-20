@@ -5,19 +5,19 @@ import rootImport from 'rollup-plugin-root-import'
 import resolve from '@rollup/plugin-node-resolve'
 import glslify from 'rollup-plugin-glslify'
 import visualizer from 'rollup-plugin-visualizer'
-import replace from "replace-in-file"
+import replace from 'replace-in-file'
 import sucrase from '@rollup/plugin-sucrase'
 
-const preprocess = require("../svelte.config")
+const preprocess = require('../svelte.config')
 
-import { external, globals} from "./_external.config"
+import { external, globals } from './_external.config'
 
 const production = !process.env.ROLLUP_WATCH
 
 const output = `docs`
 
 export default {
-	input: `src/client/_client.js`,
+	input: `src/client/_client.ts`,
 	treeshake: true,
 	external,
 	output: {
@@ -27,7 +27,7 @@ export default {
 		file: `${output}/bin/client.bundle.js`,
 		globals
 	},
-	
+
 	plugins: [
 		visualizer({
 			filename: `docs/stats/client.html`

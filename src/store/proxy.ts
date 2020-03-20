@@ -1,36 +1,59 @@
-import { IStore, IListen } from "./store"
-import { ITree, TreeValue } from "./tree"
+import { IStore, IListen } from './store'
+import { ITree, TreeValue, IGrok } from './tree'
 
 export abstract class Proxy<T> implements IStore<T> {
-    protected value: IStore<T>
+	protected value: IStore<T>
 
-    get() { return this.value.get() }
-    listen(listen: IListen<T>) { return this.value.listen(listen) }
-    set(value: T, silent = false) { this.value.set(value, silent) }
-    toJSON() { return this.value.toJSON() }
-    notify() { this.value.notify() }
+	get() {
+		return this.value.get()
+	}
+	listen(listen: IListen<T>) {
+		return this.value.listen(listen)
+	}
+	set(value: T, silent = false) {
+		this.value.set(value, silent)
+	}
+	toJSON() {
+		return this.value.toJSON()
+	}
+	notify() {
+		this.value.notify()
+	}
+
+	subscribe(listen: IListen<T>) {
+		return this.listen(listen)
+	}
 }
 
-export abstract class ProxyTree<T> extends Proxy<TreeValue<T>> implements ITree<T> {
-    protected value: ITree<T>
-    
-    item (name: string) {
-        return this.value.item(name)
-    }
+export abstract class ProxyTree<T> extends Proxy<TreeValue<T>>
+	implements ITree<T> {
+	protected value: ITree<T>
 
-    reset (target?: TreeValue<T>, silent?: boolean)  {
-        return this.value.reset(target, silent)
-    }
+	item(name: string) {
+		return this.value.item(name)
+	}
 
-    add (tree_write: object, silent?: boolean) {
-        return this.value.add(tree_write, silent)
-    }
+	reset(target?: TreeValue<T>, silent?: boolean) {
+		return this.value.reset(target, silent)
+	}
 
-    remove (name: string, silent?: boolean) {
-        this.value.remove(name, silent)
-    }
+	add(tree_write: object, silent?: boolean) {
+		return this.value.add(tree_write, silent)
+	}
 
-    query (...steps: string[]) : any {
-        return this.value.query(...steps)
-    }
+	remove(name: string, silent?: boolean) {
+		this.value.remove(name, silent)
+	}
+
+	query(...steps: string[]): any {
+		return this.value.query(...steps)
+	}
+
+	has(name: string) {
+		return this.item(name) !== undefined
+	}
+
+	grok(groker: IGrok) {
+		return this.grok(groker)
+	}
 }

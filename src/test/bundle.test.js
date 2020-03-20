@@ -288,6 +288,29 @@ class Read extends Store {
     }
 }
 
+var EGrok; (function (EGrok) {
+	const ADD = 0; EGrok[EGrok["ADD"] = ADD] = "ADD";
+	const REMOVE = ADD + 1; EGrok[EGrok["REMOVE"] = REMOVE] = "REMOVE";
+	const UPDATE = REMOVE + 1; EGrok[EGrok["UPDATE"] = UPDATE] = "UPDATE";
+})(EGrok || (EGrok = {}));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Tree extends Read {
 	
 
@@ -295,99 +318,214 @@ class Tree extends Read {
 		super(tree, setter);
 	}
 
-	item (name) {
+	item(name) {
 		return super.get()[name]
 	}
 
-	has (name) {
+	has(name) {
 		return this.item(name) !== undefined
 	}
 
-	reset (target, silent = false) {
+	reset(target, silent = false) {
 		const $tree = {};
-		if(target) {
+		if (target) {
 			Object.assign($tree, target);
 		}
 
 		this.p_set($tree, silent);
 	}
 
-	add (tree_json, silent = false) {
+	add(tree_json, silent = false) {
 		const $tree = this.get();
+
 		Object.assign($tree, tree_json);
 
 		this.p_set($tree, silent);
+
+		return tree_json
 	}
 
-	remove (name, silent = false) {
+	remove(name, silent = false) {
 		delete this.value[name];
-		if(!silent) this.notify();
+		if (!silent) this.notify();
 	}
-	
-	query (...steps)  {
-		
+
+	query(...steps) {
 		const cursor = this.value[steps.shift()]; 
 
-		if(steps.length === 0 || !cursor) return cursor 	
+		if (steps.length === 0 || !cursor) return cursor
 		return cursor.query(...steps)
+	}
+
+	count() {
+		return Object.keys(this.get()).length
+	}
+
+	groker(action, path, value) {
+		const split = path.split('/');
+		const item =
+			split.length === 1 ? this : this.query(...split.slice(0, -1));
+
+		const key = split[split.length - 1];
+
+		const is_obj =
+			Array.isArray(value) ||
+			(['string', 'number', 'boolean'].indexOf(typeof value) !== -1) ==
+				false;
+
+		switch (action) {
+			case EGrok.ADD:
+				item.add({
+					[key]: is_obj ? new Tree() : new Store(value)
+				});
+				break
+			case EGrok.REMOVE:
+				item.remove(key);
+				break
+			case EGrok.UPDATE:
+				if (split.length === 1) {
+					item.set(value);
+				} else {
+					item.item(key).set(value);
+				}
+		}
+	}
+
+	grok(groker) {
+		const cancels = {};
+
+		let last = [];
+
+		cancels[''] = this.listen($value => {
+			// value changed
+			for (let key of last) {
+				if ($value[key] === undefined) {
+					groker(EGrok.REMOVE, key);
+					cancels[key] && cancels[key];
+				}
+			}
+
+			last = Object.keys($value);
+
+			for (let [key, child] of Object.entries($value)) {
+				const cx = child; 
+				if (cancels[key]) return
+				groker(EGrok.ADD, key, cx.toJSON ? cx.toJSON() : cx);
+
+				// tree
+				if (cx.grok) {
+					cancels[key] = cx.grok((action, k, v) =>
+						groker(action, `${key}/${k}`, v)
+					);
+					continue
+				}
+
+				// store (updates)
+				if (cx.listen) {
+					cancels[key] = cx.listen(v => groker(EGrok.UPDATE, key, v));
+					continue
+				}
+			}
+		});
+
+		return () => {
+			for (let cancel of Object.values(cancels)) {
+				cancel();
+			}
+		}
 	}
 }
 
-test("store/tree", t => {
-    const tree = new Tree({
-        foo: 1,
-        bar: "2",
-        store: new Store(5),
-        stores: new Store(new Store("string"))
-    });
+test('store/tree', t => {
+	const tree = new Tree({
+		foo: 1,
+		bar: '2',
+		store: new Store(5),
+		stores: new Store(new Store('string'))
+	});
 
-    t.snapshot(tree.get());
+	t.snapshot(tree.get());
+
+	t.snapshot(tree.count());
 });
 
-test("store/tree/names", t => {
-    const tree = new Tree({
-        foo: 1,
-        bar: "2",
-        store: new Store(5),
-        stores: new Store(new Store("string"))
-    });
+test('store/tree/names', t => {
+	const tree = new Tree({
+		foo: 1,
+		bar: '2',
+		store: new Store(5),
+		stores: new Store(new Store('string'))
+	});
 
-    tree.add({foo: 2});
-    t.snapshot(tree.get());
-    t.snapshot(tree.item("foo"));
+	tree.add({ foo: 2 });
+	t.snapshot(tree.get());
+	t.snapshot(tree.item('foo'));
 
-    tree.add({
-        foo: 5,
-        store: 1,
-        new_thing: "new"
-    });
+	tree.add({
+		foo: 5,
+		store: 1,
+		new_thing: 'new'
+	});
 
-    t.snapshot(tree.get());
-    t.snapshot(tree.toJSON());
+	t.snapshot(tree.get());
+	t.snapshot(tree.toJSON());
 
-    tree.remove("store");
+	tree.remove('store');
 
-    t.snapshot(tree.get());
+	t.snapshot(tree.get());
 });
 
+test('store/tree/query', t => {
+	const tree = new Tree({
+		foo: 1,
+		nest: new Tree({
+			deeper: new Tree({
+				final: 3
+			}),
+			mid: 2
+		})
+	});
 
+	t.snapshot(tree.query('foo'));
+	t.snapshot(tree.query('nest'));
+	t.snapshot(tree.query('nest', 'mid'));
+	t.snapshot(tree.query('nest', 'deeper'));
+	t.snapshot(tree.query('nest', 'deeper', 'final'));
+});
 
-test("store/tree/query", t => {
-    const tree = new Tree({
-        foo: 1,
-        nest: new Tree({
-            deeper: new Tree({
-                final: 3
-            }),
-            mid: 2
-        })
-    });
+test('store/tree/grok', t => {
+	const tree = new Tree({
+		trend: 1,
+		den: new Store('fen'),
+		hello: new Tree({
+			men: 2,
+			there: new Tree({
+				friend: new Store(0),
+				tem: 1
+			})
+		})
+	});
 
-    t.snapshot(tree.query("foo"));
-    t.snapshot(tree.query("nest"));
-    t.snapshot(tree.query("nest", "mid"));
-    t.snapshot(tree.query("nest", "deeper"));
-    t.snapshot(tree.query("nest", "deeper", "final"));
+	const tree_2 = new Tree({});
+
+	const cancel_2 = tree.grok(tree_2.groker.bind(tree_2));
+
+	t.snapshot(tree.toJSON());
+
+	const cancel = tree.grok((action, key, value) => {
+		t.snapshot({ action, key, value });
+	});
+
+	tree.remove('hello');
+
+	t.snapshot(tree.toJSON());
+	cancel();
+
+	t.snapshot(tree_2.toJSON());
+
+	t.deepEqual(tree.toJSON(), tree_2.toJSON());
+
+	cancel_2();
 });
 
 test("store/read", t => {
@@ -410,37 +548,60 @@ test("store/read", t => {
 });
 
 class Proxy {
-    
+	
 
-    get() { return this.value.get() }
-    listen(listen) { return this.value.listen(listen) }
-    set(value, silent = false) { this.value.set(value, silent); }
-    toJSON() { return this.value.toJSON() }
-    notify() { this.value.notify(); }
+	get() {
+		return this.value.get()
+	}
+	listen(listen) {
+		return this.value.listen(listen)
+	}
+	set(value, silent = false) {
+		this.value.set(value, silent);
+	}
+	toJSON() {
+		return this.value.toJSON()
+	}
+	notify() {
+		this.value.notify();
+	}
+
+	subscribe(listen) {
+		return this.listen(listen)
+	}
 }
 
-class ProxyTree extends Proxy {
-    
-    
-    item (name) {
-        return this.value.item(name)
-    }
+class ProxyTree extends Proxy
+ {
+	
 
-    reset (target, silent)  {
-        return this.value.reset(target, silent)
-    }
+	item(name) {
+		return this.value.item(name)
+	}
 
-    add (tree_write, silent) {
-        return this.value.add(tree_write, silent)
-    }
+	reset(target, silent) {
+		return this.value.reset(target, silent)
+	}
 
-    remove (name, silent) {
-        this.value.remove(name, silent);
-    }
+	add(tree_write, silent) {
+		return this.value.add(tree_write, silent)
+	}
 
-    query (...steps)  {
-        return this.value.query(...steps)
-    }
+	remove(name, silent) {
+		this.value.remove(name, silent);
+	}
+
+	query(...steps) {
+		return this.value.query(...steps)
+	}
+
+	has(name) {
+		return this.item(name) !== undefined
+	}
+
+	grok(groker) {
+		return this.grok(groker)
+	}
 }
 
 class BufferValue extends Store {
@@ -554,197 +715,196 @@ class Buffer extends Tree {
 }
 
 var ELivingAction; (function (ELivingAction) {
-    const CREATE = "create"; ELivingAction["CREATE"] = CREATE;
-    const REZ = "rez"; ELivingAction["REZ"] = REZ;
-    const DEREZ = "derez"; ELivingAction["DEREZ"] = DEREZ;
-    const DESTROY = "destroy"; ELivingAction["DESTROY"] = DESTROY;
+	const CREATE = 'create'; ELivingAction["CREATE"] = CREATE;
+	const REZ = 'rez'; ELivingAction["REZ"] = REZ;
+	const DEREZ = 'derez'; ELivingAction["DEREZ"] = DEREZ;
+	const DESTROY = 'destroy'; ELivingAction["DESTROY"] = DESTROY;
 })(ELivingAction || (ELivingAction = {}));
 
 var ELivingStatus; (function (ELivingStatus) {
-    const VOID = "VOID"; ELivingStatus["VOID"] = VOID;
-    const CREATED = "CREATED"; ELivingStatus["CREATED"] = CREATED;
-    const REZED = "REZED"; ELivingStatus["REZED"] = REZED;
+	const VOID = 'VOID'; ELivingStatus["VOID"] = VOID;
+	const CREATED = 'CREATED'; ELivingStatus["CREATED"] = CREATED;
+	const REZED = 'REZED'; ELivingStatus["REZED"] = REZED;
 })(ELivingStatus || (ELivingStatus = {}));
 
 class Living extends ProxyTree {constructor(...args) { super(...args); Living.prototype.__init.call(this); }
-    
-     __init() {this.status = new Store(ELivingStatus.VOID);}
+	
+	 __init() {this.status = new Store(ELivingStatus.VOID);}
 
-    add (living_data, silent = false) {
-        super.add(living_data, silent);
-        const $status = this.status.get();
+	add(living_data, silent = false) {
+		super.add(living_data, silent);
+		const $status = this.status.get();
+		const items = Object.entries(living_data);
 
-        const items = Object.entries(living_data);
+		switch ($status) {
+			case ELivingStatus.CREATED:
+				for (let [_, item] of items) {
+					item.create && item.create();
+				}
 
-        switch($status) {
-            case ELivingStatus.CREATED:
-                for(let [_, item] of items) {
-                    item.create && item.create();
-                }
+			case ELivingStatus.REZED:
+				const $rezed = this.rezed && this.rezed.get();
 
-            case ELivingStatus.REZED:
-                const $rezed = this.rezed && this.rezed.get(); 
+				// create doesn't auto rez
+				// so you can batch creates together then rez
+				for (let [name, item] of items) {
+					if ($rezed && !$rezed[name]) continue
+					item.rez && item.rez();
+				}
+		}
+	}
 
-                // create doesn't auto rez
-                // so you can batch creates together then rez
-                for(let [name, item] of items) {
-                    if($rezed && !$rezed[name]) continue 
-                    item.rez && item.rez();
-                }
-        }
-    }
-    
-    remove (name, silent = false) {
-        const $value = this.get(); 
+	remove(name, silent = false) {
+		const $value = this.get(); 
 
-        if($value[name] && $value[name].destroy) {
-            $value[name].destroy();
-        }
+		if ($value[name] && $value[name].destroy) {
+			$value[name].destroy();
+		}
 
-        const $rezed = this.rezed && this.rezed.get(); 
-        if($rezed) {
-            $rezed.delete(name);
-        }
+		const $rezed = this.rezed && this.rezed.get();
+		if ($rezed) {
+			$rezed.delete(name);
+		}
 
-        super.remove(name, silent);
-    }
-    
-    removes(...names) {
-        for(let name of names) {
-            this.remove(name, true);
-        }
+		super.remove(name, silent);
+	}
 
-        this.notify();
-    }
+	removes(...names) {
+		for (let name of names) {
+			this.remove(name, true);
+		}
 
-    create () {
-        if(this.status.get() !== ELivingStatus.VOID) {
-            throw new Error("Tried to create a nonvoid living class")
-        }
+		this.notify();
+	}
 
-        // run through my tree to guarantee its destroyed
-        let sub;
-        for(sub of Object.values(this.get())) {
-            sub.create && sub.create();
-        }
+	create() {
+		if (this.status.get() !== ELivingStatus.VOID) {
+			throw new Error('Tried to create a nonvoid living class')
+		}
 
-        this.status.set(ELivingStatus.CREATED);
-    }
+		// run through my tree to guarantee its destroyed
+		let sub;
+		for (sub of Object.values(this.get())) {
+			sub.create && sub.create();
+		}
 
-    destroy () {
-        if(this.status.get() === ELivingStatus.REZED) {
-            this.derez();
-        }
+		this.status.set(ELivingStatus.CREATED);
+	}
 
-        let sub;
-        for(sub of Object.values(this.get())) {
-            sub.destroy && sub.destroy();
-        }
+	destroy() {
+		if (this.status.get() === ELivingStatus.REZED) {
+			this.derez();
+		}
 
-        this.status.set(ELivingStatus.VOID);
-    }
-    
-    rez () {
-        if(this.status.get() === ELivingStatus.VOID) {
-            this.create();
-        }
+		let sub;
+		for (sub of Object.values(this.get())) {
+			sub.destroy && sub.destroy();
+		}
 
-        const rezed = this.rezed && this.rezed.get();        
+		this.status.set(ELivingStatus.VOID);
+	}
 
-        for(let [name, sub] of Object.entries(this.get())) {
-            if(rezed && !rezed.has(name)) continue
+	rez() {
+		if (this.status.get() === ELivingStatus.VOID) {
+			this.create();
+		}
 
-            (sub ).rez && (sub ).rez();
-        }
+		const rezed = this.rezed && this.rezed.get();
 
-        this.status.set(ELivingStatus.REZED);
-    }
+		for (let [name, sub] of Object.entries(this.get())) {
+			if (rezed && !rezed.has(name)) continue
+			;(sub ).rez && (sub ).rez();
+		}
 
-    derez () {
-        if(this.status.get() !== ELivingStatus.REZED) {
-            return   
-        }
+		this.status.set(ELivingStatus.REZED);
+	}
 
-        const $rezed = this.rezed && this.rezed.get();        
+	derez() {
+		if (this.status.get() !== ELivingStatus.REZED) {
+			return
+		}
 
-        for(let [name, sub] of Object.entries(this.get())) {
-            if($rezed && !$rezed.has(name)) continue
-            
-            (sub ).derez && (sub ).derez();
-        }
+		const $rezed = this.rezed && this.rezed.get();
 
-        this.status.set(ELivingStatus.CREATED);
-    }
+		for (let [name, sub] of Object.entries(this.get())) {
+			if ($rezed && !$rezed.has(name)) continue
+			;(sub ).derez && (sub ).derez();
+		}
 
-    start_all(...all) {
-        all = all.length === 0 ? Object.keys(this.get()) : all;
-        for(let name of all) {
-            this.start(name);
-        }
-    }
+		this.status.set(ELivingStatus.CREATED);
+	}
 
-    start(name) {
-        const $rezed = this.rezed && this.rezed.get();        
-        const item = this.item(name);
+	start_all(...all) {
+		all = all.length === 0 ? Object.keys(this.get()) : all;
+		for (let name of all) {
+			this.start(name);
+		}
+	}
 
-        if(!item) return
+	start(name) {
+		const $rezed = this.rezed && this.rezed.get();
+		const item = this.item(name);
 
-        // can only rez if I am 
-        if(this.status.get() === ELivingStatus.REZED) {
-            (item ).rez && (item ).rez();
-        }
+		if (!item) return
 
-        if($rezed) {
-            $rezed.add(name);
-            this.rezed.notify();
-        }
-    }
+		// can only rez if I am
+		if (this.status.get() === ELivingStatus.REZED) {
+			;(item ).rez && (item ).rez();
+		}
 
-    stop(name) {
-        const item = this.item(name);
-        if(!item) return
+		if ($rezed) {
+			$rezed.add(name);
+			this.rezed.notify();
+		}
+	}
 
-        // can derez whenever though
-        (item ).derez && (item ).derez();
+	stop(...names) {
+		const $rezed = this.rezed && this.rezed.get();
+		for (let name of names) {
+			const item = this.item(name);
+			if (!item) continue // can derez whenever though
 
-        const $rezed = this.rezed && this.rezed.get();   
-        if(!$rezed) return
-        
-        $rezed.delete(name);
-        this.rezed.notify();
-    }
+			;(item ).derez && (item ).derez();
 
-    restart (name) {
-        this.stop(name);
-        this.start(name);
-    }
+			if (!$rezed) continue
 
-    toJSON()  {
-        return {
-            value: this.value.toJSON(),
-            rezed: this.rezed ? this.rezed.toJSON() : undefined
-        }
-    }
+			$rezed.delete(name);
+		}
 
-    ensure (first, ...path) {
-        let $item = this.item(first);
+		this.rezed.notify();
+	}
 
-        if($item === undefined) {
-            this.add({
-                [first]: {}
-            });
+	restart(name) {
+		this.stop(name);
+		this.start(name);
+	}
 
-            $item = this.item(first);
-        }
+	toJSON() {
+		return {
+			value: this.value.toJSON(),
+			rezed: this.rezed ? this.rezed.toJSON() : undefined
+		}
+	}
 
-        if(path.length === 0) return $item
-        
-        if($item instanceof Living) {
-            return $item.ensure(path[0], ...path.slice(1))
-        }
-        
-        throw new Error("tried to ensure non living item")
-    }
+	ensure(first, ...path) {
+		let $item = this.item(first);
+
+		if ($item === undefined) {
+			this.add({
+				[first]: {}
+			});
+
+			$item = this.item(first);
+		}
+
+		if (path.length === 0) return $item
+
+		if ($item instanceof Living) {
+			return $item.ensure(path[0], ...path.slice(1))
+		}
+
+		throw new Error('tried to ensure non living item')
+	}
 }
 
 class Transformer extends Store {
@@ -927,10 +1087,10 @@ const str_color = (str) => {
 
 	let color = `#`;
 	for (let i = 0; i < 3; i++) {
-		const value = (hash >> (i * 8)) & 0xFF;
+		const value = (hash >> (i * 8)) & 0xff;
 		color += (`00` + value.toString(16)).substr(-2);
 	}
-	
+
 	return color
 };
 
@@ -938,12 +1098,57 @@ const color = str_color;
 
 // whiskers on kittens
 const words = [
-	`groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
-	`goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
-	`luna`, `ember`, `embear`, `lunatic`, `boring`, `killa`, `notice`, `thank`, `tank`,
-	`under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`,
-	`tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
-	`rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
+	`groovy`,
+	`cat`,
+	`bird`,
+	`dog`,
+	`cool`,
+	`okay`,
+	`great`,
+	`wat`,
+	`goblin`,
+	`life`,
+	`ferret`,
+	`gregert`,
+	`robert`,
+	`zilla`,
+	`red`,
+	`shirt`,
+	`pants`,
+	`blue`,
+	`luna`,
+	`ember`,
+	`embear`,
+	`killa`,
+	`notice`,
+	`thank`,
+	`tank`,
+	`under`,
+	`near`,
+	`near`,
+	`quaint`,
+	`potato`,
+	`egg`,
+	`bacon`,
+	`narwhal`,
+	`lamp`,
+	`stairs`,
+	`king`,
+	`tyrant`,
+	`grave`,
+	`dire`,
+	`happy`,
+	`amazing`,
+	`terrific`,
+	`good`,
+	`exciting`,
+	`RIP`,
+	`hello`,
+	`world`,
+	`global`,
+	`universal`,
+	`television`,
+	`computer`
 ];
 
 const tile = (str) => {
@@ -955,10 +1160,10 @@ const tile = (str) => {
 	return `${Math.abs(hash) % TILE_COUNT}`
 };
 
-const random = (count) => Array
-	.from(new Array(count))
-	.map(() => words[Math.floor(Math.random() * words.length)])
-	.join(`_`);
+const random = (count) =>
+	Array.from(new Array(count))
+		.map(() => words[Math.floor(Math.random() * words.length)])
+		.join(`_`);
 
 test("lib/text", t => {
     t.snapshot(tile("hello"));
@@ -1527,43 +1732,43 @@ var time = /*#__PURE__*/Object.freeze({
 
 // TODO: maybe an input one that gets written to from client?
 
-test("sys/time", t => {
-    t.snapshot(TIME_TICK_RATE.get());
+test('sys/time', t => {
+	t.snapshot(TIME_TICK_RATE.get());
 });
 
 class Wheel extends Living {
-     __init() {this.value = new Tree({
-        sys: new Weave({
-            name: `sys`,
-            thread: {},
-            value: {},
-            rezed: []
-        })
-    });}
+	 __init() {this.value = new Tree({
+		sys: new Weave({
+			name: `sys`,
+			thread: {},
+			value: {},
+			rezed: []
+		})
+	});}
 
-    constructor (wheel_data) {
-        super();Wheel.prototype.__init.call(this);
-        
-        this.rezed = new Store(new Set(wheel_data.rezed));
-        
-        this.add(wheel_data.value);
-    }
+	constructor(wheel_data) {
+		super();Wheel.prototype.__init.call(this);
 
-    add (weaves, silent = false) {
-        const write = {};
+		this.rezed = new Store(new Set(wheel_data.rezed));
 
-        for(let [name, value] of Object.entries(weaves)) {
-            if(value instanceof Weave) {
-                write[name] = value;
-                continue
-            }
+		this.add(wheel_data.value);
+	}
 
-            value.name = name;
-            write[name] = new Weave(value);
-        }
+	add(weaves, silent = false) {
+		const write = {};
 
-        super.add(write, silent);
-    }
+		for (let [name, value] of Object.entries(weaves)) {
+			if (value instanceof Weave) {
+				write[name] = value;
+				continue
+			}
+
+			value.name = name;
+			write[name] = new Weave(value);
+		}
+
+		super.add(write, silent);
+	}
 }
 
 const simple = {
@@ -1596,351 +1801,382 @@ test("wheel/", t => {
 });
 
 class Messenger  {
-    
+	
 
-    onmessage (event) {
-        const msg = event.data;
-        const fn = `msg_${msg.name}`;
-        if(this[fn]) this[fn](msg.data);
-    }
+	onmessage(event) {
+		const msg = event.data;
+		const fn = `msg_${msg.name}`;
+		if (this[fn]) this[fn](msg.data);
+	}
 
-    postMessage (message) {
-        this.remote.onmessage({ data: message });
-    }
+	postMessage(message) {
+		this.remote.onmessage({ data: message });
+	}
 }
 
 class RemoteGoblin extends Messenger {
-    __init() {this.wheel = new Wheel({
-        rezed: [],
-        value: {}
-    });}
-    
-    constructor (remote) {
-        super();RemoteGoblin.prototype.__init.call(this);
-        this.remote = remote;
+	 __init() {this.wheel = new Wheel({
+		rezed: [],
+		value: {}
+	});}
 
-        raf_1(() => {
-            this.postMessage({
-                name: "ready"
-            });
-        });
-    }
+	
+	constructor(remote) {
+		super();RemoteGoblin.prototype.__init.call(this);
+		this.remote = remote;
 
-     tick() {
-        raf_1(() => {
-            this.postMessage({
-                name: "buffer",
-                data: {
-                    VISIBLE: Visible.data.toJSON()
-                }
-            });
-        });
-    }
+		raf_1(() => {
+			this.postMessage({
+				name: 'ready'
+			});
+		});
+	}
 
-     msg_toJSON () {
-        this.postMessage({
-            name: "toJSON",
-            data: this.wheel.toJSON()
-        });
-    }
+	 tick() {
+		raf_1(() => {
+			this.postMessage({
+				name: 'buffer',
+				data: {
+					VISIBLE: Visible.data.toJSON()
+				}
+			});
+		});
+	}
 
-     msg_add (data) {
-        this.wheel.add(data.value);
+	 msg_toJSON() {
+		this.postMessage({
+			name: 'toJSON',
+			data: this.wheel.toJSON()
+		});
+	}
 
-        for(let name of data.rezed) {
-            this.wheel.start(name);
-        }
-    }
+	 msg_add(data) {
+		if (data.value) this.wheel.add(data.value);
 
-     msg_status (data) {
-        this.wheel[data]();
-        if(data !== ELivingAction.DESTROY) return
+		if (data.rezed === undefined) return
 
-        this.postMessage({
-            name: "destroy"
-        });
-    }
+		for (const name of data.rezed) {
+			this.wheel.start(name);
+		}
+	}
 
-     msg_start (data) {
-        this.wheel.start(data);
-    }
+	 msg_status(data) {
+		this.wheel[data]();
+		if (data !== ELivingAction.DESTROY) return
 
-     msg_stop (data) {
-        this.wheel.stop(data);
-    }
+		this.postMessage({
+			name: 'destroy'
+		});
+	}
 
-     msg_update (data
+	 msg_start(data) {
+		this.wheel.start(data);
+	}
 
+	 msg_stop(data) {
+		this.wheel.stop(data);
+	}
 
-) {
-        this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value);
-    }
+	 msg_update(data) {
+		this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value);
+	}
 
-     msg_relay () {
-        if(this.timeout) this.timeout();
-        this.timeout = this.wheel.query("sys", "time", "tick").listen(this.tick.bind(this));
-    }
+	 msg_relay() {
+		if (this.timeout) this.timeout();
+		this.timeout = this.wheel
+			.query('sys', 'time', 'tick')
+			.listen(this.tick.bind(this));
+	}
 }
 
 class LocalWorker extends Messenger  {constructor(...args) { super(...args); LocalWorker.prototype.__init.call(this); }
-     __init() {this.remote = new RemoteGoblin(this);}
+	 __init() {this.remote = new RemoteGoblin(this);}
 
-    terminate() {
-        // okay
-    }
+	terminate() {
+		// okay
+	}
 
-    onerror (ev) {
-        // okay
-    }
-}  
+	onerror(ev) {
+		// okay
+	}
+}
 
 class Goblin extends Living {
-    // this could use sharedmemory but not everyone supports it
-    __init2() {this.buffer = new Tree({
-        VISIBLE: Visible.data
-    });}
+	// this could use sharedmemory but not everyone supports it
+	__init2() {this.buffer = new Tree({
+		VISIBLE: Visible.data
+	});}
 
-    
-     __init3() {this.value = this.buffer;}
-    
-     __init4() {this.sys_cancels = {};}
-    
-    
+	
+	
+	
+	 __init3() {this.sys_cancels = {};}
+	
+	
 
-     __init5() {this.json_resolvers = [];}
+	 __init4() {this.json_resolvers = [];}
 
-    constructor (sys, local = false) {
-        super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);Goblin.prototype.__init6.call(this);
+	constructor(sys, local = false) {
+		super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);
 
-        this.sys = sys;
-        this.local = local;
-    }
+		// doesn't guarantee syncing
+		this.value = new Wheel({
+			value: {},
+			rezed: []
+		});
 
-    create () {
-        super.create();
+		this.sys = sys;
+		this.local = local;
+	}
 
-        this.worker = this.local ? new LocalWorker() : new Worker(`/bin/wheel.bundle.js`);
+	create() {
+		this.worker = this.local
+			? new LocalWorker()
+			: new Worker(`/bin/goblin.bundle.js`);
 
-        this.worker.onmessage = this.onmessage.bind(this);
-        this.worker.onerror = this.onerror.bind(this);
+		this.worker.onmessage = this.onmessage.bind(this);
+		this.worker.onerror = this.onerror.bind(this);
 
-        this.worker.postMessage({
-            name: "status",
-            data: ELivingAction.CREATE
-        });
-    }
+		this.worker.postMessage({
+			name: 'status',
+			data: ELivingAction.CREATE
+		});
+	}
 
-    rez () {
-        super.rez();
+	rez() {
+		this.sys_cancel = this.sys.listen(this.sys_update.bind(this));
 
-        this.sys_cancel = this.sys.listen(this.sys_update.bind(this));
+		this.worker.postMessage({
+			name: 'status',
+			data: ELivingAction.REZ
+		});
+	}
 
-        this.worker.postMessage({
-            name: "status",
-            data: ELivingAction.REZ
-        });
-    }
+	derez() {
+		for (let cancel of Object.values(this.sys_cancels)) {
+			cancel();
+		}
 
-    derez () {
-        super.derez();
+		this.sys_cancel();
 
-        for(let cancel of Object.values(this.sys_cancels)) {
-            cancel();
-        }
+		this.worker.postMessage({
+			name: 'status',
+			data: ELivingAction.DEREZ
+		});
+	}
 
-        this.sys_cancel();
+	destroy() {
+		this.worker.postMessage({
+			name: 'status',
+			data: ELivingAction.DESTROY
+		});
+	}
 
-        this.worker.postMessage({
-            name: "status",
-            data: ELivingAction.DEREZ
-        });
-    }
+	// replicate system changes into the worker
+	 sys_update($sys) {
+		// this should happen very rarely
+		for (let cancel of Object.values(this.sys_cancels)) {
+			cancel();
+		}
 
-    destroy () {
-        super.destroy();
+		this.sys_cancels = {};
 
-        this.worker.postMessage({
-            name: "status",
-            data: ELivingAction.DESTROY
-        });
-    }
+		for (let [name, category] of Object.entries($sys)) {
+			this.sys_cancels[name] = category.listen($category => {
+				for (let [key, store] of Object.entries($category)) {
+					this.sys_cancels[`${name}/${key}`] = store.listen(
+						$store => {
+							this.worker.postMessage({
+								name: 'update',
+								data: {
+									path: [`sys`, name, key],
+									value: $store
+								}
+							});
+						}
+					);
+				}
+			});
+		}
+	}
 
-    // replicate system changes into the worker
-     sys_update ($sys) {
-        // this should happen very rarely
-        for(let cancel of Object.values(this.sys_cancels)) {
-            cancel();
-        }
-        
-        this.sys_cancels = {};
+	 msg_destroy() {
+		this.worker.terminate();
+	}
 
-        for(let [name, category] of Object.entries($sys)) {
-            this.sys_cancels[name] = category.listen(($category) => {
-                for(let [key, store] of Object.entries($category)) {
-                    this.sys_cancels[`${name}/${key}`] = store.listen($store => {
-                        this.worker.postMessage({
-                            name: "update",
-                            data: {
-                                path: [`sys`, name, key],
-                                value: $store
-                            }
-                        });
-                    });
-                }
-            });
-        }
-    }
+	 msg_toJSON(json) {
+		// hydrate self
+		this.value.add(json.value);
 
-     msg_destroy () {
-        this.worker.terminate();
-    }
+		for (let resolve of this.json_resolvers) {
+			resolve(json);
+		}
+	}
 
-     msg_toJSON (json) {
-        for(let resolve of this.json_resolvers) {
-            resolve(json);
-        }
-    }
+	 msg_buffer(data) {
+		for (let [name, buffer] of Object.entries(data)) {
+			const buff = this.buffer.item(name);
 
-     msg_buffer (data) {
-        for(let [name, buffer] of Object.entries(data)) {
-            const buff = this.buffer.item(name);
+			if (buff === undefined) return
+			buff.hydrate(buffer);
+		}
 
-            if(buff === undefined) return
-            buff.hydrate(buffer);
-        }
+		this.buffer.notify();
+	}
 
-        this.notify();
-    }
+	 msg_ready() {
+		this.worker.postMessage({
+			name: 'relay'
+		});
+	}
 
-     msg_ready () {
-        this.worker.postMessage({
-            name: "relay"
-        });
-    }
+	 __init5() {this.onmessage = Messenger.prototype.onmessage;}
 
-     __init6() {this.onmessage = Messenger.prototype.onmessage;}
+	 onerror(event) {
+		console.error(`Worker Error`, event);
+	}
 
-     onerror (event) {
-        console.error(`Worker Error`, event);
-    }
+	async remote_toJSON() {
+		return new Promise(resolve => {
+			this.json_resolvers.push(resolve);
 
-    async remote_toJSON () {
-        return new Promise((resolve) => {
-            this.json_resolvers.push(resolve);
+			if (this.json_resolvers.length !== 1) return
 
-            if(this.json_resolvers.length !== 1) return
+			this.worker.postMessage({
+				name: 'toJSON'
+			});
+		})
+	}
 
-            this.worker.postMessage({
-                name: "toJSON"
-            });
-        })
-    }
+	add(data) {
+		this.remote_add(data);
+	}
 
-    remote_add (data) {
-        this.worker.postMessage({
-            name: "add",
-            data
-        });
-    }
+	remote_add(data) {
+		this.worker.postMessage({
+			name: 'add',
+			data
+		});
+	}
 
-    remote_start (data) {
-        this.worker.postMessage({
-            name: "start",
-            data
-        });
-    }
+	remote_start(data) {
+		this.worker.postMessage({
+			name: 'start',
+			data
+		});
+	}
 
-    remote_stop (data) {
-        this.worker.postMessage({
-            name: "stop",
-            data
-        });
-    }
+	remote_stop(data) {
+		this.worker.postMessage({
+			name: 'stop',
+			data
+		});
+	}
 }
 
 TIME_TICK_RATE.set(10);
 
-test("goblin/", async t => {
-    const worker = new Goblin(new Tree({
-        test: new Tree({
-            1: new Store(5)
-        }),
-        time: new Tree(time)
-    }), true);
+test('goblin/', async t => {
+	const worker = new Goblin(
+		new Tree({
+			test: new Tree({
+				1: new Store(5)
+			}),
+			time: new Tree(time)
+		}),
+		true
+	);
 
-    worker.create();
-    worker.rez();
+	worker.create();
+	worker.rez();
 
-    t.snapshot(worker);
-    t.snapshot(worker.toJSON());
+	t.snapshot(worker);
+	t.snapshot(worker.toJSON());
 
-    worker.remote_add(simple);
+	worker.remote_add(simple);
 
-    t.snapshot(await worker.remote_toJSON());
+	t.snapshot(await worker.remote_toJSON());
 
-    let count = 0;
+	let count = 0;
 
-    await new Promise(resolve => {
-        const cancel = worker.listen($buffer => {
-            t.snapshot($buffer.VISIBLE.toJSON());
+	await new Promise(resolve => {
+		const cancel = worker.buffer.listen($buffer => {
+			t.snapshot($buffer.VISIBLE.toJSON());
 
-            if(count++ < 4) return
-            cancel();
-            resolve();
-        });
-    });
+			if (count++ < 4) return
+			cancel();
+			resolve();
+		});
+	});
 });
 
 // Starts up in the main thread
 class Isekai extends Living {
-     __init() {this.wheels = new Tree();}
-     __init2() {this.value = this.wheels;}
-    
-     __init3() {this.sys = new Tree();}
-     __init4() {this.local = new Store(false);}
+	 __init() {this.goblins = new Tree();}
+	 __init2() {this.value = this.goblins;}
 
-    constructor(sys, local = false) {
-        super();Isekai.prototype.__init.call(this);Isekai.prototype.__init2.call(this);Isekai.prototype.__init3.call(this);Isekai.prototype.__init4.call(this);
-        this.local.set(local);
+	 __init3() {this.sys = new Tree();}
+	 __init4() {this.local = new Store(false);}
 
-        const write = {};
-        for(let [name, value] of Object.entries(sys)) {
-            write[name] = new Tree(value);
-        }
+	constructor(sys, local = false) {
+		super();Isekai.prototype.__init.call(this);Isekai.prototype.__init2.call(this);Isekai.prototype.__init3.call(this);Isekai.prototype.__init4.call(this);
+		this.local.set(local);
 
-        this.sys.add(write);
+		const write = {};
+		for (let [name, value] of Object.entries(sys)) {
+			write[name] = new Tree(value);
+		}
 
-        // Check Path
-        // Check Database
-        this.create();
-        this.rez();
-    }
+		this.sys.add(write);
 
-    add (wheels) {
-        const write = {};
+		// Check Path
+		// Check Database
+		this.create();
+		this.rez();
+	}
 
-        for(let [name, wheel_json] of Object.entries(wheels)) {
-            const worker = write[name] = new Goblin(this.sys, this.local.get());
-            worker.add(wheel_json);
-        }
+	add(wheels) {
+		const write = {};
 
-        super.add(write);
-    }
+		for (let [name, wheel_json] of Object.entries(wheels)) {
+			const worker = (write[name] = new Goblin(
+				this.sys,
+				this.local.get()
+			));
+
+			worker.create();
+			worker.add(wheel_json);
+		}
+
+		super.add(write);
+	}
 }
 
-test("isekai/", t => {
-    const isekai = new Isekai({
-        test: {
-            there: new Store(1)
-        },
-        time
-    }, true);
+test('isekai/', t => {
+	const isekai = new Isekai(
+		{
+			test: {
+				there: new Store(1)
+			},
+			time
+		},
+		true
+	);
 
-    t.snapshot(isekai.toJSON(), "base snapshot");
-    t.snapshot(isekai.sys.query("test", "there").get());
+	t.snapshot(isekai.toJSON(), 'base snapshot');
+	t.snapshot(isekai.sys.query('test', 'there').get());
 
-    isekai.add({ simple });
+	isekai.add({ simple });
 
-    t.snapshot(isekai);
+	t.snapshot(isekai);
+
+	isekai.add({
+		blank: {
+			rezed: [],
+			value: {}
+		}
+	});
+
+	t.snapshot(isekai);
 });
 //# sourceMappingURL=bundle.test.js.map

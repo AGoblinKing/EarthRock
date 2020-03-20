@@ -36,7 +36,7 @@ d={[
 
 <circle cx="0" cy="50" r="4" stroke="white" fill="white"/>
 <circle cx="50" cy="0" r="4" stroke="white" fill="white"/>
-<circle cx="100" cy="50" r="4"   stroke="black"  fill="black">
+<circle cx="100" cy="50" r="4"   stroke="black"  fill="black"/>
 <circle cx="50" cy="100" r="4"   stroke="black"  fill="black"/>
 
 </svg>

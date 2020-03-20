@@ -1,27 +1,52 @@
-import { Store } from "src/store"
+import { Store } from 'src/store'
+import is from 'src/client/is'
 
-import { buttons } from "src/client/sys/input"
-import { tick } from "src/sys/time"
+window.addEventListener(`contextmenu`, e => {
+	e.preventDefault()
+	return false
+})
+
+export type INavableResolver = () => string
+
+export interface INavable {
+	id: string
+	origin?: boolean
+	up?: INavableResolver
+	left?: INavableResolver
+	down?: INavableResolver
+	right?: INavableResolver
+	page_down?: INavableResolver
+	page_up?: INavableResolver
+	insert?: INavableResolver
+	del?: INavableResolver
+	keyboard?: INavableResolver
+	home?: INavableResolver
+	click?: INavableResolver
+	focus?: INavableResolver
+	blur?: INavableResolver
+}
+
+const buttons = is.sys.query('input', 'buttons')
+const tick = is.sys.query('time', 'tick')
+
+export interface IButtonDef {
+	repeat?: boolean
+	fn?: () => string
+	alias?: string
+}
 
 export const cursor = new Store<any>(undefined)
-
 export const nav_map = {}
-export const goto = (key) => {
+export const goto = (key: string) => {
 	if (!nav_map[key]) return
 
 	cursor.set(nav_map[key])
 }
 
-window.addEventListener(`contextmenu`, (e) => {
-	e.preventDefault()
-	return false
-})
+let last_node: INavable
+let origin_addr: string
 
-let last_node
-let last_button = {}
-
-let origin_addr
-const button_defs = {
+const BUTTONS = {
 	home: { repeat: true, fn: () => last_node.home || origin_addr },
 	up: { repeat: true },
 	down: { repeat: true },
@@ -33,15 +58,16 @@ const button_defs = {
 	left: {},
 	right: {},
 	confirm: { alias: `click` }
-}
+} as { [name: string]: IButtonDef }
 
+let last_button = {}
 tick.listen(() => {
 	if (!last_node) return
 
 	const $button = buttons.get()
 
 	let dest
-	Object.entries(button_defs).forEach(([key, { repeat, fn, alias }]) => {
+	Object.entries(BUTTONS).forEach(([key, { repeat, fn, alias }]) => {
 		alias = alias || key
 		if (!$button[key] || !last_node[alias]) return
 
@@ -73,40 +99,30 @@ tick.listen(() => {
 	cursor.set(target)
 })
 
-const current = ($node) => {
-	// if ($node && $node.id !== undefined) window.location.hash = $node.id
+const current = $node => {
 	if (last_node) {
-		if (last_node.classList) last_node.classList.remove(`nav`)
-		last_node = false
+		if (last_node instanceof Element) last_node.classList.remove(`nav`)
+		last_node.blur && last_node.blur()
+		last_node = undefined
 	}
 
 	if (!$node) return
 
 	last_node = $node
-	if ($node.focus) {
-		$node.focus()
-		$node.classList.add(`nav`)
-	}
+	$node.focus && $node.focus()
+
+	if ($node instanceof Element) $node.classList.add(`nav`)
 }
 
 cursor.listen(current)
 
-export default (node, opts) => {
+export const nav = (node, opts: INavable) => {
 	const { id, origin = false } = opts
 	node.id = id
 
-	const nav = {
-		update: ({ up, down, page_up, page_down, insert, del, left, right, keyboard }) => {
-			// TODO: update to use button defs
-			node.up = up || node.up
-			node.left = left || node.left
-			node.right = right || node.right
-			node.down = down || node.down
-			node.page_down = page_down || node.page_down
-			node.page_up = page_up || node.page_up
-			node.insert = insert || node.insert
-			node.del = del || node.del
-			node.keyboard = keyboard || node.keyboard
+	const navigation = {
+		update: (navable: INavable) => {
+			Object.assign(node, navable)
 		},
 		destroy: () => {
 			node.removeEventListener(`mousedown`, listener)
@@ -114,13 +130,11 @@ export default (node, opts) => {
 		}
 	}
 
-	nav.update(opts)
+	navigation.update(opts)
 
 	nav_map[id] = node
-	if (id === `sys` && cursor.get() === false) cursor.set(node)
-	node.style.transition = `all 250ms ease-out`
 
-	const listener = (e = false) => {
+	const listener = (e: any = false) => {
 		cursor.set(node)
 
 		if (e.which === 3) {
@@ -139,7 +153,8 @@ export default (node, opts) => {
 
 	if (origin) {
 		origin_addr = id
+		cursor.set(node)
 	}
 
-	return nav
+	return navigation
 }

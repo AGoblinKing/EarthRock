@@ -10,10 +10,10 @@ const str_color = (str: string) => {
 
 	let color = `#`
 	for (let i = 0; i < 3; i++) {
-		const value = (hash >> (i * 8)) & 0xFF
+		const value = (hash >> (i * 8)) & 0xff
 		color += (`00` + value.toString(16)).substr(-2)
 	}
-	
+
 	return color
 }
 
@@ -21,12 +21,57 @@ export const color = str_color
 
 // whiskers on kittens
 const words = [
-	`groovy`, `cat`, `bird`, `dog`, `poop`, `cool`, `not`, `okay`, `great`, `terrible`, `wat`,
-	`goblin`, `life`, `ferret`, `gregert`, `robert`, `zilla`, `red`, `shirt`, `pants`, `blue`,
-	`luna`, `ember`, `embear`, `lunatic`, `boring`, `killa`, `notice`, `thank`, `tank`,
-	`under`, `near`, `near`, `quaint`, `potato`, `egg`, `bacon`, `narwhal`, `lamp`, `stairs`, `king`,
-	`tyrant`, `grave`, `dire`, `happy`, `amazing`, `terrific`, `terrible`, `good`, `boring`,
-	`rip`, `hello`, `world`, `global`, `universal`, `television`, `computer`
+	`groovy`,
+	`cat`,
+	`bird`,
+	`dog`,
+	`cool`,
+	`okay`,
+	`great`,
+	`wat`,
+	`goblin`,
+	`life`,
+	`ferret`,
+	`gregert`,
+	`robert`,
+	`zilla`,
+	`red`,
+	`shirt`,
+	`pants`,
+	`blue`,
+	`luna`,
+	`ember`,
+	`embear`,
+	`killa`,
+	`notice`,
+	`thank`,
+	`tank`,
+	`under`,
+	`near`,
+	`near`,
+	`quaint`,
+	`potato`,
+	`egg`,
+	`bacon`,
+	`narwhal`,
+	`lamp`,
+	`stairs`,
+	`king`,
+	`tyrant`,
+	`grave`,
+	`dire`,
+	`happy`,
+	`amazing`,
+	`terrific`,
+	`good`,
+	`exciting`,
+	`RIP`,
+	`hello`,
+	`world`,
+	`global`,
+	`universal`,
+	`television`,
+	`computer`
 ]
 
 export const tile = (str: string) => {
@@ -38,7 +83,7 @@ export const tile = (str: string) => {
 	return `${Math.abs(hash) % TILE_COUNT}`
 }
 
-export const random = (count: number) => Array
-	.from(new Array(count))
-	.map(() => words[Math.floor(Math.random() * words.length)])
-	.join(`_`)
+export const random = (count: number) =>
+	Array.from(new Array(count))
+		.map(() => words[Math.floor(Math.random() * words.length)])
+		.join(`_`)

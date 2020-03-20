@@ -1,198 +1,196 @@
-import { ProxyTree } from "./proxy"
-import { Store } from "./store"
-import { TreeValue } from "./tree"
+import { ProxyTree } from './proxy'
+import { Store } from './store'
+import { TreeValue } from './tree'
 
 export enum ELivingAction {
-    CREATE = "create",
-    REZ = "rez",
-    DEREZ = "derez",
-    DESTROY = "destroy"
+	CREATE = 'create',
+	REZ = 'rez',
+	DEREZ = 'derez',
+	DESTROY = 'destroy'
 }
 
 export enum ELivingStatus {
-    VOID = "VOID",
-    CREATED = "CREATED",
-    REZED = "REZED"
+	VOID = 'VOID',
+	CREATED = 'CREATED',
+	REZED = 'REZED'
 }
 
 export abstract class Living<T> extends ProxyTree<T> {
-    protected rezed: Store<Set<string>> | undefined
-    readonly status = new Store(ELivingStatus.VOID)
+	protected rezed: Store<Set<string>> | undefined
+	readonly status = new Store(ELivingStatus.VOID)
 
-    add (living_data: TreeValue<any>, silent = false) {
-        super.add(living_data, silent)
-        const $status = this.status.get()
+	add(living_data: TreeValue<any>, silent = false) {
+		super.add(living_data, silent)
+		const $status = this.status.get()
+		const items = Object.entries(living_data)
 
-        const items = Object.entries(living_data)
+		switch ($status) {
+			case ELivingStatus.CREATED:
+				for (let [_, item] of items) {
+					item.create && item.create()
+				}
 
-        switch($status) {
-            case ELivingStatus.CREATED:
-                for(let [_, item] of items) {
-                    item.create && item.create()
-                }
+			case ELivingStatus.REZED:
+				const $rezed = this.rezed && this.rezed.get()
 
-            case ELivingStatus.REZED:
-                const $rezed = this.rezed && this.rezed.get() 
+				// create doesn't auto rez
+				// so you can batch creates together then rez
+				for (let [name, item] of items) {
+					if ($rezed && !$rezed[name]) continue
+					item.rez && item.rez()
+				}
+		}
+	}
 
-                // create doesn't auto rez
-                // so you can batch creates together then rez
-                for(let [name, item] of items) {
-                    if($rezed && !$rezed[name]) continue 
-                    item.rez && item.rez()
-                }
-        }
-    }
-    
-    remove (name: string, silent = false) {
-        const $value = this.get() as any
+	remove(name: string, silent = false) {
+		const $value = this.get() as any
 
-        if($value[name] && $value[name].destroy) {
-            $value[name].destroy()
-        }
+		if ($value[name] && $value[name].destroy) {
+			$value[name].destroy()
+		}
 
-        const $rezed = this.rezed && this.rezed.get() 
-        if($rezed) {
-            $rezed.delete(name)
-        }
+		const $rezed = this.rezed && this.rezed.get()
+		if ($rezed) {
+			$rezed.delete(name)
+		}
 
-        super.remove(name, silent)
-    }
-    
-    removes(...names: string[]) {
-        for(let name of names) {
-            this.remove(name, true)
-        }
+		super.remove(name, silent)
+	}
 
-        this.notify()
-    }
+	removes(...names: string[]) {
+		for (let name of names) {
+			this.remove(name, true)
+		}
 
-    create () {
-        if(this.status.get() !== ELivingStatus.VOID) {
-            throw new Error("Tried to create a nonvoid living class")
-        }
+		this.notify()
+	}
 
-        // run through my tree to guarantee its destroyed
-        let sub: any
-        for(sub of Object.values(this.get())) {
-            sub.create && sub.create()
-        }
+	create() {
+		if (this.status.get() !== ELivingStatus.VOID) {
+			throw new Error('Tried to create a nonvoid living class')
+		}
 
-        this.status.set(ELivingStatus.CREATED)
-    }
+		// run through my tree to guarantee its destroyed
+		let sub: any
+		for (sub of Object.values(this.get())) {
+			sub.create && sub.create()
+		}
 
-    destroy () {
-        if(this.status.get() === ELivingStatus.REZED) {
-            this.derez()
-        }
+		this.status.set(ELivingStatus.CREATED)
+	}
 
-        let sub: any
-        for(sub of Object.values(this.get())) {
-            sub.destroy && sub.destroy()
-        }
+	destroy() {
+		if (this.status.get() === ELivingStatus.REZED) {
+			this.derez()
+		}
 
-        this.status.set(ELivingStatus.VOID)
-    }
-    
-    rez () {
-        if(this.status.get() === ELivingStatus.VOID) {
-            this.create()
-        }
+		let sub: any
+		for (sub of Object.values(this.get())) {
+			sub.destroy && sub.destroy()
+		}
 
-        const rezed = this.rezed && this.rezed.get()        
+		this.status.set(ELivingStatus.VOID)
+	}
 
-        for(let [name, sub] of Object.entries(this.get())) {
-            if(rezed && !rezed.has(name)) continue
+	rez() {
+		if (this.status.get() === ELivingStatus.VOID) {
+			this.create()
+		}
 
-            (sub as any).rez && (sub as any).rez()
-        }
+		const rezed = this.rezed && this.rezed.get()
 
-        this.status.set(ELivingStatus.REZED)
-    }
+		for (let [name, sub] of Object.entries(this.get())) {
+			if (rezed && !rezed.has(name)) continue
+			;(sub as any).rez && (sub as any).rez()
+		}
 
-    derez () {
-        if(this.status.get() !== ELivingStatus.REZED) {
-            return   
-        }
+		this.status.set(ELivingStatus.REZED)
+	}
 
-        const $rezed = this.rezed && this.rezed.get()        
+	derez() {
+		if (this.status.get() !== ELivingStatus.REZED) {
+			return
+		}
 
-        for(let [name, sub] of Object.entries(this.get())) {
-            if($rezed && !$rezed.has(name)) continue
-            
-            (sub as any).derez && (sub as any).derez()
-        }
+		const $rezed = this.rezed && this.rezed.get()
 
-        this.status.set(ELivingStatus.CREATED)
-    }
+		for (let [name, sub] of Object.entries(this.get())) {
+			if ($rezed && !$rezed.has(name)) continue
+			;(sub as any).derez && (sub as any).derez()
+		}
 
-    start_all(...all: string[]) {
-        all = all.length === 0 ? Object.keys(this.get()) : all
-        for(let name of all) {
-            this.start(name)
-        }
-    }
+		this.status.set(ELivingStatus.CREATED)
+	}
 
-    start(name: string) {
-        const $rezed = this.rezed && this.rezed.get()        
-        const item = this.item(name)
+	start_all(...all: string[]) {
+		all = all.length === 0 ? Object.keys(this.get()) : all
+		for (let name of all) {
+			this.start(name)
+		}
+	}
 
-        if(!item) return
+	start(name: string) {
+		const $rezed = this.rezed && this.rezed.get()
+		const item = this.item(name)
 
-        // can only rez if I am 
-        if(this.status.get() === ELivingStatus.REZED) {
-            (item as any).rez && (item as any).rez()
-        }
+		if (!item) return
 
-        if($rezed) {
-            $rezed.add(name)
-            this.rezed.notify()
-        }
-    }
+		// can only rez if I am
+		if (this.status.get() === ELivingStatus.REZED) {
+			;(item as any).rez && (item as any).rez()
+		}
 
-    stop(name: string) {
-        const item = this.item(name)
-        if(!item) return
+		if ($rezed) {
+			$rezed.add(name)
+			this.rezed.notify()
+		}
+	}
 
-        // can derez whenever though
-        (item as any).derez && (item as any).derez()
+	stop(...names: string[]) {
+		const $rezed = this.rezed && this.rezed.get()
+		for (let name of names) {
+			const item = this.item(name)
+			if (!item) continue // can derez whenever though
 
-        const $rezed = this.rezed && this.rezed.get()   
-        if(!$rezed) return
-        
-        $rezed.delete(name)
-        this.rezed.notify()
-    }
+			;(item as any).derez && (item as any).derez()
 
-    restart (name: string) {
-        this.stop(name)
-        this.start(name)
-    }
+			if (!$rezed) continue
 
-    toJSON() : any {
-        return {
-            value: this.value.toJSON(),
-            rezed: this.rezed ? this.rezed.toJSON() : undefined
-        }
-    }
+			$rezed.delete(name)
+		}
 
-    ensure (first: string, ...path: string[]) {
-        let $item = this.item(first)
+		this.rezed.notify()
+	}
 
-        if($item === undefined) {
-            this.add({
-                [first]: {}
-            })
+	restart(name: string) {
+		this.stop(name)
+		this.start(name)
+	}
 
-            $item = this.item(first)
-        }
+	toJSON(): any {
+		return {
+			value: this.value.toJSON(),
+			rezed: this.rezed ? this.rezed.toJSON() : undefined
+		}
+	}
 
-        if(path.length === 0) return $item
-        
-        if($item instanceof Living) {
-            return $item.ensure(path[0], ...path.slice(1))
-        }
-        
-        throw new Error("tried to ensure non living item")
-    }
+	ensure(first: string, ...path: string[]) {
+		let $item = this.item(first)
+
+		if ($item === undefined) {
+			this.add({
+				[first]: {}
+			})
+
+			$item = this.item(first)
+		}
+
+		if (path.length === 0) return $item
+
+		if ($item instanceof Living) {
+			return $item.ensure(path[0], ...path.slice(1))
+		}
+
+		throw new Error('tried to ensure non living item')
+	}
 }
-

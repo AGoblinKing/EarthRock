@@ -1,98 +1,100 @@
-import raf from "raf"
+import raf from 'raf'
 
-import { IMessage, IMessageEvent } from "./message"
-import { ELivingAction } from "../store"
+import { IMessage, IMessageEvent } from './message'
+import { ELivingAction } from '../store'
 
-import { Wheel, IWheelJSON } from "../wheel/wheel"
-import { Visible } from "../twist"
+import { Wheel, IWheelJSON } from '../wheel/wheel'
+import { Visible } from '../twist'
 
 export interface IMessenger {
-    onmessage (event: IMessageEvent): void
+	onmessage(event: IMessageEvent): void
 }
 
 export abstract class Messenger implements IMessenger {
-    protected remote: IMessenger
+	protected remote: IMessenger
 
-    onmessage (event: IMessageEvent) {
-        const msg = event.data
-        const fn = `msg_${msg.name}`
-        if(this[fn]) this[fn](msg.data)
-    }
+	onmessage(event: IMessageEvent): void {
+		const msg = event.data
+		const fn = `msg_${msg.name}`
+		if (this[fn]) this[fn](msg.data)
+	}
 
-    postMessage (message: IMessage) {
-        this.remote.onmessage({ data: message })
-    }
+	postMessage(message: IMessage) {
+		this.remote.onmessage({ data: message })
+	}
 }
 
 export class RemoteGoblin extends Messenger {
-    wheel = new Wheel({
-        rezed: [],
-        value: {}
-    })
-    private timeout
-    constructor (remote: IMessenger) {
-        super()
-        this.remote = remote
+	private wheel = new Wheel({
+		rezed: [],
+		value: {}
+	})
 
-        raf(() => {
-            this.postMessage({
-                name: "ready"
-            })
-        })
-    }
+	private timeout
+	constructor(remote: IMessenger) {
+		super()
+		this.remote = remote
 
-    private tick() {
-        raf(() => {
-            this.postMessage({
-                name: "buffer",
-                data: {
-                    VISIBLE: Visible.data.toJSON()
-                }
-            })
-        })
-    }
+		raf(() => {
+			this.postMessage({
+				name: 'ready'
+			})
+		})
+	}
 
-    protected msg_toJSON () {
-        this.postMessage({
-            name: "toJSON",
-            data: this.wheel.toJSON()
-        })
-    }
+	private tick() {
+		raf(() => {
+			this.postMessage({
+				name: 'buffer',
+				data: {
+					VISIBLE: Visible.data.toJSON()
+				}
+			})
+		})
+	}
 
-    protected msg_add (data: IWheelJSON) {
-        this.wheel.add(data.value)
+	protected msg_toJSON() {
+		this.postMessage({
+			name: 'toJSON',
+			data: this.wheel.toJSON()
+		})
+	}
 
-        for(let name of data.rezed) {
-            this.wheel.start(name)
-        }
-    }
+	protected msg_add(data: IWheelJSON) {
+		if (data.value) this.wheel.add(data.value)
 
-    protected msg_status (data: ELivingAction) {
-        this.wheel[data]()
-        if(data !== ELivingAction.DESTROY) return
+		if (data.rezed === undefined) return
 
-        this.postMessage({
-            name: "destroy"
-        })
-    }
+		for (const name of data.rezed) {
+			this.wheel.start(name)
+		}
+	}
 
-    protected msg_start (data: string) {
-        this.wheel.start(data)
-    }
+	protected msg_status(data: ELivingAction) {
+		this.wheel[data]()
+		if (data !== ELivingAction.DESTROY) return
 
-    protected msg_stop (data: string) {
-        this.wheel.stop(data)
-    }
+		this.postMessage({
+			name: 'destroy'
+		})
+	}
 
-    protected msg_update (data: {
-        path: string[],
-        value: any
-    }) {
-        this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value)
-    }
+	protected msg_start(data: string) {
+		this.wheel.start(data)
+	}
 
-    protected msg_relay () {
-        if(this.timeout) this.timeout()
-        this.timeout = this.wheel.query("sys", "time", "tick").listen(this.tick.bind(this))
-    }
+	protected msg_stop(data: string) {
+		this.wheel.stop(data)
+	}
+
+	protected msg_update(data: { path: string[]; value: any }) {
+		this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value)
+	}
+
+	protected msg_relay() {
+		if (this.timeout) this.timeout()
+		this.timeout = this.wheel
+			.query('sys', 'time', 'tick')
+			.listen(this.tick.bind(this))
+	}
 }

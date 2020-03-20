@@ -1,26 +1,32 @@
-<script lang="typescript">
+<script>
 import Github from "./Github.svelte"
+import Isekai from "./Isekai.svelte"
+import is from "./is"
 
-import { Isekai } from "src/isekai"
-import { button } from "./sys/input"
-
-export let isekai: Isekai
-let hidden = true
+let hidden = is.sys.query("path", "flag").get() === "dev"
+const button = is.sys.query("input","button")
 
 $: {
     if($button === "`") {
         hidden = !hidden
     }
 }
-
 </script>
 
-<template type="text/pug">
-+if('!hidden')
-    Github
-</template> 
 
-<style type="text/stylus">
-.hello
-    color white
+<div class:hidden class="dev">
+    <Github />
+    <Isekai />
+</div>
+
+
+<style>
+.dev { 
+    transition: opacity 250ms ease-out;
+}
+
+.hidden {
+    pointer-events: none;
+    opacity: 0;
+}
 </style>

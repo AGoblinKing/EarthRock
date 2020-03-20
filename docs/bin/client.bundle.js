@@ -1,5 +1,7 @@
-(function (twgl_js) {
+(function (twgl_js, Color) {
     'use strict';
+
+    Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
 
     function noop() { }
     function add_location(element, file, line, column, char) {
@@ -37,6 +39,9 @@
     function component_subscribe(component, store, callback) {
         component.$$.on_destroy.push(subscribe(store, callback));
     }
+    function action_destroyer(action_result) {
+        return action_result && is_function(action_result.destroy) ? action_result.destroy : noop;
+    }
 
     function append(target, node) {
         target.appendChild(node);
@@ -47,14 +52,30 @@
     function detach(node) {
         node.parentNode.removeChild(node);
     }
+    function destroy_each(iterations, detaching) {
+        for (let i = 0; i < iterations.length; i += 1) {
+            if (iterations[i])
+                iterations[i].d(detaching);
+        }
+    }
+    function element(name) {
+        return document.createElement(name);
+    }
     function svg_element(name) {
         return document.createElementNS('http://www.w3.org/2000/svg', name);
     }
     function text(data) {
         return document.createTextNode(data);
     }
+    function space() {
+        return text(' ');
+    }
     function empty() {
         return text('');
+    }
+    function listen(node, event, handler, options) {
+        node.addEventListener(event, handler, options);
+        return () => node.removeEventListener(event, handler, options);
     }
     function attr(node, attribute, value) {
         if (value == null)
@@ -67,6 +88,9 @@
     }
     function set_style(node, key, value, important) {
         node.style.setProperty(key, value, important ? 'important' : '');
+    }
+    function toggle_class(element, name, toggle) {
+        element.classList[toggle ? 'add' : 'remove'](name);
     }
     function custom_event(type, detail) {
         const e = document.createEvent('CustomEvent');
@@ -308,12 +332,41 @@
         dispatch_dev("SvelteDOMRemove", { node });
         detach(node);
     }
+    function listen_dev(node, event, handler, options, has_prevent_default, has_stop_propagation) {
+        const modifiers = options === true ? ["capture"] : options ? Array.from(Object.keys(options)) : [];
+        if (has_prevent_default)
+            modifiers.push('preventDefault');
+        if (has_stop_propagation)
+            modifiers.push('stopPropagation');
+        dispatch_dev("SvelteDOMAddEventListener", { node, event, handler, modifiers });
+        const dispose = listen(node, event, handler, options);
+        return () => {
+            dispatch_dev("SvelteDOMRemoveEventListener", { node, event, handler, modifiers });
+            dispose();
+        };
+    }
     function attr_dev(node, attribute, value) {
         attr(node, attribute, value);
         if (value == null)
             dispatch_dev("SvelteDOMRemoveAttribute", { node, attribute });
         else
             dispatch_dev("SvelteDOMSetAttribute", { node, attribute, value });
+    }
+    function set_data_dev(text, data) {
+        data = '' + data;
+        if (text.data === data)
+            return;
+        dispatch_dev("SvelteDOMSetData", { node: text, data });
+        text.data = data;
+    }
+    function validate_each_argument(arg) {
+        if (typeof arg !== 'string' && !(arg && typeof arg === 'object' && 'length' in arg)) {
+            let msg = '{#each} only iterates over array-like objects.';
+            if (typeof Symbol === 'function' && arg && Symbol.iterator in arg) {
+                msg += ' You can use a spread to convert this iterable into an array.';
+            }
+            throw new Error(msg);
+        }
     }
     class SvelteComponentDev extends SvelteComponent {
         constructor(options) {
@@ -337,6 +390,7 @@
     const file = "src\\client\\Github.svelte";
 
     function create_fragment(ctx) {
+    	let a;
     	let svg;
     	let path0;
     	let path1;
@@ -344,39 +398,42 @@
 
     	const block = {
     		c: function create() {
+    			a = element("a");
     			svg = svg_element("svg");
     			path0 = svg_element("path");
     			path1 = svg_element("path");
     			path2 = svg_element("path");
-    			attr_dev(path0, "class", "bg svelte-sce8qg");
+    			attr_dev(path0, "class", "bg svelte-mz8sa2");
     			attr_dev(path0, "d", "M0 0l115 115h15l12 27 108 108V0z");
     			attr_dev(path0, "fill", "#fff");
-    			add_location(path0, file, 1, 2, 161);
-    			attr_dev(path1, "class", "octo-arm svelte-sce8qg");
+    			add_location(path0, file, 2, 4, 204);
+    			attr_dev(path1, "class", "octo-arm svelte-mz8sa2");
     			attr_dev(path1, "d", "M128 109c-15-9-9-19-9-19 3-7 2-11 2-11-1-7 3-2 3-2 4 5 2 11 2 11-3 10 5 15 9 16");
     			set_style(path1, "-webkit-transform-origin", "130px 106px");
     			set_style(path1, "transform-origin", "130px 106px");
-    			add_location(path1, file, 2, 2, 233);
-    			attr_dev(path2, "class", "octo-body svelte-sce8qg");
+    			add_location(path1, file, 3, 4, 278);
+    			attr_dev(path2, "class", "octo-body svelte-mz8sa2");
     			attr_dev(path2, "d", "M115 115s4 2 5 0l14-14c3-2 6-3 8-3-8-11-15-24 2-41 5-5 10-7 16-7 1-2 3-7 12-11 0 0 5 3 7 16 4 2 8 5 12 9s7 8 9 12c14 3 17 7 17 7-4 8-9 11-11 11 0 6-2 11-7 16-16 16-30 10-41 2 0 3-1 7-5 11l-12 11c-1 1 1 5 1 5z");
-    			add_location(path2, file, 3, 2, 422);
+    			add_location(path2, file, 4, 4, 469);
     			attr_dev(svg, "id", "github");
     			attr_dev(svg, "xmlns", "http://www.w3.org/2000/svg");
     			attr_dev(svg, "width", "80");
     			attr_dev(svg, "height", "80");
     			attr_dev(svg, "viewBox", "0 0 250 250");
     			attr_dev(svg, "fill", "#151513");
-    			set_style(svg, "position", "absolute");
-    			set_style(svg, "top", "0");
-    			set_style(svg, "right", "0");
-    			attr_dev(svg, "class", "svelte-sce8qg");
-    			add_location(svg, file, 0, 0, 0);
+    			attr_dev(svg, "class", "svelte-mz8sa2");
+    			add_location(svg, file, 1, 2, 85);
+    			attr_dev(a, "class", "github");
+    			attr_dev(a, "href", "https://github.com/agoblinking/earthrock");
+    			attr_dev(a, "target", "_new");
+    			add_location(a, file, 0, 1, 1);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, svg, anchor);
+    			insert_dev(target, a, anchor);
+    			append_dev(a, svg);
     			append_dev(svg, path0);
     			append_dev(svg, path1);
     			append_dev(svg, path2);
@@ -385,7 +442,7 @@
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(svg);
+    			if (detaching) detach_dev(a);
     		}
     	};
 
@@ -508,76 +565,101 @@
     		super(tree, setter);
     	}
 
-    	item (name) {
+    	item(name) {
     		return super.get()[name]
     	}
 
-    	has (name) {
+    	has(name) {
     		return this.item(name) !== undefined
     	}
 
-    	reset (target, silent = false) {
+    	reset(target, silent = false) {
     		const $tree = {};
-    		if(target) {
+    		if (target) {
     			Object.assign($tree, target);
     		}
 
     		this.p_set($tree, silent);
     	}
 
-    	add (tree_json, silent = false) {
+    	add(tree_json, silent = false) {
     		const $tree = this.get();
+
     		Object.assign($tree, tree_json);
 
     		this.p_set($tree, silent);
+
+    		return tree_json
     	}
 
-    	remove (name, silent = false) {
+    	remove(name, silent = false) {
     		delete this.value[name];
-    		if(!silent) this.notify();
+    		if (!silent) this.notify();
     	}
-    	
-    	query (...steps)  {
-    		
+
+    	query(...steps) {
     		const cursor = this.value[steps.shift()]; 
 
-    		if(steps.length === 0 || !cursor) return cursor 	
+    		if (steps.length === 0 || !cursor) return cursor
     		return cursor.query(...steps)
+    	}
+
+    	count() {
+    		return Object.keys(this.get()).length
     	}
     }
 
     class Proxy {
-        
+    	
 
-        get() { return this.value.get() }
-        listen(listen) { return this.value.listen(listen) }
-        set(value, silent = false) { this.value.set(value, silent); }
-        toJSON() { return this.value.toJSON() }
-        notify() { this.value.notify(); }
+    	get() {
+    		return this.value.get()
+    	}
+    	listen(listen) {
+    		return this.value.listen(listen)
+    	}
+    	set(value, silent = false) {
+    		this.value.set(value, silent);
+    	}
+    	toJSON() {
+    		return this.value.toJSON()
+    	}
+    	notify() {
+    		this.value.notify();
+    	}
+
+    	subscribe(listen) {
+    		return this.listen(listen)
+    	}
     }
 
-    class ProxyTree extends Proxy {
-        
-        
-        item (name) {
-            return this.value.item(name)
-        }
+    class ProxyTree extends Proxy
+     {
+    	
 
-        reset (target, silent)  {
-            return this.value.reset(target, silent)
-        }
+    	item(name) {
+    		return this.value.item(name)
+    	}
 
-        add (tree_write, silent) {
-            return this.value.add(tree_write, silent)
-        }
+    	reset(target, silent) {
+    		return this.value.reset(target, silent)
+    	}
 
-        remove (name, silent) {
-            this.value.remove(name, silent);
-        }
+    	add(tree_write, silent) {
+    		return this.value.add(tree_write, silent)
+    	}
 
-        query (...steps)  {
-            return this.value.query(...steps)
-        }
+    	remove(name, silent) {
+    		this.value.remove(name, silent);
+    	}
+
+    	query(...steps) {
+    		return this.value.query(...steps)
+    	}
+
+    	has(name) {
+    		return this.item(name) !== undefined
+    	}
     }
 
     class BufferValue extends Store {
@@ -691,197 +773,196 @@
     }
 
     var ELivingAction; (function (ELivingAction) {
-        const CREATE = "create"; ELivingAction["CREATE"] = CREATE;
-        const REZ = "rez"; ELivingAction["REZ"] = REZ;
-        const DEREZ = "derez"; ELivingAction["DEREZ"] = DEREZ;
-        const DESTROY = "destroy"; ELivingAction["DESTROY"] = DESTROY;
+    	const CREATE = 'create'; ELivingAction["CREATE"] = CREATE;
+    	const REZ = 'rez'; ELivingAction["REZ"] = REZ;
+    	const DEREZ = 'derez'; ELivingAction["DEREZ"] = DEREZ;
+    	const DESTROY = 'destroy'; ELivingAction["DESTROY"] = DESTROY;
     })(ELivingAction || (ELivingAction = {}));
 
     var ELivingStatus; (function (ELivingStatus) {
-        const VOID = "VOID"; ELivingStatus["VOID"] = VOID;
-        const CREATED = "CREATED"; ELivingStatus["CREATED"] = CREATED;
-        const REZED = "REZED"; ELivingStatus["REZED"] = REZED;
+    	const VOID = 'VOID'; ELivingStatus["VOID"] = VOID;
+    	const CREATED = 'CREATED'; ELivingStatus["CREATED"] = CREATED;
+    	const REZED = 'REZED'; ELivingStatus["REZED"] = REZED;
     })(ELivingStatus || (ELivingStatus = {}));
 
     class Living extends ProxyTree {constructor(...args) { super(...args); Living.prototype.__init.call(this); }
-        
-         __init() {this.status = new Store(ELivingStatus.VOID);}
+    	
+    	 __init() {this.status = new Store(ELivingStatus.VOID);}
 
-        add (living_data, silent = false) {
-            super.add(living_data, silent);
-            const $status = this.status.get();
+    	add(living_data, silent = false) {
+    		super.add(living_data, silent);
+    		const $status = this.status.get();
+    		const items = Object.entries(living_data);
 
-            const items = Object.entries(living_data);
+    		switch ($status) {
+    			case ELivingStatus.CREATED:
+    				for (let [_, item] of items) {
+    					item.create && item.create();
+    				}
 
-            switch($status) {
-                case ELivingStatus.CREATED:
-                    for(let [_, item] of items) {
-                        item.create && item.create();
-                    }
+    			case ELivingStatus.REZED:
+    				const $rezed = this.rezed && this.rezed.get();
 
-                case ELivingStatus.REZED:
-                    const $rezed = this.rezed && this.rezed.get(); 
+    				// create doesn't auto rez
+    				// so you can batch creates together then rez
+    				for (let [name, item] of items) {
+    					if ($rezed && !$rezed[name]) continue
+    					item.rez && item.rez();
+    				}
+    		}
+    	}
 
-                    // create doesn't auto rez
-                    // so you can batch creates together then rez
-                    for(let [name, item] of items) {
-                        if($rezed && !$rezed[name]) continue 
-                        item.rez && item.rez();
-                    }
-            }
-        }
-        
-        remove (name, silent = false) {
-            const $value = this.get(); 
+    	remove(name, silent = false) {
+    		const $value = this.get(); 
 
-            if($value[name] && $value[name].destroy) {
-                $value[name].destroy();
-            }
+    		if ($value[name] && $value[name].destroy) {
+    			$value[name].destroy();
+    		}
 
-            const $rezed = this.rezed && this.rezed.get(); 
-            if($rezed) {
-                $rezed.delete(name);
-            }
+    		const $rezed = this.rezed && this.rezed.get();
+    		if ($rezed) {
+    			$rezed.delete(name);
+    		}
 
-            super.remove(name, silent);
-        }
-        
-        removes(...names) {
-            for(let name of names) {
-                this.remove(name, true);
-            }
+    		super.remove(name, silent);
+    	}
 
-            this.notify();
-        }
+    	removes(...names) {
+    		for (let name of names) {
+    			this.remove(name, true);
+    		}
 
-        create () {
-            if(this.status.get() !== ELivingStatus.VOID) {
-                throw new Error("Tried to create a nonvoid living class")
-            }
+    		this.notify();
+    	}
 
-            // run through my tree to guarantee its destroyed
-            let sub;
-            for(sub of Object.values(this.get())) {
-                sub.create && sub.create();
-            }
+    	create() {
+    		if (this.status.get() !== ELivingStatus.VOID) {
+    			throw new Error('Tried to create a nonvoid living class')
+    		}
 
-            this.status.set(ELivingStatus.CREATED);
-        }
+    		// run through my tree to guarantee its destroyed
+    		let sub;
+    		for (sub of Object.values(this.get())) {
+    			sub.create && sub.create();
+    		}
 
-        destroy () {
-            if(this.status.get() === ELivingStatus.REZED) {
-                this.derez();
-            }
+    		this.status.set(ELivingStatus.CREATED);
+    	}
 
-            let sub;
-            for(sub of Object.values(this.get())) {
-                sub.destroy && sub.destroy();
-            }
+    	destroy() {
+    		if (this.status.get() === ELivingStatus.REZED) {
+    			this.derez();
+    		}
 
-            this.status.set(ELivingStatus.VOID);
-        }
-        
-        rez () {
-            if(this.status.get() === ELivingStatus.VOID) {
-                this.create();
-            }
+    		let sub;
+    		for (sub of Object.values(this.get())) {
+    			sub.destroy && sub.destroy();
+    		}
 
-            const rezed = this.rezed && this.rezed.get();        
+    		this.status.set(ELivingStatus.VOID);
+    	}
 
-            for(let [name, sub] of Object.entries(this.get())) {
-                if(rezed && !rezed.has(name)) continue
+    	rez() {
+    		if (this.status.get() === ELivingStatus.VOID) {
+    			this.create();
+    		}
 
-                (sub ).rez && (sub ).rez();
-            }
+    		const rezed = this.rezed && this.rezed.get();
 
-            this.status.set(ELivingStatus.REZED);
-        }
+    		for (let [name, sub] of Object.entries(this.get())) {
+    			if (rezed && !rezed.has(name)) continue
+    			;(sub ).rez && (sub ).rez();
+    		}
 
-        derez () {
-            if(this.status.get() !== ELivingStatus.REZED) {
-                return   
-            }
+    		this.status.set(ELivingStatus.REZED);
+    	}
 
-            const $rezed = this.rezed && this.rezed.get();        
+    	derez() {
+    		if (this.status.get() !== ELivingStatus.REZED) {
+    			return
+    		}
 
-            for(let [name, sub] of Object.entries(this.get())) {
-                if($rezed && !$rezed.has(name)) continue
-                
-                (sub ).derez && (sub ).derez();
-            }
+    		const $rezed = this.rezed && this.rezed.get();
 
-            this.status.set(ELivingStatus.CREATED);
-        }
+    		for (let [name, sub] of Object.entries(this.get())) {
+    			if ($rezed && !$rezed.has(name)) continue
+    			;(sub ).derez && (sub ).derez();
+    		}
 
-        start_all(...all) {
-            all = all.length === 0 ? Object.keys(this.get()) : all;
-            for(let name of all) {
-                this.start(name);
-            }
-        }
+    		this.status.set(ELivingStatus.CREATED);
+    	}
 
-        start(name) {
-            const $rezed = this.rezed && this.rezed.get();        
-            const item = this.item(name);
+    	start_all(...all) {
+    		all = all.length === 0 ? Object.keys(this.get()) : all;
+    		for (let name of all) {
+    			this.start(name);
+    		}
+    	}
 
-            if(!item) return
+    	start(name) {
+    		const $rezed = this.rezed && this.rezed.get();
+    		const item = this.item(name);
 
-            // can only rez if I am 
-            if(this.status.get() === ELivingStatus.REZED) {
-                (item ).rez && (item ).rez();
-            }
+    		if (!item) return
 
-            if($rezed) {
-                $rezed.add(name);
-                this.rezed.notify();
-            }
-        }
+    		// can only rez if I am
+    		if (this.status.get() === ELivingStatus.REZED) {
+    (item ).rez && (item ).rez();
+    		}
 
-        stop(name) {
-            const item = this.item(name);
-            if(!item) return
+    		if ($rezed) {
+    			$rezed.add(name);
+    			this.rezed.notify();
+    		}
+    	}
 
-            // can derez whenever though
-            (item ).derez && (item ).derez();
+    	stop(...names) {
+    		const $rezed = this.rezed && this.rezed.get();
+    		for (let name of names) {
+    			const item = this.item(name);
+    			if (!item) continue // can derez whenever though
 
-            const $rezed = this.rezed && this.rezed.get();   
-            if(!$rezed) return
-            
-            $rezed.delete(name);
-            this.rezed.notify();
-        }
+    			;(item ).derez && (item ).derez();
 
-        restart (name) {
-            this.stop(name);
-            this.start(name);
-        }
+    			if (!$rezed) continue
 
-        toJSON()  {
-            return {
-                value: this.value.toJSON(),
-                rezed: this.rezed ? this.rezed.toJSON() : undefined
-            }
-        }
+    			$rezed.delete(name);
+    		}
 
-        ensure (first, ...path) {
-            let $item = this.item(first);
+    		this.rezed.notify();
+    	}
 
-            if($item === undefined) {
-                this.add({
-                    [first]: {}
-                });
+    	restart(name) {
+    		this.stop(name);
+    		this.start(name);
+    	}
 
-                $item = this.item(first);
-            }
+    	toJSON() {
+    		return {
+    			value: this.value.toJSON(),
+    			rezed: this.rezed ? this.rezed.toJSON() : undefined
+    		}
+    	}
 
-            if(path.length === 0) return $item
-            
-            if($item instanceof Living) {
-                return $item.ensure(path[0], ...path.slice(1))
-            }
-            
-            throw new Error("tried to ensure non living item")
-        }
+    	ensure(first, ...path) {
+    		let $item = this.item(first);
+
+    		if ($item === undefined) {
+    			this.add({
+    				[first]: {}
+    			});
+
+    			$item = this.item(first);
+    		}
+
+    		if (path.length === 0) return $item
+
+    		if ($item instanceof Living) {
+    			return $item.ensure(path[0], ...path.slice(1))
+    		}
+
+    		throw new Error('tried to ensure non living item')
+    	}
     }
 
     class Transformer extends Store {
@@ -1221,38 +1302,38 @@
     }
 
     class Wheel extends Living {
-         __init() {this.value = new Tree({
-            sys: new Weave({
-                name: `sys`,
-                thread: {},
-                value: {},
-                rezed: []
-            })
-        });}
+    	 __init() {this.value = new Tree({
+    		sys: new Weave({
+    			name: `sys`,
+    			thread: {},
+    			value: {},
+    			rezed: []
+    		})
+    	});}
 
-        constructor (wheel_data) {
-            super();Wheel.prototype.__init.call(this);
-            
-            this.rezed = new Store(new Set(wheel_data.rezed));
-            
-            this.add(wheel_data.value);
-        }
+    	constructor(wheel_data) {
+    		super();Wheel.prototype.__init.call(this);
 
-        add (weaves, silent = false) {
-            const write = {};
+    		this.rezed = new Store(new Set(wheel_data.rezed));
 
-            for(let [name, value] of Object.entries(weaves)) {
-                if(value instanceof Weave) {
-                    write[name] = value;
-                    continue
-                }
+    		this.add(wheel_data.value);
+    	}
 
-                value.name = name;
-                write[name] = new Weave(value);
-            }
+    	add(weaves, silent = false) {
+    		const write = {};
 
-            super.add(write, silent);
-        }
+    		for (let [name, value] of Object.entries(weaves)) {
+    			if (value instanceof Weave) {
+    				write[name] = value;
+    				continue
+    			}
+
+    			value.name = name;
+    			write[name] = new Weave(value);
+    		}
+
+    		super.add(write, silent);
+    	}
     }
 
     var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -1297,7 +1378,7 @@
 
     }).call(commonjsGlobal);
 
-
+    //# sourceMappingURL=performance-now.js.map
     });
 
     var root = typeof window === 'undefined' ? commonjsGlobal : window
@@ -1378,303 +1459,319 @@
     raf_1.polyfill = polyfill;
 
     class Messenger  {
-        
+    	
 
-        onmessage (event) {
-            const msg = event.data;
-            const fn = `msg_${msg.name}`;
-            if(this[fn]) this[fn](msg.data);
-        }
+    	onmessage(event) {
+    		const msg = event.data;
+    		const fn = `msg_${msg.name}`;
+    		if (this[fn]) this[fn](msg.data);
+    	}
 
-        postMessage (message) {
-            this.remote.onmessage({ data: message });
-        }
+    	postMessage(message) {
+    		this.remote.onmessage({ data: message });
+    	}
     }
 
-    class RemoteWorker extends Messenger {
-        __init() {this.wheel = new Wheel({
-            rezed: [],
-            value: {}
-        });}
-        
-        constructor (remote) {
-            super();RemoteWorker.prototype.__init.call(this);
-            this.remote = remote;
+    class RemoteGoblin extends Messenger {
+    	 __init() {this.wheel = new Wheel({
+    		rezed: [],
+    		value: {}
+    	});}
 
-            raf_1(() => {
-                this.postMessage({
-                    name: "ready"
-                });
-            });
-        }
+    	
+    	constructor(remote) {
+    		super();RemoteGoblin.prototype.__init.call(this);
+    		this.remote = remote;
 
-         tick() {
-            raf_1(() => {
-                this.postMessage({
-                    name: "buffer",
-                    data: {
-                        VISIBLE: Visible.data.toJSON()
-                    }
-                });
-            });
-        }
+    		raf_1(() => {
+    			this.postMessage({
+    				name: 'ready'
+    			});
+    		});
+    	}
 
-         msg_toJSON () {
-            this.postMessage({
-                name: "toJSON",
-                data: this.wheel.toJSON()
-            });
-        }
+    	 tick() {
+    		raf_1(() => {
+    			this.postMessage({
+    				name: 'buffer',
+    				data: {
+    					VISIBLE: Visible.data.toJSON()
+    				}
+    			});
+    		});
+    	}
 
-         msg_add (data) {
-            this.wheel.add(data.value);
+    	 msg_toJSON() {
+    		this.postMessage({
+    			name: 'toJSON',
+    			data: this.wheel.toJSON()
+    		});
+    	}
 
-            for(let name of data.rezed) {
-                this.wheel.start(name);
-            }
-        }
+    	 msg_add(data) {
+    		if (data.value) this.wheel.add(data.value);
 
-         msg_status (data) {
-            this.wheel[data]();
-            if(data !== ELivingAction.DESTROY) return
+    		if (data.rezed === undefined) return
 
-            this.postMessage({
-                name: "destroy"
-            });
-        }
+    		for (const name of data.rezed) {
+    			this.wheel.start(name);
+    		}
+    	}
 
-         msg_start (data) {
-            this.wheel.start(data);
-        }
+    	 msg_status(data) {
+    		this.wheel[data]();
+    		if (data !== ELivingAction.DESTROY) return
 
-         msg_stop (data) {
-            this.wheel.stop(data);
-        }
+    		this.postMessage({
+    			name: 'destroy'
+    		});
+    	}
 
-         msg_update (data
+    	 msg_start(data) {
+    		this.wheel.start(data);
+    	}
 
+    	 msg_stop(data) {
+    		this.wheel.stop(data);
+    	}
 
-    ) {
-            this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value);
-        }
+    	 msg_update(data) {
+    		this.wheel.ensure(data.path[0], ...data.path.slice(1)).set(data.value);
+    	}
 
-         msg_relay () {
-            if(this.timeout) this.timeout();
-            this.timeout = this.wheel.query("sys", "time", "tick").listen(this.tick.bind(this));
-        }
+    	 msg_relay() {
+    		if (this.timeout) this.timeout();
+    		this.timeout = this.wheel
+    			.query('sys', 'time', 'tick')
+    			.listen(this.tick.bind(this));
+    	}
     }
 
     class LocalWorker extends Messenger  {constructor(...args) { super(...args); LocalWorker.prototype.__init.call(this); }
-         __init() {this.remote = new RemoteWorker(this);}
+    	 __init() {this.remote = new RemoteGoblin(this);}
 
-        terminate() {
-            // okay
-        }
+    	terminate() {
+    		// okay
+    	}
 
-        onerror (ev) {
-            // okay
-        }
-    }  
+    	onerror(ev) {
+    		// okay
+    	}
+    }
 
-    class WheelWorker extends Living {
-        // this could use sharedmemory but not everyone supports it
-        __init2() {this.buffer = new Tree({
-            VISIBLE: Visible.data
-        });}
+    class Goblin extends Living {
+    	// this could use sharedmemory but not everyone supports it
+    	__init2() {this.buffer = new Tree({
+    		VISIBLE: Visible.data
+    	});}
 
-        
-         __init3() {this.value = this.buffer;}
-        
-         __init4() {this.sys_cancels = {};}
-        
-        
+    	
+    	
+    	
+    	 __init3() {this.sys_cancels = {};}
+    	
+    	
 
-         __init5() {this.json_resolvers = [];}
+    	 __init4() {this.json_resolvers = [];}
 
-        constructor (sys, local = false) {
-            super();WheelWorker.prototype.__init2.call(this);WheelWorker.prototype.__init3.call(this);WheelWorker.prototype.__init4.call(this);WheelWorker.prototype.__init5.call(this);WheelWorker.prototype.__init6.call(this);
+    	constructor(sys, local = false) {
+    		super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);
 
-            this.sys = sys;
-            this.local = local;
-        }
+    		// doesn't guarantee syncing
+    		this.value = new Wheel({
+    			value: {},
+    			rezed: []
+    		});
 
-        create () {
-            super.create();
+    		this.sys = sys;
+    		this.local = local;
+    	}
 
-            this.worker = this.local ? new LocalWorker() : new Worker(`/bin/wheel.bundle.js`);
+    	create() {
+    		this.worker = this.local
+    			? new LocalWorker()
+    			: new Worker(`/bin/goblin.bundle.js`);
 
-            this.worker.onmessage = this.onmessage.bind(this);
-            this.worker.onerror = this.onerror.bind(this);
+    		this.worker.onmessage = this.onmessage.bind(this);
+    		this.worker.onerror = this.onerror.bind(this);
 
-            this.worker.postMessage({
-                name: "status",
-                data: ELivingAction.CREATE
-            });
-        }
+    		this.worker.postMessage({
+    			name: 'status',
+    			data: ELivingAction.CREATE
+    		});
+    	}
 
-        rez () {
-            super.rez();
+    	rez() {
+    		this.sys_cancel = this.sys.listen(this.sys_update.bind(this));
 
-            this.sys_cancel = this.sys.listen(this.sys_update.bind(this));
+    		this.worker.postMessage({
+    			name: 'status',
+    			data: ELivingAction.REZ
+    		});
+    	}
 
-            this.worker.postMessage({
-                name: "status",
-                data: ELivingAction.REZ
-            });
-        }
+    	derez() {
+    		for (let cancel of Object.values(this.sys_cancels)) {
+    			cancel();
+    		}
 
-        derez () {
-            super.derez();
+    		this.sys_cancel();
 
-            for(let cancel of Object.values(this.sys_cancels)) {
-                cancel();
-            }
+    		this.worker.postMessage({
+    			name: 'status',
+    			data: ELivingAction.DEREZ
+    		});
+    	}
 
-            this.sys_cancel();
+    	destroy() {
+    		this.worker.postMessage({
+    			name: 'status',
+    			data: ELivingAction.DESTROY
+    		});
+    	}
 
-            this.worker.postMessage({
-                name: "status",
-                data: ELivingAction.DEREZ
-            });
-        }
+    	// replicate system changes into the worker
+    	 sys_update($sys) {
+    		// this should happen very rarely
+    		for (let cancel of Object.values(this.sys_cancels)) {
+    			cancel();
+    		}
 
-        destroy () {
-            super.destroy();
+    		this.sys_cancels = {};
 
-            this.worker.postMessage({
-                name: "status",
-                data: ELivingAction.DESTROY
-            });
-        }
+    		for (let [name, category] of Object.entries($sys)) {
+    			this.sys_cancels[name] = category.listen($category => {
+    				for (let [key, store] of Object.entries($category)) {
+    					this.sys_cancels[`${name}/${key}`] = store.listen(
+    						$store => {
+    							this.worker.postMessage({
+    								name: 'update',
+    								data: {
+    									path: [`sys`, name, key],
+    									value: $store
+    								}
+    							});
+    						}
+    					);
+    				}
+    			});
+    		}
+    	}
 
-        // replicate system changes into the worker
-         sys_update ($sys) {
-            // this should happen very rarely
-            for(let cancel of Object.values(this.sys_cancels)) {
-                cancel();
-            }
-            
-            this.sys_cancels = {};
+    	 msg_destroy() {
+    		this.worker.terminate();
+    	}
 
-            for(let [name, category] of Object.entries($sys)) {
-                this.sys_cancels[name] = category.listen(($category) => {
-                    for(let [key, store] of Object.entries($category)) {
-                        this.sys_cancels[`${name}/${key}`] = store.listen($store => {
-                            this.worker.postMessage({
-                                name: "update",
-                                data: {
-                                    path: [`sys`, name, key],
-                                    value: $store
-                                }
-                            });
-                        });
-                    }
-                });
-            }
-        }
+    	 msg_toJSON(json) {
+    		// hydrate self
+    		this.value.add(json.value);
 
-         msg_destroy () {
-            this.worker.terminate();
-        }
+    		for (let resolve of this.json_resolvers) {
+    			resolve(json);
+    		}
+    	}
 
-         msg_toJSON (json) {
-            for(let resolve of this.json_resolvers) {
-                resolve(json);
-            }
-        }
+    	 msg_buffer(data) {
+    		for (let [name, buffer] of Object.entries(data)) {
+    			const buff = this.buffer.item(name);
 
-         msg_buffer (data) {
-            for(let [name, buffer] of Object.entries(data)) {
-                const buff = this.buffer.item(name);
+    			if (buff === undefined) return
+    			buff.hydrate(buffer);
+    		}
 
-                if(buff === undefined) return
-                buff.hydrate(buffer);
-            }
+    		this.buffer.notify();
+    	}
 
-            this.notify();
-        }
+    	 msg_ready() {
+    		this.worker.postMessage({
+    			name: 'relay'
+    		});
+    	}
 
-         msg_ready () {
-            this.worker.postMessage({
-                name: "relay"
-            });
-        }
+    	 __init5() {this.onmessage = Messenger.prototype.onmessage;}
 
-         __init6() {this.onmessage = Messenger.prototype.onmessage;}
+    	 onerror(event) {
+    		console.error(`Worker Error`, event);
+    	}
 
-         onerror (event) {
-            console.error(`Worker Error`, event);
-        }
+    	async remote_toJSON() {
+    		return new Promise(resolve => {
+    			this.json_resolvers.push(resolve);
 
-        async remote_toJSON () {
-            return new Promise((resolve) => {
-                this.json_resolvers.push(resolve);
+    			if (this.json_resolvers.length !== 1) return
 
-                if(this.json_resolvers.length !== 1) return
+    			this.worker.postMessage({
+    				name: 'toJSON'
+    			});
+    		})
+    	}
 
-                this.worker.postMessage({
-                    name: "toJSON"
-                });
-            })
-        }
+    	add(data) {
+    		this.remote_add(data);
+    	}
 
-        remote_add (data) {
-            this.worker.postMessage({
-                name: "add",
-                data
-            });
-        }
+    	remote_add(data) {
+    		this.worker.postMessage({
+    			name: 'add',
+    			data
+    		});
+    	}
 
-        remote_start (data) {
-            this.worker.postMessage({
-                name: "start",
-                data
-            });
-        }
+    	remote_start(data) {
+    		this.worker.postMessage({
+    			name: 'start',
+    			data
+    		});
+    	}
 
-        remote_stop (data) {
-            this.worker.postMessage({
-                name: "stop",
-                data
-            });
-        }
+    	remote_stop(data) {
+    		this.worker.postMessage({
+    			name: 'stop',
+    			data
+    		});
+    	}
     }
 
     // Starts up in the main thread
     class Isekai extends Living {
-         __init() {this.wheels = new Tree();}
-         __init2() {this.value = this.wheels;}
-        
-         __init3() {this.sys = new Tree();}
-         __init4() {this.local = new Store(false);}
+    	 __init() {this.goblins = new Tree();}
+    	 __init2() {this.value = this.goblins;}
 
-        constructor(sys, local = false) {
-            super();Isekai.prototype.__init.call(this);Isekai.prototype.__init2.call(this);Isekai.prototype.__init3.call(this);Isekai.prototype.__init4.call(this);
-            this.local.set(local);
+    	 __init3() {this.sys = new Tree();}
+    	 __init4() {this.local = new Store(false);}
 
-            const write = {};
-            for(let [name, value] of Object.entries(sys)) {
-                write[name] = new Tree(value);
-            }
+    	constructor(sys, local = false) {
+    		super();Isekai.prototype.__init.call(this);Isekai.prototype.__init2.call(this);Isekai.prototype.__init3.call(this);Isekai.prototype.__init4.call(this);
+    		this.local.set(local);
 
-            this.sys.add(write);
+    		const write = {};
+    		for (let [name, value] of Object.entries(sys)) {
+    			write[name] = new Tree(value);
+    		}
 
-            // Check Path
-            // Check Database
-            this.create();
-            this.rez();
-        }
+    		this.sys.add(write);
 
-        add (wheels) {
-            const write = {};
+    		// Check Path
+    		// Check Database
+    		this.create();
+    		this.rez();
+    	}
 
-            for(let [name, wheel_json] of Object.entries(wheels)) {
-                const worker = write[name] = new WheelWorker(this.sys, this.local.get());
-                worker.add(wheel_json);
-            }
+    	add(wheels) {
+    		const write = {};
 
-            super.add(write);
-        }
+    		for (let [name, wheel_json] of Object.entries(wheels)) {
+    			const worker = (write[name] = new Goblin(
+    				this.sys,
+    				this.local.get()
+    			));
+
+    			worker.create();
+    			worker.add(wheel_json);
+    		}
+
+    		super.add(write);
+    	}
     }
 
     const position = new Read([0, 0], set => window
@@ -1686,6 +1783,38 @@
     		set([-e.deltaX, -e.deltaY, 0]);
     	})
     );
+
+    var mouse = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        position: position,
+        scroll: scroll
+    });
+
+    const size = new Read([window.innerWidth, window.innerHeight], (set) => {
+    	window.addEventListener(`resize`, () => {
+    		set([window.innerWidth, window.innerHeight]);
+    	});
+    });
+
+    const scale = new Store(1);
+
+    size.listen(([width, height]) => {
+    	const target = width > height
+    		? height
+    		: width;
+
+    	scale.set(target / 80);
+    	window.document.documentElement.style.fontSize = `${Math.round(scale.get())}px`;
+    });
+
+    const clear_color = new Store([0, 0, 0, 1]);
+
+    var screen = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        size: size,
+        scale: scale,
+        clear_color: clear_color
+    });
 
     const key_virtual = new Store(``);
 
@@ -1744,6 +1873,13 @@
     	document.addEventListener(`visibilitychange`, clear, false);
     });
 
+    var keyboard = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        key_virtual: key_virtual,
+        key: key,
+        keys: keys
+    });
+
     let tick_set;
     const tick = new Read(0, (set) => {
     	tick_set = set;
@@ -1775,6 +1911,12 @@
     	};
 
     	raf_1(frame_t);
+    });
+
+    var time = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        tick: tick,
+        TIME_TICK_RATE: TIME_TICK_RATE
     });
 
     // eventually will want to support local multiplayer with this
@@ -1867,6 +2009,13 @@
     		}
     		set(value);
     	});
+    });
+
+    var gamepad = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        axes: axes,
+        button: button,
+        buttons: buttons
     });
 
     // Collection of meta controllers
@@ -1970,32 +2119,644 @@
     	scroll_velocity = add(scroll_velocity, vel);
     });
 
-    /* src\client\Client.svelte generated by Svelte v3.19.1 */
+    var input = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        buttons: buttons$1,
+        button: button$1,
+        translate: translate,
+        scroll: scroll$1
+    });
 
-    // (13:0) {#if !hidden}
-    function create_if_block(ctx) {
-    	let current;
-    	const github = new Github({ $$inline: true });
+    const SPRITES = new Store(`/sheets/default_2.png`);
+    const SPRITES_COLOR = new Store(`/sheets/default_2_color.png`);
+    const IS_DEV = new Store(false);
+
+    const SVELTE_ANIMATION = new Store({ delay: 100, duration: 300 });
+
+    const TILE_COUNT = new Store(1024);
+    const TILE_COLUMNS = new Store(32);
+
+    const THEME_COLOR = new Store(`rgb(224, 168, 83)`);
+    const THEME_BG = new Store(`#033`);
+    const THEME_GLOW = new Store(`green`);
+
+    const CURSOR = new Store(`/`);
+
+    const THEME_BORDER = new Store(``, $value => Color($value)
+    	.darkenByRatio(0.5)
+    	.toCSS()
+    );
+
+    const THEME_STYLE = new Read(``, set => {
+    	let $THEME_BORDER = ``;
+
+    	const update = () => set([
+    		`border: 0.2rem solid ${$THEME_BORDER};`
+    	].join(``));
+
+    	THEME_BORDER.listen($val => {
+    		$THEME_BORDER = $val;
+    		update();
+    	});
+    });
+
+    var flag = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        SPRITES: SPRITES,
+        SPRITES_COLOR: SPRITES_COLOR,
+        IS_DEV: IS_DEV,
+        SVELTE_ANIMATION: SVELTE_ANIMATION,
+        TILE_COUNT: TILE_COUNT,
+        TILE_COLUMNS: TILE_COLUMNS,
+        THEME_COLOR: THEME_COLOR,
+        THEME_BG: THEME_BG,
+        THEME_GLOW: THEME_GLOW,
+        CURSOR: CURSOR,
+        THEME_BORDER: THEME_BORDER,
+        THEME_STYLE: THEME_STYLE
+    });
+
+    const validate = (thing) => {
+    	const set = thing.set.bind(thing);
+    	return (val) => {
+    		if (!Array.isArray(val)) {
+    			if (
+    				val &&
+    				typeof val[0] === `number` &&
+    				typeof val[1] === `number` &&
+    				typeof val[2] === `number`
+    			) {
+    				thing.set(val);
+    				return
+    			}
+
+    			return
+    		}
+    		set(val);
+    	}
+    };
+
+    const camera = new Store(twgl_js.m4.identity());
+    const position$1 = new Store([0, 0, 0]);
+    const look = new Store([0, 0, -1]);
+
+    look.set = validate(look);
+    position$1.set = validate(position$1);
+
+    var camera$1 = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        camera: camera,
+        position: position$1,
+        look: look
+    });
+
+    const screen_ui_regex = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i;
+
+    const agent = new Store((navigator.userAgent || navigator.vendor || window.opera).toLowerCase());
+
+    const keyboard$1 = new Store(
+    	!screen_ui_regex.test(agent.get())
+    );
+
+    const sound = new Store(true);
+
+    var device = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        agent: agent,
+        keyboard: keyboard$1,
+        sound: sound
+    });
+
+    class BrowserPath extends Store {
+    	constructor(start) {
+    		super(start);
+
+    		window.addEventListener(`popstate`, e => {
+    			e.preventDefault();
+    			e.stopPropagation();
+    			this.path_update();
+    		});
+
+    		this.path_update();
+    	}
+
+    	 path_update() {
+    		const path_str = window.location.search
+    			? window.location.search.slice(1)
+    			: window.location.pathname.slice(1);
+
+    		this.set(decodeURI(path_str).replace(/ /g, `_`));
+    	}
+
+    	set(path_new) {
+    		if (Array.isArray(path_new)) {
+    			return super.set(path_new)
+    		}
+
+    		super.set(path_new.split(`/`));
+    	}
+    }
+
+    const path = new BrowserPath([]);
+
+    const flag$1 = new Read('', set => {
+    	set(window.location.hash);
+    });
+
+    var path$1 = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        path: path,
+        flag: flag$1
+    });
+
+
+
+    var ClientSYS = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        mouse: mouse,
+        screen: screen,
+        input: input,
+        keyboard: keyboard,
+        gamepad: gamepad,
+        flag: flag,
+        camera: camera$1,
+        device: device,
+        path: path$1
+    });
+
+    // TODO: maybe an input one that gets written to from client?
+
+    var CoreSYS = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        time: time
+    });
+
+    const is = ((window ).is = new Isekai({
+    	...ClientSYS,
+    	...CoreSYS
+    }));
+
+    /* src\client\Goblin.svelte generated by Svelte v3.19.1 */
+    const file$1 = "src\\client\\Goblin.svelte";
+
+    function create_fragment$1(ctx) {
+    	let div1;
+    	let div0;
+    	let t;
 
     	const block = {
     		c: function create() {
-    			create_component(github.$$.fragment);
+    			div1 = element("div");
+    			div0 = element("div");
+    			t = text(/*goblin*/ ctx[0]);
+    			attr_dev(div0, "class", "title svelte-1rvfdfh");
+    			add_location(div0, file$1, 9, 4, 142);
+    			attr_dev(div1, "class", "wheel svelte-1rvfdfh");
+    			add_location(div1, file$1, 8, 0, 117);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			mount_component(github, target, anchor);
+    			insert_dev(target, div1, anchor);
+    			append_dev(div1, div0);
+    			append_dev(div0, t);
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*goblin*/ 1) set_data_dev(t, /*goblin*/ ctx[0]);
+    		},
+    		i: noop,
+    		o: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div1);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$1.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance($$self, $$props, $$invalidate) {
+    	let { goblin = "" } = $$props;
+    	const remote = is.item(goblin);
+    	const writable_props = ["goblin"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Goblin> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ("goblin" in $$props) $$invalidate(0, goblin = $$props.goblin);
+    	};
+
+    	$$self.$capture_state = () => ({ is, goblin, remote });
+
+    	$$self.$inject_state = $$props => {
+    		if ("goblin" in $$props) $$invalidate(0, goblin = $$props.goblin);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [goblin];
+    }
+
+    class Goblin$1 extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance, create_fragment$1, safe_not_equal, { goblin: 0 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Goblin",
+    			options,
+    			id: create_fragment$1.name
+    		});
+    	}
+
+    	get goblin() {
+    		throw new Error("<Goblin>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set goblin(value) {
+    		throw new Error("<Goblin>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    window.addEventListener(`contextmenu`, e => {
+    	e.preventDefault();
+    	return false
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const buttons$2 = is.sys.query('input', 'buttons');
+    const tick$1 = is.sys.query('time', 'tick');
+
+
+
+
+
+
+
+    const cursor = new Store(undefined);
+    const nav_map = {};
+    const goto = (key) => {
+    	if (!nav_map[key]) return
+
+    	cursor.set(nav_map[key]);
+    };
+
+    let last_node;
+    let origin_addr;
+
+    const BUTTONS = {
+    	home: { repeat: true, fn: () => last_node.home || origin_addr },
+    	up: { repeat: true },
+    	down: { repeat: true },
+    	pagedown: { repeat: true, alias: `page_down` },
+    	pageup: { repeat: true, alias: `page_up` },
+    	cancel: {},
+    	insert: {},
+    	delete: { alias: `del` },
+    	left: {},
+    	right: {},
+    	confirm: { alias: `click` }
+    }; 
+
+    let last_button = {};
+    tick$1.listen(() => {
+    	if (!last_node) return
+
+    	const $button = buttons$2.get();
+
+    	let dest;
+    	Object.entries(BUTTONS).forEach(([key, { repeat, fn, alias }]) => {
+    		alias = alias || key;
+    		if (!$button[key] || !last_node[alias]) return
+
+    		// prevent repeat
+    		if (!repeat && last_button[key]) return
+
+    		if (fn) {
+    			dest = fn();
+    			return
+    		}
+
+    		if (typeof last_node[alias] === `function`) {
+    			dest = last_node[alias]();
+    			return
+    		}
+
+    		dest = last_node[alias];
+    	});
+
+    	last_button = { ...$button };
+    	if (!dest) return
+
+    	const target = nav_map[dest];
+    	if (!target) return
+
+    	// "instant" other option
+    	target.scrollIntoView({ block: `center` });
+    	if (target === null) return
+    	cursor.set(target);
+    });
+
+    const current = $node => {
+    	if (last_node) {
+    		if (last_node instanceof Element) last_node.classList.remove(`nav`);
+    		last_node.blur && last_node.blur();
+    		last_node = undefined;
+    	}
+
+    	if (!$node) return
+
+    	last_node = $node;
+    	$node.focus && $node.focus();
+
+    	if ($node instanceof Element) $node.classList.add(`nav`);
+    };
+
+    cursor.listen(current);
+
+    const nav = (node, opts) => {
+    	const { id, origin = false } = opts;
+    	node.id = id;
+
+    	const navigation = {
+    		update: (navable) => {
+    			Object.assign(node, navable);
+    		},
+    		destroy: () => {
+    			node.removeEventListener(`mousedown`, listener);
+    			delete nav_map[id];
+    		}
+    	};
+
+    	navigation.update(opts);
+
+    	nav_map[id] = node;
+
+    	const listener = (e = false) => {
+    		cursor.set(node);
+
+    		if (e.which === 3) {
+    			e.preventDefault();
+    			e.stopPropagation();
+    			node.insert && node.insert();
+    			return
+    		}
+
+    		if (e.which === 2) {
+    			node.del && node.del();
+    		}
+    	};
+
+    	node.addEventListener(`mousedown`, listener);
+
+    	if (origin) {
+    		origin_addr = id;
+    		cursor.set(node);
+    	}
+
+    	return navigation
+    };
+
+    const str_color = (str) => {
+    	if (!str) return `#111`
+
+    	let hash = 0;
+    	for (let i = 0; i < str.length; i++) {
+    		hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    	}
+
+    	let color = `#`;
+    	for (let i = 0; i < 3; i++) {
+    		const value = (hash >> (i * 8)) & 0xff;
+    		color += (`00` + value.toString(16)).substr(-2);
+    	}
+
+    	return color
+    };
+
+    const color = str_color;
+
+    // whiskers on kittens
+    const words = [
+    	`groovy`,
+    	`cat`,
+    	`bird`,
+    	`dog`,
+    	`cool`,
+    	`okay`,
+    	`great`,
+    	`wat`,
+    	`goblin`,
+    	`life`,
+    	`ferret`,
+    	`gregert`,
+    	`robert`,
+    	`zilla`,
+    	`red`,
+    	`shirt`,
+    	`pants`,
+    	`blue`,
+    	`luna`,
+    	`ember`,
+    	`embear`,
+    	`killa`,
+    	`notice`,
+    	`thank`,
+    	`tank`,
+    	`under`,
+    	`near`,
+    	`near`,
+    	`quaint`,
+    	`potato`,
+    	`egg`,
+    	`bacon`,
+    	`narwhal`,
+    	`lamp`,
+    	`stairs`,
+    	`king`,
+    	`tyrant`,
+    	`grave`,
+    	`dire`,
+    	`happy`,
+    	`amazing`,
+    	`terrific`,
+    	`good`,
+    	`exciting`,
+    	`RIP`,
+    	`hello`,
+    	`world`,
+    	`global`,
+    	`universal`,
+    	`television`,
+    	`computer`
+    ];
+
+    const random = (count) =>
+    	Array.from(new Array(count))
+    		.map(() => words[Math.floor(Math.random() * words.length)])
+    		.join(`_`);
+
+    /* src\client\Isekai.svelte generated by Svelte v3.19.1 */
+    const file$2 = "src\\client\\Isekai.svelte";
+
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[17] = list[i][0];
+    	child_ctx[18] = list[i][1];
+    	child_ctx[20] = i;
+    	return child_ctx;
+    }
+
+    // (82:8) {#each positions as [x, y], idx}
+    function create_each_block(ctx) {
+    	let g;
+    	let circle;
+    	let circle_cx_value;
+    	let circle_cy_value;
+    	let text_1;
+    	let t_value = (/*names*/ ctx[3][/*idx*/ ctx[20]] || "") + "";
+    	let t;
+    	let text_1_x_value;
+    	let text_1_y_value;
+    	let text_1_font_size_value;
+    	let text_1_stroke_value;
+    	let nav_action;
+    	let dispose;
+
+    	function mouseover_handler(...args) {
+    		return /*mouseover_handler*/ ctx[13](/*idx*/ ctx[20], ...args);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			g = svg_element("g");
+    			circle = svg_element("circle");
+    			text_1 = svg_element("text");
+    			t = text(t_value);
+    			attr_dev(circle, "class", "circle svelte-14lybb5");
+    			attr_dev(circle, "cx", circle_cx_value = /*x*/ ctx[17]);
+    			attr_dev(circle, "cy", circle_cy_value = /*y*/ ctx[18]);
+    			add_location(circle, file$2, 90, 16, 2044);
+    			attr_dev(text_1, "x", text_1_x_value = /*x*/ ctx[17]);
+    			attr_dev(text_1, "y", text_1_y_value = /*y*/ ctx[18]);
+    			attr_dev(text_1, "class", "goblin-name svelte-14lybb5");
+
+    			attr_dev(text_1, "font-size", text_1_font_size_value = /*$cursor*/ ctx[6] && /*$cursor*/ ctx[6].id === `goblin-${/*idx*/ ctx[20]}`
+    			? 2
+    			: 5);
+
+    			attr_dev(text_1, "stroke", text_1_stroke_value = color(/*names*/ ctx[3][/*idx*/ ctx[20]] || "EMPTY"));
+    			add_location(text_1, file$2, 91, 16, 2105);
+    			attr_dev(g, "class", "goblin svelte-14lybb5");
+    			add_location(g, file$2, 82, 12, 1748);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, g, anchor);
+    			append_dev(g, circle);
+    			append_dev(g, text_1);
+    			append_dev(text_1, t);
+
+    			dispose = [
+    				action_destroyer(nav_action = nav.call(null, g, /*nav_goblin*/ ctx[11](/*idx*/ ctx[20]))),
+    				listen_dev(g, "mouseover", mouseover_handler, false, false, false)
+    			];
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    			if (dirty & /*names*/ 8 && t_value !== (t_value = (/*names*/ ctx[3][/*idx*/ ctx[20]] || "") + "")) set_data_dev(t, t_value);
+
+    			if (dirty & /*$cursor*/ 64 && text_1_font_size_value !== (text_1_font_size_value = /*$cursor*/ ctx[6] && /*$cursor*/ ctx[6].id === `goblin-${/*idx*/ ctx[20]}`
+    			? 2
+    			: 5)) {
+    				attr_dev(text_1, "font-size", text_1_font_size_value);
+    			}
+
+    			if (dirty & /*names*/ 8 && text_1_stroke_value !== (text_1_stroke_value = color(/*names*/ ctx[3][/*idx*/ ctx[20]] || "EMPTY"))) {
+    				attr_dev(text_1, "stroke", text_1_stroke_value);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(g);
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(82:8) {#each positions as [x, y], idx}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (130:0) {#if goblin}
+    function create_if_block(ctx) {
+    	let current;
+
+    	const goblin_1 = new Goblin$1({
+    			props: { goblin: /*goblin*/ ctx[2] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(goblin_1.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(goblin_1, target, anchor);
     			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const goblin_1_changes = {};
+    			if (dirty & /*goblin*/ 4) goblin_1_changes.goblin = /*goblin*/ ctx[2];
+    			goblin_1.$set(goblin_1_changes);
     		},
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(github.$$.fragment, local);
+    			transition_in(goblin_1.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(github.$$.fragment, local);
+    			transition_out(goblin_1.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(github, detaching);
+    			destroy_component(goblin_1, detaching);
     		}
     	};
 
@@ -2003,40 +2764,156 @@
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(13:0) {#if !hidden}",
+    		source: "(130:0) {#if goblin}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$1(ctx) {
+    function create_fragment$2(ctx) {
+    	let svg;
+    	let g;
+    	let path_1;
+    	let text_1;
+    	let t0;
+    	let text_1_font_size_value;
+    	let text_1_stroke_value;
+    	let text_1_stroke_width_value;
+    	let nav_action;
+    	let g_transform_value;
+    	let t1;
     	let if_block_anchor;
     	let current;
-    	let if_block = !/*hidden*/ ctx[0] && create_if_block(ctx);
+    	let dispose;
+    	let each_value = /*positions*/ ctx[9];
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    	}
+
+    	let if_block = /*goblin*/ ctx[2] && create_if_block(ctx);
 
     	const block = {
     		c: function create() {
+    			svg = svg_element("svg");
+    			g = svg_element("g");
+    			path_1 = svg_element("path");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			text_1 = svg_element("text");
+    			t0 = text(/*name*/ ctx[10]);
+    			t1 = space();
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
+    			attr_dev(path_1, "d", /*lines*/ ctx[8]);
+    			attr_dev(path_1, "class", "svelte-14lybb5");
+    			add_location(path_1, file$2, 79, 8, 1672);
+    			attr_dev(text_1, "class", "name svelte-14lybb5");
+    			attr_dev(text_1, "x", "50");
+    			attr_dev(text_1, "y", "50");
+    			attr_dev(text_1, "font-size", text_1_font_size_value = /*tiny*/ ctx[5] ? 5 : 10);
+    			attr_dev(text_1, "stroke", text_1_stroke_value = color(/*$path*/ ctx[4][0] || "gree"));
+    			attr_dev(text_1, "stroke-width", text_1_stroke_width_value = /*tiny*/ ctx[5] ? 0.25 : 0.5);
+    			add_location(text_1, file$2, 101, 8, 2442);
+    			attr_dev(g, "transform", g_transform_value = "\r\n        translate(" + /*offset*/ ctx[0][0] + ", " + /*offset*/ ctx[0][1] + ")\r\n        scale(" + /*scale*/ ctx[1] + ")\r\n        ");
+    			attr_dev(g, "class", "map svelte-14lybb5");
+    			add_location(g, file$2, 74, 4, 1546);
+    			attr_dev(svg, "viewBox", "-5 -5 110 110");
+    			attr_dev(svg, "class", "svg isekai svelte-14lybb5");
+    			set_style(svg, "filter", "drop-shadow(0 0 0.5rem " + color(/*name*/ ctx[10]) + ")");
+    			add_location(svg, file$2, 71, 0, 1429);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
+    			insert_dev(target, svg, anchor);
+    			append_dev(svg, g);
+    			append_dev(g, path_1);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(g, null);
+    			}
+
+    			append_dev(g, text_1);
+    			append_dev(text_1, t0);
+    			insert_dev(target, t1, anchor);
     			if (if_block) if_block.m(target, anchor);
     			insert_dev(target, if_block_anchor, anchor);
     			current = true;
+
+    			dispose = [
+    				listen_dev(text_1, "mouseover", /*mouseover_handler_1*/ ctx[14], false, false, false),
+    				listen_dev(text_1, "click", /*click_handler*/ ctx[15], false, false, false),
+    				action_destroyer(nav_action = nav.call(null, text_1, {
+    					id: "workspace",
+    					origin: true,
+    					focus: /*nav_function*/ ctx[16]
+    				}))
+    			];
     		},
     		p: function update(ctx, [dirty]) {
-    			if (!/*hidden*/ ctx[0]) {
-    				if (!if_block) {
+    			if (dirty & /*nav_goblin, $cursor, offset, positions, color, names*/ 2633) {
+    				each_value = /*positions*/ ctx[9];
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(g, text_1);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+
+    				each_blocks.length = each_value.length;
+    			}
+
+    			if (!current || dirty & /*tiny*/ 32 && text_1_font_size_value !== (text_1_font_size_value = /*tiny*/ ctx[5] ? 5 : 10)) {
+    				attr_dev(text_1, "font-size", text_1_font_size_value);
+    			}
+
+    			if (!current || dirty & /*$path*/ 16 && text_1_stroke_value !== (text_1_stroke_value = color(/*$path*/ ctx[4][0] || "gree"))) {
+    				attr_dev(text_1, "stroke", text_1_stroke_value);
+    			}
+
+    			if (!current || dirty & /*tiny*/ 32 && text_1_stroke_width_value !== (text_1_stroke_width_value = /*tiny*/ ctx[5] ? 0.25 : 0.5)) {
+    				attr_dev(text_1, "stroke-width", text_1_stroke_width_value);
+    			}
+
+    			if (nav_action && is_function(nav_action.update) && dirty & /*offset, scale*/ 3) nav_action.update.call(null, {
+    				id: "workspace",
+    				origin: true,
+    				focus: /*nav_function*/ ctx[16]
+    			});
+
+    			if (!current || dirty & /*offset, scale*/ 3 && g_transform_value !== (g_transform_value = "\r\n        translate(" + /*offset*/ ctx[0][0] + ", " + /*offset*/ ctx[0][1] + ")\r\n        scale(" + /*scale*/ ctx[1] + ")\r\n        ")) {
+    				attr_dev(g, "transform", g_transform_value);
+    			}
+
+    			if (/*goblin*/ ctx[2]) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+    					transition_in(if_block, 1);
+    				} else {
     					if_block = create_if_block(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
     					if_block.m(if_block_anchor.parentNode, if_block_anchor);
-    				} else {
-    					transition_in(if_block, 1);
     				}
     			} else if (if_block) {
     				group_outros();
@@ -2058,14 +2935,18 @@
     			current = false;
     		},
     		d: function destroy(detaching) {
+    			if (detaching) detach_dev(svg);
+    			destroy_each(each_blocks, detaching);
+    			if (detaching) detach_dev(t1);
     			if (if_block) if_block.d(detaching);
     			if (detaching) detach_dev(if_block_anchor);
+    			run_all(dispose);
     		}
     	};
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$1.name,
+    		id: create_fragment$2.name,
     		type: "component",
     		source: "",
     		ctx
@@ -2074,33 +2955,244 @@
     	return block;
     }
 
-    function instance($$self, $$props, $$invalidate) {
-    	let $button;
-    	validate_store(button$1, "button");
-    	component_subscribe($$self, button$1, $$value => $$invalidate(2, $button = $$value));
-    	let { isekai } = $$props;
-    	let hidden = true;
-    	const writable_props = ["isekai"];
+    function instance$1($$self, $$props, $$invalidate) {
+    	let $is;
+    	let $path;
+    	let $cursor;
+    	validate_store(is, "is");
+    	component_subscribe($$self, is, $$value => $$invalidate(12, $is = $$value));
+    	validate_store(cursor, "cursor");
+    	component_subscribe($$self, cursor, $$value => $$invalidate(6, $cursor = $$value));
+    	const path = is.sys.query("path", "path");
+    	validate_store(path, "path");
+    	component_subscribe($$self, path, value => $$invalidate(4, $path = value));
 
-    	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Client> was created with unknown prop '${key}'`);
+    	const lines = [
+    		`M0 50 L15 15 L50 0 L85 15 L100 50 L85 85 L50 100 L 15 85 L0 50`,
+    		`M15 85 Q25 50, 50 50 T 85 15`,
+    		`M15 85 Q50 75, 50 50 T 85 15`,
+    		`M15 15 Q25 50, 50 50 T 85 85`,
+    		`M15 15 Q50 25, 50 50 T 85 85`,
+    		`M0 50 Q25 75, 50 50 T 100 50`,
+    		`M50 0 Q25 25, 50 50 T 50 100`,
+    		`M0 50 Q25 25, 50 50 T 100 50`,
+    		`M50 0 Q75 25, 50 50 T 50 100`
+    	].join(` `);
+
+    	const positions = [[15, 15], [15, 85], [85, 85], [85, 15], [0, 50], [50, 0], [100, 50], [50, 100]];
+    	let offset = [0, 0];
+    	let scale = 1;
+
+    	let name = $path.length > 0 && $path[0] !== ""
+    	? $path.join("/")
+    	: "EARTHROCK";
+
+    	let goblin;
+
+    	const nav_goblin = idx => ({
+    		id: `goblin-${idx}`,
+    		focus() {
+    			$$invalidate(1, scale = 5);
+    			$$invalidate(0, offset = positions[idx].map(i => 50 - i * scale));
+
+    			if (names[idx] === undefined) {
+    				$$invalidate(3, names[idx] = random(2), names);
+    				is.add({ [names[idx]]: {} });
+    			}
+
+    			$$invalidate(2, goblin = names[idx]);
+    		},
+    		blur() {
+    			$$invalidate(2, goblin = undefined);
+    		},
+    		cancel() {
+    			goto("workspace");
+    		}
     	});
 
-    	$$self.$set = $$props => {
-    		if ("isekai" in $$props) $$invalidate(1, isekai = $$props.isekai);
+    	const mouseover_handler = idx => {
+    		if ($cursor && $cursor.id === `goblin-${idx}`) return;
+    		$$invalidate(0, offset = positions[idx].map(i => (50 - i) / 2));
+    	};
+
+    	const mouseover_handler_1 = () => {
+    		$$invalidate(0, offset = [0, 0]);
+    	};
+
+    	const click_handler = () => {
+    		window.open("https://www.patreon.com/earthrock");
+    	};
+
+    	const nav_function = function () {
+    		$$invalidate(0, offset = [0, 0]);
+    		$$invalidate(1, scale = 1);
     	};
 
     	$$self.$capture_state = () => ({
+    		Goblin: Goblin$1,
+    		nav,
+    		cursor,
+    		goto,
+    		color,
+    		random,
+    		is,
+    		path,
+    		lines,
+    		positions,
+    		offset,
+    		scale,
+    		name,
+    		goblin,
+    		nav_goblin,
+    		names,
+    		Object,
+    		$is,
+    		$path,
+    		tiny,
+    		undefined,
+    		$cursor
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("offset" in $$props) $$invalidate(0, offset = $$props.offset);
+    		if ("scale" in $$props) $$invalidate(1, scale = $$props.scale);
+    		if ("name" in $$props) $$invalidate(10, name = $$props.name);
+    		if ("goblin" in $$props) $$invalidate(2, goblin = $$props.goblin);
+    		if ("names" in $$props) $$invalidate(3, names = $$props.names);
+    		if ("tiny" in $$props) $$invalidate(5, tiny = $$props.tiny);
+    	};
+
+    	let names;
+    	let tiny;
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*$is*/ 4096) {
+    			 $$invalidate(3, names = Object.keys($is));
+    		}
+    	};
+
+    	 $$invalidate(5, tiny = name.length > 13);
+
+    	return [
+    		offset,
+    		scale,
+    		goblin,
+    		names,
+    		$path,
+    		tiny,
+    		$cursor,
+    		path,
+    		lines,
+    		positions,
+    		name,
+    		nav_goblin,
+    		$is,
+    		mouseover_handler,
+    		mouseover_handler_1,
+    		click_handler,
+    		nav_function
+    	];
+    }
+
+    class Isekai$1 extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$1, create_fragment$2, safe_not_equal, {});
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Isekai",
+    			options,
+    			id: create_fragment$2.name
+    		});
+    	}
+    }
+
+    /* src\client\Client.svelte generated by Svelte v3.19.1 */
+    const file$3 = "src\\client\\Client.svelte";
+
+    function create_fragment$3(ctx) {
+    	let div;
+    	let t;
+    	let current;
+    	const github = new Github({ $$inline: true });
+    	const isekai = new Isekai$1({ $$inline: true });
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			create_component(github.$$.fragment);
+    			t = space();
+    			create_component(isekai.$$.fragment);
+    			attr_dev(div, "class", "dev svelte-19gtc4k");
+    			toggle_class(div, "hidden", /*hidden*/ ctx[0]);
+    			add_location(div, file$3, 16, 0, 303);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			mount_component(github, div, null);
+    			append_dev(div, t);
+    			mount_component(isekai, div, null);
+    			current = true;
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*hidden*/ 1) {
+    				toggle_class(div, "hidden", /*hidden*/ ctx[0]);
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(github.$$.fragment, local);
+    			transition_in(isekai.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(github.$$.fragment, local);
+    			transition_out(isekai.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			destroy_component(github);
+    			destroy_component(isekai);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$3.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$2($$self, $$props, $$invalidate) {
+    	let $button;
+    	let hidden = is.sys.query("path", "flag").get() === "dev";
+    	const button = is.sys.query("input", "button");
+    	validate_store(button, "button");
+    	component_subscribe($$self, button, value => $$invalidate(2, $button = value));
+
+    	$$self.$capture_state = () => ({
     		Github,
-    		Isekai,
-    		button: button$1,
-    		isekai,
+    		Isekai: Isekai$1,
+    		is,
     		hidden,
+    		button,
     		$button
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("isekai" in $$props) $$invalidate(1, isekai = $$props.isekai);
     		if ("hidden" in $$props) $$invalidate(0, hidden = $$props.hidden);
     	};
 
@@ -2118,41 +3210,26 @@
     		}
     	};
 
-    	return [hidden, isekai];
+    	return [hidden, button];
     }
 
     class Client extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance, create_fragment$1, safe_not_equal, { isekai: 1 });
+    		init(this, options, instance$2, create_fragment$3, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Client",
     			options,
-    			id: create_fragment$1.name
+    			id: create_fragment$3.name
     		});
-
-    		const { ctx } = this.$$;
-    		const props = options.props || {};
-
-    		if (/*isekai*/ ctx[1] === undefined && !("isekai" in props)) {
-    			console.warn("<Client> was created without expected prop 'isekai'");
-    		}
-    	}
-
-    	get isekai() {
-    		throw new Error("<Client>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set isekai(value) {
-    		throw new Error("<Client>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
     const main = new Client({
-        target: document.body
+    	target: document.body
     });
 
-}(TWGL));
+}(TWGL, Color));
 //# sourceMappingURL=client.bundle.js.map

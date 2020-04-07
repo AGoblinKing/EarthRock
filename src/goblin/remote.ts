@@ -1,7 +1,7 @@
 import raf from 'raf'
 
 import { IMessage, IMessageEvent } from './message'
-import { ELivingAction } from '../store'
+import { ELivingAction, EGrok, ICancel } from '../store'
 
 import { Wheel, IWheelJSON } from '../wheel/wheel'
 import { Visible } from '../twist'
@@ -29,7 +29,7 @@ export class RemoteGoblin extends Messenger {
 		rezed: [],
 		value: {}
 	})
-
+	private cancel_grok: ICancel
 	private timeout
 	constructor(remote: IMessenger) {
 		super()
@@ -96,5 +96,26 @@ export class RemoteGoblin extends Messenger {
 		this.timeout = this.wheel
 			.query('sys', 'time', 'tick')
 			.listen(this.tick.bind(this))
+	}
+
+	protected msg_grok() {
+		if (this.cancel_grok) return
+		this.cancel_grok = this.wheel.grok(
+			(action: EGrok, key: string, value?: any) => {
+				this.postMessage({
+					name: 'groker',
+					data: {
+						action,
+						key,
+						value
+					}
+				})
+			}
+		)
+	}
+
+	protected msg_grok_stop() {
+		if (!this.cancel_grok) return
+		this.cancel_grok()
 	}
 }

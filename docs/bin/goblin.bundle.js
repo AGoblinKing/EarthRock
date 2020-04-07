@@ -210,11 +210,20 @@
 	    }
 	}
 
+	const void_fn = () => {};
+
 	var EGrok; (function (EGrok) {
 		const ADD = 0; EGrok[EGrok["ADD"] = ADD] = "ADD";
 		const REMOVE = ADD + 1; EGrok[EGrok["REMOVE"] = REMOVE] = "REMOVE";
 		const UPDATE = REMOVE + 1; EGrok[EGrok["UPDATE"] = UPDATE] = "UPDATE";
+		// living
+		const START = UPDATE + 1; EGrok[EGrok["START"] = START] = "START";
+		const STOP = START + 1; EGrok[EGrok["STOP"] = STOP] = "STOP";
+		// weave
+		const THREAD = STOP + 1; EGrok[EGrok["THREAD"] = THREAD] = "THREAD";
+		const UNTHREAD = THREAD + 1; EGrok[EGrok["UNTHREAD"] = UNTHREAD] = "UNTHREAD";
 	})(EGrok || (EGrok = {}));
+
 
 
 
@@ -235,32 +244,71 @@
 
 	class Tree extends Read {
 		
+		
+		
 
 		constructor(tree = {}, setter) {
-			super(tree, setter);
+			super({}, setter);
+
+			this.add(tree);
 		}
 
-		item(name) {
-			return super.get()[name]
+		groke(action, path, value) {
+			if (!this.grokers) return
+
+			for (let grok of Array.from(this.grokers)) {
+				grok(action, path, value);
+			}
+
+			switch (action) {
+				case EGrok.ADD:
+					const val = this.query(...path.split('/'));
+					this.groke_cancels[path] = val.grok
+						? val.grok((s_action, s_path, s_value) => {
+								for (let grok of Array.from(this.grokers)) {
+									grok(s_action, `${path}/${s_path}`, s_value);
+								}
+						  })
+						: val.listen
+						? val.listen($val => {
+								this.groke(EGrok.UPDATE, path, $val);
+						  })
+						: this.groke(EGrok.UPDATE, path, val);
+
+					break
+				case EGrok.REMOVE:
+					this.groke_cancels[path]();
+					delete this.groke_cancels[path];
+					break
+			}
+
+			return void_fn
 		}
 
 		has(name) {
-			return this.item(name) !== undefined
-		}
-
-		reset(target, silent = false) {
-			const $tree = {};
-			if (target) {
-				Object.assign($tree, target);
-			}
-
-			this.p_set($tree, silent);
+			return this.query(name) !== undefined
 		}
 
 		add(tree_json, silent = false) {
 			const $tree = this.get();
 
-			Object.assign($tree, tree_json);
+			for (let [key, value] of Object.entries(tree_json)) {
+				const is_store = value && value.get !== undefined;
+				const is_obj =
+					(Array.isArray(value) ||
+						['string', 'number', 'boolean'].indexOf(typeof value) !==
+							-1) === false;
+
+				const new_val = ($tree[key] = is_store
+					? value
+					: is_obj
+					? new Tree()
+					: new Store(value));
+
+				this.groke(EGrok.ADD, key, {
+					value: new_val.toJSON()
+				});
+			}
 
 			this.p_set($tree, silent);
 
@@ -270,6 +318,8 @@
 		remove(name, silent = false) {
 			delete this.value[name];
 			if (!silent) this.notify();
+
+			this.groke(EGrok.REMOVE, name);
 		}
 
 		query(...steps) {
@@ -284,53 +334,56 @@
 		}
 
 		groker(action, path, value) {
+			const split = path.split('/');
+			const item =
+				split.length === 1 ? this : this.query(...split.slice(0, -1));
+
+			const key = split[split.length - 1];
+
 			switch (action) {
 				case EGrok.ADD:
+					item.add({
+						[key]: value
+					});
+					break
 				case EGrok.REMOVE:
+					item.remove(key);
+					break
 				case EGrok.UPDATE:
+					if (split.length === 1) {
+						item.set(value);
+					} else {
+						item.query(key).set(value);
+					}
 			}
 		}
 
 		grok(groker) {
-			const cancels = {};
+			if (this.grokers === undefined) {
+				this.grokers = new Set([groker]);
+				this.groke_cancels = {};
 
-			let last = [];
-
-			cancels[''] = this.listen($value => {
-				// value changed
-				for (let key of last) {
-					if ($value[key] === undefined) {
-						groker(EGrok.REMOVE, key);
-					}
+				for (let [key, value] of Object.entries(this.get())) {
+					const $v = value; 
+					this.groke(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value);
 				}
-
-				last = Object.keys($value);
-
-				for (let [key, child] of Object.entries($value)) {
-					if (cancels[key]) return
-					groker(EGrok.ADD, key);
-
-					const cx = child; 
-					// tree
-					if (cx.grok) {
-						cancels[key] = cx.grok((action, k, v) =>
-							groker(action, `${key}/${k}`, v)
-						);
-						continue
-					}
-
-					// store (updates)
-					if (cx.listen) {
-						cancels[key] = cx.listen(v => groker(EGrok.UPDATE, key, v));
-						continue
-					}
+			} else {
+				this.grokers.add(groker);
+				for (let [key, value] of Object.entries(this.get())) {
+					groker(EGrok.ADD, key, value);
 				}
-			});
+			}
 
 			return () => {
-				for (let cancel of Object.values(cancels)) {
+				this.grokers.delete(groker);
+				if (this.grokers.size !== 0) return
+
+				delete this.grokers;
+				for (let cancel of Object.values(this.groke_cancels)) {
 					cancel();
 				}
+
+				delete this.groke_cancels;
 			}
 		}
 	}
@@ -363,14 +416,6 @@
 	 {
 		
 
-		item(name) {
-			return this.value.item(name)
-		}
-
-		reset(target, silent) {
-			return this.value.reset(target, silent)
-		}
-
 		add(tree_write, silent) {
 			return this.value.add(tree_write, silent)
 		}
@@ -384,11 +429,19 @@
 		}
 
 		has(name) {
-			return this.item(name) !== undefined
+			return this.query(name) !== undefined
 		}
 
 		grok(groker) {
-			return this.grok(groker)
+			return this.value.grok(groker)
+		}
+
+		groker(action, key, value) {
+			return this.value.groker(action, key, value)
+		}
+
+		groke(action, key, value) {
+			return this.value.groke(action, key, value)
 		}
 	}
 
@@ -520,6 +573,8 @@
 		 __init() {this.status = new Store(ELivingStatus.VOID);}
 
 		add(living_data, silent = false) {
+			// when adding check to see if they have rezed/value
+			// if they do its a living
 			super.add(living_data, silent);
 			const $status = this.status.get();
 			const items = Object.entries(living_data);
@@ -629,27 +684,32 @@
 			}
 		}
 
-		start(name) {
+		start(...names) {
 			const $rezed = this.rezed && this.rezed.get();
-			const item = this.item(name);
 
-			if (!item) return
+			for (let name of names) {
+				const item = this.query(name);
 
-			// can only rez if I am
-			if (this.status.get() === ELivingStatus.REZED) {
-	(item ).rez && (item ).rez();
-			}
+				if (!item) continue
 
-			if ($rezed) {
-				$rezed.add(name);
-				this.rezed.notify();
+				// can only rez if I am
+				if (this.status.get() === ELivingStatus.REZED) {
+	 (item ).rez && (item ).rez();
+				}
+
+				if ($rezed) {
+					$rezed.add(name);
+					this.rezed.notify();
+				}
+
+				this.groke(EGrok.START, name);
 			}
 		}
 
 		stop(...names) {
 			const $rezed = this.rezed && this.rezed.get();
 			for (let name of names) {
-				const item = this.item(name);
+				const item = this.query(name);
 				if (!item) continue // can derez whenever though
 
 				;(item ).derez && (item ).derez();
@@ -657,6 +717,7 @@
 				if (!$rezed) continue
 
 				$rezed.delete(name);
+				this.groke(EGrok.STOP, name);
 			}
 
 			this.rezed.notify();
@@ -675,14 +736,14 @@
 		}
 
 		ensure(first, ...path) {
-			let $item = this.item(first);
+			let $item = this.query(first);
 
 			if ($item === undefined) {
 				this.add({
 					[first]: {}
 				});
 
-				$item = this.item(first);
+				$item = this.query(first);
 			}
 
 			if (path.length === 0) return $item
@@ -692,6 +753,46 @@
 			}
 
 			throw new Error('tried to ensure non living item')
+		}
+		
+		groker(action, path, value) {
+			const parts = path.split("/");
+			const target = parts.length === 1 
+				? this
+				: this.query(...parts.slice(0, -1));
+			
+			const key = path[path.length - 1];
+
+			// path can be tiered, split it out and start based on parent
+			switch (action) {
+				case EGrok.START:
+					target.start && target.start(key);
+					break
+				case EGrok.STOP:
+					target.stop && target.stop(key);
+					break
+				case EGrok.ADD:
+					// could be adding a living to a living
+					if (
+						value.value !== undefined &&
+						value.get === undefined 
+					) {
+						super.groker(action, key, new Living);	
+					}
+					break
+				default:
+					super.groker(action, key, value);
+			}
+		}
+		
+		grok(groker) {
+			const cancel = super.grok(groker);
+			if (this.rezed !== undefined) {
+				for (let key of Array.from(this.rezed.get())) {
+					groker(EGrok.START, key);
+				}
+			}
+			return cancel
 		}
 	}
 
@@ -861,161 +962,165 @@
 	}
 
 	class Weave extends Living {
-	    
-	    
-	     __init() {this.value = new Tree({});}
+		
+		
+		 __init() {this.value = new Tree({});}
 
-	    // caches
-	    
-	     __init2() {this.spaces = new Tree({});}
+		// caches
+		
+		 __init2() {this.spaces = new Tree({});}
 
-	    // clean up
-	      __init3() {this.cancels = new Set();}
-	     
-	     __init4() {this.nerves = {};}
+		// clean up
+		  __init3() {this.cancels = new Set();}
+		
+		 __init4() {this.nerves = {};}
 
-	    create_warp ($warp) {
-	        switch($warp.type) {
-	            case undefined:
-	                $warp.type = EWarp.SPACE;
-	            case EWarp.SPACE:
-	                 return new Space($warp, this)
-	            case EWarp.MAIL:
-	            case EWarp.VALUE:
-	            case EWarp.MATH:
-	        }
+		create_warp($warp) {
+			switch ($warp.type) {
+				case undefined:
+					$warp.type = EWarp.SPACE;
+				case EWarp.SPACE:
+					return new Space($warp, this)
+				case EWarp.MAIL:
+				case EWarp.VALUE:
+				case EWarp.MATH:
+			}
 
-	        throw new Error(`warp/unknown ${$warp}`)
-	    }
+			throw new Error(`warp/unknown ${$warp}`)
+		}
 
-	    constructor (data) {
-	        super();Weave.prototype.__init.call(this);Weave.prototype.__init2.call(this);Weave.prototype.__init3.call(this);Weave.prototype.__init4.call(this); 
+		constructor(data) {
+			super();Weave.prototype.__init.call(this);Weave.prototype.__init2.call(this);Weave.prototype.__init3.call(this);Weave.prototype.__init4.call(this);
 
-	        if(data.name === undefined) {
-	            throw new Error("Undefined name for weave")
-	        }
+			if (data.name === undefined) {
+				throw new Error('Undefined name for weave')
+			}
 
-	        this.name = new Store(data.name);
-	        this.threads = new Tree(data.thread || {});
-	        this.rezed = new Store(new Set(data.rezed || []));
+			this.name = data.name;
+			this.threads = new Tree(data.thread || {});
+			this.rezed = new Store(new Set(data.rezed || []));
 
-	        this.threads_reverse = new Tree({}, set => {
-	            this.cancels.add(this.threads.listen(($threads) => {
-	                const w_r = {};
-	                for(let key of Object.keys($threads)) {
-	                    w_r[$threads[key]] = key;
-	                }
+			this.threads_reverse = new Tree({}, set => {
+				this.cancels.add(
+					this.threads.listen($threads => {
+						const w_r = {};
+						for (let key of Object.keys($threads)) {
+							w_r[$threads[key]] = key;
+						}
 
-	                set(w_r);
-	            }));
-	        });
+						set(w_r);
+					})
+				);
+			});
 
-	        this.add(data.value || {});
-	    }
+			this.add(data.value || {});
+		}
 
-	    add (warp_data, silent = false)  {
-	        if(!warp_data) return
-	        const warps = {};
+		add(warp_data, silent = false) {
+			if (!warp_data) return
+			const warps = {};
 
-	        for(let [name, warp] of Object.entries(warp_data)) {
-	            if (warp instanceof Warp) {
-	                warps[name] = warp;
-	                continue
-	            }
+			for (let [name, warp] of Object.entries(warp_data)) {
+				if (warp instanceof Warp) {
+					warps[name] = warp;
+					continue
+				}
 
-	            warp.name = name;
-	            warps[name] = this.create_warp(warp);
-	        }
+				warp.name = name;
+				warps[name] = this.create_warp(warp);
+			}
 
-	        super.add(warps, silent);
+			super.add(warps, silent);
 
-	        return warps
-	    }
+			return warps
+		}
 
-	    rez () {
-	        super.rez();
+		rez() {
+			super.rez();
 
-	        // connect threads to form nerves
-	        this.thread_cancel = this.threads.listen(this.thread_update.bind(this));
-	    }
+			// connect threads to form nerves
+			this.thread_cancel = this.threads.listen(this.thread_update.bind(this));
+		}
 
-	    thread_update ($threads) {
-	        for(let [name, cancel] of Object.entries(this.nerves)) {
-	            if($threads[name]) {
-	                delete $threads[name];
-	                continue
-	            }
+		thread_update($threads) {
+			for (let [name, cancel] of Object.entries(this.nerves)) {
+				if ($threads[name]) {
+					delete $threads[name];
+					continue
+				}
 
-	            cancel();
-	            delete this.nerves[name];
-	        }
+				cancel();
+				delete this.nerves[name];
+			}
 
-	        for(let [from, to] of Object.entries($threads)) {
-	            const f = this.query(...from.split("/"));
-	            const t = this.query(...to.split("/"));
-	            if(!f || !t) continue
-	            this.nerves[from] = f.listen(t.set.bind(t));
-	        }
-	    }
+			for (let [from, to] of Object.entries($threads)) {
+				const f = this.query(...from.split('/'));
+				const t = this.query(...to.split('/'));
+				if (!f || !t) continue
+				this.nerves[from] = f.listen(t.set.bind(t));
+			}
+		}
 
-	    derez () {
-	        super.derez();
-	        
-	        for(let cancel of Object.values(this.nerves)) {
-	            cancel();
-	        }
+		derez() {
+			super.derez();
 
-	        this.thread_cancel();
-	    }
+			for (let cancel of Object.values(this.nerves)) {
+				cancel();
+			}
 
-	    removes (...names) {
-	        const $warps = this.value.get();
-	        const $wefts = this.threads.get();
-	        const $wefts_r = this.threads_reverse.get();
-	        const $rezed = this.rezed.get();
+			this.thread_cancel();
+		}
 
-	        for(let name of names) {
-	            const warp = $warps[name];
-	            if(warp) warp.destroy();
+		removes(...names) {
+			const $warps = this.value.get();
+			const $wefts = this.threads.get();
+			const $wefts_r = this.threads_reverse.get();
+			const $rezed = this.rezed.get();
 
-	            delete $warps[name];
-	            delete $wefts[name];
-	            $rezed.delete(name);
+			for (let name of names) {
+				const warp = $warps[name];
+				if (warp) warp.destroy();
 
-	            const r = $wefts_r[name];
-	            if(r) {
-	                delete $wefts[r];
-	            }
-	        }
+				delete $warps[name];
+				delete $wefts[name];
+				$rezed.delete(name);
 
-	        this.value.set($warps);
-	        this.threads.set($wefts);
-	        this.rezed.set($rezed);
-	    }
+				const r = $wefts_r[name];
+				if (r) {
+					delete $wefts[r];
+				}
+			}
 
-	    remove (name) {
-	        this.removes(name);
-	    }
+			this.value.set($warps);
+			this.threads.set($wefts);
+			this.rezed.set($rezed);
+		}
 
-	    destroy() {
-	        super.destroy();
+		remove(name) {
+			this.removes(name);
+		}
 
-	        for(let cancel of Array.from(this.cancels)) {
-	            cancel();
-	        }
+		destroy() {
+			super.destroy();
 
-	        this.cancels.clear();
-	    }
+			for (let cancel of Array.from(this.cancels)) {
+				cancel();
+			}
 
-	    toJSON () {
-	        return {
-	            name: this.name.get(),
-	            thread: this.threads.get(),
+			this.cancels.clear();
+		}
 
-	            value: this.value.toJSON(),
-	            rezed: this.rezed.toJSON()
-	        }
-	    }
+		toJSON() {
+			return {
+				name: this.name,
+				thread: this.threads.get(),
+
+				value: this.value.toJSON(),
+				rezed: this.rezed.toJSON()
+			}
+		}
+
+		// TODO: custom grok/groker that provides thread updates
 	}
 
 	class Wheel extends Living {
@@ -1072,7 +1177,7 @@
 			rezed: [],
 			value: {}
 		});}
-
+		
 		
 		constructor(remote) {
 			super();RemoteGoblin.prototype.__init.call(this);
@@ -1139,6 +1244,27 @@
 			this.timeout = this.wheel
 				.query('sys', 'time', 'tick')
 				.listen(this.tick.bind(this));
+		}
+
+		 msg_grok() {
+			if (this.cancel_grok) return
+			this.cancel_grok = this.wheel.grok(
+				(action, key, value) => {
+					this.postMessage({
+						name: 'groker',
+						data: {
+							action,
+							key,
+							value
+						}
+					});
+				}
+			);
+		}
+
+		 msg_grok_stop() {
+			if (!this.cancel_grok) return
+			this.cancel_grok();
 		}
 	}
 

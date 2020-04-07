@@ -129,7 +129,7 @@ const nav_goblin = (idx) => ({
 </svg>
 
 {#if goblin}
-    <Goblin {goblin} />
+    <Goblin name={goblin} />
 {/if}
 
 <style>
@@ -190,7 +190,6 @@ text {
 }
 
 .name {
-
     fill: black;
     transition: all 250ms ease-in-out;
 }

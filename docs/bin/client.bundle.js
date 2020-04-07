@@ -4,6 +4,9 @@
     Color = Color && Color.hasOwnProperty('default') ? Color['default'] : Color;
 
     function noop() { }
+    function is_promise(value) {
+        return value && typeof value === 'object' && typeof value.then === 'function';
+    }
     function add_location(element, file, line, column, char) {
         element.__svelte_meta = {
             loc: { file, line, column, char }
@@ -101,6 +104,14 @@
     let current_component;
     function set_current_component(component) {
         current_component = component;
+    }
+    function get_current_component() {
+        if (!current_component)
+            throw new Error(`Function called outside component initialization`);
+        return current_component;
+    }
+    function onDestroy(fn) {
+        get_current_component().$$.on_destroy.push(fn);
     }
 
     const dirty_components = [];
@@ -202,6 +213,74 @@
             block.o(local);
         }
     }
+
+    function handle_promise(promise, info) {
+        const token = info.token = {};
+        function update(type, index, key, value) {
+            if (info.token !== token)
+                return;
+            info.resolved = value;
+            let child_ctx = info.ctx;
+            if (key !== undefined) {
+                child_ctx = child_ctx.slice();
+                child_ctx[key] = value;
+            }
+            const block = type && (info.current = type)(child_ctx);
+            let needs_flush = false;
+            if (info.block) {
+                if (info.blocks) {
+                    info.blocks.forEach((block, i) => {
+                        if (i !== index && block) {
+                            group_outros();
+                            transition_out(block, 1, 1, () => {
+                                info.blocks[i] = null;
+                            });
+                            check_outros();
+                        }
+                    });
+                }
+                else {
+                    info.block.d(1);
+                }
+                block.c();
+                transition_in(block, 1);
+                block.m(info.mount(), info.anchor);
+                needs_flush = true;
+            }
+            info.block = block;
+            if (info.blocks)
+                info.blocks[index] = block;
+            if (needs_flush) {
+                flush();
+            }
+        }
+        if (is_promise(promise)) {
+            const current_component = get_current_component();
+            promise.then(value => {
+                set_current_component(current_component);
+                update(info.then, 1, info.value, value);
+                set_current_component(null);
+            }, error => {
+                set_current_component(current_component);
+                update(info.catch, 2, info.error, error);
+                set_current_component(null);
+            });
+            // if we previously had a then/catch block, destroy it
+            if (info.current !== info.pending) {
+                update(info.pending, 0);
+                return true;
+            }
+        }
+        else {
+            if (info.current !== info.then) {
+                update(info.then, 1, info.value, promise);
+                return true;
+            }
+            info.resolved = promise;
+        }
+    }
+
+    const globals = (typeof window !== 'undefined' ? window : global);
     function create_component(block) {
         block && block.c();
     }
@@ -558,34 +637,105 @@
         }
     }
 
+    const void_fn = () => {};
+
+    var EGrok; (function (EGrok) {
+    	const ADD = 0; EGrok[EGrok["ADD"] = ADD] = "ADD";
+    	const REMOVE = ADD + 1; EGrok[EGrok["REMOVE"] = REMOVE] = "REMOVE";
+    	const UPDATE = REMOVE + 1; EGrok[EGrok["UPDATE"] = UPDATE] = "UPDATE";
+    	// living
+    	const START = UPDATE + 1; EGrok[EGrok["START"] = START] = "START";
+    	const STOP = START + 1; EGrok[EGrok["STOP"] = STOP] = "STOP";
+    	// weave
+    	const THREAD = STOP + 1; EGrok[EGrok["THREAD"] = THREAD] = "THREAD";
+    	const UNTHREAD = THREAD + 1; EGrok[EGrok["UNTHREAD"] = UNTHREAD] = "UNTHREAD";
+    })(EGrok || (EGrok = {}));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     class Tree extends Read {
+    	
+    	
     	
 
     	constructor(tree = {}, setter) {
-    		super(tree, setter);
+    		super({}, setter);
+
+    		this.add(tree);
     	}
 
-    	item(name) {
-    		return super.get()[name]
+    	groke(action, path, value) {
+    		if (!this.grokers) return
+
+    		for (let grok of Array.from(this.grokers)) {
+    			grok(action, path, value);
+    		}
+
+    		switch (action) {
+    			case EGrok.ADD:
+    				const val = this.query(...path.split('/'));
+    				this.groke_cancels[path] = val.grok
+    					? val.grok((s_action, s_path, s_value) => {
+    							for (let grok of Array.from(this.grokers)) {
+    								grok(s_action, `${path}/${s_path}`, s_value);
+    							}
+    					  })
+    					: val.listen
+    					? val.listen($val => {
+    							this.groke(EGrok.UPDATE, path, $val);
+    					  })
+    					: this.groke(EGrok.UPDATE, path, val);
+
+    				break
+    			case EGrok.REMOVE:
+    				this.groke_cancels[path]();
+    				delete this.groke_cancels[path];
+    				break
+    		}
+
+    		return void_fn
     	}
 
     	has(name) {
-    		return this.item(name) !== undefined
-    	}
-
-    	reset(target, silent = false) {
-    		const $tree = {};
-    		if (target) {
-    			Object.assign($tree, target);
-    		}
-
-    		this.p_set($tree, silent);
+    		return this.query(name) !== undefined
     	}
 
     	add(tree_json, silent = false) {
     		const $tree = this.get();
 
-    		Object.assign($tree, tree_json);
+    		for (let [key, value] of Object.entries(tree_json)) {
+    			const is_store = value && value.get !== undefined;
+    			const is_obj =
+    				(Array.isArray(value) ||
+    					['string', 'number', 'boolean'].indexOf(typeof value) !==
+    						-1) === false;
+
+    			const new_val = ($tree[key] = is_store
+    				? value
+    				: is_obj
+    				? new Tree()
+    				: new Store(value));
+
+    			this.groke(EGrok.ADD, key, {
+    				value: new_val.toJSON()
+    			});
+    		}
 
     		this.p_set($tree, silent);
 
@@ -595,6 +745,8 @@
     	remove(name, silent = false) {
     		delete this.value[name];
     		if (!silent) this.notify();
+
+    		this.groke(EGrok.REMOVE, name);
     	}
 
     	query(...steps) {
@@ -606,6 +758,60 @@
 
     	count() {
     		return Object.keys(this.get()).length
+    	}
+
+    	groker(action, path, value) {
+    		const split = path.split('/');
+    		const item =
+    			split.length === 1 ? this : this.query(...split.slice(0, -1));
+
+    		const key = split[split.length - 1];
+
+    		switch (action) {
+    			case EGrok.ADD:
+    				item.add({
+    					[key]: value
+    				});
+    				break
+    			case EGrok.REMOVE:
+    				item.remove(key);
+    				break
+    			case EGrok.UPDATE:
+    				if (split.length === 1) {
+    					item.set(value);
+    				} else {
+    					item.query(key).set(value);
+    				}
+    		}
+    	}
+
+    	grok(groker) {
+    		if (this.grokers === undefined) {
+    			this.grokers = new Set([groker]);
+    			this.groke_cancels = {};
+
+    			for (let [key, value] of Object.entries(this.get())) {
+    				const $v = value; 
+    				this.groke(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value);
+    			}
+    		} else {
+    			this.grokers.add(groker);
+    			for (let [key, value] of Object.entries(this.get())) {
+    				groker(EGrok.ADD, key, value);
+    			}
+    		}
+
+    		return () => {
+    			this.grokers.delete(groker);
+    			if (this.grokers.size !== 0) return
+
+    			delete this.grokers;
+    			for (let cancel of Object.values(this.groke_cancels)) {
+    				cancel();
+    			}
+
+    			delete this.groke_cancels;
+    		}
     	}
     }
 
@@ -637,14 +843,6 @@
      {
     	
 
-    	item(name) {
-    		return this.value.item(name)
-    	}
-
-    	reset(target, silent) {
-    		return this.value.reset(target, silent)
-    	}
-
     	add(tree_write, silent) {
     		return this.value.add(tree_write, silent)
     	}
@@ -658,7 +856,19 @@
     	}
 
     	has(name) {
-    		return this.item(name) !== undefined
+    		return this.query(name) !== undefined
+    	}
+
+    	grok(groker) {
+    		return this.value.grok(groker)
+    	}
+
+    	groker(action, key, value) {
+    		return this.value.groker(action, key, value)
+    	}
+
+    	groke(action, key, value) {
+    		return this.value.groke(action, key, value)
     	}
     }
 
@@ -790,6 +1000,8 @@
     	 __init() {this.status = new Store(ELivingStatus.VOID);}
 
     	add(living_data, silent = false) {
+    		// when adding check to see if they have rezed/value
+    		// if they do its a living
     		super.add(living_data, silent);
     		const $status = this.status.get();
     		const items = Object.entries(living_data);
@@ -899,27 +1111,32 @@
     		}
     	}
 
-    	start(name) {
+    	start(...names) {
     		const $rezed = this.rezed && this.rezed.get();
-    		const item = this.item(name);
 
-    		if (!item) return
+    		for (let name of names) {
+    			const item = this.query(name);
 
-    		// can only rez if I am
-    		if (this.status.get() === ELivingStatus.REZED) {
-    (item ).rez && (item ).rez();
-    		}
+    			if (!item) continue
 
-    		if ($rezed) {
-    			$rezed.add(name);
-    			this.rezed.notify();
+    			// can only rez if I am
+    			if (this.status.get() === ELivingStatus.REZED) {
+     (item ).rez && (item ).rez();
+    			}
+
+    			if ($rezed) {
+    				$rezed.add(name);
+    				this.rezed.notify();
+    			}
+
+    			this.groke(EGrok.START, name);
     		}
     	}
 
     	stop(...names) {
     		const $rezed = this.rezed && this.rezed.get();
     		for (let name of names) {
-    			const item = this.item(name);
+    			const item = this.query(name);
     			if (!item) continue // can derez whenever though
 
     			;(item ).derez && (item ).derez();
@@ -927,6 +1144,7 @@
     			if (!$rezed) continue
 
     			$rezed.delete(name);
+    			this.groke(EGrok.STOP, name);
     		}
 
     		this.rezed.notify();
@@ -945,14 +1163,14 @@
     	}
 
     	ensure(first, ...path) {
-    		let $item = this.item(first);
+    		let $item = this.query(first);
 
     		if ($item === undefined) {
     			this.add({
     				[first]: {}
     			});
 
-    			$item = this.item(first);
+    			$item = this.query(first);
     		}
 
     		if (path.length === 0) return $item
@@ -962,6 +1180,46 @@
     		}
 
     		throw new Error('tried to ensure non living item')
+    	}
+    	
+    	groker(action, path, value) {
+    		const parts = path.split("/");
+    		const target = parts.length === 1 
+    			? this
+    			: this.query(...parts.slice(0, -1));
+    		
+    		const key = path[path.length - 1];
+
+    		// path can be tiered, split it out and start based on parent
+    		switch (action) {
+    			case EGrok.START:
+    				target.start && target.start(key);
+    				break
+    			case EGrok.STOP:
+    				target.stop && target.stop(key);
+    				break
+    			case EGrok.ADD:
+    				// could be adding a living to a living
+    				if (
+    					value.value !== undefined &&
+    					value.get === undefined 
+    				) {
+    					super.groker(action, key, new Living);	
+    				}
+    				break
+    			default:
+    				super.groker(action, key, value);
+    		}
+    	}
+    	
+    	grok(groker) {
+    		const cancel = super.grok(groker);
+    		if (this.rezed !== undefined) {
+    			for (let key of Array.from(this.rezed.get())) {
+    				groker(EGrok.START, key);
+    			}
+    		}
+    		return cancel
     	}
     }
 
@@ -1144,161 +1402,165 @@
     }
 
     class Weave extends Living {
-        
-        
-         __init() {this.value = new Tree({});}
+    	
+    	
+    	 __init() {this.value = new Tree({});}
 
-        // caches
-        
-         __init2() {this.spaces = new Tree({});}
+    	// caches
+    	
+    	 __init2() {this.spaces = new Tree({});}
 
-        // clean up
-          __init3() {this.cancels = new Set();}
-         
-         __init4() {this.nerves = {};}
+    	// clean up
+    	  __init3() {this.cancels = new Set();}
+    	
+    	 __init4() {this.nerves = {};}
 
-        create_warp ($warp) {
-            switch($warp.type) {
-                case undefined:
-                    $warp.type = EWarp.SPACE;
-                case EWarp.SPACE:
-                     return new Space($warp, this)
-                case EWarp.MAIL:
-                case EWarp.VALUE:
-                case EWarp.MATH:
-            }
+    	create_warp($warp) {
+    		switch ($warp.type) {
+    			case undefined:
+    				$warp.type = EWarp.SPACE;
+    			case EWarp.SPACE:
+    				return new Space($warp, this)
+    			case EWarp.MAIL:
+    			case EWarp.VALUE:
+    			case EWarp.MATH:
+    		}
 
-            throw new Error(`warp/unknown ${$warp}`)
-        }
+    		throw new Error(`warp/unknown ${$warp}`)
+    	}
 
-        constructor (data) {
-            super();Weave.prototype.__init.call(this);Weave.prototype.__init2.call(this);Weave.prototype.__init3.call(this);Weave.prototype.__init4.call(this); 
+    	constructor(data) {
+    		super();Weave.prototype.__init.call(this);Weave.prototype.__init2.call(this);Weave.prototype.__init3.call(this);Weave.prototype.__init4.call(this);
 
-            if(data.name === undefined) {
-                throw new Error("Undefined name for weave")
-            }
+    		if (data.name === undefined) {
+    			throw new Error('Undefined name for weave')
+    		}
 
-            this.name = new Store(data.name);
-            this.threads = new Tree(data.thread || {});
-            this.rezed = new Store(new Set(data.rezed || []));
+    		this.name = data.name;
+    		this.threads = new Tree(data.thread || {});
+    		this.rezed = new Store(new Set(data.rezed || []));
 
-            this.threads_reverse = new Tree({}, set => {
-                this.cancels.add(this.threads.listen(($threads) => {
-                    const w_r = {};
-                    for(let key of Object.keys($threads)) {
-                        w_r[$threads[key]] = key;
-                    }
+    		this.threads_reverse = new Tree({}, set => {
+    			this.cancels.add(
+    				this.threads.listen($threads => {
+    					const w_r = {};
+    					for (let key of Object.keys($threads)) {
+    						w_r[$threads[key]] = key;
+    					}
 
-                    set(w_r);
-                }));
-            });
+    					set(w_r);
+    				})
+    			);
+    		});
 
-            this.add(data.value || {});
-        }
+    		this.add(data.value || {});
+    	}
 
-        add (warp_data, silent = false)  {
-            if(!warp_data) return
-            const warps = {};
+    	add(warp_data, silent = false) {
+    		if (!warp_data) return
+    		const warps = {};
 
-            for(let [name, warp] of Object.entries(warp_data)) {
-                if (warp instanceof Warp) {
-                    warps[name] = warp;
-                    continue
-                }
+    		for (let [name, warp] of Object.entries(warp_data)) {
+    			if (warp instanceof Warp) {
+    				warps[name] = warp;
+    				continue
+    			}
 
-                warp.name = name;
-                warps[name] = this.create_warp(warp);
-            }
+    			warp.name = name;
+    			warps[name] = this.create_warp(warp);
+    		}
 
-            super.add(warps, silent);
+    		super.add(warps, silent);
 
-            return warps
-        }
+    		return warps
+    	}
 
-        rez () {
-            super.rez();
+    	rez() {
+    		super.rez();
 
-            // connect threads to form nerves
-            this.thread_cancel = this.threads.listen(this.thread_update.bind(this));
-        }
+    		// connect threads to form nerves
+    		this.thread_cancel = this.threads.listen(this.thread_update.bind(this));
+    	}
 
-        thread_update ($threads) {
-            for(let [name, cancel] of Object.entries(this.nerves)) {
-                if($threads[name]) {
-                    delete $threads[name];
-                    continue
-                }
+    	thread_update($threads) {
+    		for (let [name, cancel] of Object.entries(this.nerves)) {
+    			if ($threads[name]) {
+    				delete $threads[name];
+    				continue
+    			}
 
-                cancel();
-                delete this.nerves[name];
-            }
+    			cancel();
+    			delete this.nerves[name];
+    		}
 
-            for(let [from, to] of Object.entries($threads)) {
-                const f = this.query(...from.split("/"));
-                const t = this.query(...to.split("/"));
-                if(!f || !t) continue
-                this.nerves[from] = f.listen(t.set.bind(t));
-            }
-        }
+    		for (let [from, to] of Object.entries($threads)) {
+    			const f = this.query(...from.split('/'));
+    			const t = this.query(...to.split('/'));
+    			if (!f || !t) continue
+    			this.nerves[from] = f.listen(t.set.bind(t));
+    		}
+    	}
 
-        derez () {
-            super.derez();
-            
-            for(let cancel of Object.values(this.nerves)) {
-                cancel();
-            }
+    	derez() {
+    		super.derez();
 
-            this.thread_cancel();
-        }
+    		for (let cancel of Object.values(this.nerves)) {
+    			cancel();
+    		}
 
-        removes (...names) {
-            const $warps = this.value.get();
-            const $wefts = this.threads.get();
-            const $wefts_r = this.threads_reverse.get();
-            const $rezed = this.rezed.get();
+    		this.thread_cancel();
+    	}
 
-            for(let name of names) {
-                const warp = $warps[name];
-                if(warp) warp.destroy();
+    	removes(...names) {
+    		const $warps = this.value.get();
+    		const $wefts = this.threads.get();
+    		const $wefts_r = this.threads_reverse.get();
+    		const $rezed = this.rezed.get();
 
-                delete $warps[name];
-                delete $wefts[name];
-                $rezed.delete(name);
+    		for (let name of names) {
+    			const warp = $warps[name];
+    			if (warp) warp.destroy();
 
-                const r = $wefts_r[name];
-                if(r) {
-                    delete $wefts[r];
-                }
-            }
+    			delete $warps[name];
+    			delete $wefts[name];
+    			$rezed.delete(name);
 
-            this.value.set($warps);
-            this.threads.set($wefts);
-            this.rezed.set($rezed);
-        }
+    			const r = $wefts_r[name];
+    			if (r) {
+    				delete $wefts[r];
+    			}
+    		}
 
-        remove (name) {
-            this.removes(name);
-        }
+    		this.value.set($warps);
+    		this.threads.set($wefts);
+    		this.rezed.set($rezed);
+    	}
 
-        destroy() {
-            super.destroy();
+    	remove(name) {
+    		this.removes(name);
+    	}
 
-            for(let cancel of Array.from(this.cancels)) {
-                cancel();
-            }
+    	destroy() {
+    		super.destroy();
 
-            this.cancels.clear();
-        }
+    		for (let cancel of Array.from(this.cancels)) {
+    			cancel();
+    		}
 
-        toJSON () {
-            return {
-                name: this.name.get(),
-                thread: this.threads.get(),
+    		this.cancels.clear();
+    	}
 
-                value: this.value.toJSON(),
-                rezed: this.rezed.toJSON()
-            }
-        }
+    	toJSON() {
+    		return {
+    			name: this.name,
+    			thread: this.threads.get(),
+
+    			value: this.value.toJSON(),
+    			rezed: this.rezed.toJSON()
+    		}
+    	}
+
+    	// TODO: custom grok/groker that provides thread updates
     }
 
     class Wheel extends Living {
@@ -1477,7 +1739,7 @@
     		rezed: [],
     		value: {}
     	});}
-
+    	
     	
     	constructor(remote) {
     		super();RemoteGoblin.prototype.__init.call(this);
@@ -1545,6 +1807,27 @@
     			.query('sys', 'time', 'tick')
     			.listen(this.tick.bind(this));
     	}
+
+    	 msg_grok() {
+    		if (this.cancel_grok) return
+    		this.cancel_grok = this.wheel.grok(
+    			(action, key, value) => {
+    				this.postMessage({
+    					name: 'groker',
+    					data: {
+    						action,
+    						key,
+    						value
+    					}
+    				});
+    			}
+    		);
+    	}
+
+    	 msg_grok_stop() {
+    		if (!this.cancel_grok) return
+    		this.cancel_grok();
+    	}
     }
 
     class LocalWorker extends Messenger  {constructor(...args) { super(...args); LocalWorker.prototype.__init.call(this); }
@@ -1565,26 +1848,29 @@
     		VISIBLE: Visible.data
     	});}
 
+    	// convert to an inactive wheel
+    	__init3() {this.value = new Wheel({
+    		value: {},
+    		rezed: []
+    	});}
+
     	
     	
+    	 __init4() {this.sys_cancels = {};}
     	
-    	 __init3() {this.sys_cancels = {};}
     	
     	
 
-    	 __init4() {this.json_resolvers = [];}
+    	 __init5() {this.json_resolvers = [];}
 
     	constructor(sys, local = false) {
-    		super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);
+    		super();Goblin.prototype.__init2.call(this);Goblin.prototype.__init3.call(this);Goblin.prototype.__init4.call(this);Goblin.prototype.__init5.call(this);Goblin.prototype.__init6.call(this);
 
     		// doesn't guarantee syncing
-    		this.value = new Wheel({
-    			value: {},
-    			rezed: []
-    		});
-
     		this.sys = sys;
     		this.local = local;
+    		this.grokers = new Set();
+    		this.value.stop();
     	}
 
     	create() {
@@ -1628,6 +1914,14 @@
     			name: 'status',
     			data: ELivingAction.DESTROY
     		});
+
+    		if (this.grokers.size > 0) {
+    			this.worker.postMessage({
+    				name: 'grok_stop'
+    			});
+
+    			this.grokers.clear();
+    		}
     	}
 
     	// replicate system changes into the worker
@@ -1662,10 +1956,12 @@
     		this.worker.terminate();
     	}
 
-    	 msg_toJSON(json) {
+    	 msg_groker({ action, key, value }) {
     		// hydrate self
-    		this.value.add(json.value);
+    		this.value.groker(action, key, value);
+    	}
 
+    	 msg_toJSON(json) {
     		for (let resolve of this.json_resolvers) {
     			resolve(json);
     		}
@@ -1673,7 +1969,7 @@
 
     	 msg_buffer(data) {
     		for (let [name, buffer] of Object.entries(data)) {
-    			const buff = this.buffer.item(name);
+    			const buff = this.buffer.query(name);
 
     			if (buff === undefined) return
     			buff.hydrate(buffer);
@@ -1688,7 +1984,7 @@
     		});
     	}
 
-    	 __init5() {this.onmessage = Messenger.prototype.onmessage;}
+    	 __init6() {this.onmessage = Messenger.prototype.onmessage;}
 
     	 onerror(event) {
     		console.error(`Worker Error`, event);
@@ -1707,28 +2003,171 @@
     	}
 
     	add(data) {
-    		this.remote_add(data);
-    	}
-
-    	remote_add(data) {
     		this.worker.postMessage({
     			name: 'add',
     			data
     		});
     	}
 
-    	remote_start(data) {
+    	start(data) {
     		this.worker.postMessage({
     			name: 'start',
     			data
     		});
     	}
 
-    	remote_stop(data) {
+    	stop(data) {
     		this.worker.postMessage({
     			name: 'stop',
     			data
     		});
+    	}
+
+    	remote_grok() {
+    		if (this.grokers.size === 0) {
+    			this.worker.postMessage({
+    				name: 'grok'
+    			});
+    		}
+    		const groker = this.groker.bind(this);
+
+    		this.grokers.add(groker);
+
+    		return () => {
+    			this.grokers.delete(groker);
+
+    			if (this.grokers.size === 0) {
+    				this.worker.postMessage({
+    					name: 'grok_stop'
+    				});
+    			}
+    		}
+    	}
+    }
+
+    /* src\client\Weave.svelte generated by Svelte v3.19.1 */
+    const file$1 = "src\\client\\Weave.svelte";
+
+    function create_fragment$1(ctx) {
+    	let div;
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			t = text(/*name*/ ctx[0]);
+    			attr_dev(div, "class", "weave svelte-twsg0x");
+    			add_location(div, file$1, 6, 0, 139);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			append_dev(div, t);
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*name*/ 1) set_data_dev(t, /*name*/ ctx[0]);
+    		},
+    		i: noop,
+    		o: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$1.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance($$self, $$props, $$invalidate) {
+    	let { goblin } = $$props;
+    	let { weave } = $$props;
+    	let { name } = $$props;
+    	const writable_props = ["goblin", "weave", "name"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Weave> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ("goblin" in $$props) $$invalidate(1, goblin = $$props.goblin);
+    		if ("weave" in $$props) $$invalidate(2, weave = $$props.weave);
+    		if ("name" in $$props) $$invalidate(0, name = $$props.name);
+    	};
+
+    	$$self.$capture_state = () => ({ Goblin, goblin, weave, name });
+
+    	$$self.$inject_state = $$props => {
+    		if ("goblin" in $$props) $$invalidate(1, goblin = $$props.goblin);
+    		if ("weave" in $$props) $$invalidate(2, weave = $$props.weave);
+    		if ("name" in $$props) $$invalidate(0, name = $$props.name);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [name, goblin, weave];
+    }
+
+    class Weave$1 extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance, create_fragment$1, safe_not_equal, { goblin: 1, weave: 2, name: 0 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Weave",
+    			options,
+    			id: create_fragment$1.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*goblin*/ ctx[1] === undefined && !("goblin" in props)) {
+    			console.warn("<Weave> was created without expected prop 'goblin'");
+    		}
+
+    		if (/*weave*/ ctx[2] === undefined && !("weave" in props)) {
+    			console.warn("<Weave> was created without expected prop 'weave'");
+    		}
+
+    		if (/*name*/ ctx[0] === undefined && !("name" in props)) {
+    			console.warn("<Weave> was created without expected prop 'name'");
+    		}
+    	}
+
+    	get goblin() {
+    		throw new Error("<Weave>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set goblin(value) {
+    		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get weave() {
+    		throw new Error("<Weave>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set weave(value) {
+    		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get name() {
+    		throw new Error("<Weave>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set name(value) {
+    		throw new Error("<Weave>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -2297,22 +2736,104 @@
     }));
 
     /* src\client\Goblin.svelte generated by Svelte v3.19.1 */
-    const file$1 = "src\\client\\Goblin.svelte";
 
-    function create_fragment$1(ctx) {
+    const { Object: Object_1 } = globals;
+    const file$2 = "src\\client\\Goblin.svelte";
+
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[3] = list[i][0];
+    	child_ctx[5] = list[i][1];
+    	return child_ctx;
+    }
+
+    // (23:4) {#each Object.entries($groked) as [name, weave]}
+    function create_each_block(ctx) {
+    	let current;
+
+    	const weave = new Weave$1({
+    			props: {
+    				weave: /*weave*/ ctx[5],
+    				goblin: /*goblin*/ ctx[1]
+    			},
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(weave.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(weave, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const weave_changes = {};
+    			if (dirty & /*$groked*/ 1) weave_changes.weave = /*weave*/ ctx[5];
+    			weave.$set(weave_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(weave.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(weave.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(weave, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(23:4) {#each Object.entries($groked) as [name, weave]}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$2(ctx) {
     	let div1;
     	let div0;
-    	let t;
+    	let t1;
+    	let t2_value = JSON.stringify(/*$groked*/ ctx[0]) + "";
+    	let t2;
+    	let t3;
+    	let current;
+    	let each_value = Object.entries(/*$groked*/ ctx[0]);
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    	}
+
+    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+    		each_blocks[i] = null;
+    	});
 
     	const block = {
     		c: function create() {
     			div1 = element("div");
     			div0 = element("div");
-    			t = text(/*goblin*/ ctx[0]);
+    			div0.textContent = `${/*goblin*/ ctx[1]}`;
+    			t1 = space();
+    			t2 = text(t2_value);
+    			t3 = space();
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
     			attr_dev(div0, "class", "title svelte-1rvfdfh");
-    			add_location(div0, file$1, 9, 4, 142);
+    			add_location(div0, file$2, 16, 4, 314);
     			attr_dev(div1, "class", "wheel svelte-1rvfdfh");
-    			add_location(div1, file$1, 8, 0, 117);
+    			add_location(div1, file$2, 15, 0, 289);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -2320,21 +2841,74 @@
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
     			append_dev(div1, div0);
-    			append_dev(div0, t);
+    			append_dev(div1, t1);
+    			append_dev(div1, t2);
+    			append_dev(div1, t3);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div1, null);
+    			}
+
+    			current = true;
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*goblin*/ 1) set_data_dev(t, /*goblin*/ ctx[0]);
+    			if ((!current || dirty & /*$groked*/ 1) && t2_value !== (t2_value = JSON.stringify(/*$groked*/ ctx[0]) + "")) set_data_dev(t2, t2_value);
+
+    			if (dirty & /*Object, $groked, goblin*/ 3) {
+    				each_value = Object.entries(/*$groked*/ ctx[0]);
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(div1, null);
+    					}
+    				}
+
+    				group_outros();
+
+    				for (i = each_value.length; i < each_blocks.length; i += 1) {
+    					out(i);
+    				}
+
+    				check_outros();
+    			}
     		},
-    		i: noop,
-    		o: noop,
+    		i: function intro(local) {
+    			if (current) return;
+
+    			for (let i = 0; i < each_value.length; i += 1) {
+    				transition_in(each_blocks[i]);
+    			}
+
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			each_blocks = each_blocks.filter(Boolean);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				transition_out(each_blocks[i]);
+    			}
+
+    			current = false;
+    		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div1);
+    			destroy_each(each_blocks, detaching);
     		}
     	};
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$1.name,
+    		id: create_fragment$2.name,
     		type: "component",
     		source: "",
     		ctx
@@ -2343,50 +2917,68 @@
     	return block;
     }
 
-    function instance($$self, $$props, $$invalidate) {
-    	let { goblin = "" } = $$props;
-    	const remote = is.item(goblin);
-    	const writable_props = ["goblin"];
+    function instance$1($$self, $$props, $$invalidate) {
+    	let $groked;
+    	let { name = "" } = $$props;
+    	const goblin = is.query(name);
 
-    	Object.keys($$props).forEach(key => {
+    	// TODO: lifecycle
+    	const cancel = goblin.remote_grok();
+
+    	const { groked } = goblin;
+    	validate_store(groked, "groked");
+    	component_subscribe($$self, groked, value => $$invalidate(0, $groked = value));
+    	onDestroy(cancel);
+    	const writable_props = ["name"];
+
+    	Object_1.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Goblin> was created with unknown prop '${key}'`);
     	});
 
     	$$self.$set = $$props => {
-    		if ("goblin" in $$props) $$invalidate(0, goblin = $$props.goblin);
+    		if ("name" in $$props) $$invalidate(3, name = $$props.name);
     	};
 
-    	$$self.$capture_state = () => ({ is, goblin, remote });
+    	$$self.$capture_state = () => ({
+    		Weave: Weave$1,
+    		is,
+    		onDestroy,
+    		name,
+    		goblin,
+    		cancel,
+    		groked,
+    		$groked
+    	});
 
     	$$self.$inject_state = $$props => {
-    		if ("goblin" in $$props) $$invalidate(0, goblin = $$props.goblin);
+    		if ("name" in $$props) $$invalidate(3, name = $$props.name);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [goblin];
+    	return [$groked, goblin, groked, name];
     }
 
     class Goblin$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance, create_fragment$1, safe_not_equal, { goblin: 0 });
+    		init(this, options, instance$1, create_fragment$2, safe_not_equal, { name: 3 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Goblin",
     			options,
-    			id: create_fragment$1.name
+    			id: create_fragment$2.name
     		});
     	}
 
-    	get goblin() {
+    	get name() {
     		throw new Error("<Goblin>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set goblin(value) {
+    	set name(value) {
     		throw new Error("<Goblin>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
@@ -2549,6 +3141,8 @@
     	return navigation
     };
 
+    const TILE_COUNT$1 = 1024;
+
     const str_color = (str) => {
     	if (!str) return `#111`
 
@@ -2591,12 +3185,14 @@
     	`luna`,
     	`ember`,
     	`embear`,
-    	`killa`,
     	`notice`,
     	`thank`,
-    	`tank`,
+    	`happy`,
+    	`pungent`,
+    	`rich`,
+    	`bank`,
     	`under`,
-    	`near`,
+    	`over`,
     	`near`,
     	`quaint`,
     	`potato`,
@@ -2606,32 +3202,391 @@
     	`lamp`,
     	`stairs`,
     	`king`,
-    	`tyrant`,
-    	`grave`,
-    	`dire`,
-    	`happy`,
     	`amazing`,
     	`terrific`,
     	`good`,
     	`exciting`,
-    	`RIP`,
     	`hello`,
     	`world`,
     	`global`,
     	`universal`,
     	`television`,
-    	`computer`
+    	`computer`,
+    	`phone`,
+    	`bus`,
+    	`car`,
+    	`mouse`
     ];
+
+    const tile = (str) => {
+    	let hash = 0;
+    	for (let i = 0; i < str.length; i++) {
+    		hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    	}
+
+    	return `${Math.abs(hash) % TILE_COUNT$1}`
+    };
 
     const random = (count) =>
     	Array.from(new Array(count))
     		.map(() => words[Math.floor(Math.random() * words.length)])
     		.join(`_`);
 
-    /* src\client\Isekai.svelte generated by Svelte v3.19.1 */
-    const file$2 = "src\\client\\Isekai.svelte";
+    const SIZE = 16;
+    const SPACING = 0;
+    const COLUMNS = TILE_COLUMNS.get();
+    const COUNT = TILE_COUNT.get();
 
-    function get_each_context(ctx, list, i) {
+    const ready = new Promise((resolve) => {
+    	const tiles = new Image();
+    	tiles.src = `/sheets/default_2_color.png`;
+
+    	tiles.onload = () => {
+    		const canvas = document.createElement(`canvas`);
+    		canvas.width = tiles.width;
+    		canvas.height = tiles.height;
+
+    		const ctx = canvas.getContext(`2d`);
+    		ctx.drawImage(tiles, 0, 0);
+
+    		resolve({ ctx, canvas });
+    	};
+    });
+
+    const repo = new Map();
+
+    const num_random = (min, max) =>
+    	Math.floor(Math.random() * (Math.abs(min) + Math.abs(max)) - Math.abs(min));
+
+    var Tile = async ({
+    	width,
+    	height,
+    	data,
+    	random = false
+    }) => {
+    	const { canvas } = await ready;
+
+    	const key = `${width}:${height}:${data}`;
+
+    	if (!random && repo.has(key)) {
+    		return repo.get(key)
+    	}
+
+    	const data_canvas = document.createElement(`canvas`);
+    	const data_ctx = data_canvas.getContext(`2d`);
+
+    	data_canvas.width = SIZE * width;
+    	data_canvas.height = SIZE * height;
+
+    	if (random) {
+    		let t_x, t_y;
+    		let s_x, s_y;
+
+    		for (let x = 0; x < width; x++) {
+    			for (let y = 0; y < height; y++) {
+    				t_x = x * SIZE;
+    				t_y = y * SIZE;
+
+    				s_x = num_random(0, COLUMNS) * (SIZE + SPACING);
+    				s_y = num_random(0, COUNT / COLUMNS) * (SIZE + SPACING);
+
+    				data_ctx.drawImage(
+    					canvas,
+    					s_x, s_y, SIZE, SIZE,
+    					t_x, t_y, SIZE, SIZE
+    				);
+    			}
+    		}
+    	} else if (data.length > 0) {
+    		let x, y;
+    		data.split(` `).forEach((loc, i) => {
+    			x = i % width;
+    			y = Math.floor(i / width);
+
+    			const idx = parseInt(loc, 10);
+    			const o_x = idx % COLUMNS;
+    			const o_y = Math.floor(idx / COLUMNS);
+
+    			const t_x = x * SIZE;
+    			const t_y = y * SIZE;
+
+    			const s_x = o_x * (SIZE + SPACING);
+    			const s_y = o_y * (SIZE + SPACING);
+
+    			data_ctx.drawImage(
+    				canvas,
+    				s_x, s_y, SIZE, SIZE,
+    				t_x, t_y, SIZE, SIZE
+    			);
+    		});
+    	}
+
+    	const result = data_canvas.toDataURL(`image/png`);
+    	if (!random) {
+    		repo.set(key, result);
+    	}
+
+    	return result
+    };
+
+    /* src\client\image\Tile.svelte generated by Svelte v3.19.1 */
+    const file$3 = "src\\client\\image\\Tile.svelte";
+
+    // (1:0) <script>  import { tile }
+    function create_catch_block(ctx) {
+    	const block = { c: noop, m: noop, p: noop, d: noop };
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_catch_block.name,
+    		type: "catch",
+    		source: "(1:0) <script>  import { tile }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (25:28)   <img      class="tileset"      alt="tileset image"      {src}
+    function create_then_block(ctx) {
+    	let img;
+    	let img_src_value;
+
+    	const block = {
+    		c: function create() {
+    			img = element("img");
+    			attr_dev(img, "class", "tileset svelte-1jo87w8");
+    			attr_dev(img, "alt", "tileset image");
+    			if (img.src !== (img_src_value = /*src*/ ctx[7])) attr_dev(img, "src", img_src_value);
+    			add_location(img, file$3, 25, 0, 364);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, img, anchor);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*image_src*/ 1 && img.src !== (img_src_value = /*src*/ ctx[7])) {
+    				attr_dev(img, "src", img_src_value);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(img);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_then_block.name,
+    		type: "then",
+    		source: "(25:28)   <img      class=\\\"tileset\\\"      alt=\\\"tileset image\\\"      {src}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (1:0) <script>  import { tile }
+    function create_pending_block(ctx) {
+    	const block = { c: noop, m: noop, p: noop, d: noop };
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_pending_block.name,
+    		type: "pending",
+    		source: "(1:0) <script>  import { tile }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$3(ctx) {
+    	let await_block_anchor;
+    	let promise;
+
+    	let info = {
+    		ctx,
+    		current: null,
+    		token: null,
+    		pending: create_pending_block,
+    		then: create_then_block,
+    		catch: create_catch_block,
+    		value: 7
+    	};
+
+    	handle_promise(promise = /*image_src*/ ctx[0], info);
+
+    	const block = {
+    		c: function create() {
+    			await_block_anchor = empty();
+    			info.block.c();
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, await_block_anchor, anchor);
+    			info.block.m(target, info.anchor = anchor);
+    			info.mount = () => await_block_anchor.parentNode;
+    			info.anchor = await_block_anchor;
+    		},
+    		p: function update(new_ctx, [dirty]) {
+    			ctx = new_ctx;
+    			info.ctx = ctx;
+
+    			if (dirty & /*image_src*/ 1 && promise !== (promise = /*image_src*/ ctx[0]) && handle_promise(promise, info)) ; else {
+    				const child_ctx = ctx.slice();
+    				child_ctx[7] = info.resolved;
+    				info.block.p(child_ctx, dirty);
+    			}
+    		},
+    		i: noop,
+    		o: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(await_block_anchor);
+    			info.block.d(detaching);
+    			info.token = null;
+    			info = null;
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$3.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$2($$self, $$props, $$invalidate) {
+    	let { data = `` } = $$props;
+    	let { width = 10 } = $$props;
+    	let { height = 7 } = $$props;
+    	let { random = false } = $$props;
+    	let { text = false } = $$props;
+    	const writable_props = ["data", "width", "height", "random", "text"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Tile> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$set = $$props => {
+    		if ("data" in $$props) $$invalidate(1, data = $$props.data);
+    		if ("width" in $$props) $$invalidate(2, width = $$props.width);
+    		if ("height" in $$props) $$invalidate(3, height = $$props.height);
+    		if ("random" in $$props) $$invalidate(4, random = $$props.random);
+    		if ("text" in $$props) $$invalidate(5, text = $$props.text);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		tile,
+    		Tile,
+    		data,
+    		width,
+    		height,
+    		random,
+    		text,
+    		tru_data,
+    		image_src
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("data" in $$props) $$invalidate(1, data = $$props.data);
+    		if ("width" in $$props) $$invalidate(2, width = $$props.width);
+    		if ("height" in $$props) $$invalidate(3, height = $$props.height);
+    		if ("random" in $$props) $$invalidate(4, random = $$props.random);
+    		if ("text" in $$props) $$invalidate(5, text = $$props.text);
+    		if ("tru_data" in $$props) $$invalidate(6, tru_data = $$props.tru_data);
+    		if ("image_src" in $$props) $$invalidate(0, image_src = $$props.image_src);
+    	};
+
+    	let tru_data;
+    	let image_src;
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*text, data*/ 34) {
+    			 $$invalidate(6, tru_data = text ? tile(text) : data);
+    		}
+
+    		if ($$self.$$.dirty & /*width, height, tru_data, random*/ 92) {
+    			 $$invalidate(0, image_src = Tile({ width, height, data: tru_data, random }));
+    		}
+    	};
+
+    	return [image_src, data, width, height, random, text];
+    }
+
+    class Tile_1 extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+
+    		init(this, options, instance$2, create_fragment$3, safe_not_equal, {
+    			data: 1,
+    			width: 2,
+    			height: 3,
+    			random: 4,
+    			text: 5
+    		});
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Tile_1",
+    			options,
+    			id: create_fragment$3.name
+    		});
+    	}
+
+    	get data() {
+    		throw new Error("<Tile>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set data(value) {
+    		throw new Error("<Tile>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get width() {
+    		throw new Error("<Tile>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set width(value) {
+    		throw new Error("<Tile>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get height() {
+    		throw new Error("<Tile>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set height(value) {
+    		throw new Error("<Tile>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get random() {
+    		throw new Error("<Tile>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set random(value) {
+    		throw new Error("<Tile>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get text() {
+    		throw new Error("<Tile>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set text(value) {
+    		throw new Error("<Tile>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\client\Isekai.svelte generated by Svelte v3.19.1 */
+    const file$4 = "src\\client\\Isekai.svelte";
+
+    function get_each_context$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
     	child_ctx[17] = list[i][0];
     	child_ctx[18] = list[i][1];
@@ -2639,8 +3594,8 @@
     	return child_ctx;
     }
 
-    // (82:8) {#each positions as [x, y], idx}
-    function create_each_block(ctx) {
+    // (83:8) {#each positions as [x, y], idx}
+    function create_each_block$1(ctx) {
     	let g;
     	let circle;
     	let circle_cx_value;
@@ -2665,22 +3620,22 @@
     			circle = svg_element("circle");
     			text_1 = svg_element("text");
     			t = text(t_value);
-    			attr_dev(circle, "class", "circle svelte-14lybb5");
+    			attr_dev(circle, "class", "circle svelte-m1krv0");
     			attr_dev(circle, "cx", circle_cx_value = /*x*/ ctx[17]);
     			attr_dev(circle, "cy", circle_cy_value = /*y*/ ctx[18]);
-    			add_location(circle, file$2, 90, 16, 2044);
+    			add_location(circle, file$4, 91, 16, 2076);
     			attr_dev(text_1, "x", text_1_x_value = /*x*/ ctx[17]);
     			attr_dev(text_1, "y", text_1_y_value = /*y*/ ctx[18]);
-    			attr_dev(text_1, "class", "goblin-name svelte-14lybb5");
+    			attr_dev(text_1, "class", "goblin-name svelte-m1krv0");
 
     			attr_dev(text_1, "font-size", text_1_font_size_value = /*$cursor*/ ctx[6] && /*$cursor*/ ctx[6].id === `goblin-${/*idx*/ ctx[20]}`
     			? 2
     			: 5);
 
     			attr_dev(text_1, "stroke", text_1_stroke_value = color(/*names*/ ctx[3][/*idx*/ ctx[20]] || "EMPTY"));
-    			add_location(text_1, file$2, 91, 16, 2105);
-    			attr_dev(g, "class", "goblin svelte-14lybb5");
-    			add_location(g, file$2, 82, 12, 1748);
+    			add_location(text_1, file$4, 92, 16, 2137);
+    			attr_dev(g, "class", "goblin svelte-m1krv0");
+    			add_location(g, file$4, 83, 12, 1780);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, g, anchor);
@@ -2715,21 +3670,21 @@
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block.name,
+    		id: create_each_block$1.name,
     		type: "each",
-    		source: "(82:8) {#each positions as [x, y], idx}",
+    		source: "(83:8) {#each positions as [x, y], idx}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (130:0) {#if goblin}
+    // (131:0) {#if goblin}
     function create_if_block(ctx) {
     	let current;
 
     	const goblin_1 = new Goblin$1({
-    			props: { goblin: /*goblin*/ ctx[2] },
+    			props: { name: /*goblin*/ ctx[2] },
     			$$inline: true
     		});
 
@@ -2743,7 +3698,7 @@
     		},
     		p: function update(ctx, dirty) {
     			const goblin_1_changes = {};
-    			if (dirty & /*goblin*/ 4) goblin_1_changes.goblin = /*goblin*/ ctx[2];
+    			if (dirty & /*goblin*/ 4) goblin_1_changes.name = /*goblin*/ ctx[2];
     			goblin_1.$set(goblin_1_changes);
     		},
     		i: function intro(local) {
@@ -2764,14 +3719,14 @@
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(130:0) {#if goblin}",
+    		source: "(131:0) {#if goblin}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$2(ctx) {
+    function create_fragment$4(ctx) {
     	let svg;
     	let g;
     	let path_1;
@@ -2791,7 +3746,7 @@
     	let each_blocks = [];
 
     	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    		each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
     	}
 
     	let if_block = /*goblin*/ ctx[2] && create_if_block(ctx);
@@ -2812,22 +3767,22 @@
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
     			attr_dev(path_1, "d", /*lines*/ ctx[8]);
-    			attr_dev(path_1, "class", "svelte-14lybb5");
-    			add_location(path_1, file$2, 79, 8, 1672);
-    			attr_dev(text_1, "class", "name svelte-14lybb5");
+    			attr_dev(path_1, "class", "svelte-m1krv0");
+    			add_location(path_1, file$4, 80, 8, 1704);
+    			attr_dev(text_1, "class", "name svelte-m1krv0");
     			attr_dev(text_1, "x", "50");
     			attr_dev(text_1, "y", "50");
     			attr_dev(text_1, "font-size", text_1_font_size_value = /*tiny*/ ctx[5] ? 5 : 10);
     			attr_dev(text_1, "stroke", text_1_stroke_value = color(/*$path*/ ctx[4][0] || "gree"));
     			attr_dev(text_1, "stroke-width", text_1_stroke_width_value = /*tiny*/ ctx[5] ? 0.25 : 0.5);
-    			add_location(text_1, file$2, 101, 8, 2442);
+    			add_location(text_1, file$4, 102, 8, 2474);
     			attr_dev(g, "transform", g_transform_value = "\r\n        translate(" + /*offset*/ ctx[0][0] + ", " + /*offset*/ ctx[0][1] + ")\r\n        scale(" + /*scale*/ ctx[1] + ")\r\n        ");
-    			attr_dev(g, "class", "map svelte-14lybb5");
-    			add_location(g, file$2, 74, 4, 1546);
+    			attr_dev(g, "class", "map svelte-m1krv0");
+    			add_location(g, file$4, 75, 4, 1578);
     			attr_dev(svg, "viewBox", "-5 -5 110 110");
-    			attr_dev(svg, "class", "svg isekai svelte-14lybb5");
+    			attr_dev(svg, "class", "svg isekai svelte-m1krv0");
     			set_style(svg, "filter", "drop-shadow(0 0 0.5rem " + color(/*name*/ ctx[10]) + ")");
-    			add_location(svg, file$2, 71, 0, 1429);
+    			add_location(svg, file$4, 72, 0, 1461);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -2865,12 +3820,12 @@
     				let i;
 
     				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context(ctx, each_value, i);
+    					const child_ctx = get_each_context$1(ctx, each_value, i);
 
     					if (each_blocks[i]) {
     						each_blocks[i].p(child_ctx, dirty);
     					} else {
-    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i] = create_each_block$1(child_ctx);
     						each_blocks[i].c();
     						each_blocks[i].m(g, text_1);
     					}
@@ -2946,7 +3901,7 @@
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$2.name,
+    		id: create_fragment$4.name,
     		type: "component",
     		source: "",
     		ctx
@@ -2955,7 +3910,7 @@
     	return block;
     }
 
-    function instance$1($$self, $$props, $$invalidate) {
+    function instance$3($$self, $$props, $$invalidate) {
     	let $is;
     	let $path;
     	let $cursor;
@@ -3036,6 +3991,7 @@
     		color,
     		random,
     		is,
+    		Tile: Tile_1,
     		path,
     		lines,
     		positions,
@@ -3101,21 +4057,21 @@
     class Isekai$1 extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$1, create_fragment$2, safe_not_equal, {});
+    		init(this, options, instance$3, create_fragment$4, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Isekai",
     			options,
-    			id: create_fragment$2.name
+    			id: create_fragment$4.name
     		});
     	}
     }
 
     /* src\client\Client.svelte generated by Svelte v3.19.1 */
-    const file$3 = "src\\client\\Client.svelte";
+    const file$5 = "src\\client\\Client.svelte";
 
-    function create_fragment$3(ctx) {
+    function create_fragment$5(ctx) {
     	let div;
     	let t;
     	let current;
@@ -3130,7 +4086,7 @@
     			create_component(isekai.$$.fragment);
     			attr_dev(div, "class", "dev svelte-19gtc4k");
     			toggle_class(div, "hidden", /*hidden*/ ctx[0]);
-    			add_location(div, file$3, 16, 0, 303);
+    			add_location(div, file$5, 16, 0, 303);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -3167,7 +4123,7 @@
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$3.name,
+    		id: create_fragment$5.name,
     		type: "component",
     		source: "",
     		ctx
@@ -3176,7 +4132,7 @@
     	return block;
     }
 
-    function instance$2($$self, $$props, $$invalidate) {
+    function instance$4($$self, $$props, $$invalidate) {
     	let $button;
     	let hidden = is.sys.query("path", "flag").get() === "dev";
     	const button = is.sys.query("input", "button");
@@ -3216,13 +4172,13 @@
     class Client extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$2, create_fragment$3, safe_not_equal, {});
+    		init(this, options, instance$4, create_fragment$5, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Client",
     			options,
-    			id: create_fragment$3.name
+    			id: create_fragment$5.name
     		});
     	}
     }

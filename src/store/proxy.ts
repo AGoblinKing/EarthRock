@@ -1,5 +1,5 @@
 import { IStore, IListen } from './store'
-import { ITree, TreeValue, IGrok } from './tree'
+import { ITree, TreeValue, IGrok, EGrok } from './tree'
 
 export abstract class Proxy<T> implements IStore<T> {
 	protected value: IStore<T>
@@ -29,14 +29,6 @@ export abstract class ProxyTree<T> extends Proxy<TreeValue<T>>
 	implements ITree<T> {
 	protected value: ITree<T>
 
-	item(name: string) {
-		return this.value.item(name)
-	}
-
-	reset(target?: TreeValue<T>, silent?: boolean) {
-		return this.value.reset(target, silent)
-	}
-
 	add(tree_write: object, silent?: boolean) {
 		return this.value.add(tree_write, silent)
 	}
@@ -50,10 +42,18 @@ export abstract class ProxyTree<T> extends Proxy<TreeValue<T>>
 	}
 
 	has(name: string) {
-		return this.item(name) !== undefined
+		return this.query(name) !== undefined
 	}
 
 	grok(groker: IGrok) {
-		return this.grok(groker)
+		return this.value.grok(groker)
+	}
+
+	groker(action: EGrok, key: string, value?: any) {
+		return this.value.groker(action, key, value)
+	}
+
+	groke(action: EGrok, key: string, value?: any) {
+		return this.value.groke(action, key, value)
 	}
 }

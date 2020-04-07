@@ -1,10 +1,18 @@
 import { Read, Setter } from './read'
 import { Store, IStore, ICancel } from './store'
 
+const void_fn = () => {}
+
 export enum EGrok {
 	ADD,
 	REMOVE,
-	UPDATE
+	UPDATE,
+	// living
+	START,
+	STOP,
+	// weave
+	THREAD,
+	UNTHREAD
 }
 
 export type IGrok = (action: EGrok, key: string, value?: any) => void
@@ -16,42 +24,82 @@ export interface TreeValue<T> {
 }
 
 export interface ITree<T> extends IStore<TreeValue<T>> {
-	item(name: string): T
-	reset(target?: TreeValue<T>, silent?: boolean)
 	add(tree_write: object, silent?: boolean)
 	query(...steps: string[]): any
 	has(name: string): boolean
 	remove(name: string, silent?: boolean)
+	grok(groker: IGrok)
+	groker(action: EGrok, key: string, value?: any)
+	groke(action: EGrok, path: string, value?: any)
 }
 
 export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 	protected value: TreeValue<T>
+	protected grokers: Set<IGrok>
+	protected groke_cancels: { [key: string]: ICancel }
 
 	constructor(tree: TreeValue<T> = {}, setter?: Setter<TreeValue<T>>) {
-		super(tree, setter)
+		super({}, setter)
+
+		this.add(tree)
 	}
 
-	item(name: string) {
-		return super.get()[name]
+	groke(action: EGrok, path: string, value?: any) {
+		if (!this.grokers) return
+
+		for (let grok of Array.from(this.grokers)) {
+			grok(action, path, value)
+		}
+
+		switch (action) {
+			case EGrok.ADD:
+				const val = this.query(...path.split('/'))
+				this.groke_cancels[path] = val.grok
+					? val.grok((s_action, s_path, s_value) => {
+							for (let grok of Array.from(this.grokers)) {
+								grok(s_action, `${path}/${s_path}`, s_value)
+							}
+					  })
+					: val.listen
+					? val.listen($val => {
+							this.groke(EGrok.UPDATE, path, $val)
+					  })
+					: this.groke(EGrok.UPDATE, path, val)
+
+				break
+			case EGrok.REMOVE:
+				this.groke_cancels[path]()
+				delete this.groke_cancels[path]
+				break
+		}
+
+		return void_fn
 	}
 
 	has(name: string) {
-		return this.item(name) !== undefined
-	}
-
-	reset(target?: TreeValue<T>, silent = false) {
-		const $tree = {}
-		if (target) {
-			Object.assign($tree, target)
-		}
-
-		this.p_set($tree, silent)
+		return this.query(name) !== undefined
 	}
 
 	add(tree_json: object, silent = false) {
 		const $tree = this.get()
 
-		Object.assign($tree, tree_json)
+		for (let [key, value] of Object.entries(tree_json)) {
+			const is_store = value && value.get !== undefined
+			const is_obj =
+				(Array.isArray(value) ||
+					['string', 'number', 'boolean'].indexOf(typeof value) !==
+						-1) === false
+
+			const new_val: Store<any> = ($tree[key] = is_store
+				? value
+				: is_obj
+				? new Tree()
+				: new Store(value))
+
+			this.groke(EGrok.ADD, key, {
+				value: new_val.toJSON()
+			})
+		}
 
 		this.p_set($tree, silent)
 
@@ -61,6 +109,8 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 	remove(name: string, silent = false) {
 		delete this.value[name]
 		if (!silent) this.notify()
+
+		this.groke(EGrok.REMOVE, name)
 	}
 
 	query(...steps: string[]): any {
@@ -81,15 +131,10 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 
 		const key = split[split.length - 1]
 
-		const is_obj =
-			Array.isArray(value) ||
-			(['string', 'number', 'boolean'].indexOf(typeof value) !== -1) ==
-				false
-
 		switch (action) {
 			case EGrok.ADD:
 				item.add({
-					[key]: is_obj ? new Tree() : new Store(value)
+					[key]: value
 				})
 				break
 			case EGrok.REMOVE:
@@ -99,52 +144,38 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 				if (split.length === 1) {
 					item.set(value)
 				} else {
-					item.item(key).set(value)
+					item.query(key).set(value)
 				}
 		}
 	}
 
 	grok(groker: IGrok): ICancel {
-		const cancels: { [key: string]: ICancel } = {}
+		if (this.grokers === undefined) {
+			this.grokers = new Set([groker])
+			this.groke_cancels = {}
 
-		let last = []
-
-		cancels[''] = this.listen($value => {
-			// value changed
-			for (let key of last) {
-				if ($value[key] === undefined) {
-					groker(EGrok.REMOVE, key)
-					cancels[key] && cancels[key]
-				}
+			for (let [key, value] of Object.entries(this.get())) {
+				const $v = value as any
+				this.groke(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value)
 			}
-
-			last = Object.keys($value)
-
-			for (let [key, child] of Object.entries($value)) {
-				const cx = child as any
-				if (cancels[key]) return
-				groker(EGrok.ADD, key, cx.toJSON ? cx.toJSON() : cx)
-
-				// tree
-				if (cx.grok) {
-					cancels[key] = cx.grok((action, k, v) =>
-						groker(action, `${key}/${k}`, v)
-					)
-					continue
-				}
-
-				// store (updates)
-				if (cx.listen) {
-					cancels[key] = cx.listen(v => groker(EGrok.UPDATE, key, v))
-					continue
-				}
+		} else {
+			this.grokers.add(groker)
+			for (let [key, value] of Object.entries(this.get())) {
+				const $v = value as any
+				groker(EGrok.ADD, key, value)
 			}
-		})
+		}
 
 		return () => {
-			for (let cancel of Object.values(cancels)) {
+			this.grokers.delete(groker)
+			if (this.grokers.size !== 0) return
+
+			delete this.grokers
+			for (let cancel of Object.values(this.groke_cancels)) {
 				cancel()
 			}
+
+			delete this.groke_cancels
 		}
 	}
 }

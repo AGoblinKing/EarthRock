@@ -21,22 +21,28 @@ test('goblin/', async t => {
 	worker.create()
 	worker.rez()
 
-	t.snapshot(worker)
-	t.snapshot(worker.toJSON())
+	t.snapshot(worker.sys.toJSON(), 'sys available')
+	t.snapshot(worker.toJSON(), 'local worker')
 
-	worker.remote_add(simple)
+	worker.add(simple)
 
-	t.snapshot(await worker.remote_toJSON())
+	// forces a dump
+	t.snapshot(await worker.remote_toJSON(), 'remote worker')
 
 	let count = 0
+	const cancel_grok = worker.remote_grok()
 
 	await new Promise(resolve => {
 		const cancel = worker.buffer.listen($buffer => {
-			t.snapshot($buffer.VISIBLE.toJSON())
+			t.snapshot($buffer.VISIBLE.toJSON(), 'visible')
 
 			if (count++ < 4) return
 			cancel()
 			resolve()
 		})
 	})
+
+	cancel_grok()
+
+	t.snapshot(worker.value.toJSON(), 'local remote json post grok')
 })

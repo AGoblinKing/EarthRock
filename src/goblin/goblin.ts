@@ -7,13 +7,13 @@ import {
 	ELivingAction,
 	TreeValue,
 	Buffer,
-	ELivingStatus
+	IGrok
 } from '../store'
 import { IMessage, IMessageEvent } from './message'
 import { IWheelJSON, Wheel } from '../wheel/wheel'
 import { Messenger, RemoteGoblin } from './remote'
 import { Visible } from 'src/twist'
-import { Weave } from 'src/weave'
+import { Weave } from '../weave'
 
 interface IWorker {
 	onmessage: ((ev: IMessageEvent) => any) | null
@@ -40,12 +40,18 @@ export class Goblin extends Living<Weave> {
 		VISIBLE: Visible.data
 	})
 
-	protected sys: Tree<Tree<IStore<any>>>
-	protected value: Wheel
+	// convert to an inactive wheel
+	value = new Wheel({
+		value: {},
+		rezed: []
+	})
+
+	sys: Tree<Tree<IStore<any>>>
 	protected worker: IWorker
 	protected sys_cancels: ICancelMap = {}
 	protected sys_cancel: ICancel
 	protected local: boolean
+	protected grokers: Set<IGrok>
 
 	private json_resolvers: Array<(data: any) => void> = []
 
@@ -53,13 +59,10 @@ export class Goblin extends Living<Weave> {
 		super()
 
 		// doesn't guarantee syncing
-		this.value = new Wheel({
-			value: {},
-			rezed: []
-		})
-
 		this.sys = sys
 		this.local = local
+		this.grokers = new Set()
+		this.value.stop()
 	}
 
 	create() {
@@ -103,6 +106,14 @@ export class Goblin extends Living<Weave> {
 			name: 'status',
 			data: ELivingAction.DESTROY
 		})
+
+		if (this.grokers.size > 0) {
+			this.worker.postMessage({
+				name: 'grok_stop'
+			})
+
+			this.grokers.clear()
+		}
 	}
 
 	// replicate system changes into the worker
@@ -137,10 +148,12 @@ export class Goblin extends Living<Weave> {
 		this.worker.terminate()
 	}
 
-	protected msg_toJSON(json: IWheelJSON) {
+	protected msg_groker({ action, key, value }) {
 		// hydrate self
-		this.value.add(json.value)
+		this.value.groker(action, key, value)
+	}
 
+	protected msg_toJSON(json: any) {
 		for (let resolve of this.json_resolvers) {
 			resolve(json)
 		}
@@ -148,7 +161,7 @@ export class Goblin extends Living<Weave> {
 
 	protected msg_buffer(data: TreeValue<{ [name: string]: number[] }>) {
 		for (let [name, buffer] of Object.entries(data)) {
-			const buff = this.buffer.item(name)
+			const buff = this.buffer.query(name)
 
 			if (buff === undefined) return
 			buff.hydrate(buffer)
@@ -182,27 +195,44 @@ export class Goblin extends Living<Weave> {
 	}
 
 	add(data: IWheelJSON) {
-		this.remote_add(data)
-	}
-
-	remote_add(data: IWheelJSON) {
 		this.worker.postMessage({
 			name: 'add',
 			data
 		})
 	}
 
-	remote_start(data: string) {
+	start(data: string) {
 		this.worker.postMessage({
 			name: 'start',
 			data
 		})
 	}
 
-	remote_stop(data: string) {
+	stop(data: string) {
 		this.worker.postMessage({
 			name: 'stop',
 			data
 		})
+	}
+
+	remote_grok() {
+		if (this.grokers.size === 0) {
+			this.worker.postMessage({
+				name: 'grok'
+			})
+		}
+		const groker = this.groker.bind(this)
+
+		this.grokers.add(groker)
+
+		return () => {
+			this.grokers.delete(groker)
+
+			if (this.grokers.size === 0) {
+				this.worker.postMessage({
+					name: 'grok_stop'
+				})
+			}
+		}
 	}
 }

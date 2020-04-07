@@ -26,7 +26,7 @@ test('store/tree/names', t => {
 
 	tree.add({ foo: 2 })
 	t.snapshot(tree.get())
-	t.snapshot(tree.item('foo'))
+	t.snapshot(tree.query('foo'))
 
 	tree.add({
 		foo: 5,
@@ -77,19 +77,29 @@ test('store/tree/grok', t => {
 
 	const cancel_2 = tree.grok(tree_2.groker.bind(tree_2))
 
-	t.snapshot(tree.toJSON())
+	t.snapshot(tree.toJSON(), 'tree 1')
 
 	const cancel = tree.grok((action, key, value) => {
-		t.snapshot({ action, key, value })
+		t.snapshot({ action, key, value }, 'groks')
 	})
 
-	tree.remove('hello')
+	tree.remove('trend')
 
-	t.snapshot(tree.toJSON())
+	t.snapshot(tree_2.toJSON(), 'tree2 no hello')
+	t.snapshot(tree.toJSON(), 'tree 1 no hello')
 	cancel()
 
-	t.snapshot(tree_2.toJSON())
+	t.snapshot(tree_2.toJSON(), 'tree 2')
 
+	t.deepEqual(tree.toJSON(), tree_2.toJSON())
+
+	tree.query('hello', 'there').add({
+		again: new Store(5)
+	})
+
+	tree.query('hello', 'there', 'again').set(10)
+
+	t.snapshot(tree_2.toJSON(), 'tree 2 with again')
 	t.deepEqual(tree.toJSON(), tree_2.toJSON())
 
 	cancel_2()

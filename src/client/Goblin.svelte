@@ -1,9 +1,16 @@
- <script>
+<script>
+import Weave from "./Weave.svelte"
 import is from "src/client/is"
+import { onDestroy } from "svelte"
 
-export let goblin  = ""
-const remote = is.item(goblin)
+export let name = ""
+const goblin = is.query(name)
 
+// TODO: lifecycle
+const cancel = goblin.remote_grok()
+const { groked } = goblin
+
+onDestroy(cancel)
 </script>
 
 <div class="wheel">
@@ -11,6 +18,11 @@ const remote = is.item(goblin)
         {goblin}
     </div>
     
+    {JSON.stringify($groked) }
+    
+    {#each Object.entries($groked) as [name, weave]}
+        <Weave {weave} {goblin} />
+    {/each}
 </div>
 
 <style>

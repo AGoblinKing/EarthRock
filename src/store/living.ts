@@ -1,6 +1,6 @@
 import { ProxyTree } from './proxy'
 import { Store } from './store'
-import { TreeValue } from './tree'
+import { TreeValue, IGrok, EGrok } from './tree'
 
 export enum ELivingAction {
 	CREATE = 'create',
@@ -20,6 +20,8 @@ export abstract class Living<T> extends ProxyTree<T> {
 	readonly status = new Store(ELivingStatus.VOID)
 
 	add(living_data: TreeValue<any>, silent = false) {
+		// when adding check to see if they have rezed/value
+		// if they do its a living
 		super.add(living_data, silent)
 		const $status = this.status.get()
 		const items = Object.entries(living_data)
@@ -129,27 +131,32 @@ export abstract class Living<T> extends ProxyTree<T> {
 		}
 	}
 
-	start(name: string) {
+	start(...names: string[]) {
 		const $rezed = this.rezed && this.rezed.get()
-		const item = this.item(name)
 
-		if (!item) return
+		for (let name of names) {
+			const item = this.query(name)
 
-		// can only rez if I am
-		if (this.status.get() === ELivingStatus.REZED) {
-			;(item as any).rez && (item as any).rez()
-		}
+			if (!item) continue
 
-		if ($rezed) {
-			$rezed.add(name)
-			this.rezed.notify()
+			// can only rez if I am
+			if (this.status.get() === ELivingStatus.REZED) {
+				; (item as any).rez && (item as any).rez()
+			}
+
+			if ($rezed) {
+				$rezed.add(name)
+				this.rezed.notify()
+			}
+
+			this.groke(EGrok.START, name)
 		}
 	}
 
 	stop(...names: string[]) {
 		const $rezed = this.rezed && this.rezed.get()
 		for (let name of names) {
-			const item = this.item(name)
+			const item = this.query(name)
 			if (!item) continue // can derez whenever though
 
 			;(item as any).derez && (item as any).derez()
@@ -157,6 +164,7 @@ export abstract class Living<T> extends ProxyTree<T> {
 			if (!$rezed) continue
 
 			$rezed.delete(name)
+			this.groke(EGrok.STOP, name)
 		}
 
 		this.rezed.notify()
@@ -175,14 +183,14 @@ export abstract class Living<T> extends ProxyTree<T> {
 	}
 
 	ensure(first: string, ...path: string[]) {
-		let $item = this.item(first)
+		let $item = this.query(first)
 
 		if ($item === undefined) {
 			this.add({
 				[first]: {}
 			})
 
-			$item = this.item(first)
+			$item = this.query(first)
 		}
 
 		if (path.length === 0) return $item
@@ -192,5 +200,45 @@ export abstract class Living<T> extends ProxyTree<T> {
 		}
 
 		throw new Error('tried to ensure non living item')
+	}
+	
+	groker(action: EGrok, path: string, value?: any) {
+		const parts = path.split("/")
+		const target = parts.length === 1 
+			? this
+			: this.query(...parts.slice(0, -1))
+		
+		const key = path[path.length - 1]
+
+		// path can be tiered, split it out and start based on parent
+		switch (action) {
+			case EGrok.START:
+				target.start && target.start(key)
+				break
+			case EGrok.STOP:
+				target.stop && target.stop(key)
+				break
+			case EGrok.ADD:
+				// could be adding a living to a living
+				if (
+					value.value !== undefined &&
+					value.get === undefined 
+				) {
+					super.groker(action, key, new Living)	
+				}
+				break
+			default:
+				super.groker(action, key, value)
+		}
+	}
+	
+	grok(groker: IGrok) {
+		const cancel = super.grok(groker)
+		if (this.rezed !== undefined) {
+			for (let key of Array.from(this.rezed.get())) {
+				groker(EGrok.START, key)
+			}
+		}
+		return cancel
 	}
 }

@@ -19,13 +19,14 @@ class Test extends Living<Test> {
 	add(adds: object, silent = false) {
 		const new_add = {}
 		for (let [key, value] of Object.entries(adds)) {
-			const test = new Test(0)
+			new_add[key] = new Test(value)
 		}
+
 		return super.add(new_add, false)
 	}
 }
 
-test('store/living', t => {
+test('store/living', (t) => {
 	const tester = new Test(5)
 
 	t.snapshot(tester)
@@ -36,11 +37,11 @@ test('store/living', t => {
 
 	tester.add({
 		6: {
-			value: 1
-		}
+			value: 1,
+		},
 	})
 
-	t.snapshot(tester.toJSON())
+	t.snapshot(tester.toJSON(), 'added 6')
 
 	tester.remove('2')
 	t.snapshot(tester)
@@ -75,11 +76,10 @@ test('store/living', t => {
 	tester.rez()
 
 	t.snapshot(tester)
-
-	t.snapshot(tester.query('6', '0'))
+	t.snapshot(tester.query('6', '0'), 'deep query')
 })
 
-test('store/living/grok', t => {
+test('store/living/grok', (t) => {
 	const tester = new Test(6)
 	const test_remote = new Test(1)
 
@@ -90,8 +90,9 @@ test('store/living/grok', t => {
 		test_remote.groker(action, key, value)
 	})
 
-	t.snapshot(tester.toJSON(), 'local')
-	t.snapshot(test_remote.toJSON(), 'remote')
+	tester.start('3')
+	t.snapshot(tester, 'local')
+	t.snapshot(test_remote, 'remote')
 
 	t.deepEqual(test_remote.toJSON(), tester.toJSON())
 	cancel()

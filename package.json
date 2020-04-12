@@ -65,7 +65,7 @@
 		"pre:dev": "link",
 		"dev": "run-p auto start",
 		"pre:test": "link",
-		"test": "ava --verbose",
+		"test": "ava",
 		"test:debug": "ava debug --verbose",
 		"start": "run-script-os",
 		"start:windows": ".\\bin\\bifrost.exe",

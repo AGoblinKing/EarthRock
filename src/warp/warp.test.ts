@@ -1,23 +1,21 @@
-import test from "ava"
+import test from 'ava'
 
-import { Weave, IWeave } from "src/weave"
+import { Weave, IWeave } from 'src/weave'
 
-test("warp/", t => {
-    const weave = new Weave({
-        name: "test",
-        value: {
-            hello: {
-                value: {VISIBLE: {
-                    sprite: [5]
-                }}
-            }
-        },
-        thread: {},
-        rezed: []
-    })
+test('warp/', (t) => {
+	const weave = new Weave({
+		name: 'test',
+		value: {
+			hello: {
+				VISIBLE: {
+					sprite: [5],
+				},
+			},
+		},
+		thread: {},
+		rezed: [],
+	})
 
-    const { hello } = weave.value.get()
-    t.snapshot(hello.toJSON())
-    weave.destroy()
+	t.snapshot(weave.toJSON())
+	weave.destroy()
 })
-

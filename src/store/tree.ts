@@ -12,7 +12,7 @@ export enum EGrok {
 	STOP,
 	// weave
 	THREAD,
-	UNTHREAD
+	UNTHREAD,
 }
 
 export type IGrok = (action: EGrok, key: string, value?: any) => void
@@ -61,7 +61,7 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 							}
 					  })
 					: val.listen
-					? val.listen($val => {
+					? val.listen(($val) => {
 							this.groke(EGrok.UPDATE, path, $val)
 					  })
 					: this.groke(EGrok.UPDATE, path, val)
@@ -96,9 +96,7 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 				? new Tree()
 				: new Store(value))
 
-			this.groke(EGrok.ADD, key, {
-				value: new_val.toJSON()
-			})
+			this.groke(EGrok.ADD, key, new_val.toJSON())
 		}
 
 		this.p_set($tree, silent)
@@ -134,7 +132,7 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 		switch (action) {
 			case EGrok.ADD:
 				item.add({
-					[key]: value
+					[key]: value,
 				})
 				break
 			case EGrok.REMOVE:
@@ -162,7 +160,7 @@ export class Tree<T> extends Read<TreeValue<T>> implements ITree<T> {
 			this.grokers.add(groker)
 			for (let [key, value] of Object.entries(this.get())) {
 				const $v = value as any
-				groker(EGrok.ADD, key, value)
+				groker(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value)
 			}
 		}
 

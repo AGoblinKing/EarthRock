@@ -1,40 +1,24 @@
-import { Weave } from "src/weave/weave"
-import { Living, NAME } from "src/store"
-
-export interface IWarp<T> {
-    name?: NAME
-    type?: EWarp
-    value: T
-}
+import { Weave } from 'src/weave/weave'
+import { Living, NAME, Store, Tree, Read } from 'src/store'
 
 export enum EWarp {
-    SPACE = "SPACE",
-    MATH = "MATH",
-    VALUE = "VALUE",
-    MAIL = "MAIL"
+	SPACE = 'SPACE',
+	MATH = 'MATH',
+	VALUE = 'VALUE',
+	MAIL = 'MAIL',
 }
 
 export abstract class Warp<T> extends Living<T> {
-    readonly name: NAME
-    readonly type: EWarp
+	protected weave: Weave
+	protected value: Tree<T>
 
-    protected weave: Weave
+	readonly name: string
+	readonly type: string
 
-    constructor (data: IWarp<any>, weave: Weave) {
-        super()
+	constructor(weave: Weave, name: string) {
+		super()
 
-        this.name = data.name
-        this.type = data.type
-        this.weave = weave
-        
-        // don't init value because who knows what they want
-    }
-
-    toJSON (): IWarp<T> {
-        return {
-            name: this.name,
-            type: this.type,
-            value: this.value.toJSON()
-        }
-    }
+		this.name = name
+		this.weave = weave
+	}
 }

@@ -18,7 +18,7 @@ export enum ELivingStatus {
 export abstract class Living<T> extends ProxyTree<T> {
 	protected rezed: Store<Set<string>> | undefined
 	readonly status = new Store(ELivingStatus.VOID)
-
+	
 	add(living_data: TreeValue<any>, silent = false) {
 		// when adding check to see if they have rezed/value
 		// if they do its a living
@@ -124,13 +124,6 @@ export abstract class Living<T> extends ProxyTree<T> {
 		this.status.set(ELivingStatus.CREATED)
 	}
 
-	start_all(...all: string[]) {
-		all = all.length === 0 ? Object.keys(this.get()) : all
-		for (let name of all) {
-			this.start(name)
-		}
-	}
-
 	start(...names: string[]) {
 		const $rezed = this.rezed && this.rezed.get()
 
@@ -175,9 +168,9 @@ export abstract class Living<T> extends ProxyTree<T> {
 		this.start(name)
 	}
 
-	toJSON(): any {
+	serialize(): any {
 		return {
-			value: this.value.toJSON(),
+			value: this.toJSON(),
 			rezed: this.rezed ? this.rezed.toJSON() : undefined
 		}
 	}
@@ -217,15 +210,6 @@ export abstract class Living<T> extends ProxyTree<T> {
 				break
 			case EGrok.STOP:
 				target.stop && target.stop(key)
-				break
-			case EGrok.ADD:
-				// could be adding a living to a living
-				if (
-					value.value !== undefined &&
-					value.get === undefined 
-				) {
-					super.groker(action, key, new Living)	
-				}
 				break
 			default:
 				super.groker(action, key, value)

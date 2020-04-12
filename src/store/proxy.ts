@@ -7,15 +7,19 @@ export abstract class Proxy<T> implements IStore<T> {
 	get() {
 		return this.value.get()
 	}
+
 	listen(listen: IListen<T>) {
 		return this.value.listen(listen)
 	}
+
 	set(value: T, silent = false) {
 		this.value.set(value, silent)
 	}
+
 	toJSON() {
 		return this.value.toJSON()
 	}
+
 	notify() {
 		this.value.notify()
 	}

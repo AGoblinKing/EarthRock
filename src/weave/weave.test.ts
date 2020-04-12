@@ -1,45 +1,41 @@
-import test from "ava"
-import { Weave, IWeave } from "./index"
-import { EWarp } from "src/warp"
+import test from 'ava'
+import { Weave, IWeave } from './index'
+import { EWarp } from 'src/warp'
 
-test("weave/", t => {
-    const data: IWeave = {
-        name: "test",
-        value: {
-            foo: { type: EWarp.SPACE, value: {} },
-            test: { type: EWarp.SPACE, value: {} }
-        },
-        thread: {
-            foo: "test"
-        },
-        rezed: [
-            "foo"
-        ]
-    }
+test('weave/', (t) => {
+	const data: IWeave = {
+		name: 'test',
+		value: {
+			foo: {},
+			test: {},
+		},
+		thread: {
+			foo: 'test',
+		},
+		rezed: ['foo'],
+	}
 
-    const weave = new Weave(data)
+	const weave = new Weave(data)
 
-    t.deepEqual(data, weave.toJSON())
+	t.deepEqual(data, weave.serialize(), 'weave should serialize')
 
-    weave.removes("foo", "test")
-    
-    t.snapshot(weave.toJSON())
+	weave.removes('foo', 'test')
 
-    weave.add({
-        foo: { value: {}},
-        bar: { type: EWarp.SPACE, value: {}}
-    })
+	t.snapshot(weave.toJSON())
 
-    t.snapshot(weave.toJSON())
+	weave.add({
+		foo: {},
+		bar: {},
+	})
 
-    weave.add({
-        foo: { value: {} }
-    })
-    
-    t.snapshot(weave.toJSON())
+	t.snapshot(weave.toJSON())
 
-    weave.destroy()
-    t.snapshot(weave.toJSON())
-})  
+	weave.add({
+		foo: {},
+	})
 
+	t.snapshot(weave.toJSON())
 
+	weave.destroy()
+	t.snapshot(weave.toJSON())
+})

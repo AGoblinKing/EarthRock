@@ -718,7 +718,7 @@
     							}
     					  })
     					: val.listen
-    					? val.listen($val => {
+    					? val.listen(($val) => {
     							this.groke(EGrok.UPDATE, path, $val);
     					  })
     					: this.groke(EGrok.UPDATE, path, val);
@@ -753,9 +753,7 @@
     				? new Tree()
     				: new Store(value));
 
-    			this.groke(EGrok.ADD, key, {
-    				value: new_val.toJSON()
-    			});
+    			this.groke(EGrok.ADD, key, new_val.toJSON());
     		}
 
     		this.p_set($tree, silent);
@@ -791,7 +789,7 @@
     		switch (action) {
     			case EGrok.ADD:
     				item.add({
-    					[key]: value
+    					[key]: value,
     				});
     				break
     			case EGrok.REMOVE:
@@ -818,7 +816,8 @@
     		} else {
     			this.grokers.add(groker);
     			for (let [key, value] of Object.entries(this.get())) {
-    				groker(EGrok.ADD, key, value);
+    				const $v = value; 
+    				groker(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value);
     			}
     		}
 
@@ -842,15 +841,19 @@
     	get() {
     		return this.value.get()
     	}
+
     	listen(listen) {
     		return this.value.listen(listen)
     	}
+
     	set(value, silent = false) {
     		this.value.set(value, silent);
     	}
+
     	toJSON() {
     		return this.value.toJSON()
     	}
+
     	notify() {
     		this.value.notify();
     	}
@@ -1019,7 +1022,7 @@
     class Living extends ProxyTree {constructor(...args) { super(...args); Living.prototype.__init.call(this); }
     	
     	 __init() {this.status = new Store(ELivingStatus.VOID);}
-
+    	
     	add(living_data, silent = false) {
     		// when adding check to see if they have rezed/value
     		// if they do its a living
@@ -1125,13 +1128,6 @@
     		this.status.set(ELivingStatus.CREATED);
     	}
 
-    	start_all(...all) {
-    		all = all.length === 0 ? Object.keys(this.get()) : all;
-    		for (let name of all) {
-    			this.start(name);
-    		}
-    	}
-
     	start(...names) {
     		const $rezed = this.rezed && this.rezed.get();
 
@@ -1176,9 +1172,9 @@
     		this.start(name);
     	}
 
-    	toJSON() {
+    	serialize() {
     		return {
-    			value: this.value.toJSON(),
+    			value: this.toJSON(),
     			rezed: this.rezed ? this.rezed.toJSON() : undefined
     		}
     	}
@@ -1219,15 +1215,6 @@
     			case EGrok.STOP:
     				target.stop && target.stop(key);
     				break
-    			case EGrok.ADD:
-    				// could be adding a living to a living
-    				if (
-    					value.value !== undefined &&
-    					value.get === undefined 
-    				) {
-    					super.groker(action, key, new Living);	
-    				}
-    				break
     			default:
     				super.groker(action, key, value);
     		}
@@ -1258,41 +1245,31 @@
     }
 
     var EWarp; (function (EWarp) {
-        const SPACE = "SPACE"; EWarp["SPACE"] = SPACE;
-        const MATH = "MATH"; EWarp["MATH"] = MATH;
-        const VALUE = "VALUE"; EWarp["VALUE"] = VALUE;
-        const MAIL = "MAIL"; EWarp["MAIL"] = MAIL;
+    	const SPACE = 'SPACE'; EWarp["SPACE"] = SPACE;
+    	const MATH = 'MATH'; EWarp["MATH"] = MATH;
+    	const VALUE = 'VALUE'; EWarp["VALUE"] = VALUE;
+    	const MAIL = 'MAIL'; EWarp["MAIL"] = MAIL;
     })(EWarp || (EWarp = {}));
 
     class Warp extends Living {
-        
-        
+    	
+    	
 
-        
+    	
+    	
 
-        constructor (data, weave) {
-            super();
+    	constructor(weave, name) {
+    		super();
 
-            this.name = data.name;
-            this.type = data.type;
-            this.weave = weave;
-            
-            // don't init value because who knows what they want
-        }
-
-        toJSON () {
-            return {
-                name: this.name,
-                type: this.type,
-                value: this.value.toJSON()
-            }
-        }
+    		this.name = name;
+    		this.weave = weave;
+    	}
     }
 
     var ETwist; (function (ETwist) {
-        const VISIBLE = "VISIBLE"; ETwist["VISIBLE"] = VISIBLE;
-        const PHYSICAL = "PHYSICAL"; ETwist["PHYSICAL"] = PHYSICAL;
-        const DATA = "DATA"; ETwist["DATA"] = DATA;
+    	const VISIBLE = 'VISIBLE'; ETwist["VISIBLE"] = VISIBLE;
+    	const PHYSICAL = 'PHYSICAL'; ETwist["PHYSICAL"] = PHYSICAL;
+    	const DATA = 'DATA'; ETwist["DATA"] = DATA;
     })(ETwist || (ETwist = {}));
 
 
@@ -1300,34 +1277,35 @@
 
 
     class Twist extends Living {
-        
-        
-        
-        
-        constructor (weave, space) {
-            super();
+    	
+    	
+    	
 
-            this.space = space;
-            this.weave = weave;
-            this.value = new Tree({});
-        }
+    	constructor(weave, space) {
+    		super();
 
-        add (data, silent = false) {
-            const write = {};
-            for(let [name, value] of Object.entries(data)) {
-                if(value instanceof Store) {
-                    write[name] = value;
-                } else {
-                    write[name] = new Store(value);
-                }
-            }
+    		this.space = space;
+    		this.weave = weave;
 
-            super.add(write, silent);
-        }
+    		this.value = new Tree();
+    	}
 
-        toJSON () {
-            return this.value.toJSON()
-        }
+    	add(data, silent = false) {
+    		const write = {};
+    		for (let [name, value] of Object.entries(data)) {
+    			if (value instanceof Store) {
+    				write[name] = value;
+    			} else {
+    				write[name] = new Store(value);
+    			}
+    		}
+
+    		super.add(write, silent);
+    	}
+
+    	toJSON() {
+    		return this.value.toJSON()
+    	}
     }
 
     // Visible spaces
@@ -1380,46 +1358,48 @@
     }
 
     class Space extends Warp {
-         __init() {this.value = new Tree();}
+    	constructor(warp_data, weave, name) {
+    		super(weave, name);
+    		this.value = new Tree();
 
-        constructor (warp_data, weave) {
-            super(warp_data, weave);Space.prototype.__init.call(this);
+    		if (warp_data !== undefined) this.add(warp_data);
+    	}
 
-            this.add(warp_data.value || {});
-        }
+    	add(data) {
+    		const adds = {};
 
-        add (data) {
-            const adds = {};
+    		for (let [type, value] of Object.entries(data)) {
+    			adds[type] = this.create_twist(type, value);
+    		}
 
-            for(let type of Object.keys(data)) {
-                adds[type] = this.create_twist(type, data[type]);
-            }
+    		super.add(adds);
+    	}
 
-            super.add(adds);
-        }
+    	 create_twist(
+    		type,
+    		twist_data = {}
+    	) {
+    		switch (type) {
+    			case ETwist.DATA:
+    				return new Data(this.weave, this, twist_data)
+    			case ETwist.VISIBLE:
+    				return new Visible(this.weave, this, twist_data )
+    			case ETwist.PHYSICAL:
+    				return new Physical(this.weave, this, twist_data )
+    		}
 
-         create_twist (type, twist_data = {}) {
-            switch(type) {
-                case ETwist.DATA:
-                    return new Data(this.weave, this, twist_data)
-                case ETwist.VISIBLE: 
-                    return new Visible(this.weave, this, twist_data )
-                case ETwist.PHYSICAL:
-                    return new Physical(this.weave, this, twist_data )
-            }
+    		return new Store(twist_data)
+    	}
 
-            return new Store(twist_data)
-        }   
+    	create() {
+    		super.create();
+    		this.weave.spaces.add({ [this.name]: this });
+    	}
 
-        create () {
-            super.create();
-            this.weave.spaces.add({ [this.name]: this });
-        }
-
-        destroy () {
-            super.destroy();
-            this.weave.spaces.remove(this.name);
-        }
+    	destroy() {
+    		super.destroy();
+    		this.weave.spaces.remove(this.name);
+    	}
     }
 
     class Weave extends Living {
@@ -1436,18 +1416,19 @@
     	
     	 __init4() {this.nerves = {};}
 
-    	create_warp($warp) {
-    		switch ($warp.type) {
-    			case undefined:
-    				$warp.type = EWarp.SPACE;
+    	create_warp($warp, name) {
+    		const [type] = name.split('_');
+
+    		switch (type) {
     			case EWarp.SPACE:
-    				return new Space($warp, this)
+    				return new Space($warp, this, name)
     			case EWarp.MAIL:
     			case EWarp.VALUE:
     			case EWarp.MATH:
+    				throw new Error('unsupported')
+    			default:
+    				return new Space($warp, this, name)
     		}
-
-    		throw new Error(`warp/unknown ${$warp}`)
     	}
 
     	constructor(data) {
@@ -1461,9 +1442,9 @@
     		this.threads = new Tree(data.thread || {});
     		this.rezed = new Store(new Set(data.rezed || []));
 
-    		this.threads_reverse = new Tree({}, set => {
+    		this.threads_reverse = new Tree({}, (set) => {
     			this.cancels.add(
-    				this.threads.listen($threads => {
+    				this.threads.listen(($threads) => {
     					const w_r = {};
     					for (let key of Object.keys($threads)) {
     						w_r[$threads[key]] = key;
@@ -1487,8 +1468,7 @@
     				continue
     			}
 
-    			warp.name = name;
-    			warps[name] = this.create_warp(warp);
+    			warps[name] = this.create_warp(warp, name);
     		}
 
     		super.add(warps, silent);
@@ -1571,13 +1551,13 @@
     		this.cancels.clear();
     	}
 
-    	toJSON() {
+    	serialize() {
     		return {
     			name: this.name,
-    			thread: this.threads.get(),
+    			thread: this.threads.toJSON(),
 
     			value: this.value.toJSON(),
-    			rezed: this.rezed.toJSON()
+    			rezed: this.rezed.toJSON(),
     		}
     	}
 
@@ -1661,7 +1641,7 @@
 
     }).call(commonjsGlobal);
 
-
+    //# sourceMappingURL=performance-now.js.map
     });
 
     var root = typeof window === 'undefined' ? commonjsGlobal : window

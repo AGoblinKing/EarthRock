@@ -348,7 +348,7 @@ class Tree extends Read {
 							}
 					  })
 					: val.listen
-					? val.listen($val => {
+					? val.listen(($val) => {
 							this.groke(EGrok.UPDATE, path, $val);
 					  })
 					: this.groke(EGrok.UPDATE, path, val);
@@ -383,9 +383,7 @@ class Tree extends Read {
 				? new Tree()
 				: new Store(value));
 
-			this.groke(EGrok.ADD, key, {
-				value: new_val.toJSON()
-			});
+			this.groke(EGrok.ADD, key, new_val.toJSON());
 		}
 
 		this.p_set($tree, silent);
@@ -421,7 +419,7 @@ class Tree extends Read {
 		switch (action) {
 			case EGrok.ADD:
 				item.add({
-					[key]: value
+					[key]: value,
 				});
 				break
 			case EGrok.REMOVE:
@@ -449,7 +447,7 @@ class Tree extends Read {
 			this.grokers.add(groker);
 			for (let [key, value] of Object.entries(this.get())) {
 				const $v = value; 
-				groker(EGrok.ADD, key, value);
+				groker(EGrok.ADD, key, $v.toJSON ? $v.toJSON() : value);
 			}
 		}
 
@@ -594,15 +592,19 @@ class Proxy {
 	get() {
 		return this.value.get()
 	}
+
 	listen(listen) {
 		return this.value.listen(listen)
 	}
+
 	set(value, silent = false) {
 		this.value.set(value, silent);
 	}
+
 	toJSON() {
 		return this.value.toJSON()
 	}
+
 	notify() {
 		this.value.notify();
 	}
@@ -771,7 +773,7 @@ var ELivingStatus; (function (ELivingStatus) {
 class Living extends ProxyTree {constructor(...args) { super(...args); Living.prototype.__init.call(this); }
 	
 	 __init() {this.status = new Store(ELivingStatus.VOID);}
-
+	
 	add(living_data, silent = false) {
 		// when adding check to see if they have rezed/value
 		// if they do its a living
@@ -877,13 +879,6 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
 		this.status.set(ELivingStatus.CREATED);
 	}
 
-	start_all(...all) {
-		all = all.length === 0 ? Object.keys(this.get()) : all;
-		for (let name of all) {
-			this.start(name);
-		}
-	}
-
 	start(...names) {
 		const $rezed = this.rezed && this.rezed.get();
 
@@ -928,9 +923,9 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
 		this.start(name);
 	}
 
-	toJSON() {
+	serialize() {
 		return {
-			value: this.value.toJSON(),
+			value: this.toJSON(),
 			rezed: this.rezed ? this.rezed.toJSON() : undefined
 		}
 	}
@@ -970,15 +965,6 @@ class Living extends ProxyTree {constructor(...args) { super(...args); Living.pr
 				break
 			case EGrok.STOP:
 				target.stop && target.stop(key);
-				break
-			case EGrok.ADD:
-				// could be adding a living to a living
-				if (
-					value.value !== undefined &&
-					value.get === undefined 
-				) {
-					super.groker(action, key, new Living);	
-				}
 				break
 			default:
 				super.groker(action, key, value);
@@ -1068,13 +1054,14 @@ class Test extends Living {
 	add(adds, silent = false) {
 		const new_add = {};
 		for (let [key, value] of Object.entries(adds)) {
-			const test = new Test(0);
+			new_add[key] = new Test(value);
 		}
+
 		return super.add(new_add, false)
 	}
 }
 
-test('store/living', t => {
+test('store/living', (t) => {
 	const tester = new Test(5);
 
 	t.snapshot(tester);
@@ -1085,11 +1072,11 @@ test('store/living', t => {
 
 	tester.add({
 		6: {
-			value: 1
-		}
+			value: 1,
+		},
 	});
 
-	t.snapshot(tester.toJSON());
+	t.snapshot(tester.toJSON(), 'added 6');
 
 	tester.remove('2');
 	t.snapshot(tester);
@@ -1124,11 +1111,10 @@ test('store/living', t => {
 	tester.rez();
 
 	t.snapshot(tester);
-
-	t.snapshot(tester.query('6', '0'));
+	t.snapshot(tester.query('6', '0'), 'deep query');
 });
 
-test('store/living/grok', t => {
+test('store/living/grok', (t) => {
 	const tester = new Test(6);
 	const test_remote = new Test(1);
 
@@ -1139,8 +1125,9 @@ test('store/living/grok', t => {
 		test_remote.groker(action, key, value);
 	});
 
-	t.snapshot(tester.toJSON(), 'local');
-	t.snapshot(test_remote.toJSON(), 'remote');
+	tester.start('3');
+	t.snapshot(tester, 'local');
+	t.snapshot(test_remote, 'remote');
 
 	t.deepEqual(test_remote.toJSON(), tester.toJSON());
 	cancel();
@@ -1319,41 +1306,31 @@ test("lib/parse", t => {
 });
 
 var EWarp; (function (EWarp) {
-    const SPACE = "SPACE"; EWarp["SPACE"] = SPACE;
-    const MATH = "MATH"; EWarp["MATH"] = MATH;
-    const VALUE = "VALUE"; EWarp["VALUE"] = VALUE;
-    const MAIL = "MAIL"; EWarp["MAIL"] = MAIL;
+	const SPACE = 'SPACE'; EWarp["SPACE"] = SPACE;
+	const MATH = 'MATH'; EWarp["MATH"] = MATH;
+	const VALUE = 'VALUE'; EWarp["VALUE"] = VALUE;
+	const MAIL = 'MAIL'; EWarp["MAIL"] = MAIL;
 })(EWarp || (EWarp = {}));
 
 class Warp extends Living {
-    
-    
+	
+	
 
-    
+	
+	
 
-    constructor (data, weave) {
-        super();
+	constructor(weave, name) {
+		super();
 
-        this.name = data.name;
-        this.type = data.type;
-        this.weave = weave;
-        
-        // don't init value because who knows what they want
-    }
-
-    toJSON () {
-        return {
-            name: this.name,
-            type: this.type,
-            value: this.value.toJSON()
-        }
-    }
+		this.name = name;
+		this.weave = weave;
+	}
 }
 
 var ETwist; (function (ETwist) {
-    const VISIBLE = "VISIBLE"; ETwist["VISIBLE"] = VISIBLE;
-    const PHYSICAL = "PHYSICAL"; ETwist["PHYSICAL"] = PHYSICAL;
-    const DATA = "DATA"; ETwist["DATA"] = DATA;
+	const VISIBLE = 'VISIBLE'; ETwist["VISIBLE"] = VISIBLE;
+	const PHYSICAL = 'PHYSICAL'; ETwist["PHYSICAL"] = PHYSICAL;
+	const DATA = 'DATA'; ETwist["DATA"] = DATA;
 })(ETwist || (ETwist = {}));
 
 
@@ -1361,34 +1338,35 @@ var ETwist; (function (ETwist) {
 
 
 class Twist extends Living {
-    
-    
-    
-    
-    constructor (weave, space) {
-        super();
+	
+	
+	
 
-        this.space = space;
-        this.weave = weave;
-        this.value = new Tree({});
-    }
+	constructor(weave, space) {
+		super();
 
-    add (data, silent = false) {
-        const write = {};
-        for(let [name, value] of Object.entries(data)) {
-            if(value instanceof Store) {
-                write[name] = value;
-            } else {
-                write[name] = new Store(value);
-            }
-        }
+		this.space = space;
+		this.weave = weave;
 
-        super.add(write, silent);
-    }
+		this.value = new Tree();
+	}
 
-    toJSON () {
-        return this.value.toJSON()
-    }
+	add(data, silent = false) {
+		const write = {};
+		for (let [name, value] of Object.entries(data)) {
+			if (value instanceof Store) {
+				write[name] = value;
+			} else {
+				write[name] = new Store(value);
+			}
+		}
+
+		super.add(write, silent);
+	}
+
+	toJSON() {
+		return this.value.toJSON()
+	}
 }
 
 // Visible spaces
@@ -1441,46 +1419,48 @@ class Physical extends Twist {
 }
 
 class Space extends Warp {
-     __init() {this.value = new Tree();}
+	constructor(warp_data, weave, name) {
+		super(weave, name);
+		this.value = new Tree();
 
-    constructor (warp_data, weave) {
-        super(warp_data, weave);Space.prototype.__init.call(this);
+		if (warp_data !== undefined) this.add(warp_data);
+	}
 
-        this.add(warp_data.value || {});
-    }
+	add(data) {
+		const adds = {};
 
-    add (data) {
-        const adds = {};
+		for (let [type, value] of Object.entries(data)) {
+			adds[type] = this.create_twist(type, value);
+		}
 
-        for(let type of Object.keys(data)) {
-            adds[type] = this.create_twist(type, data[type]);
-        }
+		super.add(adds);
+	}
 
-        super.add(adds);
-    }
+	 create_twist(
+		type,
+		twist_data = {}
+	) {
+		switch (type) {
+			case ETwist.DATA:
+				return new Data(this.weave, this, twist_data)
+			case ETwist.VISIBLE:
+				return new Visible(this.weave, this, twist_data )
+			case ETwist.PHYSICAL:
+				return new Physical(this.weave, this, twist_data )
+		}
 
-     create_twist (type, twist_data = {}) {
-        switch(type) {
-            case ETwist.DATA:
-                return new Data(this.weave, this, twist_data)
-            case ETwist.VISIBLE: 
-                return new Visible(this.weave, this, twist_data )
-            case ETwist.PHYSICAL:
-                return new Physical(this.weave, this, twist_data )
-        }
+		return new Store(twist_data)
+	}
 
-        return new Store(twist_data)
-    }   
+	create() {
+		super.create();
+		this.weave.spaces.add({ [this.name]: this });
+	}
 
-    create () {
-        super.create();
-        this.weave.spaces.add({ [this.name]: this });
-    }
-
-    destroy () {
-        super.destroy();
-        this.weave.spaces.remove(this.name);
-    }
+	destroy() {
+		super.destroy();
+		this.weave.spaces.remove(this.name);
+	}
 }
 
 // export * from "./mail"
@@ -1500,18 +1480,20 @@ class Weave extends Living {
 	
 	 __init4() {this.nerves = {};}
 
-	create_warp($warp) {
-		switch ($warp.type) {
-			case undefined:
-				$warp.type = EWarp.SPACE;
+	create_warp($warp, name) {
+		const [type] = name.split('_');
+
+		switch (type) {
 			case EWarp.SPACE:
-				return new Space($warp, this)
+				return new Space($warp, this, name)
 			case EWarp.MAIL:
 			case EWarp.VALUE:
 			case EWarp.MATH:
+				throw new Error('unsupported')
+				break
+			default:
+				return new Space($warp, this, name)
 		}
-
-		throw new Error(`warp/unknown ${$warp}`)
 	}
 
 	constructor(data) {
@@ -1525,9 +1507,9 @@ class Weave extends Living {
 		this.threads = new Tree(data.thread || {});
 		this.rezed = new Store(new Set(data.rezed || []));
 
-		this.threads_reverse = new Tree({}, set => {
+		this.threads_reverse = new Tree({}, (set) => {
 			this.cancels.add(
-				this.threads.listen($threads => {
+				this.threads.listen(($threads) => {
 					const w_r = {};
 					for (let key of Object.keys($threads)) {
 						w_r[$threads[key]] = key;
@@ -1551,8 +1533,7 @@ class Weave extends Living {
 				continue
 			}
 
-			warp.name = name;
-			warps[name] = this.create_warp(warp);
+			warps[name] = this.create_warp(warp, name);
 		}
 
 		super.add(warps, silent);
@@ -1635,95 +1616,90 @@ class Weave extends Living {
 		this.cancels.clear();
 	}
 
-	toJSON() {
+	serialize() {
 		return {
 			name: this.name,
-			thread: this.threads.get(),
+			thread: this.threads.toJSON(),
 
 			value: this.value.toJSON(),
-			rezed: this.rezed.toJSON()
+			rezed: this.rezed.toJSON(),
 		}
 	}
 
 	// TODO: custom grok/groker that provides thread updates
 }
 
-test("weave/", t => {
-    const data = {
-        name: "test",
-        value: {
-            foo: { type: EWarp.SPACE, value: {} },
-            test: { type: EWarp.SPACE, value: {} }
-        },
-        thread: {
-            foo: "test"
-        },
-        rezed: [
-            "foo"
-        ]
-    };
+test('weave/', (t) => {
+	const data = {
+		name: 'test',
+		value: {
+			foo: {},
+			test: {},
+		},
+		thread: {
+			foo: 'test',
+		},
+		rezed: ['foo'],
+	};
 
-    const weave = new Weave(data);
+	const weave = new Weave(data);
 
-    t.deepEqual(data, weave.toJSON());
+	t.deepEqual(data, weave.serialize(), 'weave should serialize');
 
-    weave.removes("foo", "test");
-    
-    t.snapshot(weave.toJSON());
+	weave.removes('foo', 'test');
 
-    weave.add({
-        foo: { value: {}},
-        bar: { type: EWarp.SPACE, value: {}}
-    });
+	t.snapshot(weave.toJSON());
 
-    t.snapshot(weave.toJSON());
+	weave.add({
+		foo: {},
+		bar: {},
+	});
 
-    weave.add({
-        foo: { value: {} }
-    });
-    
-    t.snapshot(weave.toJSON());
+	t.snapshot(weave.toJSON());
 
-    weave.destroy();
-    t.snapshot(weave.toJSON());
+	weave.add({
+		foo: {},
+	});
+
+	t.snapshot(weave.toJSON());
+
+	weave.destroy();
+	t.snapshot(weave.toJSON());
 });
 
-test("warp/", t => {
-    const weave = new Weave({
-        name: "test",
-        value: {
-            hello: {
-                value: {VISIBLE: {
-                    sprite: [5]
-                }}
-            }
-        },
-        thread: {},
-        rezed: []
-    });
-
-    const { hello } = weave.value.get();
-    t.snapshot(hello.toJSON());
-    weave.destroy();
-});
-
-test('warp/space', t => {
+test('warp/', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		value: {
 			hello: {
-				value: {
-					VISIBLE: {
-						sprite: [5]
-					}
-				}
-			}
+				VISIBLE: {
+					sprite: [5],
+				},
+			},
 		},
 		thread: {},
-		rezed: []
+		rezed: [],
 	});
 
-	const hello = weave.value.get().hello; 
+	t.snapshot(weave.toJSON());
+	weave.destroy();
+});
+
+test('warp/space', (t) => {
+	const weave = new Weave({
+		name: 'test',
+		value: {
+			hello: {
+				VISIBLE: {
+					sprite: [5],
+				},
+			},
+		},
+		thread: {},
+		rezed: [],
+	});
+
+	const hello = weave.query('hello'); 
 
 	hello.add({ DATA: { foo: 5 } });
 	t.snapshot(hello.toJSON());
@@ -1731,7 +1707,7 @@ test('warp/space', t => {
 	const vis = hello.query('VISIBLE');
 	t.snapshot(vis.toJSON());
 	vis.add({
-		foo: new Store(5)
+		foo: new Store(5),
 	});
 
 	t.snapshot(vis.get());
@@ -1743,7 +1719,7 @@ test('warp/space', t => {
 	t.snapshot(weave.spaces.toJSON());
 });
 
-test('twist/visible', t => {
+test('twist/visible', (t) => {
 	Visible.data = new Buffer(Visible.defaults, 3);
 	const weave = new Weave({
 		name: 'test',
@@ -1751,33 +1727,29 @@ test('twist/visible', t => {
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					VISIBLE: {
-						sprite: [2]
-					}
-				}
-			}
-		}
+				VISIBLE: {
+					sprite: [2],
+				},
+			},
+		},
 	});
 
 	t.snapshot(weave.toJSON());
 	t.snapshot(Visible.data.toJSON());
 });
 
-test('twist/data', t => {
+test('twist/data', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		thread: {},
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					DATA: {
-						arbitrary: 'hello'
-					}
-				}
-			}
-		}
+				DATA: {
+					arbitrary: 'hello',
+				},
+			},
+		},
 	});
 
 	t.snapshot(weave.toJSON());
@@ -1788,26 +1760,24 @@ test('twist/data', t => {
 	t.snapshot(data.toJSON());
 
 	data.add({
-		foo: '5'
+		foo: '5',
 	});
 
 	t.snapshot(data.toJSON());
 });
 
-test('twist/physical', t => {
+test('twist/physical', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		thread: {},
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					PHYSICAL: {
-						position: [0, 0, 0]
-					}
-				}
-			}
-		}
+				PHYSICAL: {
+					position: [0, 0, 0],
+				},
+			},
+		},
 	});
 
 	t.snapshot(weave.toJSON(), `should have defaults`);
@@ -1894,24 +1864,20 @@ class Wheel extends Living {
 }
 
 const simple = {
-    rezed: ["test"],
-    value: {
-        test: {
-            thread: {},
-            rezed: ["test"],
-            value: {
-                test: {
-                    type: EWarp.SPACE,
-                    value: {
-                        VISIBLE: {
-                            sprite: [ 55 ]
-                        }
-                    }
-                }
-            }
-
-        }
-    }
+	rezed: ['test'],
+	value: {
+		test: {
+			thread: {},
+			rezed: ['test'],
+			value: {
+				test: {
+					VISIBLE: {
+						sprite: [55],
+					},
+				},
+			},
+		},
+	},
 };
 
 test("wheel/", t => {

@@ -4,23 +4,21 @@ import { Weave, IWeave } from 'src/weave'
 import { Store } from 'src/store'
 import { Space } from './space'
 
-test('warp/space', t => {
+test('warp/space', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		value: {
 			hello: {
-				value: {
-					VISIBLE: {
-						sprite: [5]
-					}
-				}
-			}
+				VISIBLE: {
+					sprite: [5],
+				},
+			},
 		},
 		thread: {},
-		rezed: []
+		rezed: [],
 	})
 
-	const hello = weave.value.get().hello as Space
+	const hello = weave.query('hello') as Space
 
 	hello.add({ DATA: { foo: 5 } })
 	t.snapshot(hello.toJSON())
@@ -28,7 +26,7 @@ test('warp/space', t => {
 	const vis = hello.query('VISIBLE')
 	t.snapshot(vis.toJSON())
 	vis.add({
-		foo: new Store(5)
+		foo: new Store(5),
 	})
 
 	t.snapshot(vis.get())

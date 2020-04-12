@@ -1,5 +1,5 @@
 import { Store, Read, ICancel, Tree, Living, NAME, TreeValue } from 'src/store'
-import { Space, Warp, IWarp, EWarp } from 'src/warp'
+import { Space, Warp, EWarp } from 'src/warp'
 
 export interface Threads {
 	[key: string]: NAME
@@ -8,12 +8,8 @@ export interface Threads {
 export interface IWeave {
 	name?: string
 	thread?: Threads
-	value?: IWarpTree
+	value?: TreeValue<any>
 	rezed?: Array<NAME>
-}
-
-export interface IWarpTree {
-	[key: string]: IWarp<any>
 }
 
 export interface Warps {
@@ -34,18 +30,20 @@ export class Weave extends Living<Warp<any>> {
 	private thread_cancel: ICancel
 	private nerves: { [name: string]: ICancel } = {}
 
-	create_warp($warp: IWarp<any>) {
-		switch ($warp.type) {
-			case undefined:
-				$warp.type = EWarp.SPACE
+	create_warp($warp: any, name: string) {
+		const [type] = name.split('_')
+
+		switch (type) {
 			case EWarp.SPACE:
-				return new Space($warp, this)
+				return new Space($warp, this, name)
 			case EWarp.MAIL:
 			case EWarp.VALUE:
 			case EWarp.MATH:
+				throw new Error('unsupported')
+				break
+			default:
+				return new Space($warp, this, name)
 		}
-
-		throw new Error(`warp/unknown ${$warp}`)
 	}
 
 	constructor(data: IWeave) {
@@ -59,9 +57,9 @@ export class Weave extends Living<Warp<any>> {
 		this.threads = new Tree(data.thread || {})
 		this.rezed = new Store(new Set(data.rezed || []))
 
-		this.threads_reverse = new Tree({}, set => {
+		this.threads_reverse = new Tree({}, (set) => {
 			this.cancels.add(
-				this.threads.listen($threads => {
+				this.threads.listen(($threads) => {
 					const w_r = {}
 					for (let key of Object.keys($threads)) {
 						w_r[$threads[key]] = key
@@ -75,7 +73,7 @@ export class Weave extends Living<Warp<any>> {
 		this.add(data.value || {})
 	}
 
-	add(warp_data: IWarpTree, silent = false): Warps {
+	add(warp_data: TreeValue<any>, silent = false): Warps {
 		if (!warp_data) return
 		const warps: Warps = {}
 
@@ -85,8 +83,7 @@ export class Weave extends Living<Warp<any>> {
 				continue
 			}
 
-			warp.name = name
-			warps[name] = this.create_warp(warp)
+			warps[name] = this.create_warp(warp, name)
 		}
 
 		super.add(warps, silent)
@@ -169,13 +166,13 @@ export class Weave extends Living<Warp<any>> {
 		this.cancels.clear()
 	}
 
-	toJSON(): IWeave {
+	serialize(): IWeave {
 		return {
 			name: this.name,
-			thread: this.threads.get(),
+			thread: this.threads.toJSON(),
 
 			value: this.value.toJSON(),
-			rezed: this.rezed.toJSON()
+			rezed: this.rezed.toJSON(),
 		}
 	}
 

@@ -5,7 +5,7 @@ import { Visible } from './visible'
 import { Buffer } from '../store'
 import { Space } from '../warp'
 
-test('twist/visible', t => {
+test('twist/visible', (t) => {
 	Visible.data = new Buffer(Visible.defaults, 3)
 	const weave = new Weave({
 		name: 'test',
@@ -13,33 +13,29 @@ test('twist/visible', t => {
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					VISIBLE: {
-						sprite: [2]
-					}
-				}
-			}
-		}
+				VISIBLE: {
+					sprite: [2],
+				},
+			},
+		},
 	})
 
 	t.snapshot(weave.toJSON())
 	t.snapshot(Visible.data.toJSON())
 })
 
-test('twist/data', t => {
+test('twist/data', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		thread: {},
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					DATA: {
-						arbitrary: 'hello'
-					}
-				}
-			}
-		}
+				DATA: {
+					arbitrary: 'hello',
+				},
+			},
+		},
 	})
 
 	t.snapshot(weave.toJSON())
@@ -50,26 +46,24 @@ test('twist/data', t => {
 	t.snapshot(data.toJSON())
 
 	data.add({
-		foo: '5'
+		foo: '5',
 	})
 
 	t.snapshot(data.toJSON())
 })
 
-test('twist/physical', t => {
+test('twist/physical', (t) => {
 	const weave = new Weave({
 		name: 'test',
 		thread: {},
 		rezed: [],
 		value: {
 			test: {
-				value: {
-					PHYSICAL: {
-						position: [0, 0, 0]
-					}
-				}
-			}
-		}
+				PHYSICAL: {
+					position: [0, 0, 0],
+				},
+			},
+		},
 	})
 
 	t.snapshot(weave.toJSON(), `should have defaults`)
